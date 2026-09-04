@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Stark editorial palette — near-true black ground, ivory-white type,
+       no soft mid-grays. Gold stays as the single, deliberate accent. */
+    --background: 0 0% 3%;
+    --foreground: 40 25% 95%;
+    --card: 0 0% 5%;
+    --card-foreground: 40 25% 95%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 40 25% 95%;
+    --primary: 40 25% 95%;
+    --primary-foreground: 0 0% 3%;
+    --secondary: 0 0% 9%;
+    --secondary-foreground: 40 25% 95%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 40 6% 62%;
+    --accent: 0 0% 13%;
+    --accent-foreground: 40 25% 95%;
+    --destructive: 8 70% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 40 8% 20%;
+    --input: 40 8% 20%;
+    --ring: 43 74% 56%;
+    --gold: 43 74% 56%;
+    --gold-foreground: 0 0% 3%;
+    --gold-light: 45 80% 68%;
+    --gold-dark: 38 70% 42%;
+    --chart-1: 43 74% 56%;
+    --chart-2: 160 50% 42%;
+    --chart-3: 197 37% 48%;
+    --chart-4: 280 60% 58%;
+    --chart-5: 340 70% 52%;
+    /* Fashion-house geometry: absolute, sharp corners everywhere. */
+    --radius: 0px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: hsl(var(--gold) / 0.25);
+    color: hsl(var(--gold-light));
+  }
+}
+
+@layer utilities {
+  .text-gold { color: hsl(var(--gold)); }
+  .bg-gold { background-color: hsl(var(--gold)); }
+  .border-gold { border-color: hsl(var(--gold)); }
+  .fill-gold { fill: hsl(var(--gold)); }
+  .ring-gold { --tw-ring-color: hsl(var(--gold)); }
+  .bg-gold\/10 { background-color: hsl(var(--gold) / 0.1); }
+  .bg-gold\/20 { background-color: hsl(var(--gold) / 0.2); }
+  .bg-gold\/40 { background-color: hsl(var(--gold) / 0.4); }
+  .bg-gold\/50 { background-color: hsl(var(--gold) / 0.5); }
+  .border-gold\/30 { border-color: hsl(var(--gold) / 0.3); }
+  .border-gold\/50 { border-color: hsl(var(--gold) / 0.5); }
+  .border-gold\/60 { border-color: hsl(var(--gold) / 0.6); }
+  .text-gold\/70 { color: hsl(var(--gold) / 0.7); }
+  .text-gold\/80 { color: hsl(var(--gold) / 0.8); }
+  .ring-gold\/40 { --tw-ring-color: hsl(var(--gold) / 0.4); }
+  .shadow-gold { box-shadow: 0 0 24px hsl(var(--gold) / 0.12); }
+  .shadow-gold-lg { box-shadow: 0 0 48px hsl(var(--gold) / 0.2); }
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, hsl(45 80% 66%) 0%, hsl(40 75% 50%) 100%);
+  }
+  .text-gradient-gold {
+    background: linear-gradient(135deg, hsl(45 80% 70%) 0%, hsl(38 70% 48%) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* Solid editorial header ground — no frosted-glass blur. */
+  .glass {
+    background: hsl(var(--background) / 0.97);
+  }
+}
+
+/* Fashion-house geometry, enforced globally: every rounded-* utility (and
+   any component library default) collapses to a hard, absolute corner.
+   Square badges and hairline frames instead of pills and soft cards. */
+* {
+  border-radius: 0 !important;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
+
+html { scroll-behavior: smooth; }
