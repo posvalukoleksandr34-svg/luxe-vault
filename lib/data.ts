@@ -290,7 +290,16 @@ export const DEFAULT_SIZE_CHART: SizeMeasurement[] = [
 ]
 
 export const TELEGRAM_ADMIN = '@luxevault_orders'
-export const SUPPORT_EMAIL = 'support@luxevault.store'
+/**
+ * Public support mailbox. Shown in the footer and the support widget, and used
+ * as the Reply-To on customer email.
+ *
+ * Must stay on `luxe-vault.store` — the hyphenated domain verified in Resend.
+ * It previously read `luxevault.store` (no hyphen), a different domain
+ * entirely, which meant the auto-reply invited customers to "просто ответьте
+ * на это письмо" and pointed that reply somewhere unowned.
+ */
+export const SUPPORT_EMAIL = 'support@luxe-vault.store'
 
 export const SEED_REVIEWS: Review[] = [
   {

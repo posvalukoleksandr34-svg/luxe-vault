@@ -14,7 +14,7 @@
  * client-side completeness check. If the dashboard still says 6 and this says
  * 8, the field will never consider a valid code complete.
  */
-export const OTP_CODE_LENGTH = 8
+export const OTP_CODE_LENGTH = 6
 
 /** Minimum characters for a new password. */
 export const MIN_PASSWORD_LENGTH = 8

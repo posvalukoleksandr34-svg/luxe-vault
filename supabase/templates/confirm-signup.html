@@ -1,0 +1,156 @@
+{{/*
+  LUXE VAULT — Confirm signup (OTP code only)
+  Paste into: Supabase → Authentication → Email Templates → Confirm signup
+
+  1. NO LINKS. There is deliberately no ConfirmationURL action here. Mail
+     scanners (Outlook Safe Links, Gmail, corporate gateways) fetch links on
+     delivery, which consumes the one-time token before the customer can type
+     the code — they then see "invalid or expired token" for a code that was
+     never used by a human. The only href is a mailto:, which is not
+     prefetched.
+
+  2. TABLE LAYOUT, INLINE STYLES. Outlook renders with the Word engine: no
+     flexbox, no grid, no external stylesheets. The <style> block carries only
+     media queries, which Outlook ignores harmlessly.
+
+  3. LANGUAGE IS COERCED, NOT COMPARED DIRECTLY. `.Data.language` is absent for
+     any account created before the app started recording it. In Go templates
+     `eq nil "it"` raises "incompatible types for comparison", which fails the
+     entire send. `printf "%v"` turns a missing value into the harmless string
+     "<no value>", so the comparison is type-safe and falls back to English.
+*/ -}}
+{{- $lang := printf "%v" .Data.language -}}
+
+{{- $greeting  := "Confirm your email" -}}
+{{- $intro     := "Enter the code below to finish creating your Luxe Vault account. It is valid for one hour and can be used once." -}}
+{{- $codeLabel := "Verification code" -}}
+{{- $ignore    := "If you did not create an account, you can safely ignore this email." -}}
+{{- $help      := "Need help?" -}}
+{{- $footer    := "This message was sent automatically. Please do not reply." -}}
+
+{{- if eq $lang "ru" -}}
+  {{- $greeting  = "Подтвердите email" -}}
+  {{- $intro     = "Введите код ниже, чтобы завершить регистрацию в Luxe Vault. Код действует один час и используется один раз." -}}
+  {{- $codeLabel = "Код подтверждения" -}}
+  {{- $ignore    = "Если вы не регистрировались, просто проигнорируйте это письмо." -}}
+  {{- $help      = "Нужна помощь?" -}}
+  {{- $footer    = "Это письмо отправлено автоматически. Отвечать на него не нужно." -}}
+{{- else if eq $lang "it" -}}
+  {{- $greeting  = "Conferma la tua email" -}}
+  {{- $intro     = "Inserisci il codice qui sotto per completare la registrazione a Luxe Vault. È valido per un'ora e può essere usato una sola volta." -}}
+  {{- $codeLabel = "Codice di verifica" -}}
+  {{- $ignore    = "Se non hai creato tu un account, ignora questa email." -}}
+  {{- $help      = "Hai bisogno di aiuto?" -}}
+  {{- $footer    = "Messaggio inviato automaticamente. Non rispondere a questa email." -}}
+{{- else if eq $lang "de" -}}
+  {{- $greeting  = "E-Mail bestätigen" -}}
+  {{- $intro     = "Geben Sie den folgenden Code ein, um Ihr Luxe-Vault-Konto zu erstellen. Er ist eine Stunde gültig und kann einmal verwendet werden." -}}
+  {{- $codeLabel = "Bestätigungscode" -}}
+  {{- $ignore    = "Falls Sie kein Konto erstellt haben, können Sie diese E-Mail ignorieren." -}}
+  {{- $help      = "Brauchen Sie Hilfe?" -}}
+  {{- $footer    = "Diese Nachricht wurde automatisch gesendet. Bitte antworten Sie nicht darauf." -}}
+{{- else if eq $lang "fr" -}}
+  {{- $greeting  = "Confirmez votre e-mail" -}}
+  {{- $intro     = "Saisissez le code ci-dessous pour finaliser la création de votre compte Luxe Vault. Il est valable une heure et à usage unique." -}}
+  {{- $codeLabel = "Code de vérification" -}}
+  {{- $ignore    = "Si vous n'avez pas créé de compte, ignorez cet e-mail." -}}
+  {{- $help      = "Besoin d'aide ?" -}}
+  {{- $footer    = "Message envoyé automatiquement. Merci de ne pas y répondre." -}}
+{{- end -}}
+<!doctype html>
+<html lang="{{ if eq $lang "ru" }}ru{{ else if eq $lang "it" }}it{{ else if eq $lang "de" }}de{{ else if eq $lang "fr" }}fr{{ else }}en{{ end }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>{{ $greeting }}</title>
+    <style>
+      @media only screen and (max-width: 600px) {
+        .lv-shell { padding: 20px 12px !important; }
+        .lv-pad   { padding-left: 22px !important; padding-right: 22px !important; }
+        .lv-code  { font-size: 30px !important; letter-spacing: 8px !important; }
+      }
+      a { color: #c9a227; }
+      /* Stop iOS/Gmail auto-linking the digits as a phone number. */
+      .lv-code a { color: #f5f3ef !important; text-decoration: none !important; }
+    </style>
+  </head>
+
+  <body style="margin:0; padding:0; background-color:#0b0b0b; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+    <div style="display:none; font-size:1px; color:#0b0b0b; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+      {{ $codeLabel }}: {{ .Token }}
+      &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0b0b0b;">
+      <tr>
+        <td align="center" class="lv-shell" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; width:100%; background-color:#131313; border:1px solid #262626;">
+
+            <tr>
+              <td class="lv-pad" style="padding:28px 32px 20px 32px; border-bottom:1px solid #262626;">
+                <span style="font-family:Helvetica,Arial,sans-serif; font-size:15px; font-weight:bold; letter-spacing:4px; color:#f5f3ef;">LUXE</span><span style="font-family:Helvetica,Arial,sans-serif; font-size:15px; font-weight:bold; letter-spacing:4px; color:#c9a227;">VAULT</span>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="lv-pad" style="padding:30px 32px 0 32px;">
+                <h1 style="margin:0 0 14px 0; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:normal; color:#f5f3ef;">
+                  {{ $greeting }}
+                </h1>
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:14px; line-height:24px; color:#d6d3cd;">
+                  {{ $intro }}
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="lv-pad" style="padding:26px 32px 0 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0b0b0b; border:1px solid #c9a227;">
+                  <tr>
+                    <td align="center" style="padding:22px 16px 20px 16px;">
+                      <p style="margin:0 0 12px 0; font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#6d6d6d;">
+                        {{ $codeLabel }}
+                      </p>
+                      <div class="lv-code" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,Courier,monospace; font-size:38px; line-height:46px; font-weight:bold; letter-spacing:12px; color:#f5f3ef; -webkit-user-select:all; user-select:all;">
+                        {{ .Token }}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="lv-pad" style="padding:24px 32px 0 32px;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:13px; line-height:22px; color:#6d6d6d;">
+                  {{ $ignore }}
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="lv-pad" style="padding:22px 32px 30px 32px;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:13px; line-height:22px; color:#6d6d6d;">
+                  {{ $help }}
+                  <a href="mailto:support@luxe-vault.store" style="color:#c9a227; text-decoration:none;">support@luxe-vault.store</a>
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="lv-pad" style="padding:16px 32px; border-top:1px solid #262626;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:18px; color:#4a4a4a;">
+                  {{ $footer }}
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

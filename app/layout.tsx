@@ -22,7 +22,7 @@ const bodoni = Bodoni_Moda({
 // Must match NEXT_PUBLIC_SITE_URL and the Supabase Site URL exactly — a
 // mismatch produces canonical tags pointing at a domain that redirects, and
 // auth links that land on the wrong origin.
-const SITE_URL = 'https://luxe-vault-hlb1.vercel.app';
+const SITE_URL = 'https://luxe-vault.store';
 const SITE_NAME = 'LUXE VAULT';
 const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Accessories';
 const SITE_DESCRIPTION =

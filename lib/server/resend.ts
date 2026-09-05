@@ -20,6 +20,13 @@ import 'server-only'
  */
 export const FROM_ADDRESS = 'Luxe Vault <orders@luxe-vault.store>'
 
+/**
+ * Sender for support correspondence. Same verified domain, different mailbox,
+ * so a customer replying to an auto-reply lands with support rather than in
+ * the orders stream. Both were confirmed accepted by Resend.
+ */
+export const SUPPORT_FROM_ADDRESS = 'Luxe Vault <support@luxe-vault.store>'
+
 const API_KEY = process.env.RESEND_API_KEY
 const ENDPOINT = 'https://api.resend.com/emails'
 
@@ -34,6 +41,9 @@ export type SendEmailInput = {
    *  client renders; without it some spam filters score the message worse. */
   text?: string
   replyTo?: string
+  /** Overrides FROM_ADDRESS. Must still be on the verified domain — Resend
+   *  rejects anything else outright. */
+  from?: string
 }
 
 export type SendEmailResult =
@@ -69,7 +79,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: FROM_ADDRESS,
+        from: input.from ?? FROM_ADDRESS,
         to: Array.isArray(input.to) ? input.to : [input.to],
         subject: input.subject,
         html: input.html,

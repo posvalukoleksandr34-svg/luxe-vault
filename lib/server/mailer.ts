@@ -14,7 +14,12 @@ import {
   orderConfirmationSubject,
   orderConfirmationText,
 } from '@/lib/server/emails/order-confirmation'
-import { escapeHtml, isMailConfigured, sendEmail } from '@/lib/server/resend'
+import {
+  escapeHtml,
+  isMailConfigured,
+  sendEmail,
+  SUPPORT_FROM_ADDRESS,
+} from '@/lib/server/resend'
 import type { Order } from '@/lib/types'
 
 export { isMailConfigured }
@@ -92,16 +97,30 @@ export async function sendSupportNotification(t: SupportEnquiry): Promise<boolea
   return ok
 }
 
-/** Confirmation back to the customer, echoing their message. */
+/**
+ * Auto-reply to the customer who submitted the form.
+ *
+ * Keeps the dark brand layout (SHELL above): black ground, LUXE/VAULT header,
+ * the quoted "Копия вашего обращения" block and the ticket number.
+ *
+ * Sent from support@ rather than the default orders@ so a reply lands with the
+ * support team, and replyTo points at the monitored inbox — the copy tells the
+ * customer to "просто ответьте на это письмо", so that reply has to reach a
+ * human.
+ */
 export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolean> {
   const { ok } = await sendEmail({
+    from: SUPPORT_FROM_ADDRESS,
     to: t.email,
     replyTo: SUPPORT_INBOX,
     subject: 'Мы получили ваше сообщение — LUXE VAULT',
     html: SHELL(
-        `Здравствуйте, ${t.name}!`,
-        `<p style="margin:0 0 16px;">
-           Мы получили ваше сообщение и свяжемся с вами в ближайшее время.
+      `Здравствуйте, ${t.name}!`,
+      `<p style="margin:0 0 16px;">
+           Спасибо, что связались с нами. Мы получили ваше сообщение и уже
+           передали его нашей команде поддержки. Наш менеджер свяжется с вами
+           в течение 24 часов. Если у вас появились срочные дополнения, просто
+           ответьте на это письмо.
          </p>
          <p style="margin:0 0 8px;color:#6d6d6d;font-size:12px;text-transform:uppercase;letter-spacing:.12em;">
            Копия вашего обращения
@@ -113,6 +132,20 @@ export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolea
            Номер обращения: <span style="font-family:monospace;color:#d6d3cd;">${esc(t.id)}</span>
          </p>`,
     ),
+    text: [
+      `Здравствуйте, ${t.name}!`,
+      '',
+      'Спасибо, что связались с нами. Мы получили ваше сообщение и уже передали',
+      'его нашей команде поддержки. Наш менеджер свяжется с вами в течение 24 часов.',
+      'Если у вас появились срочные дополнения, просто ответьте на это письмо.',
+      '',
+      'КОПИЯ ВАШЕГО ОБРАЩЕНИЯ',
+      t.message,
+      '',
+      `Номер обращения: ${t.id}`,
+      '',
+      'LUXE VAULT · Это письмо отправлено автоматически',
+    ].join('\n'),
   })
   return ok
 }
