@@ -145,9 +145,10 @@ export function generateLookupToken(): string {
  * checkout becomes an unpaid order the customer can settle later rather than
  * vanishing.
  */
-export function buildOrder(draft: ValidatedDraft): Order {
+export function buildOrder(draft: ValidatedDraft, userId?: string): Order {
   return {
     id: generateOrderId(),
+    userId,
     createdAt: Date.now(),
     customer: draft.customer,
     items: draft.items,
@@ -156,7 +157,7 @@ export function buildOrder(draft: ValidatedDraft): Order {
     total: draft.total,
     promo: draft.promo,
     payment: draft.payment,
-    status: 'В обработке',
+    status: 'pending',
     lookupToken: generateLookupToken(),
     paymentStatus: requiresPrepayment(draft.payment) ? 'pending_payment' : undefined,
   }

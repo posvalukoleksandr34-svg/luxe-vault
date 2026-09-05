@@ -260,62 +260,9 @@ export const SEED_PROMOS: Promo[] = [
 
 const now = Date.now()
 
-export const SEED_ORDERS: Order[] = [
-  {
-    id: 'LV-1042',
-    createdAt: now - 1000 * 60 * 60 * 26,
-    customer: {
-      name: 'Алексей Морозов',
-      phone: '+7 900 123-45-67',
-      address: 'Москва, ул. Тверская 12, кв. 44',
-      email: 'a.morozov@example.com',
-    },
-    items: [
-      {
-        key: 'seed1',
-        productId: 'p-jacket-atelier',
-        name: 'Atelier Leather Bomber',
-        image: '/images/jacket.png',
-        price: 649,
-        size: 'L',
-        color: 'Onyx',
-        qty: 1,
-      },
-    ],
-    subtotal: 649,
-    discount: 65,
-    total: 584,
-    promo: 'LUXE10',
-    payment: 'Карта онлайн',
-    status: 'Отправлен',
-  },
-  {
-    id: 'LV-1043',
-    createdAt: now - 1000 * 60 * 60 * 5,
-    customer: {
-      name: 'Дарья Соколова',
-      phone: '+7 921 987-65-43',
-      address: 'Санкт-Петербург, Невский пр. 28',
-    },
-    items: [
-      {
-        key: 'seed2',
-        productId: 'p-gucci-blind-for-love-hoodie',
-        name: 'Худи Gucci "Blind for Love" с тигром',
-        image: '/images/gucci-hoodie-1.jpg',
-        price: 850,
-        size: 'M',
-        color: 'Onyx',
-        qty: 1,
-      },
-    ],
-    subtotal: 850,
-    discount: 0,
-    total: 850,
-    payment: 'При получении',
-    status: 'В обработке',
-  },
-]
+// SEED_ORDERS removed: orders now live in Postgres (public.orders).
+// Demo rows here would never appear in the app and would drift from the
+// real schema, so the seed data was deleted rather than translated.
 
 export const CRYPTO_PAYMENT_METHOD = 'Криптовалюта'
 

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   if (order.paymentStatus === 'paid') {
     return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
   }
-  if (order.status === 'Отменён') {
+  if (order.status === 'cancelled') {
     return NextResponse.json({ error: 'Заказ отменён' }, { status: 409 })
   }
 

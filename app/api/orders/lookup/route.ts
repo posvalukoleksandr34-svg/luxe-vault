@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getOrdersByCredentials } from '@/lib/server/orders-store'
+import { getOrdersByCredentials, getOrdersByUserId } from '@/lib/server/orders-store'
+import { getCurrentUser } from '@/lib/supabase/server'
+import type { Order } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,12 +33,29 @@ export async function POST(request: NextRequest) {
     )
     .map((entry) => ({ id: entry.id, token: entry.token }))
 
-  if (credentials.length === 0) {
-    return NextResponse.json({ orders: [] })
+  // Two independent sources, unioned:
+  //   * everything this browser holds a valid token for (guest orders), and
+  //   * everything bound to the signed-in account.
+  // A customer who ordered as a guest and registered afterwards therefore
+  // still sees the earlier order, and an account's history follows them to a
+  // new device where no tokens exist.
+  let sessionOrders: Order[] = []
+  try {
+    const user = await getCurrentUser()
+    if (user) sessionOrders = await getOrdersByUserId(user.id)
+  } catch {
+    // Not signed in, or Supabase unreachable — token-based results still work.
   }
 
-  const orders = await getOrdersByCredentials(credentials)
+  const tokenOrders =
+    credentials.length > 0 ? await getOrdersByCredentials(credentials) : []
+
+  const byId = new Map<string, Order>()
+  for (const order of [...sessionOrders, ...tokenOrders]) byId.set(order.id, order)
+
+  // Array.from rather than spreading the iterator: this project's tsconfig
+  // targets ES5, where spreading a Map iterator needs --downlevelIteration.
   return NextResponse.json({
-    orders: orders.sort((a, b) => b.createdAt - a.createdAt),
+    orders: Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt),
   })
 }

@@ -24,15 +24,26 @@ import { CollectionsManager } from './collections-manager'
 import { ProductForm } from './product-form'
 import { ReviewsManager } from './reviews-manager'
 import { SupportManager } from './support-manager'
-import type { Order, OrderStatus, PaymentStatus, Product } from '@/lib/types'
+import { ORDER_STATUSES, type Order, type OrderStatus, PaymentStatus, Product } from '@/lib/types'
 
 type AdminTab = 'dashboard' | 'products' | 'collections' | 'orders' | 'reviews' | 'support' | 'promos'
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  'В обработке': 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  'Отправлен': 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  'Доставлен': 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-  'Отменён': 'text-red-400 bg-red-400/10 border-red-400/30',
+  pending: 'text-muted-foreground bg-muted/40 border-border',
+  processing: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+  shipped: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+  delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
+  cancelled: 'text-red-400 bg-red-400/10 border-red-400/30',
+}
+
+/** Russian labels for the admin console, which is internal and Russian-only.
+ *  The stored values are the English enum. */
+const STATUS_LABELS_RU: Record<OrderStatus, string> = {
+  pending: 'Ожидает',
+  processing: 'В обработке',
+  shipped: 'Отправлен',
+  delivered: 'Доставлен',
+  cancelled: 'Отменён',
 }
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -51,7 +62,7 @@ const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   expired: 'text-red-400 bg-red-400/10 border-red-400/30',
 }
 
-const ORDER_STATUSES: OrderStatus[] = ['В обработке', 'Отправлен', 'Доставлен', 'Отменён']
+const ORDER_STATUS_OPTIONS: OrderStatus[] = ORDER_STATUSES
 
 export function AdminPanel() {
   const {
@@ -95,16 +106,33 @@ export function AdminPanel() {
     }
   }, [])
 
-  async function handleUpdateStatus(id: string, status: OrderStatus) {
+  async function handleUpdateStatus(
+    id: string,
+    status: OrderStatus,
+    trackingNumber?: string,
+  ) {
     const previous = orders
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? { ...o, status, trackingNumber: trackingNumber ?? o.trackingNumber }
+          : o,
+      ),
+    )
     try {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, trackingNumber }),
       })
       if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      // Trust the server's copy: the status timestamps are stamped by a
+      // database trigger, so the optimistic row above is missing them.
+      if (data.order) {
+        setOrders((prev) => prev.map((o) => (o.id === id ? data.order : o)))
+      }
+      pushToast({ title: 'Заказ обновлён', variant: 'success' })
     } catch {
       setOrders(previous)
       pushToast({ title: 'Не удалось обновить статус заказа', variant: 'default' })
@@ -134,7 +162,7 @@ export function AdminPanel() {
 
   const stats = useMemo(() => {
     const revenue = orders
-      .filter((o) => o.status !== 'Отменён')
+      .filter((o) => o.status !== 'cancelled')
       .reduce((sum, o) => sum + o.total, 0)
     const avgCheck = orders.length > 0 ? Math.round(revenue / orders.length) : 0
     return {
@@ -299,7 +327,7 @@ export function AdminPanel() {
                             {formatPrice(order.total)}
                           </span>
                           <span className={cn('rounded-full border px-2 py-0.5 text-[10px]', STATUS_COLORS[order.status])}>
-                            {order.status}
+                            {STATUS_LABELS_RU[order.status]}
                           </span>
                         </div>
                       </div>
@@ -459,7 +487,7 @@ export function AdminPanel() {
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-foreground">{order.id}</p>
                           <span className={cn('rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[order.status])}>
-                            {order.status}
+                            {STATUS_LABELS_RU[order.status]}
                           </span>
                           {order.paymentStatus && (
                             <span className={cn('rounded-full border px-2.5 py-0.5 text-[11px] font-medium', PAYMENT_STATUS_COLORS[order.paymentStatus])}>
@@ -517,26 +545,12 @@ export function AdminPanel() {
                       ))}
                     </div>
 
-                    <div className="mt-4 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Статус:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {ORDER_STATUSES.map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => handleUpdateStatus(order.id, status)}
-                            className={cn(
-                              'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition',
-                              order.status === status
-                                ? STATUS_COLORS[status]
-                                : 'border-border text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <OrderStatusControl
+                      order={order}
+                      onSave={(status, trackingNumber) =>
+                        handleUpdateStatus(order.id, status, trackingNumber)
+                      }
+                    />
                   </div>
                 ))}
               </div>
@@ -721,6 +735,95 @@ function StatCard({
       </div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+    </div>
+  )
+}
+
+/**
+ * Status dropdown plus a tracking-number field that appears only when the
+ * chosen status is `shipped`.
+ *
+ * The control is staged rather than instant: picking "Отправлен" must not fire
+ * a save before the courier reference has been typed, otherwise the customer
+ * gets a "shipped" email with no tracking number in it. Any other status saves
+ * on selection, since there is nothing further to fill in.
+ */
+function OrderStatusControl({
+  order,
+  onSave,
+}: {
+  order: Order
+  onSave: (status: OrderStatus, trackingNumber?: string) => void
+}) {
+  const [status, setStatus] = useState<OrderStatus>(order.status)
+  const [tracking, setTracking] = useState(order.trackingNumber ?? '')
+
+  // Re-sync when the server's copy comes back (or another admin changes it).
+  useEffect(() => {
+    setStatus(order.status)
+    setTracking(order.trackingNumber ?? '')
+  }, [order.status, order.trackingNumber])
+
+  const needsTracking = status === 'shipped'
+  const dirty = status !== order.status || tracking !== (order.trackingNumber ?? '')
+  const trackingTooShort = needsTracking && tracking.trim().length > 0 && tracking.trim().length < 4
+
+  function handleSelect(next: OrderStatus) {
+    setStatus(next)
+    // Every status except `shipped` has nothing else to collect, so commit it
+    // immediately and keep the one-click feel of the old buttons.
+    if (next !== 'shipped') onSave(next)
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap items-start gap-3 border-t border-border pt-4">
+      <label className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Статус:</span>
+        <select
+          value={status}
+          onChange={(e) => handleSelect(e.target.value as OrderStatus)}
+          className={cn(
+            'rounded-lg border bg-background px-2.5 py-1.5 text-[12px] font-medium outline-none transition focus:border-gold',
+            STATUS_COLORS[status],
+          )}
+        >
+          {ORDER_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s} className="bg-background text-foreground">
+              {STATUS_LABELS_RU[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {needsTracking && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={tracking}
+            onChange={(e) => setTracking(e.target.value)}
+            placeholder="Трек-номер"
+            maxLength={64}
+            className="w-48 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] text-foreground outline-none focus:border-gold"
+          />
+          <button
+            type="button"
+            disabled={!dirty || trackingTooShort}
+            onClick={() => onSave('shipped', tracking.trim())}
+            className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-[11px] font-medium text-gold transition hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+          >
+            Сохранить
+          </button>
+          {trackingTooShort && (
+            <span className="text-[11px] text-destructive">Минимум 4 символа</span>
+          )}
+        </div>
+      )}
+
+      {order.trackingNumber && !needsTracking && (
+        <span className="text-[11px] text-muted-foreground">
+          Трек: <span className="font-mono text-foreground">{order.trackingNumber}</span>
+        </span>
+      )}
     </div>
   )
 }

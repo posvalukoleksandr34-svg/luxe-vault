@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Loader2,
   LogOut,
   Package,
   User as UserIcon,
@@ -28,6 +29,7 @@ export function UserPanel() {
 
   const [tab, setTab] = useState<Tab>('orders')
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [authBusy, setAuthBusy] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
 
   // Orders come from the server, keyed by the lookup tokens this browser
@@ -51,14 +53,21 @@ export function UserPanel() {
 
   const unpaidCount = myOrders.filter(isUnpaid).length
 
-  function handleAuth(e: React.FormEvent) {
+  async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
-    if (mode === 'login') {
-      login(form.email, form.password)
-    } else {
-      register(form.name, form.email, form.password)
+    if (authBusy) return
+    setAuthBusy(true)
+    try {
+      const ok =
+        mode === 'login'
+          ? await login(form.email, form.password)
+          : await register(form.name, form.email, form.password)
+      // Only wipe the fields on success — clearing them after a failed attempt
+      // forces the customer to retype an email that was probably correct.
+      if (ok) setForm({ name: '', email: '', password: '' })
+    } finally {
+      setAuthBusy(false)
     }
-    setForm({ name: '', email: '', password: '' })
   }
 
   return (
@@ -163,14 +172,21 @@ export function UserPanel() {
 
               <button
                 type="submit"
-                className="w-full border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                disabled={authBusy}
+                className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
               >
+                {authBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {mode === 'login' ? t('user.login') : t('user.register')}
               </button>
 
-              <p className="text-center text-xs text-muted-foreground">
-                Демо: demo@luxe.vault / demo123
-              </p>
+              {mode === 'login' && (
+                <a
+                  href="/auth/forgot-password"
+                  className="block text-center text-[11px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+                >
+                  Забыли пароль?
+                </a>
+              )}
             </form>
           </div>
         ) : (
@@ -185,7 +201,7 @@ export function UserPanel() {
               </div>
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => void logout()}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition hover:text-foreground"
               >
                 <LogOut className="size-3.5" />

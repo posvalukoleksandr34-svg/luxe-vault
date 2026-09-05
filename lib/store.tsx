@@ -9,6 +9,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { createClient } from './supabase/client'
+import { isSupabaseConfigured } from './supabase/env'
 import {
   DEFAULT_CATEGORY_IMAGES,
   PAYMENT_METHODS,
@@ -69,8 +72,10 @@ type StoreContextValue = {
   resetCategoryImage: (group: CategoryGroupKey) => void
   cart: CartItem[]
   promos: Promo[]
-  users: User[]
   currentUser: User | null
+  /** True until the initial Supabase session lookup settles, so the UI can
+   *  avoid flashing a signed-out state to an already-signed-in visitor. */
+  authLoading: boolean
 
   locale: Locale
   setLocale: (l: Locale) => void
@@ -97,9 +102,9 @@ type StoreContextValue = {
   cartSubtotal: number
   applyPromo: (code: string) => Promo | null
 
-  login: (email: string, password: string) => boolean
-  register: (name: string, email: string, password: string) => boolean
-  logout: () => void
+  login: (email: string, password: string) => Promise<boolean>
+  register: (name: string, email: string, password: string) => Promise<boolean>
+  logout: () => Promise<void>
 
   addProduct: (p: Product) => void
   updateProduct: (p: Product) => void
@@ -135,12 +140,77 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [categoryImagesHydrated, setCategoryImagesHydrated] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
   const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
-  const [users, setUsers] = useState<User[]>([
-    { name: 'Demo Client', email: 'demo@luxe.vault', password: 'demo123' },
-  ])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
 
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
+
+  // ---------------------------------------------------------------- auth ----
+  // Single source of truth for "who is signed in". Both a fresh login and a
+  // session restored from the cookie on page load land here, so the two can
+  // never disagree.
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setAuthLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+
+    function applySession(session: Session | null) {
+      const u = session?.user
+      setCurrentUser(
+        u
+          ? {
+              id: u.id,
+              email: u.email ?? '',
+              // Set from signUp metadata; the profiles row refines it below.
+              name:
+                (u.user_metadata?.name as string | undefined)?.trim() ||
+                (u.email ?? '').split('@')[0],
+            }
+          : null,
+      )
+      setAuthLoading(false)
+    }
+
+    supabase.auth.getSession().then(({ data }) => applySession(data.session))
+
+    // NOTE: this callback stays synchronous on purpose. Awaiting another
+    // supabase call inside onAuthStateChange can deadlock the client, so the
+    // profile lookup is done by the separate effect below instead.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Refine the display name from public.profiles, which is the durable record
+  // (auth metadata goes stale if the name is ever edited).
+  const currentUserId = currentUser?.id ?? null
+  useEffect(() => {
+    if (!currentUserId || !isSupabaseConfigured) return
+    let active = true
+
+    createClient()
+      .from('profiles')
+      .select('name')
+      .eq('id', currentUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const name = data?.name?.trim()
+        if (!active || !name) return
+        setCurrentUser((prev) =>
+          prev && prev.id === currentUserId && prev.name !== name ? { ...prev, name } : prev,
+        )
+      })
+
+    return () => {
+      active = false
+    }
+  }, [currentUserId])
+
 
   useEffect(() => {
     try {
@@ -322,40 +392,86 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [promos],
   )
 
+  /**
+   * Sign in through Supabase Auth. The session is stored in an httpOnly
+   * cookie by the SSR client — never in application state or local storage —
+   * and the middleware keeps it refreshed on both sides.
+   */
   const login = useCallback(
-    (email: string, password: string) => {
-      const user = users.find(
-        (u) => u.email === email.trim().toLowerCase() && u.password === password,
-      )
-      if (user) {
-        setCurrentUser(user)
-        pushToast({ title: `${t('toast.welcomeBack')}, ${user.name}`, variant: 'success' })
-        return true
+    async (email: string, password: string) => {
+      let error
+      try {
+        error = (
+          await createClient().auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password,
+          })
+        ).error
+      } catch (e) {
+        // Missing/invalid Supabase env, or the Auth server is unreachable.
+        // Surface it instead of failing silently in the console.
+        pushToast({ title: (e as Error).message, variant: 'default' })
+        return false
       }
-      pushToast({ title: t('toast.invalidCredentials'), variant: 'default' })
-      return false
+      if (error) {
+        pushToast({ title: t('toast.invalidCredentials'), variant: 'default' })
+        return false
+      }
+      // onAuthStateChange (below) is what actually populates currentUser, so
+      // both this path and a session restored on page load go through one
+      // code path and can never disagree.
+      return true
     },
-    [users, pushToast, t],
+    [pushToast, t],
   )
 
   const register = useCallback(
-    (name: string, email: string, password: string) => {
-      const normalized = email.trim().toLowerCase()
-      if (users.some((u) => u.email === normalized)) {
-        pushToast({ title: t('toast.accountExists'), variant: 'default' })
+    async (name: string, email: string, password: string) => {
+      let data, error
+      try {
+        ;({ data, error } = await createClient().auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          // Read by the handle_new_user() trigger to seed public.profiles.name.
+          options: { data: { name: name.trim() } },
+        }))
+      } catch (e) {
+        pushToast({ title: (e as Error).message, variant: 'default' })
         return false
       }
-      const user = { name, email: normalized, password }
-      setUsers((prev) => [...prev, user])
-      setCurrentUser(user)
+
+      if (error) {
+        pushToast({
+          title: /already registered/i.test(error.message)
+            ? t('toast.accountExists')
+            : error.message,
+          variant: 'default',
+        })
+        return false
+      }
+
+      // With "Confirm email" enabled in Supabase, signUp returns a user but no
+      // session: the account exists yet cannot act until the link is clicked.
+      // Saying "account created" and leaving them signed out would look broken,
+      // so this case gets its own message.
+      if (data.user && !data.session) {
+        pushToast({ title: t('toast.confirmEmail'), variant: 'success' })
+        return true
+      }
+
       pushToast({ title: t('toast.accountCreated'), variant: 'success' })
       return true
     },
-    [users, pushToast, t],
+    [pushToast, t],
   )
 
-  const logout = useCallback(() => {
-    setCurrentUser(null)
+  const logout = useCallback(async () => {
+    try {
+      await createClient().auth.signOut()
+    } catch {
+      // Already signed out locally, or Supabase unreachable — the auth state
+      // listener clears currentUser either way.
+    }
     pushToast({ title: t('toast.loggedOut'), variant: 'default' })
   }, [pushToast, t])
 
@@ -409,8 +525,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     resetCategoryImage,
     cart,
     promos,
-    users,
     currentUser,
+    authLoading,
     locale,
     setLocale,
     t,

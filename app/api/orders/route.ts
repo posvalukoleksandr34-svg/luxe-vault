@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { addOrder } from '@/lib/server/orders-store'
 import { buildOrder, validateOrderDraft, type OrderDraftBody } from '@/lib/server/order-drafts'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
 
-  const order = buildOrder(result.draft)
+  // Bind the order to the buyer when there is a session. Read from the
+  // verified cookie via getUser(), never from a user id in the request body —
+  // a client-supplied id would let anyone file orders against another account.
+  // Null is expected and fine: guest checkout stays supported, and those
+  // orders remain reachable through their lookup token.
+  let userId: string | undefined
+  try {
+    userId = (await getCurrentUser())?.id
+  } catch {
+    // Supabase unreachable or unconfigured — fall back to a guest order rather
+    // than failing a checkout the customer has already paid attention to.
+  }
+
+  const order = buildOrder(result.draft, userId)
   await addOrder(order)
 
   return NextResponse.json({ order }, { status: 201 })

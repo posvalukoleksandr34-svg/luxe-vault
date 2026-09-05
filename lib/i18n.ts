@@ -138,6 +138,7 @@ export const UI = {
   'toast.invalidCredentials': { ru: 'Неверные данные', en: 'Invalid credentials', it: 'Credenziali errate', fr: 'Identifiants invalides', de: 'Ungültige Daten' },
   'toast.accountExists': { ru: 'Аккаунт уже существует', en: 'Account already exists', it: 'Account già esistente', fr: 'Compte existant', de: 'Konto existiert' },
   'toast.accountCreated': { ru: 'Аккаунт создан', en: 'Account created', it: 'Account creato', fr: 'Compte créé', de: 'Konto erstellt' },
+  'toast.confirmEmail': { ru: 'Проверьте почту и подтвердите адрес', en: 'Check your inbox to confirm your email', it: "Controlla la posta per confermare l'email", fr: 'Consultez votre boîte mail pour confirmer', de: 'Bitte bestätigen Sie Ihre E-Mail-Adresse' },
   'toast.loggedOut': { ru: 'Вы вышли', en: 'Logged out', it: 'Disconnesso', fr: 'Déconnecté', de: 'Abgemeldet' },
   'toast.productAdded': { ru: 'Товар добавлен', en: 'Product added', it: 'Prodotto aggiunto', fr: 'Produit ajouté', de: 'Produkt hinzugefügt' },
   'toast.productUpdated': { ru: 'Товар обновлён', en: 'Product updated', it: 'Prodotto aggiornato', fr: 'Produit mis à jour', de: 'Produkt aktualisiert' },
@@ -254,6 +255,34 @@ export const UI = {
   'trust.swissQuality': { ru: 'Швейцарское качество', en: 'Swiss Quality', it: 'Qualità svizzera', fr: 'Qualité suisse', de: 'Schweizer Qualität' },
   'trust.securePayments': { ru: 'Безопасная оплата CHF', en: 'Secure CHF Payments', it: 'Pagamenti CHF sicuri', fr: 'Paiements CHF sécurisés', de: 'Sichere CHF-Zahlung' },
   'trust.priorityDelivery': { ru: 'Приоритетная доставка', en: 'Priority Delivery', it: 'Consegna prioritaria', fr: 'Livraison prioritaire', de: 'Priority-Versand' },
+
+  // Fulfilment statuses. The stored values are the English enum
+  // ('pending' | 'processing' | ...); these are only their display labels.
+  'orderStatus.pending': { ru: 'Ожидает', en: 'Pending', it: 'In attesa', fr: 'En attente', de: 'Ausstehend' },
+  'orderStatus.processing': { ru: 'В обработке', en: 'Processing', it: 'In elaborazione', fr: 'En traitement', de: 'In Bearbeitung' },
+  'orderStatus.shipped': { ru: 'Отправлен', en: 'Shipped', it: 'Spedito', fr: 'Expédié', de: 'Versandt' },
+  'orderStatus.delivered': { ru: 'Доставлен', en: 'Delivered', it: 'Consegnato', fr: 'Livré', de: 'Zugestellt' },
+  'orderStatus.cancelled': { ru: 'Отменён', en: 'Cancelled', it: 'Annullato', fr: 'Annulé', de: 'Storniert' },
+
+  // Order tracking page
+  'track.title': { ru: 'Отслеживание заказа', en: 'Order tracking', it: 'Tracciamento ordine', fr: 'Suivi de commande', de: 'Sendungsverfolgung' },
+  'track.trackingNumber': { ru: 'Трек-номер', en: 'Tracking number', it: 'Numero di tracciamento', fr: 'Numéro de suivi', de: 'Sendungsnummer' },
+  'track.copy': { ru: 'Копировать', en: 'Copy', it: 'Copia', fr: 'Copier', de: 'Kopieren' },
+  'track.copied': { ru: 'Скопировано', en: 'Copied', it: 'Copiato', fr: 'Copié', de: 'Kopiert' },
+  'track.items': { ru: 'Состав заказа', en: 'Items in this order', it: "Articoli dell'ordine", fr: 'Articles de la commande', de: 'Artikel dieser Bestellung' },
+  'track.placed': { ru: 'Заказ оформлен', en: 'Order placed', it: 'Ordine effettuato', fr: 'Commande passée', de: 'Bestellung aufgegeben' },
+  'track.notFound': { ru: 'Заказ не найден', en: 'Order not found', it: 'Ordine non trovato', fr: 'Commande introuvable', de: 'Bestellung nicht gefunden' },
+  'track.cancelled': { ru: 'Этот заказ отменён', en: 'This order was cancelled', it: 'Questo ordine è stato annullato', fr: 'Cette commande a été annulée', de: 'Diese Bestellung wurde storniert' },
+  'track.shippingTo': { ru: 'Адрес доставки', en: 'Shipping to', it: 'Spedizione a', fr: 'Livraison à', de: 'Lieferung an' },
 } as const
 
 export type UIKey = keyof typeof UI
+
+/** Stored OrderStatus value -> its display key. */
+export const ORDER_STATUS_KEYS = {
+  pending: 'orderStatus.pending',
+  processing: 'orderStatus.processing',
+  shipped: 'orderStatus.shipped',
+  delivered: 'orderStatus.delivered',
+  cancelled: 'orderStatus.cancelled',
+} as const satisfies Record<string, UIKey>

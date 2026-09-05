@@ -1,18 +1,20 @@
 'use client'
 
-import { ArrowLeft, Loader2, Package, RefreshCw, Wallet } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
+import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus, PaymentStatus } from '@/lib/types'
 
 const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  'В обработке': 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  'Отправлен': 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  'Доставлен': 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-  'Отменён': 'text-red-400 bg-red-400/10 border-red-400/30',
+  pending: 'text-muted-foreground bg-muted/40 border-border',
+  processing: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+  shipped: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+  delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
+  cancelled: 'text-red-400 bg-red-400/10 border-red-400/30',
 }
 
 /** An order still owes money whenever it carries a payment status that isn't
@@ -184,6 +186,8 @@ function OrderCard({
   action?: React.ReactNode
   highlight?: boolean
 }) {
+  const { t } = useStore()
+
   return (
     <div className={cn('border p-4', highlight ? 'border-gold/30 bg-gold/[0.03]' : 'border-border bg-card')}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -202,7 +206,7 @@ function OrderCard({
                 ORDER_STATUS_COLORS[order.status],
               )}
             >
-              {order.status}
+              {t(ORDER_STATUS_KEYS[order.status])}
             </span>
             {order.paymentStatus && <PaymentBadge status={order.paymentStatus} />}
           </div>
@@ -227,7 +231,16 @@ function OrderCard({
         ))}
       </div>
 
-      {action && <div className="mt-4 flex justify-end">{action}</div>}
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+        <a
+          href={`/order/${encodeURIComponent(order.id)}`}
+          className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-gold"
+        >
+          <Truck className="size-3.5" />
+          {t('track.title')}
+        </a>
+        {action}
+      </div>
     </div>
   )
 }

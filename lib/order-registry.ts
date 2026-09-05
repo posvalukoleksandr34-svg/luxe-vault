@@ -49,11 +49,16 @@ export function forgetOrder(id: string): void {
   }
 }
 
-/** Fetches the full, current server-side record for every order this browser
- * knows about. */
+/**
+ * Fetches the full, current server-side record for every order this browser
+ * knows about, plus every order bound to the signed-in account.
+ *
+ * Note there is no early return on an empty registry: a customer signed in on
+ * a new device holds no local tokens, but the endpoint still resolves their
+ * order history from the session.
+ */
 export async function fetchMyOrders(): Promise<import('@/lib/types').Order[]> {
   const credentials = readOrderRegistry()
-  if (credentials.length === 0) return []
   try {
     const res = await fetch('/api/orders/lookup', {
       method: 'POST',

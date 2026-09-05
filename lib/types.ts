@@ -62,7 +62,22 @@ export type CartItem = {
   qty: number
 }
 
-export type OrderStatus = 'В обработке' | 'Отправлен' | 'Доставлен' | 'Отменён'
+/** Fulfilment lifecycle. Matches the `public.order_status` enum in Postgres —
+ *  changing one without the other will fail at the database boundary. */
+export type OrderStatus =
+  | 'pending'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+
+export const ORDER_STATUSES: OrderStatus[] = [
+  'pending',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+]
 
 /** Payment lifecycle of an order, independent of the fulfillment `status`
  * above. An order that needs paying up front is stored as `pending_payment`
@@ -113,6 +128,19 @@ export type Order = {
    * it, so an order can never be read or re-paid by guessing its id. */
   lookupToken?: string
 
+  /** auth.users.id when the buyer was signed in; undefined for guest checkout. */
+  userId?: string
+
+  /** Carrier reference, set by the admin when the order is marked `shipped`. */
+  trackingNumber?: string
+
+  /** Status timeline, stamped in Postgres by the orders_stamp_status trigger.
+   *  Drives the customer-facing progress bar. */
+  processingAt?: number
+  shippedAt?: number
+  deliveredAt?: number
+  cancelledAt?: number
+
   /** Set for every order that requires payment up front (i.e. everything
    * except cash on delivery). */
   paymentStatus?: PaymentStatus
@@ -129,10 +157,19 @@ export type Promo = {
   active: boolean
 }
 
+/**
+ * The signed-in customer, as the app sees them.
+ *
+ * Identity now lives in Supabase Auth (`auth.users`) and the display name in
+ * `public.profiles`. There is deliberately no `password` field: credentials
+ * are never held in application state or local storage — Supabase issues an
+ * httpOnly cookie session instead.
+ */
 export type User = {
+  /** auth.users.id — the uuid that orders, reviews and returns hang off. */
+  id: string
   email: string
   name: string
-  password: string
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected'
