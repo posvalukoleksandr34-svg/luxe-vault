@@ -3,8 +3,6 @@
 import { SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
-import { CATEGORY_TREE } from '@/lib/data'
-import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { ProductCard } from './product-card'
@@ -12,7 +10,8 @@ import { ProductCard } from './product-card'
 const STANDARD_SIZES = ['S', 'M', 'L', 'XL']
 
 export function ProductGrid() {
-  const { products, filter, setFilter, query, t, localize } = useStore()
+  const { products, filter, setFilter, query, t, localize, categoryTree, groupLabels, categoryLabels } =
+    useStore()
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const filtered = useMemo(() => {
@@ -49,25 +48,25 @@ export function ProductGrid() {
   // ("Sneakers", "Apparel", ...) with a count that no longer reflects reality.
   const groups = useMemo(
     () =>
-      CATEGORY_TREE.map((n) => ({
+      categoryTree.map((n) => ({
         key: n.group,
-        label: localize(GROUP_LABELS[n.group]),
+        label: localize(groupLabels[n.group] ?? {}),
         count: products.filter((p) => p.group === n.group).length,
       })).filter((g) => g.count > 0),
-    [products, localize],
+    [products, localize, categoryTree, groupLabels],
   )
 
   const categories = useMemo(() => {
     if (!filter.group) return []
-    const items = CATEGORY_TREE.find((n) => n.group === filter.group)?.items ?? []
+    const items = categoryTree.find((n) => n.group === filter.group)?.items ?? []
     return items
       .map((c) => ({
         key: c,
-        label: localize(CATEGORY_LABELS[c]),
+        label: localize(categoryLabels[c] ?? {}),
         count: products.filter((p) => p.group === filter.group && p.category === c).length,
       }))
       .filter((c) => c.count > 0)
-  }, [products, filter.group, localize])
+  }, [products, filter.group, localize, categoryTree, categoryLabels])
 
   const saleCount = useMemo(() => products.filter((p) => p.oldPrice).length, [products])
 

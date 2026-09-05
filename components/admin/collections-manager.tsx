@@ -1,9 +1,8 @@
 'use client'
 
-import { ImagePlus, RotateCcw } from 'lucide-react'
+import { ImagePlus, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
-import { GROUP_LABELS } from '@/lib/i18n'
+import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { useStore } from '@/lib/store'
 import type { CategoryGroupKey } from '@/lib/types'
 
@@ -23,8 +22,18 @@ function readFileAsDataUrl(file: File): Promise<string> {
  * image without touching code. Live product counts are shown alongside so
  * it's obvious at a glance which categories are actually populated. */
 export function CollectionsManager() {
-  const { products, categoryImages, setCategoryImage, resetCategoryImage, localize, pushToast } =
-    useStore()
+  const {
+    products,
+    categoryImages,
+    setCategoryImage,
+    resetCategoryImage,
+    localize,
+    pushToast,
+    collections,
+    categoryTree,
+    groupLabels,
+    reloadCatalog,
+  } = useStore()
 
   return (
     <div>
@@ -32,26 +41,49 @@ export function CollectionsManager() {
         Коллекции
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Фоновые изображения карточек «Коллекции» на главной странице.
+        Коллекции магазина и фоновые изображения их карточек на главной.
       </p>
 
+      <NewCollectionForm onCreated={reloadCatalog} />
+
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {CATEGORY_TREE.map(({ group }) => (
+        {categoryTree.map(({ group }) => (
           <CategorySlot
             key={group}
             group={group}
             count={products.filter((p) => p.group === group).length}
-            label={localize(GROUP_LABELS[group])}
+            label={localize(groupLabels[group] ?? {})}
             image={categoryImages[group] || DEFAULT_CATEGORY_IMAGES[group]}
             isCustom={Boolean(categoryImages[group])}
             onChange={(image) => {
-              setCategoryImage(group, image)
+              void setCategoryImage(group, image)
               pushToast({ title: 'Изображение коллекции обновлено', variant: 'success' })
             }}
             onReset={() => {
-              resetCategoryImage(group)
+              void resetCategoryImage(group)
               pushToast({ title: 'Возвращено изображение по умолчанию', variant: 'default' })
             }}
+            onDelete={
+              // A collection can only be removed once it is empty: the FK from
+              // products is ON DELETE RESTRICT, so offering the button on a
+              // populated collection would only ever produce an error.
+              products.filter((p) => p.group === group).length === 0 &&
+              collections.some((c) => c.slug === group)
+                ? async () => {
+                    const res = await fetch(
+                      `/api/admin/collections?slug=${encodeURIComponent(group)}`,
+                      { method: 'DELETE' },
+                    )
+                    const data = await res.json().catch(() => ({}))
+                    if (!res.ok) {
+                      pushToast({ title: data?.error ?? 'Не удалось удалить', variant: 'default' })
+                      return
+                    }
+                    pushToast({ title: 'Коллекция удалена', variant: 'default' })
+                    await reloadCatalog()
+                  }
+                : undefined
+            }
           />
         ))}
       </div>
@@ -67,6 +99,7 @@ function CategorySlot({
   isCustom,
   onChange,
   onReset,
+  onDelete,
 }: {
   group: CategoryGroupKey
   label: string
@@ -75,6 +108,8 @@ function CategorySlot({
   isCustom: boolean
   onChange: (image: string) => void
   onReset: () => void
+  /** Present only when the collection is empty and therefore deletable. */
+  onDelete?: () => Promise<void>
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -154,7 +189,167 @@ function CategorySlot({
             <RotateCcw className="size-3.5" />
           </button>
         )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => {
+              // Deleting a collection is irreversible and only offered when it
+              // holds no products, so a single confirm is proportionate.
+              if (confirm(`Удалить коллекцию «${label}»?`)) void onDelete()
+            }}
+            className="flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
+            title="Удалить коллекцию"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
       </div>
     </div>
+  )
+}
+
+/**
+ * Creates a new collection.
+ *
+ * The slug is the stable identifier products reference, so it is typed once
+ * and never editable afterwards — renaming it would orphan every product
+ * filed under it. The display name is what changes; that lives in JSONB and
+ * can be edited freely.
+ */
+function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | void }) {
+  const { pushToast } = useStore()
+  const [open, setOpen] = useState(false)
+  const [slug, setSlug] = useState('')
+  const [nameRu, setNameRu] = useState('')
+  const [nameEn, setNameEn] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  // Derive a legal slug as the admin types the Russian name, but let them
+  // override it. Cyrillic has no useful ASCII slug, so this only helps when
+  // they type Latin — otherwise they fill it in themselves.
+  function suggestSlug(value: string) {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/admin/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: slug.trim().toLowerCase(),
+          name: { ru: nameRu.trim(), en: (nameEn || nameRu).trim() },
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? 'Не удалось создать коллекцию')
+
+      pushToast({ title: 'Коллекция создана', variant: 'success' })
+      setSlug('')
+      setNameRu('')
+      setNameEn('')
+      setOpen(false)
+      await onCreated()
+    } catch (e) {
+      pushToast({ title: (e as Error).message, variant: 'default' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mb-6 flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/5 px-4 py-2.5 text-sm font-medium text-gold transition hover:bg-gold hover:text-gold-foreground"
+      >
+        <Plus className="size-4" />
+        Новая коллекция
+      </button>
+    )
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mb-6 rounded-xl border border-border bg-card/40 p-5"
+    >
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            Название (RU)
+          </span>
+          <input
+            type="text"
+            value={nameRu}
+            onChange={(e) => {
+              setNameRu(e.target.value)
+              if (!slug) setSlug(suggestSlug(e.target.value))
+            }}
+            required
+            autoFocus
+            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            Название (EN)
+          </span>
+          <input
+            type="text"
+            value={nameEn}
+            onChange={(e) => setNameEn(e.target.value)}
+            placeholder={nameRu}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            Slug (латиницей)
+          </span>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            required
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            title="Только строчные латинские буквы, цифры и дефисы"
+            placeholder="new-arrivals"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:border-gold"
+          />
+        </label>
+      </div>
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        Slug нельзя изменить после создания — на него ссылаются товары.
+      </p>
+
+      <div className="mt-4 flex gap-3">
+        <button
+          type="submit"
+          disabled={busy || !slug.trim() || !nameRu.trim()}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy && <Loader2 className="size-3.5 animate-spin" />}
+          Создать
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
+        >
+          Отмена
+        </button>
+      </div>
+    </form>
   )
 }

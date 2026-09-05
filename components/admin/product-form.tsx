@@ -2,7 +2,6 @@
 
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { CATEGORY_TREE } from '@/lib/data'
 import { useStore } from '@/lib/store'
 import type { Product, StatusKey } from '@/lib/types'
 
@@ -44,7 +43,9 @@ export function ProductForm({
   product: Product | null
   onClose: () => void
 }) {
-  const { addProduct, updateProduct, pushToast } = useStore()
+  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels } =
+    useStore()
+  const [saving, setSaving] = useState(false)
   const editing = Boolean(product)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -61,8 +62,8 @@ export function ProductForm({
 
   const [form, setForm] = useState({
     name: initialName,
-    group: product?.group ?? CATEGORY_TREE[0].group,
-    category: product?.category ?? CATEGORY_TREE[0].items[0],
+    group: product?.group ?? categoryTree[0]?.group ?? '',
+    category: product?.category ?? categoryTree[0]?.items[0] ?? '',
     price: product?.price?.toString() ?? '',
     oldPrice: product?.oldPrice?.toString() ?? '',
     sizes: product?.sizes?.join(', ') ?? 'S, M, L, XL',
@@ -77,7 +78,7 @@ export function ProductForm({
   })
 
   const availableCats =
-    CATEGORY_TREE.find((n) => n.group === form.group)?.items ?? []
+    categoryTree.find((n) => n.group === form.group)?.items ?? []
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
@@ -149,7 +150,7 @@ export function ProductForm({
     })
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const price = Number(form.price) || 0
     const oldPrice = form.oldPrice ? Number(form.oldPrice) : undefined
@@ -192,9 +193,13 @@ export function ProductForm({
       limited: form.limited,
     }
 
-    if (editing) updateProduct(next)
-    else addProduct(next)
-    onClose()
+    // Saving is a network call now. Close only when it actually succeeded —
+    // closing regardless would throw away everything the admin just typed on
+    // a validation error or a dropped connection, leaving only a toast.
+    setSaving(true)
+    const ok = editing ? await updateProduct(next) : await addProduct(next)
+    setSaving(false)
+    if (ok) onClose()
   }
 
   return (
@@ -240,12 +245,12 @@ export function ProductForm({
                 onChange={(e) => {
                   const group = e.target.value as typeof form.group
                   const cats =
-                    CATEGORY_TREE.find((n) => n.group === group)?.items ?? []
+                    categoryTree.find((n) => n.group === group)?.items ?? []
                   setForm({ ...form, group, category: cats[0] })
                 }}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
               >
-                {CATEGORY_TREE.map((n) => (
+                {categoryTree.map((n) => (
                   <option key={n.group} value={n.group}>
                     {n.group}
                   </option>
@@ -460,9 +465,10 @@ export function ProductForm({
           </button>
           <button
             type="submit"
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            disabled={saving}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {editing ? 'Сохранить' : 'Добавить'}
+            {saving ? 'Сохранение…' : editing ? 'Сохранить' : 'Добавить'}
           </button>
         </div>
       </form>

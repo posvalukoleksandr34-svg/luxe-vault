@@ -62,12 +62,26 @@ function SupportPanel({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim() }),
       })
-      if (!res.ok) throw new Error('failed')
+      if (!res.ok) {
+        // Surface what the server actually said (e.g. "Invalid email address")
+        // instead of one blanket failure the customer cannot act on. 5xx has
+        // no useful detail by design, so that falls back to the generic copy.
+        const detail = await res
+          .json()
+          .then((d) => (typeof d?.error === 'string' ? d.error : null))
+          .catch(() => null)
+        pushToast({
+          title: res.status < 500 && detail ? detail : t('support.error'),
+          variant: 'default',
+        })
+        return
+      }
       setSent(true)
       setName('')
       setEmail('')
       setMessage('')
     } catch {
+      // Network-level failure (offline, DNS, blocked) — nothing to report.
       pushToast({ title: t('support.error'), variant: 'default' })
     } finally {
       setSubmitting(false)

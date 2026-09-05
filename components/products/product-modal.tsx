@@ -3,7 +3,7 @@
 import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_SIZE_CHART } from '@/lib/data'
-import { CATEGORY_LABELS, STATUS_LABELS } from '@/lib/i18n'
+import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -14,8 +14,7 @@ export function ProductModal() {
     addToCart,
     setPanel,
     t,
-    localize,
-  } = useStore()
+    localize, categoryLabels } = useStore()
 
   const [size, setSize] = useState<string | null>(null)
   const [color, setColor] = useState<string | null>(null)
@@ -211,7 +210,7 @@ export function ProductModal() {
           {/* Details */}
           <div className="flex flex-col p-8 sm:p-10">
             <p className="text-[10px] uppercase tracking-[0.25em] text-gold/70">
-              {localize(CATEGORY_LABELS[p.category])}
+              {localize(categoryLabels[p.category] ?? {})}
             </p>
             <h2 className="mt-3 font-serif text-3xl font-light leading-tight text-foreground sm:text-4xl">
               {productName}

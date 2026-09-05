@@ -1,12 +1,11 @@
 'use client'
 
-import { CATEGORY_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 
 export function ProductCard({ product }: { product: Product }) {
-  const { openProduct, localize, t } = useStore()
+  const { openProduct, localize, t, categoryLabels } = useStore()
   const outOfStock = product.statuses.includes('out_of_stock')
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
@@ -79,7 +78,7 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="mt-3 flex flex-col gap-0.5">
         <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
-          {localize(CATEGORY_LABELS[product.category])}
+          {localize(categoryLabels[product.category] ?? {})}
         </p>
         <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-300 group-hover:text-gold/90">
           {localize(product.name)}

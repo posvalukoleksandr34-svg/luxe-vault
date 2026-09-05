@@ -17,7 +17,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { CATEGORY_LABELS, STATUS_LABELS } from '@/lib/i18n'
+import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
@@ -74,6 +74,7 @@ export function AdminPanel() {
     pushToast,
     t,
     localize,
+    categoryLabels,
   } = useStore()
 
   const [tab, setTab] = useState<AdminTab>('dashboard')
@@ -347,7 +348,7 @@ export function AdminPanel() {
                         <div className="flex-1">
                           <p className="text-sm font-medium text-foreground">{localize(p.name)}</p>
                           <p className="text-xs text-muted-foreground">
-                            {localize(CATEGORY_LABELS[p.category])}
+                            {localize(categoryLabels[p.category] ?? {})}
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-foreground">
@@ -414,7 +415,7 @@ export function AdminPanel() {
                         </td>
                         <td className="hidden px-4 py-3 sm:table-cell">
                           <span className="text-sm text-muted-foreground">
-                            {localize(CATEGORY_LABELS[p.category])}
+                            {localize(categoryLabels[p.category] ?? {})}
                           </span>
                         </td>
                         <td className="px-4 py-3">

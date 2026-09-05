@@ -12,13 +12,10 @@ import {
 import type { Session } from '@supabase/supabase-js'
 import { createClient } from './supabase/client'
 import { isSupabaseConfigured } from './supabase/env'
+import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
 import {
-  DEFAULT_CATEGORY_IMAGES,
-  PAYMENT_METHODS,
-  SEED_PRODUCTS,
-  SEED_PROMOS,
-} from './data'
-import {
+  CATEGORY_LABELS,
+  GROUP_LABELS,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   LOCALES,
@@ -28,6 +25,9 @@ import {
 } from './i18n'
 import type {
   CartItem,
+  CategoryKey,
+  Category,
+  Collection,
   CategoryGroupKey,
   Locale,
   LocalizedText,
@@ -67,9 +67,16 @@ export const CATEGORY_IMAGES_STORAGE_KEY = 'luxe-vault-category-images'
 
 type StoreContextValue = {
   products: Product[]
+  collections: Collection[]
+  categories: Category[]
+  categoryTree: { group: CategoryGroupKey; items: CategoryKey[] }[]
+  groupLabels: Record<string, LocalizedText>
+  categoryLabels: Record<string, LocalizedText>
+  catalogLoading: boolean
+  reloadCatalog: () => Promise<void>
   categoryImages: Partial<Record<CategoryGroupKey, string>>
-  setCategoryImage: (group: CategoryGroupKey, image: string) => void
-  resetCategoryImage: (group: CategoryGroupKey) => void
+  setCategoryImage: (group: CategoryGroupKey, image: string) => Promise<void>
+  resetCategoryImage: (group: CategoryGroupKey) => Promise<void>
   cart: CartItem[]
   promos: Promo[]
   currentUser: User | null
@@ -106,9 +113,9 @@ type StoreContextValue = {
   register: (name: string, email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
 
-  addProduct: (p: Product) => void
-  updateProduct: (p: Product) => void
-  deleteProduct: (id: string) => void
+  addProduct: (p: Product) => Promise<boolean>
+  updateProduct: (p: Product) => Promise<boolean>
+  deleteProduct: (id: string) => Promise<boolean>
   addPromo: (p: Promo) => void
   removePromo: (code: string) => void
 
@@ -134,10 +141,11 @@ export function formatPrice(value: number) {
 let toastSeq = 0
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(SEED_PRODUCTS)
+  const [products, setProducts] = useState<Product[]>([])
   const [productsHydrated, setProductsHydrated] = useState(false)
-  const [categoryImages, setCategoryImages] = useState<Partial<Record<CategoryGroupKey, string>>>({})
-  const [categoryImagesHydrated, setCategoryImagesHydrated] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
   const [cart, setCart] = useState<CartItem[]>([])
   const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -223,77 +231,67 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Load any previously saved catalog (including admin-uploaded product
-  // images) from localStorage once, on mount, so a page refresh never wipes
-  // out changes made from the admin panel. An empty array is a legitimate,
-  // intentional state (the admin deleted everything) and must be respected —
-  // only genuinely missing/corrupted data falls back to the seed catalog.
-  useEffect(() => {
+  // The catalogue is server state now, not browser state.
+  //
+  // It used to live in this browser's localStorage, which meant an admin's
+  // edits were saved to the admin's own machine and no customer could ever
+  // see them. Fetching it from /api/catalog is what actually makes an admin
+  // change reach the shop.
+  const loadCatalog = useCallback(async () => {
     try {
-      const saved = window.localStorage.getItem(PRODUCTS_STORAGE_KEY)
-      if (saved !== null) {
-        const parsed = JSON.parse(saved) as Product[]
-        if (Array.isArray(parsed)) {
-          setProducts(parsed)
-        }
-      }
+      const res = await fetch('/api/catalog', { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
+      if (Array.isArray(data.products)) setProducts(data.products)
+      if (Array.isArray(data.collections)) setCollections(data.collections)
+      if (Array.isArray(data.categories)) setCategories(data.categories)
     } catch {
-      // localStorage unavailable or corrupted cache — fall back to seed data
+      // Catalogue unreachable (offline, or migrations not run yet). Leave the
+      // last known list in place rather than blanking the shop.
     } finally {
-      setProductsHydrated(true)
-    }
-  }, [])
-
-  // Persist the catalog (including any base64 images uploaded through the
-  // admin panel) every time it changes, once the initial hydration above
-  // has completed.
-  useEffect(() => {
-    if (!productsHydrated) return
-    try {
-      window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products))
-    } catch {
-      // localStorage full or unavailable — changes simply won't persist
-    }
-  }, [products, productsHydrated])
-
-  // Load any admin-assigned Collections preview images once, on mount, so a
-  // reload never reverts a category card back to its default photo.
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(CATEGORY_IMAGES_STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved) as Partial<Record<CategoryGroupKey, string>>
-        if (parsed && typeof parsed === 'object') {
-          setCategoryImages(parsed)
-        }
-      }
-    } catch {
-      // localStorage unavailable or corrupted cache — fall back to defaults
-    } finally {
-      setCategoryImagesHydrated(true)
+      setCatalogLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    if (!categoryImagesHydrated) return
-    try {
-      window.localStorage.setItem(CATEGORY_IMAGES_STORAGE_KEY, JSON.stringify(categoryImages))
-    } catch {
-      // localStorage full or unavailable — changes simply won't persist
-    }
-  }, [categoryImages, categoryImagesHydrated])
+    void loadCatalog()
+  }, [loadCatalog])
 
-  const setCategoryImage = useCallback((group: CategoryGroupKey, image: string) => {
-    setCategoryImages((prev) => ({ ...prev, [group]: image }))
-  }, [])
+  // Preview images now live on the collection row; this keeps the old
+  // `categoryImages[group]` shape so consuming components did not change.
+  // Derived from the database, with the original hardcoded maps as a fallback
+  // for the seeded slugs. This is what lets a collection created in the admin
+  // panel show up in the storefront filters without a redeploy.
+  const categoryTree = useMemo(
+    () =>
+      collections.length === 0
+        ? CATEGORY_TREE
+        : collections.map((c) => ({
+            group: c.slug,
+            items: categories
+              .filter((cat) => cat.collectionSlug === c.slug)
+              .map((cat) => cat.slug),
+          })),
+    [collections, categories],
+  )
 
-  const resetCategoryImage = useCallback((group: CategoryGroupKey) => {
-    setCategoryImages((prev) => {
-      const next = { ...prev }
-      delete next[group]
-      return next
-    })
-  }, [])
+  const groupLabels = useMemo(() => {
+    const map: Record<string, LocalizedText> = { ...GROUP_LABELS }
+    for (const c of collections) map[c.slug] = c.name
+    return map
+  }, [collections])
+
+  const categoryLabels = useMemo(() => {
+    const map: Record<string, LocalizedText> = { ...CATEGORY_LABELS }
+    for (const c of categories) map[c.slug] = c.name
+    return map
+  }, [categories])
+
+  const categoryImages = useMemo(() => {
+    const map: Partial<Record<CategoryGroupKey, string>> = {}
+    for (const c of collections) if (c.image) map[c.slug] = c.image
+    return map
+  }, [collections])
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l)
@@ -335,6 +333,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [dismissToast],
   )
+
+  const setCategoryImage = useCallback(
+    async (group: CategoryGroupKey, image: string) => {
+      // Optimistic, then reconciled from the server response.
+      setCollections((prev) =>
+        prev.map((c) => (c.slug === group ? { ...c, image } : c)),
+      )
+      try {
+        const res = await fetch('/api/admin/collections', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: group, image }),
+        })
+        if (!res.ok) throw new Error((await res.json())?.error ?? 'failed')
+      } catch (e) {
+        void loadCatalog()
+        pushToast({ title: (e as Error).message, variant: 'default' })
+      }
+    },
+    [loadCatalog, pushToast],
+  )
+
+  const resetCategoryImage = useCallback(
+    async (group: CategoryGroupKey) => {
+      setCollections((prev) =>
+        prev.map((c) => (c.slug === group ? { ...c, image: undefined } : c)),
+      )
+      try {
+        const res = await fetch('/api/admin/collections', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          // Explicit null clears the stored image; undefined would leave it.
+          body: JSON.stringify({ slug: group, image: null }),
+        })
+        if (!res.ok) throw new Error((await res.json())?.error ?? 'failed')
+      } catch (e) {
+        void loadCatalog()
+        pushToast({ title: (e as Error).message, variant: 'default' })
+      }
+    },
+    [loadCatalog, pushToast],
+  )
+
 
   const openProduct = useCallback((p: Product | null) => setActiveProduct(p), [])
 
@@ -475,28 +516,79 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     pushToast({ title: t('toast.loggedOut'), variant: 'default' })
   }, [pushToast, t])
 
+  // Writes go to Postgres via the admin API, then state is set from the row
+  // the server actually stored. On failure the optimistic change is rolled
+  // back and the real reason is shown — silently dropping a failed save is
+  // how an admin ends up believing a product exists when it does not.
   const addProduct = useCallback(
-    (p: Product) => {
+    async (p: Product) => {
+      const previous = products
       setProducts((prev) => [p, ...prev])
-      pushToast({ title: t('toast.productAdded'), variant: 'success' })
+      try {
+        const res = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error ?? 'Failed to save product')
+        setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
+        pushToast({ title: t('toast.productAdded'), variant: 'success' })
+        return true
+      } catch (e) {
+        setProducts(previous)
+        pushToast({ title: (e as Error).message, variant: 'default' })
+        return false
+      }
     },
-    [pushToast, t],
+    [products, pushToast, t],
   )
 
   const updateProduct = useCallback(
-    (p: Product) => {
+    async (p: Product) => {
+      const previous = products
       setProducts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
-      pushToast({ title: t('toast.productUpdated'), variant: 'success' })
+      try {
+        const res = await fetch('/api/admin/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error ?? 'Failed to update product')
+        setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
+        pushToast({ title: t('toast.productUpdated'), variant: 'success' })
+        return true
+      } catch (e) {
+        setProducts(previous)
+        pushToast({ title: (e as Error).message, variant: 'default' })
+        return false
+      }
     },
-    [pushToast, t],
+    [products, pushToast, t],
   )
 
   const deleteProduct = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      const previous = products
       setProducts((prev) => prev.filter((x) => x.id !== id))
-      pushToast({ title: t('toast.productDeleted'), variant: 'default' })
+      try {
+        const res = await fetch(`/api/admin/products?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error ?? 'Failed to delete product')
+        }
+        pushToast({ title: t('toast.productDeleted'), variant: 'default' })
+        return true
+      } catch (e) {
+        setProducts(previous)
+        pushToast({ title: (e as Error).message, variant: 'default' })
+        return false
+      }
     },
-    [pushToast, t],
+    [products, pushToast, t],
   )
 
   const addPromo = useCallback(
@@ -520,6 +612,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: StoreContextValue = {
     products,
+    collections,
+    categories,
+    categoryTree,
+    groupLabels,
+    categoryLabels,
+    catalogLoading,
+    reloadCatalog: loadCatalog,
     categoryImages,
     setCategoryImage,
     resetCategoryImage,

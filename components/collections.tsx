@@ -3,13 +3,13 @@
 import { ArrowUpRight } from 'lucide-react'
 import { useMemo } from 'react'
 import { Reveal } from '@/components/reveal'
-import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
-import { GROUP_LABELS } from '@/lib/i18n'
+import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { useStore } from '@/lib/store'
 import type { CategoryGroupKey } from '@/lib/types'
 
 export function Collections() {
-  const { t, localize, setFilter, filter, products, categoryImages } = useStore()
+  const { t, localize, setFilter, filter, products, categoryImages, categoryTree, groupLabels } =
+    useStore()
 
   // Counts (and which cards even appear) are derived live from the actual
   // product catalog on every render — never a hardcoded number — so
@@ -17,12 +17,12 @@ export function Collections() {
   // removes it here the moment it's empty, instead of leaving a ghost card.
   const collections = useMemo(
     () =>
-      CATEGORY_TREE.map(({ group }) => ({
+      categoryTree.map(({ group }) => ({
         group,
         image: categoryImages[group] || DEFAULT_CATEGORY_IMAGES[group],
         count: products.filter((p) => p.group === group).length,
       })).filter((col) => col.count > 0),
-    [products, categoryImages],
+    [products, categoryImages, categoryTree],
   )
 
   function goToGroup(group: CategoryGroupKey) {
@@ -59,7 +59,7 @@ export function Collections() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={col.image}
-                  alt={localize(GROUP_LABELS[col.group])}
+                  alt={localize(groupLabels[col.group] ?? {})}
                   className="size-full object-cover opacity-70 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
@@ -70,7 +70,7 @@ export function Collections() {
                   </p>
                   <div className="mt-1 flex items-center justify-between">
                     <h3 className="font-serif text-2xl font-semibold text-foreground transition-colors duration-300 group-hover:text-gold">
-                      {localize(GROUP_LABELS[col.group])}
+                      {localize(groupLabels[col.group] ?? {})}
                     </h3>
                     <ArrowUpRight className="size-5 text-muted-foreground transition-all duration-300 group-hover:text-gold group-hover:translate-x-0.5" />
                   </div>

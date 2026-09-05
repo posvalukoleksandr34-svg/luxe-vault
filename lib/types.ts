@@ -2,16 +2,36 @@ export type Locale = 'ru' | 'en' | 'it' | 'fr' | 'de'
 
 export type LocalizedText = Record<Locale, string>
 
-export type CategoryGroupKey = 'clothing' | 'shoes' | 'accessories'
+/**
+ * Collection and category slugs.
+ *
+ * These were compile-time unions ('clothing' | 'shoes' | ...) back when the
+ * catalogue lived in lib/data.ts. They are plain strings now because
+ * collections are rows in public.collections that the admin can create at
+ * runtime — a fixed union would make "add a new collection" impossible
+ * without a redeploy. Validity is enforced by the foreign keys in Postgres.
+ */
+export type CategoryGroupKey = string
+export type CategoryKey = string
 
-export type CategoryKey =
-  | 'hoodies'
-  | 'tshirts'
-  | 'jackets'
-  | 'sneakers'
-  | 'sneakers_low'
-  | 'bags'
-  | 'caps'
+/** A top-level collection (clothing / shoes / ...) as stored in Postgres. */
+export type Collection = {
+  id: string
+  slug: string
+  name: LocalizedText
+  image?: string
+  sortOrder: number
+}
+
+/** A category nested under a collection. */
+export type Category = {
+  id: string
+  collectionId: string
+  collectionSlug: string
+  slug: string
+  name: LocalizedText
+  sortOrder: number
+}
 
 export type StatusKey =
   | 'in_stock'

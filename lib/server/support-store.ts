@@ -1,61 +1,93 @@
-// Server-only persistence for customer support messages — same lightweight
-// JSON-file "database" pattern as lib/server/orders-store.ts.
-import { promises as fs } from 'fs'
-import path from 'path'
+// Server-only persistence for customer support messages, backed by Postgres.
+//
+// Replaces the previous JSON-file store, which could never work in
+// production: Vercel's filesystem is read-only outside /tmp, so fs.writeFile
+// threw on every submission and the customer saw "Failed to send message".
+//
+// Reads and writes go through the service-role client. The table's RLS grants
+// INSERT to anyone but no general SELECT, so the ticket queue is readable only
+// by the server — a publicly readable contact-form table would be a
+// scrapeable list of customer email addresses.
+import 'server-only'
+
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { SupportTicket, SupportTicketStatus } from '@/lib/types'
 
-const DATA_DIR = path.join(process.cwd(), 'data')
-const SUPPORT_FILE = path.join(DATA_DIR, 'support.json')
+const TICKET_SELECT = 'id, created_at, name, email, message, status'
 
-async function ensureFile(): Promise<void> {
-  try {
-    await fs.access(SUPPORT_FILE)
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true })
-    await fs.writeFile(SUPPORT_FILE, JSON.stringify([], null, 2), 'utf-8')
+function rowToTicket(row: Record<string, unknown>): SupportTicket {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    email: row.email as string,
+    message: row.message as string,
+    createdAt: new Date(row.created_at as string).getTime(),
+    status: row.status as SupportTicketStatus,
   }
 }
 
 export async function readTickets(): Promise<SupportTicket[]> {
-  await ensureFile()
-  try {
-    const raw = await fs.readFile(SUPPORT_FILE, 'utf-8')
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  const { data, error } = await createAdminClient()
+    .from('support_tickets')
+    .select(TICKET_SELECT)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(`Failed to read support tickets: ${error.message}`)
+  return (data ?? []).map(rowToTicket)
 }
 
-async function writeTickets(tickets: SupportTicket[]): Promise<void> {
-  await ensureFile()
-  await fs.writeFile(SUPPORT_FILE, JSON.stringify(tickets, null, 2), 'utf-8')
-}
+/**
+ * Stores a ticket and returns the row Postgres actually wrote.
+ *
+ * The caller's `id` and `createdAt` are ignored: the database owns both
+ * (`gen_random_uuid()` and `now()`), so two submissions in the same
+ * millisecond can no longer collide the way the old `sup-${Date.now()}` ids
+ * could. `userId` is attached when the sender happens to be signed in, which
+ * lets them see their own tickets later.
+ */
+export async function addTicket(
+  ticket: SupportTicket,
+  userId?: string,
+): Promise<SupportTicket> {
+  const { data, error } = await createAdminClient()
+    .from('support_tickets')
+    .insert({
+      name: ticket.name,
+      email: ticket.email,
+      message: ticket.message,
+      status: ticket.status ?? 'open',
+      user_id: userId ?? null,
+    })
+    .select(TICKET_SELECT)
+    .single()
 
-export async function addTicket(ticket: SupportTicket): Promise<void> {
-  const tickets = await readTickets()
-  await writeTickets([ticket, ...tickets])
+  if (error) throw new Error(`Failed to save support ticket: ${error.message}`)
+  return rowToTicket(data)
 }
 
 export async function setTicketStatus(
   id: string,
   status: SupportTicketStatus,
 ): Promise<SupportTicket | null> {
-  const tickets = await readTickets()
-  let updated: SupportTicket | null = null
-  const next = tickets.map((t) => {
-    if (t.id !== id) return t
-    updated = { ...t, status }
-    return updated
-  })
-  if (updated) await writeTickets(next)
-  return updated
+  const { data, error } = await createAdminClient()
+    .from('support_tickets')
+    .update({ status })
+    .eq('id', id)
+    .select(TICKET_SELECT)
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to update support ticket: ${error.message}`)
+  return data ? rowToTicket(data) : null
 }
 
 export async function deleteTicket(id: string): Promise<boolean> {
-  const tickets = await readTickets()
-  const next = tickets.filter((t) => t.id !== id)
-  const removed = next.length !== tickets.length
-  if (removed) await writeTickets(next)
-  return removed
+  const { data, error } = await createAdminClient()
+    .from('support_tickets')
+    .delete()
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to delete support ticket: ${error.message}`)
+  return Boolean(data)
 }
