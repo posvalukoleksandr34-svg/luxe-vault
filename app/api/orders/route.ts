@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { addOrder } from '@/lib/server/orders-store'
 import { buildOrder, validateOrderDraft, type OrderDraftBody } from '@/lib/server/order-drafts'
+import { isMailConfigured, sendOrderConfirmation } from '@/lib/server/mailer'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -42,5 +43,20 @@ export async function POST(request: NextRequest) {
   const order = buildOrder(result.draft, userId)
   await addOrder(order)
 
-  return NextResponse.json({ order }, { status: 201 })
+  // Confirmation is sent only after the order is committed, and its failure is
+  // never allowed to fail the request. The purchase is already real at this
+  // point — reporting an error here would make the customer think checkout
+  // failed and order again.
+  let emailed = false
+  if (isMailConfigured) {
+    emailed = await sendOrderConfirmation(order)
+    if (!emailed) {
+      console.warn(
+        `[orders] ${order.id} created but confirmation email was not sent ` +
+          `(recipient=${order.customer.email ? 'present' : 'missing'})`,
+      )
+    }
+  }
+
+  return NextResponse.json({ order, emailed }, { status: 201 })
 }

@@ -9,87 +9,28 @@
 import 'server-only'
 
 import { SUPPORT_EMAIL } from '@/lib/data'
+import {
+  orderConfirmationHtml,
+  orderConfirmationSubject,
+  orderConfirmationText,
+} from '@/lib/server/emails/order-confirmation'
+import { escapeHtml, isMailConfigured, sendEmail } from '@/lib/server/resend'
+import type { Order } from '@/lib/types'
 
-const API_KEY = process.env.RESEND_API_KEY
-
-/**
- * Sender address. Must be on a domain verified in Resend via DNS (SPF/DKIM),
- * or Resend rejects the send outright.
- *
- * NOTE: this deliberately does NOT follow the site domain. Verification needs
- * DNS records on the sending domain, and `*.vercel.app` is Vercel's apex — you
- * cannot add records to it. Pointing this at luxe-vault-hlb1.vercel.app would
- * make every email fail. Keep it on a domain you actually own, or use Resend's
- * shared `onboarding@resend.dev` while testing.
- */
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'LUXE VAULT <onboarding@resend.dev>'
+export { isMailConfigured }
 
 /**
  * Where customer enquiries land. An inbox, not a website origin — it has to be
- * a mailbox that someone reads, so it likewise does not track the site domain.
+ * a mailbox someone actually reads, so it does not track the site domain.
  */
 const SUPPORT_INBOX = process.env.SUPPORT_INBOX_EMAIL ?? SUPPORT_EMAIL
 
-export const isMailConfigured = Boolean(API_KEY)
-
-/**
- * Posts directly to Resend's REST API rather than using the `resend` SDK.
- *
- * The v6 SDK depends on @react-email/render, which drags React email
- * rendering into a server bundle that only ever needs to send one HTTP
- * request with a string of HTML. One fetch is the whole integration.
- */
-async function send(payload: {
-  to: string
-  replyTo: string
-  subject: string
-  html: string
-}): Promise<boolean> {
-  if (!API_KEY) return false
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: FROM,
-        to: [payload.to],
-        reply_to: payload.replyTo,
-        subject: payload.subject,
-        html: payload.html,
-      }),
-    })
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '')
-      console.error(`[mailer] Resend rejected the send (${res.status}): ${detail.slice(0, 300)}`)
-      return false
-    }
-    return true
-  } catch (e) {
-    console.error('[mailer] send threw:', e)
-    return false
-  }
-}
-
-/** Minimal HTML escaping. Customer text goes into an HTML email, so an
- *  unescaped angle bracket would corrupt the markup (and worse in a webmail
- *  client that renders it). */
-function esc(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 /** Preserves the customer's line breaks after escaping. */
 function escMultiline(value: string): string {
-  return esc(value).replace(/\r?\n/g, '<br />')
+  return escapeHtml(value).replace(/\r?\n/g, '<br />')
 }
+
+const esc = escapeHtml
 
 const SHELL = (title: string, body: string) => `
 <!doctype html>
@@ -132,7 +73,7 @@ export type SupportEnquiry = {
 /** Notifies the support inbox. `replyTo` is the customer, so hitting Reply in
  *  the mail client answers them directly instead of the noreply sender. */
 export async function sendSupportNotification(t: SupportEnquiry): Promise<boolean> {
-  return send({
+  const { ok } = await sendEmail({
     to: SUPPORT_INBOX,
     replyTo: t.email,
     subject: `Новое обращение — ${t.name}`,
@@ -148,11 +89,12 @@ export async function sendSupportNotification(t: SupportEnquiry): Promise<boolea
          </div>`,
     ),
   })
+  return ok
 }
 
 /** Confirmation back to the customer, echoing their message. */
 export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolean> {
-  return send({
+  const { ok } = await sendEmail({
     to: t.email,
     replyTo: SUPPORT_INBOX,
     subject: 'Мы получили ваше сообщение — LUXE VAULT',
@@ -172,4 +114,30 @@ export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolea
          </p>`,
     ),
   })
+  return ok
+}
+
+/**
+ * Order confirmation to the customer.
+ *
+ * Returns false (never throws) when there is no address to send to, when
+ * Resend is unconfigured, or when the send is rejected — the caller decides
+ * what that means. For checkout it means nothing: the order is already
+ * committed and a failed email must not surface as a failed purchase.
+ *
+ * replyTo is the support inbox rather than the pinned `orders@` sender, so a
+ * customer hitting Reply reaches a mailbox someone reads.
+ */
+export async function sendOrderConfirmation(order: Order): Promise<boolean> {
+  const to = order.customer.email?.trim()
+  if (!to) return false
+
+  const { ok } = await sendEmail({
+    to,
+    replyTo: SUPPORT_INBOX,
+    subject: orderConfirmationSubject(order),
+    html: orderConfirmationHtml(order),
+    text: orderConfirmationText(order),
+  })
+  return ok
 }
