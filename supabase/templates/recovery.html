@@ -1,0 +1,189 @@
+{{/*
+  LUXE VAULT — password recovery (OTP code only)
+  Paste into: Supabase → Authentication → Email Templates → Reset Password
+
+  DESIGN CONSTRAINTS, and why:
+
+  1. NO LINKS. There is deliberately no ConfirmationURL action anywhere. Mail
+     scanners (Outlook Safe Links, Gmail, corporate gateways) fetch links on
+     delivery, which consumes the one-time token before the customer types the
+     code — the classic "invalid or expired token" report. The only href in
+     this file is a mailto:, which scanners do not prefetch.
+
+  2. TABLE LAYOUT, INLINE STYLES. Outlook renders with the Word engine: no
+     flexbox, no grid, no external stylesheets. Every visual style is inline;
+     the <style> block carries only media queries, which Outlook ignores
+     harmlessly and Gmail/Apple Mail honour.
+
+  3. LANGUAGE IS COERCED, NOT COMPARED DIRECTLY. `.Data.language` is absent for
+     any user created before the app started recording it. In Go templates
+     `eq nil "it"` raises "incompatible types for comparison", which would fail
+     the whole send. `printf "%v"` turns a missing value into the harmless
+     string "<no value>", so the comparison is always type-safe and simply
+     falls through to the English default.
+*/ -}}
+{{- $lang := printf "%v" .Data.language -}}
+
+{{/* Defaults are English; each block below overrides only what it needs. */}}
+{{- $subject   := "Your password reset code" -}}
+{{- $greeting  := "Password reset" -}}
+{{- $intro     := "Use the code below to set a new password. It is valid for one hour and can be used once." -}}
+{{- $codeLabel := "Verification code" -}}
+{{- $ignore    := "If you did not request this, you can safely ignore this email — your password will not change." -}}
+{{- $help      := "Need help?" -}}
+{{- $footer    := "This message was sent automatically. Please do not reply." -}}
+
+{{- if eq $lang "ru" -}}
+  {{- $subject   = "Код для сброса пароля" -}}
+  {{- $greeting  = "Сброс пароля" -}}
+  {{- $intro     = "Введите код ниже, чтобы задать новый пароль. Код действует один час и используется один раз." -}}
+  {{- $codeLabel = "Код подтверждения" -}}
+  {{- $ignore    = "Если вы не запрашивали сброс, просто проигнорируйте это письмо — пароль останется прежним." -}}
+  {{- $help      = "Нужна помощь?" -}}
+  {{- $footer    = "Это письмо отправлено автоматически. Отвечать на него не нужно." -}}
+{{- else if eq $lang "it" -}}
+  {{- $subject   = "Il tuo codice di reimpostazione" -}}
+  {{- $greeting  = "Reimposta la password" -}}
+  {{- $intro     = "Usa il codice qui sotto per impostare una nuova password. È valido per un'ora e può essere usato una sola volta." -}}
+  {{- $codeLabel = "Codice di verifica" -}}
+  {{- $ignore    = "Se non hai richiesto tu la reimpostazione, ignora questa email — la tua password non cambierà." -}}
+  {{- $help      = "Hai bisogno di aiuto?" -}}
+  {{- $footer    = "Messaggio inviato automaticamente. Non rispondere a questa email." -}}
+{{- else if eq $lang "de" -}}
+  {{- $subject   = "Ihr Code zum Zurücksetzen des Passworts" -}}
+  {{- $greeting  = "Passwort zurücksetzen" -}}
+  {{- $intro     = "Verwenden Sie den folgenden Code, um ein neues Passwort zu vergeben. Er ist eine Stunde gültig und kann einmal verwendet werden." -}}
+  {{- $codeLabel = "Bestätigungscode" -}}
+  {{- $ignore    = "Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren — Ihr Passwort bleibt unverändert." -}}
+  {{- $help      = "Brauchen Sie Hilfe?" -}}
+  {{- $footer    = "Diese Nachricht wurde automatisch gesendet. Bitte antworten Sie nicht darauf." -}}
+{{- else if eq $lang "fr" -}}
+  {{- $subject   = "Votre code de réinitialisation" -}}
+  {{- $greeting  = "Réinitialisation du mot de passe" -}}
+  {{- $intro     = "Utilisez le code ci-dessous pour définir un nouveau mot de passe. Il est valable une heure et à usage unique." -}}
+  {{- $codeLabel = "Code de vérification" -}}
+  {{- $ignore    = "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail — votre mot de passe restera inchangé." -}}
+  {{- $help      = "Besoin d'aide ?" -}}
+  {{- $footer    = "Message envoyé automatiquement. Merci de ne pas y répondre." -}}
+{{- end -}}
+
+<!doctype html>
+<html lang="{{ if eq $lang "ru" }}ru{{ else if eq $lang "it" }}it{{ else if eq $lang "de" }}de{{ else if eq $lang "fr" }}fr{{ else }}en{{ end }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <!-- Declares the design as dark-first so Apple Mail and iOS stop applying
+         their own inversion on top of an already-dark palette. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>{{ $subject }}</title>
+    <style>
+      /* Only media queries live here — Outlook ignores this block entirely,
+         which is fine because every base style is also inline. */
+      @media only screen and (max-width: 600px) {
+        .lv-shell { padding: 20px 12px !important; }
+        .lv-pad   { padding-left: 22px !important; padding-right: 22px !important; }
+        .lv-code  { font-size: 30px !important; letter-spacing: 8px !important; }
+      }
+      /* Some clients underline and recolour anything that looks like a link. */
+      a { color: #c9a227; }
+      /* Stop iOS/Gmail auto-linking the digits as a phone number. */
+      .lv-code a { color: #f5f3ef !important; text-decoration: none !important; }
+    </style>
+  </head>
+
+  <body style="margin:0; padding:0; background-color:#0b0b0b; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+    <!-- Preheader: the grey line clients show next to the subject. Hidden in
+         the body itself, then padded so no other copy leaks into it. -->
+    <div style="display:none; font-size:1px; color:#0b0b0b; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+      {{- $codeLabel }}: {{ .Token -}}
+      &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0b0b0b;">
+      <tr>
+        <td align="center" class="lv-shell" style="padding:40px 16px;">
+
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; width:100%; background-color:#131313; border:1px solid #262626;">
+
+            <!-- Wordmark -->
+            <tr>
+              <td class="lv-pad" style="padding:28px 32px 20px 32px; border-bottom:1px solid #262626;">
+                <span style="font-family:Helvetica,Arial,sans-serif; font-size:15px; font-weight:bold; letter-spacing:4px; color:#f5f3ef;">LUXE</span><span style="font-family:Helvetica,Arial,sans-serif; font-size:15px; font-weight:bold; letter-spacing:4px; color:#c9a227;">VAULT</span>
+              </td>
+            </tr>
+
+            <!-- Heading + intro -->
+            <tr>
+              <td class="lv-pad" style="padding:30px 32px 0 32px;">
+                <h1 style="margin:0 0 14px 0; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:normal; color:#f5f3ef;">
+                  {{- $greeting -}}
+                </h1>
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:14px; line-height:24px; color:#d6d3cd;">
+                  {{- $intro -}}
+                </p>
+              </td>
+            </tr>
+
+            <!-- The code. This is the entire point of the email, so it gets the
+                 most weight on the page and nothing competes with it. -->
+            <tr>
+              <td class="lv-pad" style="padding:26px 32px 0 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0b0b0b; border:1px solid #c9a227;">
+                  <tr>
+                    <td align="center" style="padding:22px 16px 20px 16px;">
+                      <p style="margin:0 0 12px 0; font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#6d6d6d;">
+                        {{- $codeLabel -}}
+                      </p>
+                      <!-- user-select:all lets a desktop reader select the whole
+                           code with one click. -->
+                      <div class="lv-code" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,Courier,monospace; font-size:38px; line-height:46px; font-weight:bold; letter-spacing:12px; color:#f5f3ef; -webkit-user-select:all; user-select:all;">
+                        {{- .Token -}}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Safety note -->
+            <tr>
+              <td class="lv-pad" style="padding:24px 32px 0 32px;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:13px; line-height:22px; color:#6d6d6d;">
+                  {{- $ignore -}}
+                </p>
+              </td>
+            </tr>
+
+            <!-- Support. mailto: is the only href in the message; scanners do
+                 not prefetch it, so it cannot burn the token. -->
+            <tr>
+              <td class="lv-pad" style="padding:22px 32px 30px 32px;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:13px; line-height:22px; color:#6d6d6d;">
+                  {{- $help -}}
+                  <a href="mailto:support@luxevault.store" style="color:#c9a227; text-decoration:none;">support@luxevault.store</a>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td class="lv-pad" style="padding:16px 32px; border-top:1px solid #262626;">
+                <p style="margin:0; font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:18px; color:#4a4a4a;">
+                  {{- $footer -}}
+                </p>
+              </td>
+            </tr>
+
+          </table>
+
+          <p style="margin:18px 0 0 0; font-family:Helvetica,Arial,sans-serif; font-size:11px; color:#3a3a3a;">
+            LUXE VAULT
+          </p>
+
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

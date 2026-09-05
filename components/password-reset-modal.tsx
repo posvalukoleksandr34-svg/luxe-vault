@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowLeft, CheckCircle2, KeyRound, Loader2, X } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -48,6 +48,34 @@ export function PasswordResetModal({
   const [error, setError] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
 
+  /**
+   * Synchronous in-flight lock.
+   *
+   * `busy` alone is NOT enough: it is React state, so `setBusy(true)` does not
+   * apply until the next render. Two submits in the same tick — a double-click,
+   * or Enter and click together — both read `busy === false` and both fire.
+   * Measured: two requests reached Supabase. On the verify step that means the
+   * first consumes the one-time token and the second comes back "Invalid or
+   * expired token", which is then the message the customer sees.
+   *
+   * A ref updates immediately, so the second caller is turned away in the same
+   * tick, before any await.
+   */
+  const inFlight = useRef(false)
+
+  /** Runs `fn` only if nothing else is already running. */
+  const runExclusive = useCallback(async (fn: () => Promise<void>) => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setBusy(true)
+    try {
+      await fn()
+    } finally {
+      inFlight.current = false
+      setBusy(false)
+    }
+  }, [])
+
   // Reset to a clean first step whenever the modal is opened, so a previous
   // abandoned attempt never leaves a stale code or error on screen.
   useEffect(() => {
@@ -87,68 +115,66 @@ export function PasswordResetModal({
 
   async function handleRequestCode(e: React.FormEvent) {
     e.preventDefault()
-    if (busy) return
+    // Validated before taking the lock so a bad address does not spend it.
     if (!EMAIL_RE.test(email.trim())) {
       setError(t('otp.err.email'))
       return
     }
-    setBusy(true)
-    setError(null)
-    const { ok, message } = await requestRecoveryCode(email)
-    setBusy(false)
-
-    if (!ok) {
-      setError(localizeError(message))
-      return
-    }
-    // Advance regardless of whether the address exists. Confirming which
-    // emails are registered would turn this into an enumeration oracle.
-    setStep('code')
-    setCooldown(RESEND_COOLDOWN_SECONDS)
+    await runExclusive(async () => {
+      setError(null)
+      const { ok, message } = await requestRecoveryCode(email)
+      if (!ok) {
+        setError(localizeError(message))
+        return
+      }
+      // Advance regardless of whether the address exists. Confirming which
+      // emails are registered would turn this into an enumeration oracle.
+      setStep('code')
+      setCooldown(RESEND_COOLDOWN_SECONDS)
+    })
   }
 
   async function handleResend() {
-    if (busy || cooldown > 0) return
-    setBusy(true)
-    setError(null)
-    const { ok, message } = await requestRecoveryCode(email)
-    setBusy(false)
-
-    if (ok) {
-      setCooldown(RESEND_COOLDOWN_SECONDS)
-      pushToast({ title: t('otp.step2.resent'), variant: 'success' })
-      return
-    }
-    // Start the cooldown even on a 429 — the button should stop inviting a
-    // retry that is guaranteed to fail for the next minute.
-    if (message && /rate limit|too many|429/i.test(message)) {
-      setCooldown(RESEND_COOLDOWN_SECONDS)
-    }
-    setError(localizeError(message))
+    if (cooldown > 0) return
+    await runExclusive(async () => {
+      setError(null)
+      const { ok, message } = await requestRecoveryCode(email)
+      if (ok) {
+        setCooldown(RESEND_COOLDOWN_SECONDS)
+        pushToast({ title: t('otp.step2.resent'), variant: 'success' })
+        return
+      }
+      // Start the cooldown even on a 429 — the button should stop inviting a
+      // retry that is guaranteed to fail for the next minute.
+      if (message && /rate limit|too many|429/i.test(message)) {
+        setCooldown(RESEND_COOLDOWN_SECONDS)
+      }
+      setError(localizeError(message))
+    })
   }
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault()
-    if (busy) return
     if (!code.trim()) {
       setError(t('otp.err.codeRequired'))
       return
     }
-    setBusy(true)
-    setError(null)
-    const { ok, message } = await verifyRecoveryCode(email, code)
-    setBusy(false)
-
-    if (!ok) {
-      setError(localizeError(message))
-      return
-    }
-    setStep('password')
+    // The most important lock of the three: the OTP is single-use, so a second
+    // request always fails and would overwrite a successful first result with
+    // "Invalid or expired token".
+    await runExclusive(async () => {
+      setError(null)
+      const { ok, message } = await verifyRecoveryCode(email, code)
+      if (!ok) {
+        setError(localizeError(message))
+        return
+      }
+      setStep('password')
+    })
   }
 
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (busy) return
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(tf('otp.err.tooShort', { n: MIN_PASSWORD_LENGTH }))
       return
@@ -157,16 +183,15 @@ export function PasswordResetModal({
       setError(t('otp.err.mismatch'))
       return
     }
-    setBusy(true)
-    setError(null)
-    const { ok, message } = await updatePassword(password)
-    setBusy(false)
-
-    if (!ok) {
-      setError(localizeError(message))
-      return
-    }
-    setStep('done')
+    await runExclusive(async () => {
+      setError(null)
+      const { ok, message } = await updatePassword(password)
+      if (!ok) {
+        setError(localizeError(message))
+        return
+      }
+      setStep('done')
+    })
   }
 
   if (!open) return null

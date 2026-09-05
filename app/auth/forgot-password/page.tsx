@@ -3,7 +3,7 @@
 import { ArrowLeft, Loader2, MailCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -24,15 +24,21 @@ function ForgotPasswordForm() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Synchronous guard. `busy` is React state and does not apply until the next
+  // render, so two submits in the same tick (double-click, or Enter + click)
+  // both pass a `if (busy) return` check — measured as two real requests.
+  const inFlight = useRef(false)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (busy) return
 
     if (!EMAIL_RE.test(email.trim())) {
       setError(t('otp.err.email'))
       return
     }
 
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setError(null)
 
@@ -42,6 +48,7 @@ function ForgotPasswordForm() {
     // that could drift from the one the modal uses (and did: it ignored
     // NEXT_PUBLIC_SITE_URL). One call site, one behaviour.
     const { ok, message } = await requestRecoveryCode(email)
+    inFlight.current = false
     setBusy(false)
 
     if (!ok) {
