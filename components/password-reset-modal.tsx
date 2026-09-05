@@ -2,16 +2,12 @@
 
 import { ArrowLeft, CheckCircle2, KeyRound, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
+import { MIN_PASSWORD_LENGTH, RESEND_COOLDOWN_SECONDS } from '@/lib/auth-config'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-const MIN_PASSWORD_LENGTH = 8
-/** Seconds the resend button stays disabled. Supabase itself rate-limits
- *  recovery emails to roughly one per minute, so anything shorter would just
- *  produce 429s the customer cannot act on. */
-const RESEND_COOLDOWN_SECONDS = 60
-const CODE_LENGTH = 6
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 type Step = 'email' | 'code' | 'password' | 'done'
@@ -281,32 +277,17 @@ export function PasswordResetModal({
         {/* Step 2 — code */}
         {step === 'code' && (
           <form onSubmit={handleVerifyCode} noValidate className="space-y-4">
-            <div>
-              <label
-                htmlFor="otp-code"
-                className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground"
-              >
-                {t('otp.step2.codeLabel')}
-              </label>
-              <input
-                id="otp-code"
-                type="text"
-                value={code}
-                // Strip everything but digits as they type: pasting a code out
-                // of an email client often brings whitespace with it.
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH))}
-                required
-                autoFocus
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder={'0'.repeat(CODE_LENGTH)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none transition focus:border-gold"
-              />
-            </div>
+            <OtpCodeInput
+              id="otp-code"
+              label={t('otp.step2.codeLabel')}
+              value={code}
+              onChange={setCode}
+              autoFocus
+            />
 
             {error && <p className="text-[12px] text-destructive">{error}</p>}
 
-            <SubmitButton busy={busy} disabled={!code.trim()}>
+            <SubmitButton busy={busy} disabled={!isOtpComplete(code)}>
               {t('otp.step2.submit')}
             </SubmitButton>
 

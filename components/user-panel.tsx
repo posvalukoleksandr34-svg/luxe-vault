@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
 import { PasswordResetModal } from '@/components/password-reset-modal'
 import { fetchMyOrders } from '@/lib/order-registry'
@@ -27,8 +28,11 @@ export function UserPanel() {
     login,
     register,
     resendConfirmation,
+    verifySignupCode,
+    signInWithGoogle,
     logout,
     t,
+    tf,
     pushToast,
   } = useStore()
 
@@ -48,6 +52,11 @@ export function UserPanel() {
   // rather than an arbitrary UI delay.
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resetOpen, setResetOpen] = useState(false)
+  // Registration now has a code step: signUp sends an 8-digit code, and the
+  // account is not usable until it is entered. `pendingEmail` above holds the
+  // address it went to.
+  const [signupCode, setSignupCode] = useState('')
+  const [googleBusy, setGoogleBusy] = useState(false)
 
   // Orders come from the server, keyed by the lookup tokens this browser
   // stored when each order was placed — so unpaid orders survive reloads and
@@ -90,6 +99,45 @@ export function UserPanel() {
       // start the cooldown anyway so the button stops inviting another try.
       if (message && /rate limit|429|too many/i.test(message)) setResendCooldown(60)
       pushToast({ title: message ?? 'Не удалось отправить письмо', variant: 'default' })
+    }
+  }
+
+  async function handleVerifySignup(e: React.FormEvent) {
+    e.preventDefault()
+    if (authBusy || !pendingEmail) return
+    setAuthBusy(true)
+    setAuthError(null)
+    try {
+      const { ok, message } = await verifySignupCode(pendingEmail, signupCode)
+      if (!ok) {
+        // Supabase text is English-only; map it onto a localized message.
+        setAuthError(
+          message && /rate limit|too many|429/i.test(message)
+            ? t('otp.err.rateLimit')
+            : t('otp.err.codeInvalid'),
+        )
+        return
+      }
+      // Success signs the user in; onAuthStateChange swaps this panel over to
+      // the account view on its own, so there is nothing further to do here.
+      setSignupCode('')
+      setPendingEmail(null)
+      pushToast({ title: t('signup.verify.done'), variant: 'success' })
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleGoogle() {
+    if (googleBusy) return
+    setGoogleBusy(true)
+    setAuthError(null)
+    const { ok, message } = await signInWithGoogle()
+    // On success the browser is already navigating to Google, so the spinner
+    // is intentionally left running until the page unloads.
+    if (!ok) {
+      setGoogleBusy(false)
+      setAuthError(message ?? t('auth.googleFailed'))
     }
   }
 
@@ -169,65 +217,80 @@ export function UserPanel() {
                 />
               </div>
             )}
-            {/* Confirmation banner. Deliberately rendered ABOVE the form
-                rather than replacing it: the customer keeps their bearings,
-                and if the email never arrives they can still switch to
-                "Войти" or re-register without reopening the panel. */}
-            {pendingEmail && (
-              <div className="animate-fade-up w-full max-w-sm border border-gold/40 bg-gold/[0.06] p-5">
+            {/* Registration is not finished until the emailed code is entered,
+                so while one is outstanding this REPLACES the sign-in form
+                rather than sitting above it — two live forms would leave the
+                customer unsure which one to act on. "Cancel sign-up" returns
+                them to the normal tabs. */}
+            {pendingEmail ? (
+              <form
+                onSubmit={handleVerifySignup}
+                noValidate
+                className="animate-fade-up w-full max-w-sm space-y-4 border border-gold/40 bg-gold/[0.06] p-5"
+              >
                 <div className="flex items-start gap-3">
-                  <MailCheck
-                    className="mt-0.5 h-5 w-5 shrink-0 text-gold"
-                    strokeWidth={1.5}
-                  />
+                  <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-gold" strokeWidth={1.5} />
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-medium text-foreground">
-                      Подтвердите почту
+                      {t('signup.verify.title')}
                     </h3>
                     <p className="mt-1.5 text-[12px] font-light leading-relaxed text-muted-foreground">
-                      Мы отправили письмо на{' '}
-                      <span className="break-all text-foreground">{pendingEmail}</span>.
-                      Перейдите по ссылке из письма, чтобы активировать аккаунт.
+                      {tf('signup.verify.body', { email: pendingEmail })}
                     </p>
-                    <p className="mt-2 text-[11px] font-light text-muted-foreground/70">
-                      Проверьте папку «Спам».
-                    </p>
-
-                    <div className="mt-3 border-t border-gold/20 pt-3">
-                      {resendCooldown > 0 ? (
-                        <p className="text-[11px] font-light text-muted-foreground/70">
-                          Отправить повторно можно через {resendCooldown} с
-                        </p>
-                      ) : (
-                        <p className="text-[11px] font-light text-muted-foreground">
-                          Письмо не пришло?{' '}
-                          <button
-                            type="button"
-                            onClick={() => void handleResend()}
-                            disabled={resending}
-                            className="inline-flex items-center gap-1.5 font-medium text-gold underline-offset-4 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {resending && (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            )}
-                            Отправить ещё раз
-                          </button>
-                        </p>
-                      )}
-                    </div>
                   </div>
+                </div>
+
+                <OtpCodeInput
+                  id="signup-code"
+                  label={t('otp.step2.codeLabel')}
+                  value={signupCode}
+                  onChange={setSignupCode}
+                  autoFocus
+                  error={Boolean(authError)}
+                />
+
+                {authError && <p className="text-[12px] text-destructive">{authError}</p>}
+
+                <button
+                  type="submit"
+                  disabled={authBusy || !isOtpComplete(signupCode)}
+                  className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+                >
+                  {authBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {t('signup.verify.submit')}
+                </button>
+
+                <div className="flex flex-col gap-2 border-t border-gold/20 pt-3">
+                  {resendCooldown > 0 ? (
+                    <p className="text-center text-[11px] font-light text-muted-foreground/70">
+                      {tf('otp.step2.resendIn', { n: resendCooldown })}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleResend()}
+                      disabled={resending}
+                      className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-gold underline-offset-4 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {resending && <Loader2 className="h-3 w-3 animate-spin" />}
+                      {t('otp.step2.resend')}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setPendingEmail(null)}
-                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
-                    aria-label="Закрыть"
+                    onClick={() => {
+                      setPendingEmail(null)
+                      setSignupCode('')
+                      setAuthError(null)
+                    }}
+                    className="text-center text-[11px] font-light text-muted-foreground transition hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
+                    {t('signup.verify.cancel')}
                   </button>
                 </div>
-              </div>
-            )}
-
+              </form>
+            ) : (
+            <>
             <form onSubmit={handleAuth} className="w-full max-w-sm space-y-4">
               <div className="mb-6 flex rounded-lg border border-border p-1">
                 <button
@@ -343,6 +406,36 @@ export function UserPanel() {
                 </button>
               )}
             </form>
+
+            {/* Social sign-in. Placed after the email form so the primary path
+                stays primary, and shown in both modes: Google both creates and
+                signs into an account, so a separate "sign up" variant would be
+                a distinction without a difference. */}
+            <div className="w-full max-w-sm">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {t('auth.or')}
+                </span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void handleGoogle()}
+                disabled={googleBusy}
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background py-3 text-sm font-medium text-foreground transition hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {googleBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <GoogleMark />
+                )}
+                {t('auth.google')}
+              </button>
+            </div>
+            </>
+            )}
           </div>
         ) : (
           <>
@@ -470,5 +563,30 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value}</span>
     </div>
+  )
+}
+
+/** Google's brand mark, inlined as SVG. An <img> would need a network fetch
+ *  and would render as a broken icon while offline or blocked. */
+function GoogleMark() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden focusable="false">
+      <path
+        fill="#4285F4"
+        d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7A21.99 21.99 0 0 0 24 46z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M11.69 28.18A13.2 13.2 0 0 1 11 24c0-1.45.25-2.86.69-4.18v-5.7H4.34A21.99 21.99 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"
+      />
+      <path
+        fill="#EA4335"
+        d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
+      />
+    </svg>
   )
 }

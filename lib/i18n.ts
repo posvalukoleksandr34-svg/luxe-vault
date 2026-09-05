@@ -262,6 +262,17 @@ export const UI = {
   // compile error rather than an English string leaking into an Italian UI.
   // `{n}` / `{email}` are substituted by the component via tf().
   // ---------------------------------------------------------------------
+  // Google OAuth + email verification during registration
+  'auth.google': { ru: 'Войти через Google', en: 'Continue with Google', it: 'Continua con Google', fr: 'Continuer avec Google', de: 'Weiter mit Google' },
+  'auth.or': { ru: 'или', en: 'or', it: 'oppure', fr: 'ou', de: 'oder' },
+  'auth.googleFailed': { ru: 'Не удалось войти через Google', en: 'Google sign-in failed', it: 'Accesso con Google non riuscito', fr: 'La connexion Google a échoué', de: 'Google-Anmeldung fehlgeschlagen' },
+
+  'signup.verify.title': { ru: 'Подтвердите email', en: 'Confirm your email', it: 'Conferma la tua email', fr: 'Confirmez votre e-mail', de: 'E-Mail bestätigen' },
+  'signup.verify.body': { ru: 'Мы отправили код подтверждения на {email}. Введите его, чтобы завершить регистрацию.', en: 'We sent a verification code to {email}. Enter it to finish creating your account.', it: 'Abbiamo inviato un codice di verifica a {email}. Inseriscilo per completare la registrazione.', fr: 'Nous avons envoyé un code de vérification à {email}. Saisissez-le pour terminer votre inscription.', de: 'Wir haben einen Bestätigungscode an {email} gesendet. Geben Sie ihn ein, um die Registrierung abzuschließen.' },
+  'signup.verify.submit': { ru: 'Завершить регистрацию', en: 'Complete sign-up', it: 'Completa la registrazione', fr: "Terminer l'inscription", de: 'Registrierung abschließen' },
+  'signup.verify.done': { ru: 'Аккаунт подтверждён', en: 'Account confirmed', it: 'Account confermato', fr: 'Compte confirmé', de: 'Konto bestätigt' },
+  'signup.verify.cancel': { ru: 'Отменить регистрацию', en: 'Cancel sign-up', it: 'Annulla registrazione', fr: "Annuler l'inscription", de: 'Registrierung abbrechen' },
+
   'user.forgotPassword': { ru: 'Забыли пароль?', en: 'Forgot password?', it: 'Password dimenticata?', fr: 'Mot de passe oublié ?', de: 'Passwort vergessen?' },
   'otp.step1.title': { ru: 'Восстановление пароля', en: 'Password recovery', it: 'Recupero password', fr: 'Récupération du mot de passe', de: 'Passwort zurücksetzen' },
   'otp.step1.body': { ru: 'Введите email, указанный при регистрации. Мы пришлём код подтверждения.', en: 'Enter the email you registered with. We will send you a verification code.', it: "Inserisci l'email con cui ti sei registrato. Ti invieremo un codice di verifica.", fr: "Saisissez l'e-mail utilisé lors de l'inscription. Nous vous enverrons un code de vérification.", de: 'Geben Sie die E-Mail-Adresse Ihrer Registrierung ein. Wir senden Ihnen einen Bestätigungscode.' },

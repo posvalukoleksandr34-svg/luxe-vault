@@ -127,6 +127,11 @@ type StoreContextValue = {
     message?: string
   }>
   resendConfirmation: (email: string) => Promise<{ ok: boolean; message?: string }>
+  verifySignupCode: (
+    email: string,
+    token: string,
+  ) => Promise<{ ok: boolean; message?: string }>
+  signInWithGoogle: () => Promise<{ ok: boolean; message?: string }>
   requestRecoveryCode: (email: string) => Promise<{ ok: boolean; message?: string }>
   verifyRecoveryCode: (
     email: string,
@@ -642,7 +647,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /**
    * Step 1 of OTP recovery: asks Supabase to email a recovery token.
    *
-   * IMPORTANT: whether the customer receives a 6-digit CODE or a clickable
+   * IMPORTANT: whether the customer receives a numeric CODE or a clickable
    * LINK is decided entirely by the project's "Reset Password" email template.
    * It must contain {{ .Token }} for this flow to work; the default template
    * ships {{ .ConfirmationURL }}, which produces a link and no code.
@@ -698,6 +703,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updatePassword = useCallback(async (password: string) => {
     try {
       const { error } = await createClient().auth.updateUser({ password })
+      if (error) return { ok: false, message: error.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  }, [])
+
+  /**
+   * Confirms a newly registered email with the code from the signup email.
+   *
+   * `type: 'signup'` — not 'recovery'. They are different token namespaces in
+   * Supabase, and passing the wrong one fails with "invalid or expired token"
+   * even when the digits are right.
+   *
+   * On success the user is signed in; onAuthStateChange picks that up and the
+   * account panel switches over on its own.
+   */
+  const verifySignupCode = useCallback(async (email: string, token: string) => {
+    try {
+      const { error } = await createClient().auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: token.trim(),
+        type: 'signup',
+      })
+      if (error) return { ok: false, message: error.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  }, [])
+
+  /**
+   * Starts Google OAuth.
+   *
+   * Supabase redirects to Google, which returns to /auth/callback with a code
+   * that the route handler exchanges for a session. `redirectTo` is built from
+   * getSiteUrl() rather than window.location.origin so a preview deployment
+   * cannot send the customer back to the wrong host.
+   *
+   * Resolves only on failure — on success the browser has already navigated
+   * away, so there is nothing left to return to.
+   */
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      const { error } = await createClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: authCallbackUrl('/'),
+          // Ask Google for a refresh token and force the account chooser, so a
+          // shared device does not silently reuse the previous person's login.
+          queryParams: { access_type: 'offline', prompt: 'select_account' },
+        },
+      })
       if (error) return { ok: false, message: error.message }
       return { ok: true }
     } catch (e) {
@@ -851,6 +909,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     login,
     register,
     resendConfirmation,
+    verifySignupCode,
+    signInWithGoogle,
     requestRecoveryCode,
     verifyRecoveryCode,
     updatePassword,

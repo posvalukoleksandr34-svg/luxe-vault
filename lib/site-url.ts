@@ -15,6 +15,15 @@
  * at their own machine — the link looks fine and silently goes nowhere.
  */
 export function getSiteUrl(): string {
+  // Local development wins over the configured production origin. Without
+  // this, clicking "Sign in with Google" on localhost sends the developer to
+  // the live site — the OAuth round-trip completes against production and the
+  // session never lands in the local browser, which looks like a broken
+  // button rather than a misdirected redirect.
+  if (typeof window !== 'undefined' && isLocalHost(window.location.hostname)) {
+    return stripTrailingSlash(window.location.origin)
+  }
+
   const explicit = process.env.NEXT_PUBLIC_SITE_URL
   if (explicit) return stripTrailingSlash(withProtocol(explicit))
 
@@ -40,4 +49,14 @@ function withProtocol(value: string): string {
 
 function stripTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value
+}
+
+/** Hostnames that mean "this developer's machine". */
+function isLocalHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname.endsWith('.localhost')
+  )
 }
