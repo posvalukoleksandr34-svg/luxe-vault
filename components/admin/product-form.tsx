@@ -1,9 +1,9 @@
 'use client'
 
-import { ImagePlus, Loader2, X } from 'lucide-react'
+import { ImagePlus, Loader2, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import type { Product, StatusKey } from '@/lib/types'
+import type { Product, SizeMeasurement, StatusKey } from '@/lib/types'
 
 const STATUS_OPTIONS: { key: StatusKey; label: string }[] = [
   { key: 'in_stock', label: 'В наличии' },
@@ -76,6 +76,42 @@ export function ProductForm({
         ? product.statuses
         : [...(product?.statuses ?? []), 'in_stock' as StatusKey],
   })
+
+  // Per-size measurements (длина / грудь / плечо / рукав). Stored on the
+  // product as `sizeChart` and rendered in the customer-facing size guide.
+  // Kept as its own state rather than inside `form` because the rows are
+  // edited cell-by-cell and would otherwise churn the whole form object.
+  const [measurements, setMeasurements] = useState<SizeMeasurement[]>(
+    product?.sizeChart ?? [],
+  )
+
+  function updateMeasurement(index: number, field: keyof SizeMeasurement, value: string) {
+    setMeasurements((prev) =>
+      prev.map((row, i) =>
+        i !== index
+          ? row
+          : field === 'size'
+            ? { ...row, size: value }
+            : // Empty input becomes 0 rather than NaN, which would be stored
+              // as null and render as a blank cell in the size guide.
+              { ...row, [field]: Number(value) || 0 },
+      ),
+    )
+  }
+
+  function addMeasurementRow() {
+    // Prefill the size from the sizes field so the admin does not retype them.
+    const declared = form.sizes
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const used = new Set(measurements.map((m) => m.size))
+    const next = declared.find((s) => !used.has(s)) ?? ''
+    setMeasurements((prev) => [
+      ...prev,
+      { size: next, length: 0, chest: 0, shoulder: 0, sleeve: 0 },
+    ])
+  }
 
   const availableCats =
     categoryTree.find((n) => n.group === form.group)?.items ?? []
@@ -191,6 +227,11 @@ export function ProductForm({
       statuses: form.statuses,
       isNew: form.isNew,
       limited: form.limited,
+      // Drop rows with no size label — a blank row is an abandoned edit, not
+      // a measurement, and would render as an empty size-guide line.
+      sizeChart: measurements.filter((m) => m.size.trim()).length
+        ? measurements.filter((m) => m.size.trim())
+        : undefined,
     }
 
     // Saving is a network call now. Close only when it actually succeeded —
@@ -296,6 +337,89 @@ export function ProductForm({
             value={form.sizes}
             onChange={(v) => setForm({ ...form, sizes: v })}
           />
+
+          {/* Per-size measurements. These feed the size-guide table the
+              customer opens from the product page, so the column order here
+              matches the order rendered there. */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="text-xs font-medium uppercase tracking-wider text-foreground">
+                Замеры по размерам
+              </span>
+              <button
+                type="button"
+                onClick={addMeasurementRow}
+                className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-gold/50 hover:text-gold"
+              >
+                <Plus className="size-3" />
+                Строка
+              </button>
+            </div>
+            <p className="mb-2 text-[11px] text-muted-foreground/60">
+              Все значения в сантиметрах. Пустая таблица — гид по размерам не показывается.
+            </p>
+
+            {measurements.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/70">
+                Замеры не заданы
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-2 font-normal">Размер</th>
+                      <th className="px-3 py-2 font-normal">Длина</th>
+                      <th className="px-3 py-2 font-normal">Грудь</th>
+                      <th className="px-3 py-2 font-normal">Плечо</th>
+                      <th className="px-3 py-2 font-normal">Рукав</th>
+                      <th className="w-10 px-2 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {measurements.map((row, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-2 py-1.5">
+                          <input
+                            type="text"
+                            value={row.size}
+                            onChange={(e) => updateMeasurement(i, 'size', e.target.value)}
+                            placeholder="M"
+                            className="w-20 rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-gold"
+                          />
+                        </td>
+                        {(['length', 'chest', 'shoulder', 'sleeve'] as const).map((field) => (
+                          <td key={field} className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.5}
+                              value={row[field] || ''}
+                              onChange={(e) => updateMeasurement(i, field, e.target.value)}
+                              placeholder="0"
+                              className="w-20 rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-gold"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-2 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMeasurements((prev) => prev.filter((_, x) => x !== i))
+                            }
+                            className="flex size-7 items-center justify-center rounded text-muted-foreground transition hover:bg-accent hover:text-destructive"
+                            aria-label="Удалить строку"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           <div>
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">

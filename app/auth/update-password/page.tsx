@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { PasswordInput } from '@/components/password-input'
 import { createClient } from '@/lib/supabase/client'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -109,6 +110,9 @@ export default function UpdatePasswordPage() {
     )
   }
 
+  const mismatch = confirm.length > 0 && confirm !== password
+  const tooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH
+
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
@@ -120,41 +124,41 @@ export default function UpdatePasswordPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
-              Новый пароль
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoFocus
-              minLength={MIN_PASSWORD_LENGTH}
-              autoComplete="new-password"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-foreground"
-            />
-          </div>
+          <PasswordInput
+            label="Новый пароль"
+            value={password}
+            onChange={setPassword}
+            required
+            autoFocus
+            minLength={MIN_PASSWORD_LENGTH}
+            autoComplete="new-password"
+            error={tooShort}
+          />
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
-              Повторите пароль
-            </label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-              autoComplete="new-password"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-foreground"
-            />
-          </div>
+          <PasswordInput
+            label="Повторите пароль"
+            value={confirm}
+            onChange={setConfirm}
+            required
+            autoComplete="new-password"
+            // Turns red as soon as the two diverge, rather than waiting for a
+            // submit to tell them something they can already see.
+            error={mismatch}
+          />
 
+          {tooShort && !error && (
+            <p className="text-[12px] text-destructive">
+              Минимум {MIN_PASSWORD_LENGTH} символов
+            </p>
+          )}
+          {mismatch && !tooShort && !error && (
+            <p className="text-[12px] text-destructive">Пароли не совпадают</p>
+          )}
           {error && <p className="text-[12px] text-destructive">{error}</p>}
 
           <button
             type="submit"
-            disabled={busy || !password || !confirm}
+            disabled={busy || !password || !confirm || mismatch || tooShort}
             className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

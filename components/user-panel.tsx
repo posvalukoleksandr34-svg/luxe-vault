@@ -3,12 +3,15 @@
 import {
   Loader2,
   LogOut,
+  MailCheck,
   Package,
   User as UserIcon,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { PasswordInput } from '@/components/password-input'
+import { PasswordResetModal } from '@/components/password-reset-modal'
 import { fetchMyOrders } from '@/lib/order-registry'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -23,14 +26,28 @@ export function UserPanel() {
     currentUser,
     login,
     register,
+    resendConfirmation,
     logout,
     t,
+    pushToast,
   } = useStore()
 
   const [tab, setTab] = useState<Tab>('orders')
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [authBusy, setAuthBusy] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
+  // Set after a successful sign-up that still needs email confirmation. Held
+  // in state (rather than shown as a toast) so the explanation stays on screen
+  // for as long as the customer needs it.
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+  // Shown inline under the form when the address already has an account.
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  // Seconds until the resend button re-enables. Supabase rate-limits resends
+  // to about one a minute, so the countdown reflects a real server limit
+  // rather than an arbitrary UI delay.
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resetOpen, setResetOpen] = useState(false)
 
   // Orders come from the server, keyed by the lookup tokens this browser
   // stored when each order was placed — so unpaid orders survive reloads and
@@ -49,22 +66,69 @@ export function UserPanel() {
     if (panel === 'user') void loadOrders()
   }, [panel, loadOrders])
 
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const id = setTimeout(() => setResendCooldown((n) => n - 1), 1000)
+    return () => clearTimeout(id)
+  }, [resendCooldown])
+
   if (panel !== 'user') return null
 
   const unpaidCount = myOrders.filter(isUnpaid).length
+
+  async function handleResend() {
+    if (!pendingEmail || resending || resendCooldown > 0) return
+    setResending(true)
+    const { ok, message } = await resendConfirmation(pendingEmail)
+    setResending(false)
+    if (ok) {
+      setResendCooldown(60)
+      pushToast({ title: 'Письмо отправлено повторно', variant: 'success' })
+    } else {
+      // A 429 here means the previous email is still within the rate window —
+      // start the cooldown anyway so the button stops inviting another try.
+      if (message && /rate limit|429|too many/i.test(message)) setResendCooldown(60)
+      pushToast({ title: message ?? 'Не удалось отправить письмо', variant: 'default' })
+    }
+  }
 
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
     if (authBusy) return
     setAuthBusy(true)
     try {
-      const ok =
-        mode === 'login'
-          ? await login(form.email, form.password)
-          : await register(form.name, form.email, form.password)
-      // Only wipe the fields on success — clearing them after a failed attempt
-      // forces the customer to retype an email that was probably correct.
-      if (ok) setForm({ name: '', email: '', password: '' })
+      setAuthError(null)
+      if (mode === 'login') {
+        const ok = await login(form.email, form.password)
+        // Only wipe the fields on success — clearing them after a failed
+        // attempt forces the customer to retype an email that was probably
+        // correct.
+        if (ok) setForm({ name: '', email: '', password: '' })
+      } else {
+        const { ok, needsConfirmation, alreadyRegistered, message } = await register(
+          form.name,
+          form.email,
+          form.password,
+        )
+        if (ok) {
+          if (needsConfirmation) {
+            setPendingEmail(form.email.trim())
+            setResendCooldown(0)
+          }
+          setForm({ name: '', email: '', password: '' })
+        } else if (alreadyRegistered) {
+          // Keep the email in the field: the next thing they will almost
+          // certainly do is sign in with it.
+          setAuthError(
+            'Этот email уже зарегистрирован. Войдите в аккаунт или восстановите пароль.',
+          )
+          setPendingEmail(null)
+          setForm((f) => ({ ...f, password: '' }))
+        } else if (message) {
+          setAuthError(message)
+        }
+      }
     } finally {
       setAuthBusy(false)
     }
@@ -105,11 +169,73 @@ export function UserPanel() {
                 />
               </div>
             )}
+            {/* Confirmation banner. Deliberately rendered ABOVE the form
+                rather than replacing it: the customer keeps their bearings,
+                and if the email never arrives they can still switch to
+                "Войти" or re-register without reopening the panel. */}
+            {pendingEmail && (
+              <div className="animate-fade-up w-full max-w-sm border border-gold/40 bg-gold/[0.06] p-5">
+                <div className="flex items-start gap-3">
+                  <MailCheck
+                    className="mt-0.5 h-5 w-5 shrink-0 text-gold"
+                    strokeWidth={1.5}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-foreground">
+                      Подтвердите почту
+                    </h3>
+                    <p className="mt-1.5 text-[12px] font-light leading-relaxed text-muted-foreground">
+                      Мы отправили письмо на{' '}
+                      <span className="break-all text-foreground">{pendingEmail}</span>.
+                      Перейдите по ссылке из письма, чтобы активировать аккаунт.
+                    </p>
+                    <p className="mt-2 text-[11px] font-light text-muted-foreground/70">
+                      Проверьте папку «Спам».
+                    </p>
+
+                    <div className="mt-3 border-t border-gold/20 pt-3">
+                      {resendCooldown > 0 ? (
+                        <p className="text-[11px] font-light text-muted-foreground/70">
+                          Отправить повторно можно через {resendCooldown} с
+                        </p>
+                      ) : (
+                        <p className="text-[11px] font-light text-muted-foreground">
+                          Письмо не пришло?{' '}
+                          <button
+                            type="button"
+                            onClick={() => void handleResend()}
+                            disabled={resending}
+                            className="inline-flex items-center gap-1.5 font-medium text-gold underline-offset-4 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {resending && (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            )}
+                            Отправить ещё раз
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingEmail(null)}
+                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                    aria-label="Закрыть"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleAuth} className="w-full max-w-sm space-y-4">
               <div className="mb-6 flex rounded-lg border border-border p-1">
                 <button
                   type="button"
-                  onClick={() => setMode('login')}
+                  onClick={() => {
+                    setMode('login')
+                    setAuthError(null)
+                  }}
                   className={cn(
                     'flex-1 rounded-md py-2 text-sm font-medium transition',
                     mode === 'login' ? 'bg-gold/10 text-gold' : 'text-muted-foreground',
@@ -119,7 +245,10 @@ export function UserPanel() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode('register')}
+                  onClick={() => {
+                    setMode('register')
+                    setAuthError(null)
+                  }}
                   className={cn(
                     'flex-1 rounded-md py-2 text-sm font-medium transition',
                     mode === 'register' ? 'bg-gold/10 text-gold' : 'text-muted-foreground',
@@ -157,18 +286,43 @@ export function UserPanel() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
-                  {t('user.password')}
-                </label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
-                />
-              </div>
+              <PasswordInput
+                label={t('user.password')}
+                value={form.password}
+                onChange={(v) => setForm({ ...form, password: v })}
+                required
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+
+              {/* Inline, not a toast: "this email is taken" is something the
+                  customer needs to still be reading while they switch to the
+                  sign-in tab. */}
+              {authError && (
+                <div className="border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+                  <p className="text-[12px] leading-relaxed text-destructive">
+                    {authError}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('login')
+                        setAuthError(null)
+                      }}
+                      className="text-[11px] font-medium text-gold underline-offset-4 transition hover:underline"
+                    >
+                      Войти
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetOpen(true)}
+                      className="text-[11px] font-medium text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+                    >
+                      {t('user.forgotPassword')}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -180,12 +334,13 @@ export function UserPanel() {
               </button>
 
               {mode === 'login' && (
-                <a
-                  href="/auth/forgot-password"
-                  className="block text-center text-[11px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+                <button
+                  type="button"
+                  onClick={() => setResetOpen(true)}
+                  className="block w-full text-center text-[11px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
                 >
-                  Забыли пароль?
-                </a>
+                  {t('user.forgotPassword')}
+                </button>
               )}
             </form>
           </div>
@@ -263,6 +418,13 @@ export function UserPanel() {
           </>
         )}
       </div>
+
+      <PasswordResetModal
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        // Carry over whatever they already typed so they do not retype it.
+        initialEmail={form.email}
+      />
     </>
   )
 }

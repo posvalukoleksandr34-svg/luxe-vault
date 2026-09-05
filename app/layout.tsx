@@ -15,11 +15,14 @@ const bodoni = Bodoni_Moda({
   variable: '--font-display',
 });
 
-// Update this to your real production domain before deploying — it is used
-// to build absolute URLs for canonical links and Open Graph / Twitter
-// preview images (og:image must be an absolute URL for Telegram, WhatsApp,
-// etc. to render the preview card correctly).
-const SITE_URL = 'https://luxevault.store';
+// The canonical production origin. Used to build absolute URLs for canonical
+// links and Open Graph / Twitter preview images (og:image must be absolute
+// for Telegram, WhatsApp, etc. to render the preview card).
+//
+// Must match NEXT_PUBLIC_SITE_URL and the Supabase Site URL exactly — a
+// mismatch produces canonical tags pointing at a domain that redirects, and
+// auth links that land on the wrong origin.
+const SITE_URL = 'https://luxe-vault-hlb1.vercel.app';
 const SITE_NAME = 'LUXE VAULT';
 const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Accessories';
 const SITE_DESCRIPTION =

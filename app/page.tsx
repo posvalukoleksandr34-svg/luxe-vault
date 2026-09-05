@@ -7,6 +7,7 @@ import { Collections } from '@/components/collections'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { Hero } from '@/components/hero'
+import { PasswordRecoveryModal } from '@/components/password-recovery-modal'
 import { ProductModal } from '@/components/products/product-modal'
 import { ProductGrid } from '@/components/products/product-grid'
 import { Reviews } from '@/components/reviews'
@@ -40,6 +41,8 @@ export default function Home() {
       <CheckoutPanel />
       <UserPanel />
       <SupportWidget />
+      {/* Listens for PASSWORD_RECOVERY anywhere on the storefront. */}
+      <PasswordRecoveryModal />
     </>
   )
 }

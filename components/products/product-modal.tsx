@@ -2,7 +2,6 @@
 
 import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { DEFAULT_SIZE_CHART } from '@/lib/data'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -75,7 +74,11 @@ export function ProductModal() {
     : 0
 
   const selectedImage = allImages[selectedIndex] ?? p.image
-  const sizeChart = p.sizeChart ?? DEFAULT_SIZE_CHART
+  // Only the product's own measurements. It used to fall back to
+  // DEFAULT_SIZE_CHART, which showed every product the same invented numbers —
+  // harmless when nobody could edit them, actively misleading now that the
+  // admin enters real ones per product.
+  const sizeChart = p.sizeChart ?? []
   const productName = localize(p.name)
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -287,14 +290,18 @@ export function ProductModal() {
                 <p className="text-[11px] uppercase tracking-[0.15em] text-foreground">
                   {t('product.size')}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowGuide((v) => !v)}
-                  className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
-                >
-                  <Ruler className="size-3" />
-                  {t('product.sizeGuide')}
-                </button>
+                {/* Hidden entirely when the product has no measurements —
+                    an empty guide is worse than no guide. */}
+                {sizeChart.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowGuide((v) => !v)}
+                    className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
+                  >
+                    <Ruler className="size-3" />
+                    {t('product.sizeGuide')}
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {p.sizes.map((s) => (

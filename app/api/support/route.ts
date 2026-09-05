@@ -1,4 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import {
+  isMailConfigured,
+  sendSupportConfirmation,
+  sendSupportNotification,
+} from '@/lib/server/mailer'
 import { addTicket } from '@/lib/server/support-store'
 import { getCurrentUser } from '@/lib/supabase/server'
 
@@ -59,7 +64,28 @@ export async function POST(request: NextRequest) {
       { id: '', name, email, message, createdAt: Date.now(), status: 'open' },
       userId,
     )
-    return NextResponse.json({ ticket }, { status: 201 })
+
+    // Fire both emails after the ticket is safely stored, and never let a mail
+    // failure fail this request: the enquiry is already recorded and visible
+    // in the admin console. Telling the customer their message failed at that
+    // point would be a lie, and would invite a duplicate submission.
+    let emailed = false
+    if (isMailConfigured) {
+      const enquiry = { id: ticket.id, name, email, message }
+      const [toSupport, toCustomer] = await Promise.all([
+        sendSupportNotification(enquiry),
+        sendSupportConfirmation(enquiry),
+      ])
+      emailed = toSupport && toCustomer
+      if (!emailed) {
+        console.warn(
+          `[support] ticket ${ticket.id} stored but email incomplete ` +
+            `(support=${toSupport}, customer=${toCustomer})`,
+        )
+      }
+    }
+
+    return NextResponse.json({ ticket, emailed }, { status: 201 })
   } catch (e) {
     // Log the real cause server-side; the customer gets a generic message so a
     // database error never leaks schema details into the browser.

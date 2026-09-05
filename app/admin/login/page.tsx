@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Lock } from 'lucide-react'
+import { PasswordInput } from '@/components/password-input'
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
@@ -56,19 +57,16 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        <label className="block">
-          <span className="mb-2 block text-[11px] uppercase tracking-[0.15em] text-foreground">
-            Пароль
-          </span>
-          <input
-            type="password"
-            autoFocus
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full border border-border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40"
-          />
-        </label>
+        <PasswordInput
+          label="Пароль"
+          value={password}
+          onChange={setPassword}
+          required
+          autoFocus
+          autoComplete="current-password"
+          labelClassName="mb-2 text-[11px] tracking-[0.15em] normal-case"
+          inputClassName="rounded-none border-border px-3 py-3 text-[13px] font-light focus:border-gold/40"
+        />
 
         {error && (
           <p className="mt-3 text-[12px] text-destructive">{error}</p>

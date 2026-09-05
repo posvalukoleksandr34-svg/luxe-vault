@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { authCallbackUrl } from './site-url'
 import { createClient } from './supabase/client'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
@@ -87,6 +88,10 @@ type StoreContextValue = {
   locale: Locale
   setLocale: (l: Locale) => void
   t: (key: UIKey) => string
+  /** Localized string with {placeholder} substitution, e.g.
+   *  tf('otp.step2.resendIn', { n: 42 }). Values are inserted verbatim, so
+   *  never pass anything that will be rendered as HTML. */
+  tf: (key: UIKey, vars: Record<string, string | number>) => string
   localize: (text: LocalizedText) => string
 
   panel: PanelState
@@ -110,7 +115,24 @@ type StoreContextValue = {
   applyPromo: (code: string) => Promo | null
 
   login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string) => Promise<boolean>
+  register: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<{
+    ok: boolean
+    needsConfirmation: boolean
+    alreadyRegistered: boolean
+    /** Present only for errors that are not "already registered". */
+    message?: string
+  }>
+  resendConfirmation: (email: string) => Promise<{ ok: boolean; message?: string }>
+  requestRecoveryCode: (email: string) => Promise<{ ok: boolean; message?: string }>
+  verifyRecoveryCode: (
+    email: string,
+    token: string,
+  ) => Promise<{ ok: boolean; message?: string }>
+  updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>
   logout: () => Promise<void>
 
   addProduct: (p: Product) => Promise<boolean>
@@ -150,6 +172,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [metadataLanguage, setMetadataLanguage] = useState<string | null>(null)
 
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
 
@@ -167,6 +190,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     function applySession(session: Session | null) {
       const u = session?.user
+      // What Supabase currently has on the row — compared against the active
+      // locale by the sync effect below.
+      setMetadataLanguage((u?.user_metadata?.language as string | undefined) ?? null)
       setCurrentUser(
         u
           ? {
@@ -197,6 +223,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Refine the display name from public.profiles, which is the durable record
   // (auth metadata goes stale if the name is ever edited).
   const currentUserId = currentUser?.id ?? null
+
+  /**
+   * Keeps auth metadata's `language` in step with the active locale.
+   *
+   * setLocale() alone is not enough: it can only write while a session exists,
+   * so a visitor who picks Italian and *then* signs in would never have it
+   * stored, and their recovery email would arrive in English. This runs on
+   * sign-in too, which also backfills accounts created before `language` was
+   * recorded at signup.
+   *
+   * Supabase merges `data` into raw_user_meta_data rather than replacing it,
+   * so writing `language` here cannot clobber `name` (verified against the
+   * live project).
+   */
+  useEffect(() => {
+    if (!currentUserId || !isSupabaseConfigured) return
+    if (metadataLanguage === locale) return
+
+    let active = true
+    createClient()
+      .auth.updateUser({ data: { language: locale } })
+      .then(({ error }) => {
+        // Mirror locally on success so this does not re-fire every render.
+        if (active && !error) setMetadataLanguage(locale)
+      })
+      .catch(() => {
+        // Cosmetic sync — never surfaced, never blocking.
+      })
+
+    return () => {
+      active = false
+    }
+  }, [currentUserId, locale, metadataLanguage])
+
   useEffect(() => {
     if (!currentUserId || !isSupabaseConfigured) return
     let active = true
@@ -293,14 +353,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return map
   }, [collections])
 
-  const setLocale = useCallback((l: Locale) => {
-    setLocaleState(l)
-    try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
-    } catch {
-      // ignore write errors
-    }
-  }, [])
+  const setLocale = useCallback(
+    (l: Locale) => {
+      setLocaleState(l)
+      try {
+        window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
+      } catch {
+        // ignore write errors
+      }
+
+      // Mirror the choice into auth metadata so transactional emails follow
+      // the customer's current language rather than the one they happened to
+      // sign up in. Only possible while signed in — updateUser needs a
+      // session — which is precisely why the value has to be stored ahead of
+      // time rather than passed at password-reset time.
+      if (!currentUserId || !isSupabaseConfigured) return
+      void createClient()
+        .auth.updateUser({ data: { language: l } })
+        .catch(() => {
+          // Cosmetic sync; a failure here must never block a language switch.
+        })
+    },
+    [currentUserId],
+  )
+
+  const tf = useCallback(
+    (key: UIKey, vars: Record<string, string | number>) =>
+      Object.entries(vars).reduce(
+        (out, [name, value]) => out.split(`{${name}}`).join(String(value)),
+        translate(UI[key], locale),
+      ),
+    [locale],
+  )
 
   const localize = useCallback(
     (text: LocalizedText) => translate(text, locale),
@@ -468,43 +552,158 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (name: string, email: string, password: string) => {
+      const normalized = email.trim().toLowerCase()
       let data, error
       try {
         ;({ data, error } = await createClient().auth.signUp({
-          email: email.trim().toLowerCase(),
+          email: normalized,
           password,
-          // Read by the handle_new_user() trigger to seed public.profiles.name.
-          options: { data: { name: name.trim() } },
+          options: {
+            // Written to auth.users.raw_user_meta_data. `name` is read by the
+            // handle_new_user() trigger to seed public.profiles.name;
+            // `language` is what Supabase email templates read as
+            // {{ .Data.language }}, which is how a recovery email knows which
+            // language to render. It must be stored here because
+            // resetPasswordForEmail cannot carry metadata (see below).
+            data: { name: name.trim(), language: locale },
+            // Without this, Supabase builds the confirmation link from the
+            // project's Site URL — which in a fresh project is still
+            // http://localhost:3000, so production users get a link pointing
+            // at their own machine. /auth/callback exchanges the code for a
+            // session and then forwards to the homepage.
+            emailRedirectTo: authCallbackUrl('/'),
+          },
         }))
       } catch (e) {
         pushToast({ title: (e as Error).message, variant: 'default' })
-        return false
+        return { ok: false, needsConfirmation: false, alreadyRegistered: false }
       }
 
       if (error) {
-        pushToast({
-          title: /already registered/i.test(error.message)
-            ? t('toast.accountExists')
-            : error.message,
-          variant: 'default',
-        })
-        return false
+        // Some project configurations do surface this as a real error, so the
+        // message check stays as a second route to the same conclusion.
+        const taken = /already registered|already exists|user already/i.test(error.message)
+        return {
+          ok: false,
+          needsConfirmation: false,
+          alreadyRegistered: taken,
+          message: taken ? undefined : error.message,
+        }
       }
 
-      // With "Confirm email" enabled in Supabase, signUp returns a user but no
-      // session: the account exists yet cannot act until the link is clicked.
-      // Saying "account created" and leaving them signed out would look broken,
-      // so this case gets its own message.
+      // Supabase does NOT error on a duplicate email by default — that would
+      // let anyone enumerate which addresses have accounts. Instead it returns
+      // a user whose `identities` array is empty. Without this check the
+      // customer is shown "check your inbox" for an address that is already
+      // taken, and no email ever arrives.
+      if (data.user && (data.user.identities?.length ?? 0) === 0) {
+        return { ok: false, needsConfirmation: false, alreadyRegistered: true }
+      }
+
+      // With "Confirm email" enabled, signUp returns a user but no session:
+      // the account exists yet cannot act until the link is clicked. The
+      // caller renders a persistent "check your inbox" panel for this case —
+      // a toast that vanishes after a few seconds is not enough to explain
+      // why the customer is still looking at a sign-in form.
       if (data.user && !data.session) {
-        pushToast({ title: t('toast.confirmEmail'), variant: 'success' })
-        return true
+        return { ok: true, needsConfirmation: true, alreadyRegistered: false }
       }
 
       pushToast({ title: t('toast.accountCreated'), variant: 'success' })
-      return true
+      return { ok: true, needsConfirmation: false, alreadyRegistered: false }
     },
     [pushToast, t],
   )
+
+  /**
+   * Re-sends the sign-up confirmation email.
+   *
+   * Supabase rate-limits this (roughly one per minute per address) and returns
+   * a 429 when exceeded, so the caller shows a cooldown rather than letting
+   * someone hammer the button and collect errors.
+   */
+  const resendConfirmation = useCallback(
+    async (email: string) => {
+      try {
+        const { error } = await createClient().auth.resend({
+          type: 'signup',
+          email: email.trim().toLowerCase(),
+          options: { emailRedirectTo: authCallbackUrl('/') },
+        })
+        if (error) return { ok: false, message: error.message }
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, message: (e as Error).message }
+      }
+    },
+    [],
+  )
+
+  /**
+   * Step 1 of OTP recovery: asks Supabase to email a recovery token.
+   *
+   * IMPORTANT: whether the customer receives a 6-digit CODE or a clickable
+   * LINK is decided entirely by the project's "Reset Password" email template.
+   * It must contain {{ .Token }} for this flow to work; the default template
+   * ships {{ .ConfirmationURL }}, which produces a link and no code.
+   *
+   * `redirectTo` is still supplied so that a project left on the default
+   * link-style template keeps working through /auth/callback rather than
+   * breaking outright.
+   *
+   * LANGUAGE: metadata cannot be passed here. The SDK signature is
+   *   resetPasswordForEmail(email, { redirectTo?, captchaToken? })
+   * with no `data` field — adding one is a TypeScript error and would be
+   * dropped at runtime. Supabase resolves {{ .Data.language }} from the
+   * user's stored raw_user_meta_data, so the locale is written at signUp and
+   * refreshed by setLocale() while the user is signed in. By the time someone
+   * asks for a reset they are signed out, so there is no session to attach
+   * metadata with — it has to already be on the row.
+   */
+  const requestRecoveryCode = useCallback(async (email: string) => {
+    try {
+      const { error } = await createClient().auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        { redirectTo: authCallbackUrl('/auth/update-password') },
+      )
+      if (error) return { ok: false, message: error.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  }, [])
+
+  /**
+   * Step 2: exchanges the emailed code for a session.
+   *
+   * On success the user is signed in with a recovery session, which is what
+   * authorises the updateUser call in step 3. Deliberately does NOT redirect —
+   * the whole flow stays on the page the customer started from.
+   */
+  const verifyRecoveryCode = useCallback(async (email: string, token: string) => {
+    try {
+      const { error } = await createClient().auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: token.trim(),
+        type: 'recovery',
+      })
+      if (error) return { ok: false, message: error.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  }, [])
+
+  /** Step 3: sets the new password using the recovery session from step 2. */
+  const updatePassword = useCallback(async (password: string) => {
+    try {
+      const { error } = await createClient().auth.updateUser({ password })
+      if (error) return { ok: false, message: error.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  }, [])
 
   const logout = useCallback(async () => {
     try {
@@ -629,6 +828,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     locale,
     setLocale,
     t,
+    tf,
     localize,
     panel,
     setPanel,
@@ -650,6 +850,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     applyPromo,
     login,
     register,
+    resendConfirmation,
+    requestRecoveryCode,
+    verifyRecoveryCode,
+    updatePassword,
     logout,
     addProduct,
     updateProduct,

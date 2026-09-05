@@ -256,6 +256,51 @@ export const UI = {
   'trust.securePayments': { ru: 'Безопасная оплата CHF', en: 'Secure CHF Payments', it: 'Pagamenti CHF sicuri', fr: 'Paiements CHF sécurisés', de: 'Sichere CHF-Zahlung' },
   'trust.priorityDelivery': { ru: 'Приоритетная доставка', en: 'Priority Delivery', it: 'Consegna prioritaria', fr: 'Livraison prioritaire', de: 'Priority-Versand' },
 
+  // ---------------------------------------------------------------------
+  // OTP password recovery. Every string the flow can display lives here —
+  // LocalizedText requires all five locales, so a missing translation is a
+  // compile error rather than an English string leaking into an Italian UI.
+  // `{n}` / `{email}` are substituted by the component via tf().
+  // ---------------------------------------------------------------------
+  'user.forgotPassword': { ru: 'Забыли пароль?', en: 'Forgot password?', it: 'Password dimenticata?', fr: 'Mot de passe oublié ?', de: 'Passwort vergessen?' },
+  'otp.step1.title': { ru: 'Восстановление пароля', en: 'Password recovery', it: 'Recupero password', fr: 'Récupération du mot de passe', de: 'Passwort zurücksetzen' },
+  'otp.step1.body': { ru: 'Введите email, указанный при регистрации. Мы пришлём код подтверждения.', en: 'Enter the email you registered with. We will send you a verification code.', it: "Inserisci l'email con cui ti sei registrato. Ti invieremo un codice di verifica.", fr: "Saisissez l'e-mail utilisé lors de l'inscription. Nous vous enverrons un code de vérification.", de: 'Geben Sie die E-Mail-Adresse Ihrer Registrierung ein. Wir senden Ihnen einen Bestätigungscode.' },
+  'otp.step1.emailLabel': { ru: 'Email', en: 'Email', it: 'Email', fr: 'E-mail', de: 'E-Mail' },
+  'otp.step1.submit': { ru: 'Получить код', en: 'Send code', it: 'Invia codice', fr: 'Envoyer le code', de: 'Code senden' },
+
+  'otp.step2.title': { ru: 'Введите код', en: 'Enter the code', it: 'Inserisci il codice', fr: 'Saisissez le code', de: 'Code eingeben' },
+  'otp.step2.body': { ru: 'Мы отправили код подтверждения на {email}. Проверьте папку «Спам», если письма нет.', en: 'We sent a verification code to {email}. Check your spam folder if it has not arrived.', it: 'Abbiamo inviato un codice di verifica a {email}. Controlla la cartella spam se non lo trovi.', fr: 'Nous avons envoyé un code de vérification à {email}. Vérifiez vos spams si vous ne le recevez pas.', de: 'Wir haben einen Bestätigungscode an {email} gesendet. Prüfen Sie den Spam-Ordner, falls er nicht ankommt.' },
+  'otp.step2.codeLabel': { ru: 'Код подтверждения', en: 'Verification code', it: 'Codice di verifica', fr: 'Code de vérification', de: 'Bestätigungscode' },
+  'otp.step2.submit': { ru: 'Подтвердить', en: 'Verify', it: 'Verifica', fr: 'Vérifier', de: 'Bestätigen' },
+  'otp.step2.resend': { ru: 'Отправить код повторно', en: 'Resend code', it: 'Invia di nuovo il codice', fr: 'Renvoyer le code', de: 'Code erneut senden' },
+  'otp.step2.resendIn': { ru: 'Отправить повторно можно через {n} с', en: 'Resend code in {n} s', it: 'Puoi richiedere un nuovo codice tra {n} s', fr: 'Renvoyer le code dans {n} s', de: 'Erneut senden in {n} s' },
+  'otp.step2.resent': { ru: 'Новый код отправлен', en: 'A new code has been sent', it: 'Nuovo codice inviato', fr: 'Un nouveau code a été envoyé', de: 'Neuer Code gesendet' },
+  'otp.step2.changeEmail': { ru: 'Изменить email', en: 'Change email', it: "Cambia l'email", fr: "Modifier l'e-mail", de: 'E-Mail ändern' },
+
+  'otp.step3.title': { ru: 'Новый пароль', en: 'New password', it: 'Nuova password', fr: 'Nouveau mot de passe', de: 'Neues Passwort' },
+  'otp.step3.body': { ru: 'Придумайте новый пароль — не короче {n} символов.', en: 'Choose a new password — at least {n} characters.', it: 'Scegli una nuova password di almeno {n} caratteri.', fr: 'Choisissez un nouveau mot de passe d’au moins {n} caractères.', de: 'Wählen Sie ein neues Passwort mit mindestens {n} Zeichen.' },
+  'otp.step3.new': { ru: 'Новый пароль', en: 'New password', it: 'Nuova password', fr: 'Nouveau mot de passe', de: 'Neues Passwort' },
+  'otp.step3.confirm': { ru: 'Повторите пароль', en: 'Confirm password', it: 'Conferma password', fr: 'Confirmez le mot de passe', de: 'Passwort bestätigen' },
+  'otp.step3.submit': { ru: 'Сохранить пароль', en: 'Save password', it: 'Salva password', fr: 'Enregistrer le mot de passe', de: 'Passwort speichern' },
+
+  'otp.done.title': { ru: 'Пароль обновлён', en: 'Password updated', it: 'Password aggiornata', fr: 'Mot de passe mis à jour', de: 'Passwort aktualisiert' },
+  'otp.done.body': { ru: 'Теперь вы можете пользоваться аккаунтом с новым паролем.', en: 'You can now use your account with the new password.', it: 'Ora puoi accedere al tuo account con la nuova password.', fr: 'Vous pouvez désormais utiliser votre compte avec le nouveau mot de passe.', de: 'Sie können Ihr Konto jetzt mit dem neuen Passwort nutzen.' },
+  'otp.done.cta': { ru: 'Продолжить', en: 'Continue', it: 'Continua', fr: 'Continuer', de: 'Weiter' },
+
+  'otp.err.email': { ru: 'Введите корректный email', en: 'Enter a valid email address', it: 'Inserisci un indirizzo email valido', fr: 'Saisissez une adresse e-mail valide', de: 'Geben Sie eine gültige E-Mail-Adresse ein' },
+  'otp.err.codeRequired': { ru: 'Введите код из письма', en: 'Enter the code from the email', it: "Inserisci il codice ricevuto via email", fr: "Saisissez le code reçu par e-mail", de: 'Geben Sie den Code aus der E-Mail ein' },
+  'otp.err.codeInvalid': { ru: 'Неверный или просроченный код', en: 'Invalid or expired code', it: 'Codice non valido o scaduto', fr: 'Code invalide ou expiré', de: 'Ungültiger oder abgelaufener Code' },
+  'otp.err.tooShort': { ru: 'Минимум {n} символов', en: 'At least {n} characters', it: 'Almeno {n} caratteri', fr: 'Au moins {n} caractères', de: 'Mindestens {n} Zeichen' },
+  'otp.err.mismatch': { ru: 'Пароли не совпадают', en: 'Passwords do not match', it: 'Le password non coincidono', fr: 'Les mots de passe ne correspondent pas', de: 'Die Passwörter stimmen nicht überein' },
+  'otp.err.rateLimit': { ru: 'Слишком много запросов. Попробуйте позже.', en: 'Too many requests. Please try again later.', it: 'Troppe richieste. Riprova più tardi.', fr: 'Trop de demandes. Réessayez plus tard.', de: 'Zu viele Anfragen. Bitte später erneut versuchen.' },
+  'otp.err.sendFailed': { ru: 'Не удалось отправить письмо. Попробуйте позже или свяжитесь с поддержкой.', en: 'We could not send the email. Try again later or contact support.', it: "Non siamo riusciti a inviare l'email. Riprova più tardi o contatta l'assistenza.", fr: "Impossible d'envoyer l'e-mail. Réessayez plus tard ou contactez le support.", de: 'Die E-Mail konnte nicht gesendet werden. Versuchen Sie es später erneut oder kontaktieren Sie den Support.' },
+  'otp.err.generic': { ru: 'Не удалось выполнить запрос. Попробуйте ещё раз.', en: 'The request failed. Please try again.', it: 'Richiesta non riuscita. Riprova.', fr: 'La demande a échoué. Veuillez réessayer.', de: 'Die Anfrage ist fehlgeschlagen. Bitte erneut versuchen.' },
+
+  'otp.back': { ru: 'Назад', en: 'Back', it: 'Indietro', fr: 'Retour', de: 'Zurück' },
+  'otp.close': { ru: 'Закрыть', en: 'Close', it: 'Chiudi', fr: 'Fermer', de: 'Schließen' },
+  'otp.showPassword': { ru: 'Показать пароль', en: 'Show password', it: 'Mostra password', fr: 'Afficher le mot de passe', de: 'Passwort anzeigen' },
+  'otp.hidePassword': { ru: 'Скрыть пароль', en: 'Hide password', it: 'Nascondi password', fr: 'Masquer le mot de passe', de: 'Passwort verbergen' },
+
   // Fulfilment statuses. The stored values are the English enum
   // ('pending' | 'processing' | ...); these are only their display labels.
   'orderStatus.pending': { ru: 'Ожидает', en: 'Pending', it: 'In attesa', fr: 'En attente', de: 'Ausstehend' },
