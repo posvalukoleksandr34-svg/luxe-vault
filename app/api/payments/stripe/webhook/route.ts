@@ -12,10 +12,12 @@ export const runtime = 'nodejs'
  * Public by necessity — Stripe calls this directly, with no session of ours to
  * authenticate. The signature check is the entire trust boundary.
  *
- * This is the ONLY place a Stripe order is ever marked paid. The customer's
- * return to `success_url` is a navigation hint and nothing more: anyone can
- * type that URL, so treating it as proof of payment would let a customer mark
- * their own order paid by editing the address bar.
+ * This is the ONLY place a Stripe order is ever marked paid. The browser's
+ * arrival at /success — and the `redirect_status` Stripe puts in that URL — is
+ * a navigation hint and nothing more: anyone can type that URL, so treating it
+ * as proof of payment would let a customer mark their own order paid by
+ * editing the address bar. confirmPayment() resolving successfully in the
+ * client is likewise not authoritative; only this signed event is.
  */
 export async function POST(request: NextRequest) {
   if (!isStripeWebhookConfigured()) {
@@ -37,31 +39,33 @@ export async function POST(request: NextRequest) {
   // Map only the events that actually change an order's money state. Stripe
   // sends dozens of others; acknowledging them with 200 and doing nothing is
   // correct, and stops Stripe retrying them forever.
+  //
+  // These are payment_intent.* events, NOT checkout.session.*. The move to an
+  // embedded PaymentElement means there is no Checkout Session any more, so
+  // the old handlers would simply never fire and every order would sit at
+  // `pending_payment` for ever while the customer was charged.
   let next: PaymentStatus | null = null
-  let sessionId: string | null = null
+  let paymentIntentId: string | null = null
 
   switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object
-      sessionId = session.id
-      // `completed` fires when the customer finishes the flow — for a delayed
-      // method that can still be unsettled, so the payment_status field is
-      // what decides, not the event name.
-      next = session.payment_status === 'paid' ? 'paid' : 'confirming'
-      break
-    }
-    case 'checkout.session.async_payment_succeeded': {
-      sessionId = event.data.object.id
+    case 'payment_intent.succeeded': {
+      paymentIntentId = event.data.object.id
       next = 'paid'
       break
     }
-    case 'checkout.session.async_payment_failed': {
-      sessionId = event.data.object.id
+    case 'payment_intent.processing': {
+      // Delayed methods (some bank debits) settle asynchronously.
+      paymentIntentId = event.data.object.id
+      next = 'confirming'
+      break
+    }
+    case 'payment_intent.payment_failed': {
+      paymentIntentId = event.data.object.id
       next = 'failed'
       break
     }
-    case 'checkout.session.expired': {
-      sessionId = event.data.object.id
+    case 'payment_intent.canceled': {
+      paymentIntentId = event.data.object.id
       next = 'expired'
       break
     }
@@ -70,15 +74,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true })
   }
 
-  if (!sessionId || !next) {
+  if (!paymentIntentId || !next) {
     return NextResponse.json({ received: true })
   }
 
   try {
-    // Keyed on the Checkout session id, which the checkout route stored as the
+    // Keyed on the PaymentIntent id, which the intent route stored as the
     // order's payment_id. Stripe retries webhooks, so this must be idempotent:
     // writing the same status twice is a no-op, which it is.
-    const order = await setPaymentStatus(sessionId, next)
+    const order = await setPaymentStatus(paymentIntentId, next)
     if (!order) {
       // 200, not 404: a missing order is not something Stripe can fix by
       // retrying, and a non-2xx would have it retry for days.

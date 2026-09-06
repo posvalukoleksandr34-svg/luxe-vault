@@ -6,6 +6,7 @@ import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { CountrySelect } from '@/components/country-select'
 import { CryptoPayment } from '@/components/crypto-payment'
+import { StripePayment } from '@/components/stripe-payment'
 import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
 import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
@@ -54,6 +55,11 @@ export function CheckoutPanel() {
   const [promoError, setPromoError] = useState(false)
   const [showCrypto, setShowCrypto] = useState(false)
   const [cryptoOrder, setCryptoOrder] = useState<Order | null>(null)
+  // Embedded card step: the order exists, and Stripe has minted a client
+  // secret for it. Rendering these together keeps the customer in the drawer
+  // instead of redirecting to checkout.stripe.com.
+  const [cardOrder, setCardOrder] = useState<Order | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -70,6 +76,8 @@ export function CheckoutPanel() {
     if (panel === 'checkout') {
       setShowCrypto(false)
       setCryptoOrder(null)
+      setCardOrder(null)
+      setClientSecret(null)
       setErrors({})
       // Detect saved details on open, and pre-arm the save toggle for anyone
       // who has used it before — re-ticking it every time would be a chore.
@@ -216,7 +224,7 @@ export function CheckoutPanel() {
         // Hand off to Stripe's hosted page. The order already exists and is
         // `pending_payment`, so abandoning the Stripe page leaves something
         // the customer can settle later rather than losing the basket.
-        const pay = await fetch('/api/payments/stripe/checkout', {
+        const pay = await fetch('/api/payments/stripe/intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -227,10 +235,11 @@ export function CheckoutPanel() {
         })
         const payData = await pay.json().catch(() => ({}))
 
-        if (pay.ok && payData.url) {
-          // Full navigation, not router.push: Stripe Checkout is a different
-          // origin and cannot be rendered inside the app.
-          window.location.href = payData.url
+        if (pay.ok && payData.clientSecret) {
+          // Swap the form for the embedded PaymentElement. No navigation —
+          // the customer never leaves the site.
+          setCardOrder(order)
+          setClientSecret(payData.clientSecret)
           return
         }
 
@@ -287,6 +296,31 @@ export function CheckoutPanel() {
     setHasSaved(false)
     setSaveDetails(false)
     pushToast({ title: t('checkout.savedCleared'), variant: 'default' })
+  }
+
+  function handleCardPaid() {
+    if (cardOrder) {
+      pushToast({ title: t('toast.orderPlaced'), description: cardOrder.id, variant: 'success' })
+    }
+    setPanel(null)
+    setCardOrder(null)
+    setClientSecret(null)
+  }
+
+  /** Leaving the card step keeps the order — it becomes an unpaid order
+   *  waiting in the personal account, exactly as abandoning crypto does. */
+  function handleCardBack() {
+    const left = cardOrder
+    setCardOrder(null)
+    setClientSecret(null)
+    setPanel(null)
+    if (left) {
+      pushToast({
+        title: t('toast.orderPlaced'),
+        description: `${left.id} — ${t('orders.awaitingPayment')}`,
+        variant: 'success',
+      })
+    }
   }
 
   function handleCryptoPaid() {
@@ -367,6 +401,18 @@ export function CheckoutPanel() {
             >
               {t('checkout.backToCart')}
             </button>
+          </div>
+        ) : cardOrder && clientSecret ? (
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+              {t('orders.payingFor')} <span className="text-foreground">{cardOrder.id}</span>
+            </p>
+            <StripePayment
+              order={cardOrder}
+              clientSecret={clientSecret}
+              onPaid={handleCardPaid}
+              onBack={handleCardBack}
+            />
           </div>
         ) : showCrypto && cryptoOrder?.lookupToken ? (
           <div className="flex-1 overflow-y-auto px-6 py-5">

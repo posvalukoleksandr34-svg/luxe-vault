@@ -1,34 +1,36 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
-import { createCheckoutSession, isStripeConfigured } from '@/lib/server/stripe'
+import { createPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Opens a Stripe Checkout session for an order that already exists.
+ * Creates a PaymentIntent for an existing order and returns its client secret,
+ * so the browser can render an embedded PaymentElement.
  *
- * Mirrors the crypto "resume" endpoint on purpose, and for the same reasons:
+ * Replaces the previous /checkout route, which minted a hosted Checkout
+ * Session and returned a redirect URL.
+ *
+ * The guarantees are the same ones the old route had, and they matter more
+ * here because the client secret is returned to the browser:
  *
  *  - The amount is rebuilt from the STORED order. Nothing about the price
- *    comes from the request body, so a tampered client cannot pay CHF 1 for a
- *    CHF 900 order.
+ *    comes from the request body.
  *  - Access is gated on the order's lookup token — the per-order secret the
- *    customer's own browser holds. Without it an order can be neither read
- *    nor paid.
- *  - "Order not found" is returned for both a missing order and a bad token,
- *    so the endpoint cannot be used to enumerate which order ids exist.
+ *    customer's own browser holds.
+ *  - "Order not found" covers both a missing order and a bad token, so the
+ *    endpoint cannot be used to enumerate order ids.
  *
- * This same route serves both the initial checkout and "pay later" from the
- * account page; there is nothing stateful about the first case.
+ * A client secret authorises confirming this one payment and reading its
+ * status. It is not a credential for the Stripe account, and it is useless
+ * without the publishable key it was minted against — but it is still
+ * per-order, which is why the token check above is not optional.
  */
 export async function POST(request: NextRequest) {
   if (!isStripeConfigured()) {
-    return NextResponse.json(
-      { error: 'Оплата картой временно недоступна' },
-      { status: 503 },
-    )
+    return NextResponse.json({ error: 'Оплата картой временно недоступна' }, { status: 503 })
   }
 
   let body: { orderId?: string; token?: string; saveCard?: boolean }
@@ -52,11 +54,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // A Stripe Customer is what owns saved cards. Resolved from the SESSION,
+    // The Stripe Customer that owns saved cards. Resolved from the SESSION,
     // never from the request body — a client-supplied customer id would let
     // anyone attach their payment to, or read cards from, another account.
-    // Guests get no customer and therefore no saved cards, which is correct:
-    // there is no account for a card to belong to.
     let customerId: string | undefined
     const user = await getCurrentUser()
     if (user && order.userId && order.userId === user.id) {
@@ -67,35 +67,34 @@ export async function POST(request: NextRequest) {
           name: order.customer.name,
         })
       } catch {
-        // Saved cards are a convenience. If the customer lookup fails the
-        // payment must still go through, just without the save option.
+        // Saved cards are a convenience; the payment must still work without.
         customerId = undefined
       }
     }
 
-    const session = await createCheckoutSession(order, {
+    const intent = await createPaymentIntent(order, {
       customerId,
       saveCard: Boolean(body.saveCard) && Boolean(customerId),
     })
-    if (!session.url) {
-      return NextResponse.json({ error: 'Stripe returned no checkout URL' }, { status: 502 })
+
+    if (!intent.client_secret) {
+      return NextResponse.json({ error: 'Stripe returned no client secret' }, { status: 502 })
     }
 
-    // Record the session against the order BEFORE handing the customer over.
-    // The webhook looks the order up by payment_id, so if this write were left
-    // until after the redirect a fast payment could arrive before the order
-    // knew its own session id.
+    // Store the PaymentIntent id against the order BEFORE the browser can
+    // confirm it. The webhook finds the order by payment_id, so a fast
+    // confirmation must not arrive before the order knows its own intent id.
     await setOrderPaymentSession(order.id, {
       payment: order.payment,
       paymentStatus: 'pending_payment',
       paymentProvider: 'stripe',
-      paymentId: session.id,
-      paymentCurrency: (session.currency ?? 'chf').toUpperCase(),
+      paymentId: intent.id,
+      paymentCurrency: intent.currency.toUpperCase(),
       paymentAmount: order.total,
       paymentAddress: undefined,
     })
 
-    return NextResponse.json({ url: session.url, sessionId: session.id })
+    return NextResponse.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Stripe error'
     return NextResponse.json({ error: message }, { status: 502 })

@@ -4,16 +4,17 @@ import type { Order } from '@/lib/types'
 /**
  * Stripe Checkout integration.
  *
- * Server-only. The secret key must never reach the browser, which is why
- * there is no NEXT_PUBLIC_ variant here: Checkout is a hosted redirect, so the
- * client never needs a publishable key at all — it only follows the session
- * URL this module returns. That is also why there is no Stripe.js bundle to
- * ship.
+ * Server-only. The secret key must never reach the browser.
+ *
+ * Since the move from hosted Checkout to embedded Elements, the browser DOES
+ * need a publishable key — it is what Stripe.js authenticates with in order to
+ * render PaymentElement and confirm the payment. That key is public by design
+ * and lives in NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY; see lib/stripe-client.ts.
  *
  * Required environment variables:
- *   STRIPE_SECRET_KEY       sk_test_… / sk_live_…
- *   STRIPE_WEBHOOK_SECRET   whsec_…  (from `stripe listen` or the dashboard)
- *   NEXT_PUBLIC_SITE_URL    used to build absolute success/cancel URLs
+ *   STRIPE_SECRET_KEY                    sk_test_… / sk_live_…
+ *   STRIPE_WEBHOOK_SECRET                whsec_…  (`stripe listen`/dashboard)
+ *   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY   pk_test_… / pk_live_…
  */
 
 const SECRET_KEY = process.env.STRIPE_SECRET_KEY?.trim()
@@ -61,92 +62,48 @@ export function isStripeWebhookConfigured(): boolean {
   return Boolean(WEBHOOK_SECRET)
 }
 
-function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://luxe-vault.store').replace(/\/$/, '')
-}
-
 /**
- * Creates a hosted Checkout session for an order that already exists in
- * Postgres.
+ * Creates a PaymentIntent for an order that already exists in Postgres, and
+ * returns it so the caller can hand the client secret to the browser.
  *
- * The order is built first and the session second, deliberately: an abandoned
- * checkout then leaves a real `pending_payment` order the customer can settle
- * later from their account, instead of vanishing.
+ * Replaces the old hosted Checkout Session. The difference that matters: the
+ * card form now renders inside our own page via Stripe Elements, so the
+ * customer never leaves the site. The security properties are unchanged —
+ * card data still goes straight from the browser to Stripe and never touches
+ * this server, because PaymentElement is a cross-origin iframe.
  *
- * Line items are rebuilt from the stored order rather than from anything the
- * client sends, so a tampered request cannot change what is charged. The
- * discount is applied as a single negative-value adjustment is not possible in
- * Checkout, so a discounted order is sent as one aggregated line instead —
- * see below.
+ * The amount is taken from the STORED order, never from anything the client
+ * sends, so a tampered request cannot change what is charged.
+ *
+ * The client secret is not a bearer token for the account: it authorises
+ * confirming this one payment and reading its status, nothing else. It is
+ * still per-order and must only be returned to someone who proved they own
+ * the order.
  */
-export async function createCheckoutSession(
+export async function createPaymentIntent(
   order: Order,
   options: { customerId?: string; saveCard?: boolean } = {},
-): Promise<Stripe.Checkout.Session> {
+): Promise<Stripe.PaymentIntent> {
   const stripe = getStripe()
-  const base = siteUrl()
 
-  // With no discount, each product gets its own line so the customer sees an
-  // itemised page. With a discount, Checkout has no per-session "take X off
-  // the total" primitive that does not require a pre-registered coupon, so the
-  // order is charged as a single line whose amount is the authoritative
-  // `order.total`. Either way the sum charged equals order.total exactly.
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-    order.discount > 0
-      ? [
-          {
-            quantity: 1,
-            price_data: {
-              currency: STRIPE_CURRENCY,
-              unit_amount: toMinorUnits(order.total),
-              product_data: {
-                name: `LUXE VAULT — ${order.id}`,
-                description: `${order.items.length} item(s), discount applied`,
-              },
-            },
-          },
-        ]
-      : order.items.map((item) => ({
-          quantity: item.qty,
-          price_data: {
-            currency: STRIPE_CURRENCY,
-            unit_amount: toMinorUnits(item.price),
-            product_data: {
-              name: item.name || 'LUXE VAULT',
-              // Size and colour are what distinguish two lines of the same
-              // product on the Stripe receipt.
-              ...(item.size || item.color
-                ? { description: [item.size, item.color].filter(Boolean).join(' · ') }
-                : {}),
-            },
-          },
-        }))
-
-  return stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: lineItems,
-    // The lookup token is what lets the return page read the order without a
-    // session; it is already a per-order secret.
-    success_url: `${base}/order/${order.id}?token=${order.lookupToken ?? ''}&paid=1`,
-    cancel_url: `${base}/order/${order.id}?token=${order.lookupToken ?? ''}&cancelled=1`,
-    // A Customer is required to save a card, and to offer previously saved
-    // cards back. Passing both `customer` and `customer_email` is an error, so
-    // the email is only sent when there is no customer to attach to.
-    ...(options.customerId
-      ? { customer: options.customerId }
-      : { customer_email: order.customer.email || undefined }),
-    // Tells Stripe to keep the PaymentMethod on the Customer after this
-    // payment. THIS is what "save my card" means — the card is stored by
-    // Stripe, and this app never sees the number.
+  return stripe.paymentIntents.create({
+    amount: toMinorUnits(order.total),
+    currency: STRIPE_CURRENCY,
+    // Lets Stripe decide which methods to show in the Element based on what is
+    // enabled on the account and what suits the currency, instead of
+    // hard-coding a list here that would drift from the dashboard.
+    automatic_payment_methods: { enabled: true },
+    ...(options.customerId ? { customer: options.customerId } : {}),
+    // "Remember this card" — Stripe keeps the PaymentMethod on the Customer
+    // once the payment succeeds. Requires a customer, hence the guard.
     ...(options.customerId && options.saveCard
-      ? { payment_intent_data: { setup_future_usage: 'off_session' as const } }
+      ? { setup_future_usage: 'off_session' as const }
       : {}),
-    // Shows any card already saved on the Customer as a one-click option.
-    ...(options.customerId ? { saved_payment_method_options: { payment_method_save: 'enabled' as const } } : {}),
-    client_reference_id: order.id,
-    // Echoed back on the webhook event. This is how the handler finds the
-    // order without trusting anything in the browser's return URL.
+    ...(order.customer.email ? { receipt_email: order.customer.email } : {}),
+    // Echoed back on every webhook event for this payment. This is how the
+    // handler ties a payment to an order without trusting the browser.
     metadata: { orderId: order.id },
+    description: `LUXE VAULT ${order.id}`,
   })
 }
 
