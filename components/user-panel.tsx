@@ -292,7 +292,7 @@ export function UserPanel() {
             ) : (
             <>
             <form onSubmit={handleAuth} className="w-full max-w-sm space-y-4">
-              <div className="mb-6 flex rounded-lg border border-border p-1">
+              <div className="panel-gold mb-6 flex p-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -482,7 +482,7 @@ export function UserPanel() {
 
               {tab === 'profile' && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="card-gold p-4">
                     <h3 className="mb-3 font-serif text-base font-medium text-foreground">
                       {t('user.profile')}
                     </h3>
@@ -491,7 +491,7 @@ export function UserPanel() {
                       <ProfileRow label={t('user.email')} value={currentUser.email} />
                     </div>
                   </div>
-                  <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="card-gold p-4">
                     <h3 className="mb-3 font-serif text-base font-medium text-foreground">
                       {t('user.orders')}
                     </h3>

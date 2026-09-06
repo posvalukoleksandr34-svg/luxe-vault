@@ -54,7 +54,7 @@ export function Collections() {
               <button
                 type="button"
                 onClick={() => goToGroup(col.group)}
-                className="group relative aspect-[4/5] w-full overflow-hidden border border-transparent bg-card text-left transition-colors duration-500 hover:border-border"
+                className="card-gold group relative aspect-[4/5] w-full overflow-hidden text-left"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

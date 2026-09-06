@@ -17,7 +17,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="group cursor-pointer" onClick={() => openProduct(product)}>
-      <div className="relative aspect-[3/4] overflow-hidden border border-transparent bg-card transition-colors duration-500 group-hover:border-border">
+      <div className="card-gold relative aspect-[3/4] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.image}

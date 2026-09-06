@@ -176,6 +176,7 @@ export function ProductModal() {
                         className={cn(
                           'h-1 transition-all duration-300',
                           i === selectedIndex ? 'w-5 bg-gold' : 'w-1 bg-background/70 hover:bg-foreground/50',
+                          'no-juice',
                         )}
                       />
                     ))}

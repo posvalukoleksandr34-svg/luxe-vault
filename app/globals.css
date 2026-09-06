@@ -4,26 +4,32 @@
 
 @layer base {
   :root {
-    /* Stark editorial palette — near-true black ground, ivory-white type,
-       no soft mid-grays. Gold stays as the single, deliberate accent. */
-    --background: 0 0% 3%;
+    /* Smoked-charcoal palette. Every ground tone carries a little warm hue
+       (~36deg) rather than sitting at 0% saturation — that is what reads as
+       "rich charcoal" instead of "grey", because a true neutral next to a gold
+       accent looks dead. Lightness is lifted off pure black so surfaces
+       separate from one another without any of them approaching white. */
+    --background: 36 8% 7%;
     --foreground: 40 25% 95%;
-    --card: 0 0% 5%;
+    --card: 36 8% 10%;
     --card-foreground: 40 25% 95%;
-    --popover: 0 0% 4%;
+    --popover: 36 9% 9%;
     --popover-foreground: 40 25% 95%;
     --primary: 40 25% 95%;
-    --primary-foreground: 0 0% 3%;
-    --secondary: 0 0% 9%;
+    --primary-foreground: 36 8% 7%;
+    --secondary: 36 7% 14%;
     --secondary-foreground: 40 25% 95%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 40 6% 62%;
-    --accent: 0 0% 13%;
+    --muted: 36 7% 15%;
+    --muted-foreground: 40 8% 66%;
+    --accent: 36 7% 18%;
     --accent-foreground: 40 25% 95%;
     --destructive: 8 70% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 40 8% 20%;
-    --input: 40 8% 20%;
+    --border: 40 12% 26%;
+    --input: 40 12% 26%;
+    /* Hairline gold for card edges — visible enough to catch the eye, far
+       below the accent's saturation so it never competes with a CTA. */
+    --gold-hairline: 43 45% 40%;
     --ring: 43 74% 56%;
     --gold: 43 74% 56%;
     --gold-foreground: 0 0% 3%;
@@ -81,9 +87,12 @@
     background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-  /* Solid editorial header ground — no frosted-glass blur. */
+  /* Frosted editorial header ground. Semi-transparent + blurred so the ambient
+     gold pools behind it bleed through the bar instead of stopping at it. */
   .glass {
-    background: hsl(var(--background) / 0.97);
+    background: hsl(var(--background) / 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
   }
 }
 
@@ -100,3 +109,528 @@
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
 html { scroll-behavior: smooth; }
+
+/* ---------------------------------------------------------------------------
+   Native password controls
+   ---------------------------------------------------------------------------
+   Browsers inject their own reveal/clear affordances into password fields.
+   Left alone they sit on top of the custom eye toggle in <PasswordInput>, so
+   the field shows two icons that disagree — clicking the native one reveals
+   the text while our button still reads "show password".
+
+   Each engine needs its own selector; there is no cross-browser shorthand.
+   Scoped to input[type="password"] on purpose: PasswordInput swaps the type
+   to "text" when revealing, and ::-webkit-search-* / ::-ms-clear on other
+   inputs are not ours to remove.
+--------------------------------------------------------------------------- */
+
+/* Edge / IE — the "eye" reveal and the "x" clear button. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Safari / Chrome — the keychain, strong-password and caps-lock affordances
+   that appear inside the field. `!important` is required: these are UA
+   shadow-DOM parts and lose to the browser's own rules otherwise. */
+input[type='password']::-webkit-credentials-auto-fill-button,
+input[type='password']::-webkit-strong-password-auto-fill-button,
+input[type='password']::-webkit-caps-lock-indicator,
+input[type='password']::-webkit-textfield-decoration-container {
+  visibility: hidden !important;
+  display: none !important;
+  pointer-events: none !important;
+  /* Pulled out of flow as well — Safari reserves the space even when the
+     button is hidden, which would leave a gap beside the custom icon. */
+  position: absolute !important;
+  right: 0;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Firefox has no reveal button of its own, so nothing to hide there. */
+
+/* ---------------------------------------------------------------------------
+   Ambient atmosphere
+   ---------------------------------------------------------------------------
+   Four very wide, very low-opacity pools behind everything: three gold, one
+   cool, and a faint vertical wash. They give the page depth without lifting any
+   surface toward white — the ground still reads as charcoal, but it is lit
+   rather than flat. The cool pool is what makes the gold ones read as *light*
+   rather than as a stain; without a cooler neighbour the eye normalises the
+   warmth away and the page looks flat brown again.
+
+   Attached to body::before as a single fixed layer: painting these per-section
+   would multiply the compositing cost on a long page for no visual gain.
+--------------------------------------------------------------------------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 55% at 18% 0%, hsl(var(--gold) / 0.075) 0%, transparent 62%),
+    radial-gradient(60% 50% at 88% 22%, hsl(var(--gold) / 0.05) 0%, transparent 60%),
+    radial-gradient(55% 45% at 8% 62%, hsl(210 40% 45% / 0.035) 0%, transparent 62%),
+    radial-gradient(80% 60% at 50% 100%, hsl(38 60% 35% / 0.055) 0%, transparent 65%),
+    linear-gradient(180deg, hsl(36 10% 11%) 0%, hsl(36 8% 7%) 45%, hsl(36 9% 9%) 100%);
+}
+
+/* ---------------------------------------------------------------------------
+   Live atmosphere — golden smoke waves + floating dust
+   ---------------------------------------------------------------------------
+   Paired with <AmbientBackground /> (rendered once, in the root layout).
+
+   PERFORMANCE IS THE WHOLE DESIGN HERE. Every animation below touches only
+   `transform` and `opacity`, the two properties a browser can animate entirely
+   on the compositor — no layout, no paint, no main-thread work per frame. That
+   is why the smoke is a handful of pre-blurred gradient bodies being moved
+   around rather than an animated `filter`, `background-position`, or a canvas
+   loop: those all force a repaint every frame, on a page whose actual job is
+   scrolling a grid of photographs.
+
+   The blur is rasterised once per layer and thereafter merely transformed, so
+   its cost is paid at load, not at 60fps.
+--------------------------------------------------------------------------- */
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Contains the `screen` blending below, so the waves brighten each other but
+     never reach through to page content. */
+  isolation: isolate;
+}
+
+.ambient__wave {
+  position: absolute;
+  /* `screen` makes overlapping gold accumulate into brighter cores the way
+     backlit smoke does; plain alpha compositing just muddies it. */
+  mix-blend-mode: screen;
+  will-change: transform;
+  /* Softens the gradient's own banding, which is very visible at these low
+     alphas on a dark ground. */
+  filter: blur(28px);
+}
+
+.ambient__wave--a {
+  top: -22%;
+  left: -18%;
+  width: 88vw;
+  height: 78vh;
+  background: radial-gradient(
+    closest-side,
+    hsl(43 74% 56% / 0.13) 0%,
+    hsl(40 70% 50% / 0.06) 45%,
+    transparent 74%
+  );
+  animation: smoke-a 46s ease-in-out infinite alternate;
+}
+
+.ambient__wave--b {
+  top: 8%;
+  right: -24%;
+  width: 76vw;
+  height: 88vh;
+  background: radial-gradient(
+    closest-side,
+    hsl(45 80% 62% / 0.1) 0%,
+    hsl(38 70% 46% / 0.05) 48%,
+    transparent 72%
+  );
+  animation: smoke-b 58s ease-in-out infinite alternate;
+}
+
+/* The cool body. Counterintuitive on a gold palette, but without a cooler
+   neighbour the eye normalises the warmth away and the whole page settles back
+   into flat brown. It is what makes the gold read as *light*. */
+.ambient__wave--c {
+  bottom: -30%;
+  left: 22%;
+  width: 82vw;
+  height: 72vh;
+  background: radial-gradient(
+    closest-side,
+    hsl(200 45% 42% / 0.05) 0%,
+    hsl(38 60% 40% / 0.055) 52%,
+    transparent 76%
+  );
+  animation: smoke-c 68s ease-in-out infinite alternate;
+}
+
+/* The "breath": one very wide, very slow diagonal sheen crossing the viewport.
+   At 90s it sits below the threshold where the eye tracks it as movement — it
+   registers as the room's light changing, which is the intended effect. */
+.ambient__sheen {
+  position: absolute;
+  top: -40%;
+  left: -60%;
+  width: 120vw;
+  height: 180vh;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+  background: linear-gradient(
+    103deg,
+    transparent 38%,
+    hsl(45 80% 62% / 0.05) 50%,
+    transparent 62%
+  );
+  animation: sheen-sweep 90s ease-in-out infinite;
+}
+
+.ambient__dust {
+  position: absolute;
+  inset: 0;
+}
+
+.ambient__mote {
+  position: absolute;
+  bottom: -12px;
+  left: var(--x);
+  width: var(--s);
+  height: var(--s);
+  opacity: 0;
+  /* A radial gradient rather than a background-color plus border-radius: the
+     global `* { border-radius: 0 !important }` rule would square off any
+     rounded dot. This also gives each mote a soft halo for free. */
+  background: radial-gradient(
+    circle,
+    hsl(45 82% 70% / 0.95) 0%,
+    hsl(43 74% 56% / 0.4) 42%,
+    transparent 70%
+  );
+  animation: mote-rise var(--d) linear var(--delay) infinite;
+}
+
+@keyframes smoke-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(7vw, 5vh, 0) scale(1.18) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-4vw, 9vh, 0) scale(1.06) rotate(-6deg);
+  }
+}
+
+@keyframes smoke-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.08) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-9vw, -6vh, 0) scale(0.92) rotate(-10deg);
+  }
+  100% {
+    transform: translate3d(-3vw, 7vh, 0) scale(1.14) rotate(5deg);
+  }
+}
+
+@keyframes smoke-c {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-8vw, -7vh, 0) scale(1.2) rotate(9deg);
+  }
+  100% {
+    transform: translate3d(6vw, -3vh, 0) scale(0.95) rotate(-4deg);
+  }
+}
+
+@keyframes sheen-sweep {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate3d(60vw, 0, 0);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* Motes rise the full height of the viewport and a little past it, swaying as
+   they go and fading at both ends so they never pop in or clip at an edge. */
+@keyframes mote-rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.55);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--o);
+  }
+  50% {
+    transform: translate3d(var(--sway), -58vh, 0) scale(1);
+  }
+  90% {
+    opacity: var(--o);
+  }
+  100% {
+    transform: translate3d(calc(var(--sway) * -0.55), -116vh, 0) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* Corners settle back to charcoal. Also hides the point where a mote loops. */
+.ambient__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 120% 90% at 50% 45%,
+    transparent 42%,
+    hsl(36 8% 7% / 0.55) 100%
+  );
+}
+
+/* Phones: the blurred wave layers are the expensive part (large textures, and
+   `screen` blending forces an offscreen buffer). Two instead of three, with a
+   lighter blur, and roughly half the dust. */
+@media (max-width: 640px) {
+  .ambient__wave {
+    filter: blur(18px);
+  }
+  .ambient__wave--c,
+  .ambient__mote:nth-child(2n) {
+    display: none;
+  }
+}
+
+/* Someone who asked the OS to stop animations gets the composition, frozen —
+   still atmospheric, nothing moving. */
+@media (prefers-reduced-motion: reduce) {
+  .ambient__wave,
+  .ambient__sheen,
+  .ambient__mote {
+    animation: none;
+  }
+  .ambient__mote {
+    /* Without the animation they would all sit at opacity 0 below the fold. */
+    opacity: calc(var(--o) * 0.7);
+    bottom: auto;
+    top: var(--x);
+  }
+  .ambient__sheen {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Global "juicy" interaction physics
+   ---------------------------------------------------------------------------
+   Applied once, here, rather than pasted onto ~200 className strings across 29
+   component files. Two reasons: the treatment cannot drift out of sync between
+   a button in the header and one in the checkout drawer, and a future change is
+   a single edit instead of a repo-wide find-and-replace.
+
+   SPECIFICITY IS DELIBERATE HERE. The first draft wrapped everything in
+   :where() so components could override it — and measurement showed that is
+   exactly what happened: the hero CTA carries `text-foreground` and
+   `transition` (150ms), so it scaled and glowed but never turned gold and ran
+   at half the intended duration. Since the treatment is meant to be universal,
+   the hover rule instead stacks its :not() exclusions, which raises it to
+   (0,8,1) — above any single Tailwind utility. Components no longer override
+   it by accident; they opt out on purpose.
+
+   The four exclusion classes are listed at the rule. Opt out of the physics on
+   any one element with `no-juice`.
+--------------------------------------------------------------------------- */
+
+@layer base {
+  /* `transform` is silently ignored on an inline box, so a bare <a> would never
+     scale. inline-block is the smallest fix; any display utility (flex, grid,
+     block) still overrides it, because of :where(). */
+  :where(a, button, [role='button'], summary) {
+    display: inline-block;
+  }
+}
+
+/* Outside any @layer, so it also outranks Tailwind's utilities layer.
+   The exclusions, in order:
+     :disabled / [aria-disabled]     — a dead control must not feel alive.
+     .no-juice                       — explicit per-element opt-out.
+     .card-gold                      — cards get the lift+breathe treatment
+                                       below instead; this also stops an
+                                       expensive drop-shadow being rasterised
+                                       over a full-bleed photograph.
+     [class*='destructive']          — delete/remove actions stay red rather
+                                       than turning gold.
+     [class*='hover:bg-gold'] and
+     [class*='text-gold-foreground'] — solid gold slabs. Their ink is dark by
+                                       design; forcing it to #d4af37 would sink
+                                       the label into its own background.
+
+   Tailwind writes class names verbatim into the class attribute, which is what
+   makes these substring matches reliable. */
+a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
+button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
+[role='button']:not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
+summary:not(.no-juice) {
+  transition: all 300ms ease-in-out;
+}
+
+a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
+a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):focus-visible,
+button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
+button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):focus-visible,
+[role='button']:not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
+summary:not(.no-juice):hover {
+  transform: scale(1.05);
+  color: #d4af37;
+  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.6));
+  outline: none;
+}
+
+/* Solid gold slabs still respond — brightness and a wider, softer halo instead
+   of a colour shift, because the shape is what the eye tracks on a filled
+   button, not the ink. */
+a[class*='hover:bg-gold']:hover,
+button[class*='hover:bg-gold']:hover,
+button[class*='text-gold-foreground']:hover,
+a[class*='hover:bg-gold']:focus-visible,
+button[class*='hover:bg-gold']:focus-visible {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 18px rgba(212, 175, 55, 0.5)) brightness(1.04);
+  outline: none;
+}
+
+/* A dead control must not hint at interactivity — this sits last so it wins
+   over both rules above regardless of the element's classes. */
+a[disabled]:hover,
+button[disabled]:hover,
+button:disabled:hover,
+[aria-disabled='true']:hover,
+.no-juice:hover {
+  transform: none;
+  filter: none;
+}
+
+@layer components {
+  /* Explicit escape hatch. Carries no declarations — it exists to be named in
+     the :not() chain above, and to document intent at the call site. */
+  .no-juice {
+    transform: none;
+  }
+
+  /* Nav treatment. A thin alias over the global physics, kept because a few
+     places (the mobile drawer, the accent Sale item) want the gold *resting*
+     colour too — which the global rule deliberately does not set, since turning
+     every link on the site gold at rest would flatten the hierarchy. */
+  .nav-gold {
+    @apply inline-block text-[#c9a227] transition-all duration-300 ease-in-out
+           hover:scale-105 hover:text-[#d4af37]
+           hover:drop-shadow-[0_0_12px_rgba(212,175,55,0.6)]
+           focus-visible:scale-105 focus-visible:text-[#d4af37]
+           focus-visible:outline-none
+           focus-visible:drop-shadow-[0_0_12px_rgba(212,175,55,0.6)];
+  }
+
+  /* Frosted, breathing card.
+
+     Rest is a hairline gold edge over a translucent, lightly blurred ground —
+     the ambient gold from body::before shows through, which is what makes the
+     surface read as glass rather than as a grey rectangle.
+
+     Hover deepens the blur, warms the border, and hands the glow to the
+     `gold-breathe` animation so it pulses for as long as the cursor stays.
+     The glow is box-shadow, not drop-shadow: it traces the card's rectangle
+     instead of compositing every child's alpha channel, which on a grid of
+     photographs is the difference between smooth and janky. */
+  .card-gold {
+    @apply border transition-all duration-500 ease-out;
+    border-color: hsl(var(--gold-hairline) / 0.35);
+    background-color: hsl(var(--card) / 0.72);
+    backdrop-filter: blur(3px) saturate(115%);
+    -webkit-backdrop-filter: blur(3px) saturate(115%);
+  }
+
+  .card-gold:hover,
+  .card-gold:focus-visible,
+  .card-gold:focus-within {
+    border-color: hsl(var(--gold) / 0.55);
+    background-color: hsl(var(--card) / 0.88);
+    backdrop-filter: blur(7px) saturate(130%);
+    -webkit-backdrop-filter: blur(7px) saturate(130%);
+    transform: translateY(-2px);
+    outline: none;
+    animation: gold-breathe 3.4s ease-in-out infinite;
+  }
+
+  /* Same glass, no lift — for containers inside a fixed drawer or modal, where
+     a 2px translate would fight the panel's own entrance transform. */
+  .panel-gold {
+    @apply border transition-all duration-500 ease-out;
+    border-color: hsl(var(--gold-hairline) / 0.3);
+    background-color: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(6px) saturate(115%);
+    -webkit-backdrop-filter: blur(6px) saturate(115%);
+  }
+
+  .panel-gold:hover,
+  .panel-gold:focus-within {
+    border-color: hsl(var(--gold) / 0.45);
+    background-color: hsl(var(--card) / 0.8);
+    animation: gold-breathe 3.4s ease-in-out infinite;
+  }
+
+  /* Always-on pulse, for the one or two elements that should feel alive before
+     the cursor arrives. Used sparingly — everything breathing at once is noise. */
+  .glow-breathe {
+    animation: gold-breathe 4.5s ease-in-out infinite;
+  }
+}
+
+@keyframes gold-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.14),
+      0 6px 26px -12px hsl(var(--gold) / 0.24);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.3),
+      0 10px 38px -10px hsl(var(--gold) / 0.44);
+  }
+}
+
+/* Motion is decoration here, so it goes away entirely for anyone who has asked
+   the OS to reduce it. The colour and border changes stay — those carry the
+   information about what is hoverable and what is not. */
+@media (prefers-reduced-motion: reduce) {
+  :where(a, button, [role='button'], summary):hover,
+  :where(a, button, [role='button'], summary):focus-visible,
+  .nav-gold:hover,
+  .nav-gold:focus-visible,
+  .card-gold:hover,
+  .card-gold:focus-visible,
+  .card-gold:focus-within {
+    transform: none;
+  }
+  .card-gold:hover,
+  .card-gold:focus-visible,
+  .card-gold:focus-within,
+  .panel-gold:hover,
+  .panel-gold:focus-within,
+  .glow-breathe {
+    animation: none;
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.22),
+      0 8px 30px -12px hsl(var(--gold) / 0.34);
+  }
+}

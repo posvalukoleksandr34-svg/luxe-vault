@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
+import { AmbientBackground } from '@/components/ambient-background';
 import { ToastViewport } from '@/components/toast-viewport';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
@@ -104,6 +105,10 @@ export default function RootLayout({
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${bodoni.variable} font-sans`}>
+        {/* Outside StoreProvider on purpose: it is decorative, has no state,
+            and sits at z-index -1 so it never participates in the app's own
+            stacking or event handling. */}
+        <AmbientBackground />
         <StoreProvider>
           {children}
           <ToastViewport />

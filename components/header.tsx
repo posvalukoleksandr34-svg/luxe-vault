@@ -91,43 +91,17 @@ export function Header() {
           </span>
         </button>
 
-        <nav className="ml-10 hidden items-center gap-8 lg:flex">
-          <button
-            onClick={goShop}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            {t('nav.shop')}
-          </button>
-          <button
-            onClick={goCollections}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            {t('nav.collections')}
-          </button>
-          <button
-            onClick={goAbout}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            {t('nav.about')}
-          </button>
-          <button
-            onClick={goNew}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            {t('filter.new')}
-          </button>
-          <button
-            onClick={goReviews}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            {t('reviews.title')}
-          </button>
-          <button
-            onClick={goSale}
-            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-colors duration-300 hover:text-gold"
-          >
+        {/* gap-8 -> gap-9: hover scales each item 5%, and at the old spacing
+            an enlarged item nearly touched its neighbour. */}
+        <nav className="ml-10 hidden items-center gap-9 lg:flex">
+          <NavLink onClick={goShop}>{t('nav.shop')}</NavLink>
+          <NavLink onClick={goCollections}>{t('nav.collections')}</NavLink>
+          <NavLink onClick={goAbout}>{t('nav.about')}</NavLink>
+          <NavLink onClick={goNew}>{t('filter.new')}</NavLink>
+          <NavLink onClick={goReviews}>{t('reviews.title')}</NavLink>
+          <NavLink onClick={goSale} accent>
             {t('filter.sale')}
-          </button>
+          </NavLink>
         </nav>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -233,19 +207,19 @@ export function Header() {
       {mobileOpen && (
         <div className="animate-fade-in border-t border-border lg:hidden">
           <nav className="flex flex-col gap-0.5 px-4 py-3">
-            <button onClick={goShop} className="rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-accent">
+            <button onClick={goShop} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('nav.shop')}
             </button>
-            <button onClick={goCollections} className="rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-accent">
+            <button onClick={goCollections} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('nav.collections')}
             </button>
-            <button onClick={goAbout} className="rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-accent">
+            <button onClick={goAbout} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('nav.about')}
             </button>
-            <button onClick={goNew} className="rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-accent">
+            <button onClick={goNew} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('filter.new')}
             </button>
-            <button onClick={goReviews} className="rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-accent">
+            <button onClick={goReviews} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('reviews.title')}
             </button>
             <button onClick={goSale} className="rounded-lg px-3 py-2.5 text-left text-sm text-gold transition hover:bg-accent">
@@ -255,5 +229,38 @@ export function Header() {
         </div>
       )}
     </header>
+  )
+}
+
+/**
+ * Desktop nav item.
+ *
+ * The gold/scale/glow treatment lives in the `.nav-gold` component class
+ * (app/globals.css) so the six items here — and the mobile drawer — cannot
+ * drift apart. `accent` brightens Распродажа a step above the rest, which is
+ * the one item that should pull the eye.
+ */
+function NavLink({
+  onClick,
+  children,
+  accent,
+}: {
+  onClick: () => void
+  children: React.ReactNode
+  accent?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'nav-gold text-[11px] uppercase tracking-[0.15em]',
+        // Slightly hotter at rest, so "Sale" reads as the priority item
+        // without needing a different size or a badge.
+        accent && 'text-[#e0bb4a]',
+      )}
+    >
+      {children}
+    </button>
   )
 }

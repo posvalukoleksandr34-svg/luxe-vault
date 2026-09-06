@@ -1,6 +1,6 @@
 'use client'
 
-import { SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
 import { useStore } from '@/lib/store'
@@ -102,20 +102,40 @@ export function ProductGrid() {
           </p>
         </div>
 
-        {/* Sort dropdown — reorders the grid immediately, no page reload */}
-        <label className="flex items-center gap-2 text-[12px] uppercase tracking-[0.1em] text-muted-foreground/70">
+        {/* Sort dropdown — reorders the grid immediately, no page reload.
+            `appearance-none` plus our own chevron is the point: every engine
+            draws a different-width native arrow (Safari's is the widest), and
+            the label text runs underneath it. Removing it makes the reserved
+            space `pr-9` and identical everywhere. */}
+        <label className="flex min-w-fit shrink-0 items-center gap-2 whitespace-nowrap text-[12px] uppercase tracking-[0.1em] text-muted-foreground/70">
           {t('filter.sortBy')}
-          <select
-            value={filter.sort}
-            onChange={(e) =>
-              setFilter({ ...filter, sort: e.target.value as typeof filter.sort })
-            }
-            className="border border-border/60 bg-transparent px-2.5 py-1.5 text-[12px] text-foreground outline-none focus:border-gold"
-          >
-            <option value="default">{t('filter.sortDefault')}</option>
-            <option value="price_asc">{t('filter.sortPriceAsc')}</option>
-            <option value="price_desc">{t('filter.sortPriceDesc')}</option>
-          </select>
+          <span className="relative inline-block">
+            <select
+              value={filter.sort}
+              onChange={(e) =>
+                setFilter({ ...filter, sort: e.target.value as typeof filter.sort })
+              }
+              className="w-full min-w-[180px] cursor-pointer appearance-none truncate whitespace-nowrap border border-border/60 bg-transparent py-1.5 pl-2.5 pr-9 text-[12px] text-foreground outline-none transition focus:border-gold"
+            >
+              {/* Options inherit the page's dark palette in some engines and the
+                  system one in others, so their colours are set explicitly —
+                  otherwise the list can render white-on-white. */}
+              <option value="default" className="bg-background text-foreground">
+                {t('filter.sortDefault')}
+              </option>
+              <option value="price_asc" className="bg-background text-foreground">
+                {t('filter.sortPriceAsc')}
+              </option>
+              <option value="price_desc" className="bg-background text-foreground">
+                {t('filter.sortPriceDesc')}
+              </option>
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/70"
+              strokeWidth={1.5}
+              aria-hidden
+            />
+          </span>
         </label>
       </div>
 

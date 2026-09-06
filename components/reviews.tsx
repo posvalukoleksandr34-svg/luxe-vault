@@ -83,7 +83,7 @@ export function Reviews() {
 
 function ReviewCard({ review, locale }: { review: Review; locale: string }) {
   return (
-    <div className="flex h-full flex-col border border-border p-7">
+    <div className="card-gold flex h-full flex-col p-7">
       <StarRating value={review.rating} />
       <p className="mt-5 flex-1 text-[14px] font-light leading-relaxed text-muted-foreground">
         {review.message}
@@ -172,7 +172,7 @@ function ReviewForm({ onSubmitted }: { onSubmitted: (review: Review) => void }) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-border p-6 sm:p-8">
+    <form onSubmit={handleSubmit} className="panel-gold p-6 sm:p-8">
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-[11px] uppercase tracking-[0.15em] text-foreground">

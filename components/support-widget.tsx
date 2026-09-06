@@ -107,7 +107,7 @@ function SupportPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="mb-5 space-y-2 border border-border/60 p-3">
+      <div className="panel-gold mb-5 space-y-2 p-3">
         <a
           href={`https://t.me/${TELEGRAM_ADMIN.replace('@', '')}`}
           target="_blank"

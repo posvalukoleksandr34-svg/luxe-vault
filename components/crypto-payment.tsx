@@ -240,7 +240,7 @@ export function CryptoPayment({
   if (!order) return null
 
   return (
-    <div className="flex flex-col items-center border border-border p-6 text-center">
+    <div className="card-gold flex flex-col items-center p-6 text-center">
       <StatusIndicator status={paymentStatus} />
 
       {paymentStatus !== 'paid' && (
