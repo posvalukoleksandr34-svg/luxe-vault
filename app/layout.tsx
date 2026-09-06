@@ -26,9 +26,27 @@ const bodoni = Bodoni_Moda({
 // auth links that land on the wrong origin.
 const SITE_URL = 'https://luxe-vault.store';
 const SITE_NAME = 'LUXE VAULT';
-const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Accessories';
+const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
+
+// The meta description is the single most public claim the site makes — it is
+// what appears verbatim in Google results and in every link preview.
+//
+// It deliberately does NOT say "authenticity guaranteed" or "designer items".
+// Both would assert that the goods are genuine branded product, which flatly
+// contradicts the Terms of Use ("Мы продаём премиальные реплики, а не
+// оригинальную продукцию брендов"), the replica badge on every product card,
+// and the disclosure in every product modal. A store whose search snippet
+// promises authenticity while its own terms deny it is not merely inconsistent
+// — that gap is what a consumer-protection complaint or a payment-processor
+// review is built on.
+//
+// "Designer-inspired" is the honest phrasing that keeps the premium register.
 const SITE_DESCRIPTION =
-  'Премиальные реплики одежды, обуви и аксессуаров. Не оригинальная брендовая продукция. Лимитированные коллекции, доставка по всей Евразии за 4–5 рабочих дней.';
+  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories. Meticulous craftsmanship, limited drops, shipped from Switzerland.';
+
+// Shorter variant for link previews, where Telegram/WhatsApp truncate hard.
+const SITE_DESCRIPTION_SHORT =
+  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -42,14 +60,15 @@ export const metadata: Metadata = {
     template: '%s — LUXE VAULT',
   },
   description: SITE_DESCRIPTION,
+  // Ignored by Google since 2009; kept because a few smaller engines and
+  // internal search tools still read it. English, to match the description.
   keywords: [
     'LUXE VAULT',
-    'реплики брендовой одежды',
-    'дизайнерская одежда',
-    'лимитированные коллекции',
-    'премиальные реплики',
-    'кроссовки премиум',
-    'модная одежда онлайн',
+    'premium replicas',
+    'designer-inspired apparel',
+    'replica sneakers',
+    'limited collections',
+    'luxury fashion online',
   ],
   applicationName: SITE_NAME,
   authors: [{ name: SITE_NAME }],
@@ -71,7 +90,10 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    description: SITE_DESCRIPTION_SHORT,
+    // Matches <html lang="ru"> — the page still renders Russian by default, so
+    // declaring en_US here would misreport the document to crawlers. See the
+    // note in the handover about aligning these.
     locale: 'ru_RU',
     alternateLocale: ['en_US', 'it_IT', 'fr_FR', 'de_DE'],
   },
@@ -81,7 +103,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    description: SITE_DESCRIPTION_SHORT,
     creator: '@luxevault_orders',
   },
 
