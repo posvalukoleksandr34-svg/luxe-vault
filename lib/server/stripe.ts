@@ -192,3 +192,109 @@ export async function listSavedCards(customerId: string): Promise<SavedCard[]> {
 export async function detachSavedCard(paymentMethodId: string): Promise<void> {
   await getStripe().paymentMethods.detach(paymentMethodId)
 }
+
+/**
+ * Cancels a PaymentIntent that has not been captured, so it can never be
+ * confirmed and charged.
+ *
+ * Idempotent by design: an intent already in a terminal state is reported as
+ * success rather than raised, because the caller's goal ("this must not be
+ * chargeable") is already satisfied and a hard failure would leave the order
+ * row and Stripe out of step.
+ *
+ * Returns false only when the intent has actually taken money — that needs a
+ * refund, not a cancellation, and silently swallowing it would lose funds.
+ */
+export async function cancelPaymentIntent(paymentIntentId: string): Promise<
+  { ok: true; alreadyTerminal: boolean } | { ok: false; reason: 'captured' | 'error'; message: string }
+> {
+  const stripe = getStripe()
+  try {
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId)
+
+    if (intent.status === 'canceled') return { ok: true, alreadyTerminal: true }
+    if (intent.status === 'succeeded' || intent.status === 'processing') {
+      return {
+        ok: false,
+        reason: 'captured',
+        message: `PaymentIntent is ${intent.status}; refund it instead of cancelling.`,
+      }
+    }
+
+    await stripe.paymentIntents.cancel(paymentIntentId, {
+      cancellation_reason: 'requested_by_customer',
+    })
+    return { ok: true, alreadyTerminal: false }
+  } catch (error) {
+    return {
+      ok: false,
+      reason: 'error',
+      message: error instanceof Error ? error.message : 'Stripe error',
+    }
+  }
+}
+
+export type RefundOutcome =
+  | { ok: true; refundId: string; amountRefunded: number; fullyRefunded: boolean }
+  | { ok: false; message: string }
+
+/**
+ * Refunds a captured PaymentIntent, in full or in part.
+ *
+ * `amount` is in MAJOR units (the same units as Order.total) and is converted
+ * here — passing 49.9 where Stripe expects minor units would refund CHF 0.49.
+ * Omit it for a full refund of whatever remains.
+ *
+ * The remaining balance is computed from Stripe's own ledger
+ * (amount_received - amount_refunded) rather than from our database, so two
+ * concurrent refund requests cannot together return more than was charged:
+ * Stripe rejects the second.
+ */
+export async function refundPayment(
+  paymentIntentId: string,
+  amount?: number,
+): Promise<RefundOutcome> {
+  const stripe = getStripe()
+  try {
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['latest_charge'],
+    })
+
+    if (intent.status !== 'succeeded') {
+      return { ok: false, message: `PaymentIntent is ${intent.status}, not a captured payment.` }
+    }
+
+    const charge = intent.latest_charge
+    const alreadyRefunded =
+      charge && typeof charge !== 'string' ? charge.amount_refunded : 0
+    const remaining = intent.amount_received - alreadyRefunded
+
+    if (remaining <= 0) return { ok: false, message: 'This payment is already fully refunded.' }
+
+    const requested = amount === undefined ? remaining : toMinorUnits(amount)
+    if (requested <= 0) return { ok: false, message: 'Refund amount must be greater than zero.' }
+    if (requested > remaining) {
+      return {
+        ok: false,
+        message: `Refund exceeds the remaining balance (${(remaining / 100).toFixed(2)} ${intent.currency.toUpperCase()}).`,
+      }
+    }
+
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: requested,
+      reason: 'requested_by_customer',
+      metadata: intent.metadata?.orderId ? { orderId: intent.metadata.orderId } : undefined,
+    })
+
+    return {
+      ok: true,
+      refundId: refund.id,
+      // Back to major units for the caller, which stores and displays them.
+      amountRefunded: requested / 100,
+      fullyRefunded: requested === remaining,
+    }
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Stripe error' }
+  }
+}

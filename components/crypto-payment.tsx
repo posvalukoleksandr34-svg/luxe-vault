@@ -315,6 +315,10 @@ function StatusIndicator({ status }: { status: PaymentStatus }) {
     paid: { label: t('crypto.paid'), dot: 'bg-emerald-400', text: 'text-emerald-400' },
     failed: { label: t('crypto.failed'), dot: 'bg-destructive', text: 'text-destructive' },
     expired: { label: t('crypto.expired'), dot: 'bg-destructive', text: 'text-destructive' },
+    // Unreachable in the crypto flow today, but the map must stay total or
+    // an added status becomes a runtime crash instead of a type error.
+    refunded: { label: t('orders.refunded'), dot: 'bg-violet-300', text: 'text-violet-300' },
+    partially_refunded: { label: t('orders.partiallyRefunded'), dot: 'bg-violet-300', text: 'text-violet-300' },
   }
   const c = config[status]
 

@@ -15,6 +15,11 @@ import {
   orderConfirmationText,
 } from '@/lib/server/emails/order-confirmation'
 import {
+  paymentReceiptHtml,
+  paymentReceiptSubject,
+  paymentReceiptText,
+} from '@/lib/server/emails/payment-receipt'
+import {
   escapeHtml,
   isMailConfigured,
   sendEmail,
@@ -171,6 +176,28 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
     subject: orderConfirmationSubject(order),
     html: orderConfirmationHtml(order),
     text: orderConfirmationText(order),
+  })
+  return ok
+}
+
+
+/**
+ * Payment receipt, sent once Stripe confirms the money moved.
+ *
+ * Never throws: the only caller is the Stripe webhook, and a rejected promise
+ * there would return a non-2xx, which makes Stripe retry the whole event —
+ * re-running the payment-status write for an email problem.
+ */
+export async function sendPaymentReceipt(order: Order): Promise<boolean> {
+  const to = order.customer.email?.trim()
+  if (!to) return false
+
+  const { ok } = await sendEmail({
+    to,
+    replyTo: SUPPORT_INBOX,
+    subject: paymentReceiptSubject(order),
+    html: paymentReceiptHtml(order),
+    text: paymentReceiptText(order),
   })
   return ok
 }

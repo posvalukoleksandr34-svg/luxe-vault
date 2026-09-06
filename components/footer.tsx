@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { openCookieSettings } from '@/components/cookie-consent'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { useStore } from '@/lib/store'
 
@@ -142,7 +143,30 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border/40 pt-6 text-center">
+        <div className="mt-12 space-y-4 border-t border-border/40 pt-6 text-center">
+          {/* Legal links belong in the footer of every page: payment providers
+              and app stores check for them, and GDPR requires the privacy
+              notice to be reachable from anywhere. */}
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <a href="/legal/terms" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+              {t('footer.terms')}
+            </a>
+            <a href="/legal/privacy" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+              {t('footer.privacy')}
+            </a>
+            <a href="/legal/refunds" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+              {t('footer.refunds')}
+            </a>
+            {/* Consent must be withdrawable as easily as it was given, which
+                means a permanent entry point rather than a one-off banner. */}
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold"
+            >
+              {t('cookies.settings')}
+            </button>
+          </nav>
           <p className="text-[11px] font-light text-muted-foreground/40">
             {t('footer.rights')}
           </p>

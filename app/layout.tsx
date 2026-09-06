@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
 import { AmbientBackground } from '@/components/ambient-background';
+import { CookieConsent } from '@/components/cookie-consent';
 import { ToastViewport } from '@/components/toast-viewport';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
@@ -112,6 +113,10 @@ export default function RootLayout({
         <StoreProvider>
           {children}
           <ToastViewport />
+          {/* Inside StoreProvider: the banner is localised via the store. It
+              renders nothing until mounted, so it cannot flash for visitors
+              who already answered. */}
+          <CookieConsent />
         </StoreProvider>
       </body>
     </html>

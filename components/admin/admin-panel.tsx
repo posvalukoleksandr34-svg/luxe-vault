@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   shipped: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
   delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
   cancelled: 'text-red-400 bg-red-400/10 border-red-400/30',
+  refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
 /** Russian labels for the admin console, which is internal and Russian-only.
@@ -44,6 +45,7 @@ const STATUS_LABELS_RU: Record<OrderStatus, string> = {
   shipped: 'Отправлен',
   delivered: 'Доставлен',
   cancelled: 'Отменён',
+  refunded: 'Возврат',
 }
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -52,6 +54,8 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid: 'Оплачено',
   failed: 'Платёж не прошёл',
   expired: 'Истёк',
+  refunded: 'Возвращено',
+  partially_refunded: 'Частичный возврат',
 }
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
@@ -60,6 +64,8 @@ const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   paid: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
   failed: 'text-red-400 bg-red-400/10 border-red-400/30',
   expired: 'text-red-400 bg-red-400/10 border-red-400/30',
+  refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
+  partially_refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
 const ORDER_STATUS_OPTIONS: OrderStatus[] = ORDER_STATUSES
@@ -90,6 +96,8 @@ export function AdminPanel() {
   const [orders, setOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [refundOpenId, setRefundOpenId] = useState<string | null>(null)
+  const [refundingId, setRefundingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -137,6 +145,44 @@ export function AdminPanel() {
     } catch {
       setOrders(previous)
       pushToast({ title: 'Не удалось обновить статус заказа', variant: 'default' })
+    }
+  }
+
+  /**
+   * Executes a real Stripe refund. This is the ONLY place money leaves — the
+   * customer cabinet can request a refund but never trigger one, so every
+   * refund passes a human first.
+   *
+   * No optimistic update: the server decides the resulting status (a partial
+   * refund keeps the order open, a full one closes it) and guessing here would
+   * show the wrong badge whenever Stripe rejected the amount.
+   */
+  async function handleRefund(id: string, amount?: number) {
+    setRefundingId(id)
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(amount === undefined ? {} : { amount }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        pushToast({ title: data.error || 'Не удалось оформить возврат', variant: 'default' })
+        return
+      }
+      if (data.order) {
+        setOrders((prev) => prev.map((o) => (o.id === id ? data.order : o)))
+      }
+      pushToast({
+        title: data.fullyRefunded ? 'Возврат оформлен полностью' : 'Частичный возврат оформлен',
+        description: `${formatPrice(data.refunded)} · ${data.refundId}`,
+        variant: 'success',
+      })
+      setRefundOpenId(null)
+    } catch {
+      pushToast({ title: 'Не удалось оформить возврат', variant: 'default' })
+    } finally {
+      setRefundingId(null)
     }
   }
 
@@ -552,6 +598,16 @@ export function AdminPanel() {
                         handleUpdateStatus(order.id, status, trackingNumber)
                       }
                     />
+
+                    <RefundControl
+                      order={order}
+                      open={refundOpenId === order.id}
+                      busy={refundingId === order.id}
+                      onToggle={() =>
+                        setRefundOpenId((prev) => (prev === order.id ? null : order.id))
+                      }
+                      onRefund={(amount) => handleRefund(order.id, amount)}
+                    />
                   </div>
                 ))}
               </div>
@@ -749,6 +805,103 @@ function StatCard({
  * gets a "shipped" email with no tracking number in it. Any other status saves
  * on selection, since there is nothing further to fill in.
  */
+/**
+ * Refund control for a paid order.
+ *
+ * Collapsed behind a toggle on purpose: this is the one button in the console
+ * that moves money out, and it should take a deliberate click to reach rather
+ * than sitting next to the status dropdown where it can be hit by accident.
+ *
+ * The amount box is optional — empty means "refund whatever is left". The
+ * server is the authority on how much that is (it reads Stripe's ledger), so
+ * this input is a convenience, not a validation boundary.
+ */
+function RefundControl({
+  order,
+  open,
+  busy,
+  onToggle,
+  onRefund,
+}: {
+  order: Order
+  open: boolean
+  busy: boolean
+  onToggle: () => void
+  onRefund: (amount?: number) => void
+}) {
+  const [amount, setAmount] = useState('')
+
+  const refunded = order.refundedAmount ?? 0
+  const remaining = Number((order.total - refunded).toFixed(2))
+  const refundable =
+    order.paymentProvider === 'stripe' &&
+    Boolean(order.paymentId) &&
+    (order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded') &&
+    remaining > 0
+
+  if (!refundable) {
+    // Still show what has already been returned, so a fully refunded order
+    // does not look identical to one that was never paid.
+    return refunded > 0 ? (
+      <p className="mt-3 text-xs text-violet-300/80">
+        Возвращено: {formatPrice(refunded)}
+        {order.stripeRefundId && (
+          <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
+            {order.stripeRefundId}
+          </span>
+        )}
+      </p>
+    ) : null
+  }
+
+  const parsed = Number(amount.replace(',', '.'))
+  const amountInvalid = amount.trim() !== '' && (!Number.isFinite(parsed) || parsed <= 0 || parsed > remaining)
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-xs text-muted-foreground transition hover:text-destructive"
+      >
+        {open ? 'Скрыть возврат' : 'Оформить возврат'}
+        {refunded > 0 && ` · уже возвращено ${formatPrice(refunded)}`}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-3">
+          <p className="text-xs text-muted-foreground">
+            Доступно к возврату: <span className="text-foreground">{formatPrice(remaining)}</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={`Сумма (пусто = ${formatPrice(remaining)})`}
+              className="w-48 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
+            />
+            <button
+              type="button"
+              disabled={busy || amountInvalid}
+              onClick={() => onRefund(amount.trim() === '' ? undefined : parsed)}
+              className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy ? 'Возврат…' : 'Вернуть'}
+            </button>
+          </div>
+          {amountInvalid && (
+            <p className="text-[11px] text-destructive">
+              Введите сумму от 0 до {formatPrice(remaining)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function OrderStatusControl({
   order,
   onSave,

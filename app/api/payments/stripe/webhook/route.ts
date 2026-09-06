@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { setPaymentStatus } from '@/lib/server/orders-store'
+import {
+  claimReceiptSend,
+  releaseReceiptClaim,
+  setPaymentStatus,
+} from '@/lib/server/orders-store'
+import { isMailConfigured, sendPaymentReceipt } from '@/lib/server/mailer'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import type { PaymentStatus } from '@/lib/types'
 
@@ -88,7 +93,35 @@ export async function POST(request: NextRequest) {
       // retrying, and a non-2xx would have it retry for days.
       return NextResponse.json({ received: true, matched: false })
     }
-    return NextResponse.json({ received: true, order: order.id, paymentStatus: next })
+
+    // Transactional receipt, sent only on a real settlement.
+    //
+    // The send is guarded by an atomic claim rather than by checking a flag:
+    // Stripe delivers at least once, and two retries can be in flight in two
+    // separate serverless invocations that share no memory, so check-then-send
+    // would race and email the customer twice.
+    let receiptSent = false
+    if (next === 'paid' && isMailConfigured) {
+      const claimed = await claimReceiptSend(paymentIntentId)
+      if (claimed) {
+        receiptSent = await sendPaymentReceipt(claimed)
+        if (!receiptSent) {
+          // Hand the claim back so a later retry can try again — otherwise a
+          // transient Resend outage would suppress the receipt permanently.
+          await releaseReceiptClaim(paymentIntentId)
+          console.warn(`[receipts] ${claimed.id} payment succeeded but receipt was not sent`)
+        }
+      }
+    }
+
+    // Always 200 once the payment status is written. An email failure must not
+    // make Stripe retry the event and re-run the money-state update.
+    return NextResponse.json({
+      received: true,
+      order: order.id,
+      paymentStatus: next,
+      receiptSent,
+    })
   } catch (error) {
     // A genuine server-side failure — 500 so Stripe DOES retry.
     const message = error instanceof Error ? error.message : 'Failed to update order'

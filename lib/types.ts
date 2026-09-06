@@ -90,6 +90,7 @@ export type OrderStatus =
   | 'shipped'
   | 'delivered'
   | 'cancelled'
+  | 'refunded'
 
 export const ORDER_STATUSES: OrderStatus[] = [
   'pending',
@@ -97,6 +98,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
   'shipped',
   'delivered',
   'cancelled',
+  'refunded',
 ]
 
 /** Payment lifecycle of an order, independent of the fulfillment `status`
@@ -113,6 +115,13 @@ export type PaymentStatus =
   | 'paid'
   | 'failed'
   | 'expired'
+  | 'refunded'
+  /** Money partially returned. Deliberately distinct from 'refunded': the
+   *  order still holds funds and must remain distinguishable in reporting. */
+  | 'partially_refunded'
+
+/** Mirrors the public.return_status enum. */
+export type ReturnStatus = 'none' | 'requested' | 'approved' | 'refunded'
 
 export type CustomerAddress = {
   /** Full single-line address, composed from the structured parts below.
@@ -171,6 +180,24 @@ export type Order = {
   paymentCurrency?: string
   paymentAddress?: string
   paymentAmount?: number
+
+  /** Refund lifecycle. A customer may only move 'none' -> 'requested';
+   *  approving and actually refunding are admin/service-role actions. */
+  returnStatus?: ReturnStatus
+  returnReason?: string
+  returnRequestedAt?: number
+
+  /** Why the order was cancelled, when a reason was supplied. */
+  cancelledReason?: string
+  /** Cumulative amount refunded, in the same units as `total`. */
+  refundedAmount?: number
+  refundedAt?: number
+  /** Most recent Stripe refund id, for reconciliation. */
+  stripeRefundId?: string
+
+  /** When the payment receipt was sent. Claimed before sending, so a Stripe
+   *  webhook retry cannot produce a second copy. */
+  receiptSentAt?: number
 }
 
 export type Promo = {

@@ -11,7 +11,7 @@ import type { Order } from '@/lib/types'
  * <style> block carries media queries, which Outlook ignores harmlessly.
  */
 
-const C = {
+export const C = {
   bg: '#0b0b0b',
   card: '#131313',
   inset: '#0b0b0b',
@@ -23,15 +23,15 @@ const C = {
   gold: '#c9a227',
 }
 
-const SANS = "Helvetica,Arial,sans-serif"
-const SERIF = "Georgia,'Times New Roman',serif"
+export const SANS = "Helvetica,Arial,sans-serif"
+export const SERIF = "Georgia,'Times New Roman',serif"
 
 /** Money is stored as a number; render it the way the storefront does. */
-function money(amount: number, currency = 'CHF'): string {
+export function money(amount: number, currency = 'CHF'): string {
   return `${currency} ${amount.toFixed(2)}`
 }
 
-function itemRows(order: Order): string {
+export function itemRows(order: Order): string {
   return order.items
     .map(
       (item) => `
@@ -50,7 +50,7 @@ function itemRows(order: Order): string {
     .join('')
 }
 
-function totalRow(label: string, value: string, emphasis = false): string {
+export function totalRow(label: string, value: string, emphasis = false): string {
   return `
     <tr>
       <td style="padding:${emphasis ? '14px 0 0 0' : '6px 0 0 0'}; font-family:${SANS}; font-size:${emphasis ? '14px' : '13px'}; color:${emphasis ? C.heading : C.muted};">

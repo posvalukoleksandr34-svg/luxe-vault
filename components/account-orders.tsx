@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Ban, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
@@ -15,6 +15,7 @@ const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   shipped: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
   delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
   cancelled: 'text-red-400 bg-red-400/10 border-red-400/30',
+  refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
 /** An order still owes money whenever it carries a payment status that isn't
@@ -35,10 +36,47 @@ export function AccountOrders({
   onReload: () => void
   unpaidOnly?: boolean
 }) {
-  const { t, locale } = useStore()
+  const { t, locale, pushToast } = useStore()
   const [paying, setPaying] = useState<{ orderId: string; token: string } | null>(null)
+  // Keyed by order id rather than a single boolean, so two cards cannot both
+  // show a spinner when only one request is in flight.
+  const [cancelling, setCancelling] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<{ id: string; message: string } | null>(null)
+  const [refunding, setRefunding] = useState<string | null>(null)
 
   const load = onReload
+
+  async function cancel(order: Order) {
+    if (cancelling) return
+    if (!window.confirm(t('orders.cancelConfirm'))) return
+
+    setCancelling(order.id)
+    setCancelError(null)
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        // Surface the server's own message — a 409 explains *why* (already
+        // paid, payment in flight), which a generic string would throw away.
+        setCancelError({ id: order.id, message: data.error || t('orders.cancelFailed') })
+        return
+      }
+
+      pushToast({ title: t('orders.cancelled'), description: order.id, variant: 'success' })
+      // Refetch rather than patching local state: the server may also have
+      // changed the payment status, and guessing at it here would drift.
+      load()
+    } catch {
+      setCancelError({ id: order.id, message: t('orders.cancelFailed') })
+    } finally {
+      setCancelling(null)
+    }
+  }
   const unpaid = orders.filter(isUnpaid)
   const history = orders.filter((o) => !isUnpaid(o))
 
@@ -46,6 +84,30 @@ export function AccountOrders({
     const token = order.lookupToken ?? tokenFor(order.id)
     if (!token) return
     setPaying({ orderId: order.id, token })
+  }
+
+  async function askRefund(order: Order) {
+    if (refunding) return
+    setRefunding(order.id)
+    setCancelError(null)
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/refund-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCancelError({ id: order.id, message: data.error || t('orders.cancelFailed') })
+        return
+      }
+      pushToast({ title: t('orders.refundRequested'), description: order.id, variant: 'success' })
+      load()
+    } catch {
+      setCancelError({ id: order.id, message: t('orders.cancelFailed') })
+    } finally {
+      setRefunding(null)
+    }
   }
 
   if (paying) {
@@ -127,14 +189,38 @@ export function AccountOrders({
                 locale={locale}
                 highlight
                 action={
-                  <button
-                    type="button"
-                    onClick={() => startPayment(order)}
-                    className="flex items-center justify-center gap-2 border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
-                  >
-                    <Wallet className="size-3.5" />
-                    {t('orders.payNow')}
-                  </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void cancel(order)}
+                        disabled={cancelling === order.id}
+                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-destructive/50 hover:text-destructive disabled:opacity-40"
+                      >
+                        {cancelling === order.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Ban className="size-3.5" />
+                        )}
+                        {t('orders.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startPayment(order)}
+                        disabled={cancelling === order.id}
+                        className="flex items-center justify-center gap-2 border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:opacity-40"
+                      >
+                        <Wallet className="size-3.5" />
+                        {t('orders.payNow')}
+                      </button>
+                    </div>
+                    {cancelError?.id === order.id && (
+                      <p className="flex items-start gap-1.5 text-right text-[11px] font-light leading-snug text-destructive">
+                        <AlertCircle className="mt-px size-3 shrink-0" />
+                        {cancelError.message}
+                      </p>
+                    )}
+                  </div>
                 }
               />
             ))}
@@ -149,7 +235,44 @@ export function AccountOrders({
           </h3>
           <div className="space-y-3">
             {history.map((order) => (
-              <OrderCard key={order.id} order={order} locale={locale} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                locale={locale}
+                action={
+                  // Refunds are requested here and executed by an admin — a
+                  // one-click self-refund would let a customer keep the goods
+                  // and take the money back before anyone reviewed it.
+                  order.paymentStatus === 'paid' &&
+                  (!order.returnStatus || order.returnStatus === 'none') ? (
+                    <div className="flex flex-col items-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void askRefund(order)}
+                        disabled={refunding === order.id}
+                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/40 hover:text-gold disabled:opacity-40"
+                      >
+                        {refunding === order.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="size-3.5" />
+                        )}
+                        {t('orders.requestRefund')}
+                      </button>
+                      {cancelError?.id === order.id && (
+                        <p className="flex items-start gap-1.5 text-right text-[11px] font-light leading-snug text-destructive">
+                          <AlertCircle className="mt-px size-3 shrink-0" />
+                          {cancelError.message}
+                        </p>
+                      )}
+                    </div>
+                  ) : order.returnStatus === 'requested' ? (
+                    <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
+                      {t('orders.refundPending')}
+                    </span>
+                  ) : undefined
+                }
+              />
             ))}
           </div>
         </section>
@@ -166,6 +289,8 @@ function PaymentBadge({ status }: { status: PaymentStatus }) {
     paid: { label: t('crypto.paid'), className: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' },
     failed: { label: t('crypto.failed'), className: 'text-red-400 border-red-400/30 bg-red-400/10' },
     expired: { label: t('crypto.expired'), className: 'text-red-400 border-red-400/30 bg-red-400/10' },
+    refunded: { label: t('orders.refunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
+    partially_refunded: { label: t('orders.partiallyRefunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
   }
   const c = map[status]
   return (
@@ -210,6 +335,11 @@ function OrderCard({
             </span>
             {order.paymentStatus && <PaymentBadge status={order.paymentStatus} />}
           </div>
+          {order.refundedAmount != null && order.refundedAmount > 0 && (
+            <span className="text-[10px] uppercase tracking-[0.1em] text-violet-300/80">
+              {t('orders.refundedAmount')} {formatPrice(order.refundedAmount)}
+            </span>
+          )}
         </div>
       </div>
 
