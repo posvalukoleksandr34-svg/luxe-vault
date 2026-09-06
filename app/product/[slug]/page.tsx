@@ -2,11 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { CartPanel } from '@/components/cart-panel'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductDetail } from '@/components/products/product-detail'
-import { UserPanel } from '@/components/user-panel'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import type { Product } from '@/lib/types'
 
@@ -163,11 +161,6 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </main>
 
       <Footer />
-
-      {/* The cart and account drawers are global UI; without them "add to cart"
-          on this page would update state with nothing to show for it. */}
-      <CartPanel />
-      <UserPanel />
 
       {/* Rendered by the server, so it is present in the initial HTML where
           crawlers read it. */}

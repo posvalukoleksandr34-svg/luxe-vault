@@ -4,6 +4,7 @@ import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
 import { AmbientBackground } from '@/components/ambient-background';
 import { CookieConsent } from '@/components/cookie-consent';
+import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
@@ -134,6 +135,9 @@ export default function RootLayout({
         <AmbientBackground />
         <StoreProvider>
           {children}
+          {/* Cart / checkout / account drawers. Mounted here, not per page: a
+              page that renders a trigger but not its panel is a dead end. */}
+          <GlobalPanels />
           <ToastViewport />
           {/* Inside StoreProvider: the banner is localised via the store. It
               renders nothing until mounted, so it cannot flash for visitors
