@@ -2,7 +2,7 @@
 // it is paid immediately or left for later — is created through here, so the
 // id, the lookup token and the payment status can never be dictated by the
 // browser.
-import { requiresPrepayment } from '@/lib/data'
+import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order } from '@/lib/types'
 
@@ -109,6 +109,12 @@ export function validateOrderDraft(
 
   const payment = (body.payment ?? '').trim()
   if (!payment) return { ok: false, error: 'Missing payment method' }
+  // Allow-list, not just a presence check. Hiding "cash on delivery" in the UI
+  // does not stop anyone POSTing it here, and an unrecognised method would
+  // otherwise be stored verbatim on an order nobody can collect money for.
+  if (!PAYMENT_METHODS.includes(payment)) {
+    return { ok: false, error: 'Unsupported payment method' }
+  }
 
   return {
     ok: true,

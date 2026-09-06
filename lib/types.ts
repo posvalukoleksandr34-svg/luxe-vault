@@ -102,9 +102,11 @@ export const ORDER_STATUSES: OrderStatus[] = [
 /** Payment lifecycle of an order, independent of the fulfillment `status`
  * above. An order that needs paying up front is stored as `pending_payment`
  * the moment it's placed — never discarded — so the customer can settle it
- * later from their account. Only the signature-verified webhook at
- * /api/payments/crypto/webhook may advance it to `paid`; the client never
- * writes a payment status directly. */
+ * later from their account. Only a signature-verified webhook
+ * (/api/payments/crypto/webhook for NOWPayments, /api/payments/stripe/webhook
+ * for Stripe) may advance it to `paid`; the client never writes a payment
+ * status directly, and a return from the provider's hosted page is treated as
+ * a navigation hint, never as proof of payment. */
 export type PaymentStatus =
   | 'pending_payment'
   | 'confirming'
@@ -161,10 +163,10 @@ export type Order = {
   deliveredAt?: number
   cancelledAt?: number
 
-  /** Set for every order that requires payment up front (i.e. everything
-   * except cash on delivery). */
+  /** Set for every order: since SBP and cash on delivery were removed, every
+   * remaining method is paid up front. */
   paymentStatus?: PaymentStatus
-  paymentProvider?: 'nowpayments'
+  paymentProvider?: 'nowpayments' | 'stripe'
   paymentId?: string
   paymentCurrency?: string
   paymentAddress?: string

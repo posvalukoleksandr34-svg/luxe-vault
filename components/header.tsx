@@ -34,11 +34,6 @@ export function Header() {
 
   const currentLang = LOCALES.find((l) => l.code === locale)
 
-  function goShop() {
-    setMobileOpen(false)
-    scrollToId('shop')
-  }
-
   function goCollections() {
     setMobileOpen(false)
     scrollToId('collections')
@@ -94,7 +89,6 @@ export function Header() {
         {/* gap-8 -> gap-9: hover scales each item 5%, and at the old spacing
             an enlarged item nearly touched its neighbour. */}
         <nav className="ml-10 hidden items-center gap-9 lg:flex">
-          <NavLink onClick={goShop}>{t('nav.shop')}</NavLink>
           <NavLink onClick={goCollections}>{t('nav.collections')}</NavLink>
           <NavLink onClick={goAbout}>{t('nav.about')}</NavLink>
           <NavLink onClick={goNew}>{t('filter.new')}</NavLink>
@@ -207,9 +201,6 @@ export function Header() {
       {mobileOpen && (
         <div className="animate-fade-in border-t border-border lg:hidden">
           <nav className="flex flex-col gap-0.5 px-4 py-3">
-            <button onClick={goShop} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
-              {t('nav.shop')}
-            </button>
             <button onClick={goCollections} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('nav.collections')}
             </button>

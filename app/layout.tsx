@@ -27,7 +27,7 @@ const SITE_URL = 'https://luxe-vault.store';
 const SITE_NAME = 'LUXE VAULT';
 const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Accessories';
 const SITE_DESCRIPTION =
-  'Премиальная одежда, обувь и аксессуары. Зеркальное качество, лимитированные коллекции, доставка по всей Евразии за 4–5 рабочих дней.';
+  'Премиальные реплики одежды, обуви и аксессуаров. Не оригинальная брендовая продукция. Лимитированные коллекции, доставка по всей Евразии за 4–5 рабочих дней.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,10 +43,10 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   keywords: [
     'LUXE VAULT',
-    'премиальная одежда',
+    'реплики брендовой одежды',
     'дизайнерская одежда',
     'лимитированные коллекции',
-    'зеркальное качество',
+    'премиальные реплики',
     'кроссовки премиум',
     'модная одежда онлайн',
   ],

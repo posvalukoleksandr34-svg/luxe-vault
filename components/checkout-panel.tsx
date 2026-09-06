@@ -1,14 +1,16 @@
 'use client'
 
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
+import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { CountrySelect } from '@/components/country-select'
 import { CryptoPayment } from '@/components/crypto-payment'
 import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
-import { CRYPTO_PAYMENT_METHOD } from '@/lib/data'
+import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
 import { rememberOrder } from '@/lib/order-registry'
+import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
 import { useStore, formatPrice } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import {
@@ -32,6 +34,7 @@ export function CheckoutPanel() {
     applyPromo,
     clearCart,
     pushToast,
+    currentUser,
     t,
   } = useStore()
 
@@ -54,6 +57,13 @@ export function CheckoutPanel() {
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [submitting, setSubmitting] = useState(false)
 
+  // Remembered checkout details. `hasSaved` is read once on open rather than
+  // on every render: localStorage is synchronous and would otherwise be hit
+  // on each keystroke.
+  const [saveDetails, setSaveDetails] = useState(false)
+  const [saveCard, setSaveCard] = useState(false)
+  const [hasSaved, setHasSaved] = useState(false)
+
   // Entering the checkout panel fresh (e.g. after a previous crypto flow
   // completed or was abandoned) should never resume mid-payment.
   useEffect(() => {
@@ -61,6 +71,11 @@ export function CheckoutPanel() {
       setShowCrypto(false)
       setCryptoOrder(null)
       setErrors({})
+      // Detect saved details on open, and pre-arm the save toggle for anyone
+      // who has used it before — re-ticking it every time would be a chore.
+      const saved = readSavedProfile()
+      setHasSaved(Boolean(saved))
+      setSaveDetails(Boolean(saved))
     }
   }, [panel])
 
@@ -169,12 +184,64 @@ export function CheckoutPanel() {
 
       const order: Order = data.order
       if (order.lookupToken) rememberOrder({ id: order.id, token: order.lookupToken })
+
+      // Written only once the order is actually accepted — saving a rejected
+      // form would remember an address the server already refused.
+      if (saveDetails) {
+        writeSavedProfile({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          phoneCountry: form.phoneCountry,
+          street: form.street.trim(),
+          postalCode: form.postalCode.trim(),
+          city: form.city.trim(),
+          country: form.country,
+        })
+      } else {
+        // Unticking is an instruction to forget, not merely to skip saving.
+        clearSavedProfile()
+      }
+
       clearCart()
 
       if (form.payment === CRYPTO_PAYMENT_METHOD && order.lookupToken) {
         // Pay immediately, against the order we just created.
         setCryptoOrder(order)
         setShowCrypto(true)
+        return
+      }
+
+      if (form.payment === CARD_PAYMENT_METHOD && order.lookupToken) {
+        // Hand off to Stripe's hosted page. The order already exists and is
+        // `pending_payment`, so abandoning the Stripe page leaves something
+        // the customer can settle later rather than losing the basket.
+        const pay = await fetch('/api/payments/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order.id,
+            token: order.lookupToken,
+            saveCard,
+          }),
+        })
+        const payData = await pay.json().catch(() => ({}))
+
+        if (pay.ok && payData.url) {
+          // Full navigation, not router.push: Stripe Checkout is a different
+          // origin and cannot be rendered inside the app.
+          window.location.href = payData.url
+          return
+        }
+
+        // Stripe unreachable or misconfigured. The order is safe, so say so
+        // rather than implying the checkout failed outright.
+        setPanel(null)
+        pushToast({
+          title: t('checkout.paymentUnavailable'),
+          description: `${order.id} — ${t('orders.awaitingPayment')}`,
+          variant: 'default',
+        })
         return
       }
 
@@ -192,6 +259,34 @@ export function CheckoutPanel() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  /** Fills the form from the remembered record. Deliberately manual rather
+   *  than automatic on open: silently repopulating a form is disorienting,
+   *  and someone ordering a gift to another address would have to clear it. */
+  function applySaved() {
+    const saved = readSavedProfile()
+    if (!saved) return
+    setForm((prev) => ({
+      ...prev,
+      name: saved.name,
+      email: saved.email,
+      phone: saved.phone,
+      phoneCountry: saved.phoneCountry as CountryCode,
+      street: saved.street,
+      postalCode: saved.postalCode,
+      city: saved.city,
+      country: saved.country as CountryCode,
+    }))
+    setErrors({})
+    pushToast({ title: t('checkout.savedApplied'), variant: 'success' })
+  }
+
+  function forgetSaved() {
+    clearSavedProfile()
+    setHasSaved(false)
+    setSaveDetails(false)
+    pushToast({ title: t('checkout.savedCleared'), variant: 'default' })
   }
 
   function handleCryptoPaid() {
@@ -241,7 +336,39 @@ export function CheckoutPanel() {
           </h2>
         </div>
 
-        {showCrypto && cryptoOrder?.lookupToken ? (
+        {!currentUser ? (
+          /* Checkout requires an account. An order is the anchor for its own
+             history, returns and "pay later" — all of which need something
+             more durable than a token in one browser's local storage, which is
+             lost on a cache clear or a different device. Gating here rather
+             than at submit means the customer finds out before typing an
+             address, not after. */
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
+            <LogIn className="size-8 text-gold/70" strokeWidth={1.25} />
+            <div className="space-y-2">
+              <h3 className="font-serif text-lg font-semibold text-foreground">
+                {t('checkout.signInRequired')}
+              </h3>
+              <p className="text-[13px] font-light leading-relaxed text-muted-foreground">
+                {t('checkout.signInRequiredBody')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPanel('user')}
+              className="w-full max-w-xs border border-gold/40 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            >
+              {t('checkout.signInCta')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanel('cart')}
+              className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
+            >
+              {t('checkout.backToCart')}
+            </button>
+          </div>
+        ) : showCrypto && cryptoOrder?.lookupToken ? (
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               {t('orders.payingFor')} <span className="text-foreground">{cryptoOrder.id}</span>
@@ -256,6 +383,31 @@ export function CheckoutPanel() {
         ) : (
           <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col overflow-y-auto">
             <div className="flex-1 space-y-5 px-6 py-5">
+              {/* Offered, never applied automatically — a silently repopulated
+                  form is disorienting, and someone shipping a gift elsewhere
+                  would have to clear it field by field. */}
+              {hasSaved && (
+                <div className="flex items-center gap-2 border border-gold/25 bg-gold/[0.04] px-3 py-2.5">
+                  <button
+                    type="button"
+                    onClick={applySaved}
+                    className="flex flex-1 items-center gap-2 text-left text-[12px] text-gold"
+                  >
+                    <Wand2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    {t('checkout.autofill')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={forgetSaved}
+                    aria-label={t('checkout.forgetSaved')}
+                    title={t('checkout.forgetSaved')}
+                    className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              )}
+
               <Field
                 label={t('checkout.name')}
                 value={form.name}
@@ -285,14 +437,22 @@ export function CheckoutPanel() {
                 autoComplete="email"
               />
 
-              <Field
+              {/* Live suggestions. Picking one fills the postcode and city
+                  below; typing an address the geocoder has never heard of is
+                  still accepted verbatim, so a missing street can never block
+                  an order. */}
+              <AddressAutocomplete
                 label={t('checkout.street')}
                 value={form.street}
                 onChange={(v) => update('street', v)}
+                onPick={(s) => {
+                  if (s.postalCode) update('postalCode', s.postalCode)
+                  if (s.city) update('city', s.city)
+                }}
+                country={form.country}
                 required
                 error={errors.street}
                 placeholder={t('checkout.streetPlaceholder')}
-                autoComplete="street-address"
               />
 
               <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-3">
@@ -384,6 +544,27 @@ export function CheckoutPanel() {
                   <span className="font-light text-destructive">−{formatPrice(discount)}</span>
                 </div>
               )}
+              {/* Save toggles. Two separate switches on purpose: agreeing to
+                  remember an address is not agreeing to store a payment
+                  credential, and bundling them would make the second decision
+                  invisible. */}
+              <div className="mb-5 space-y-3 border-t border-border/40 pt-4">
+                <SaveToggle
+                  checked={saveDetails}
+                  onChange={setSaveDetails}
+                  label={t('checkout.saveDetails')}
+                  hint={t('checkout.saveDetailsHint')}
+                />
+                {form.payment === CARD_PAYMENT_METHOD && (
+                  <SaveToggle
+                    checked={saveCard}
+                    onChange={setSaveCard}
+                    label={t('checkout.saveCard')}
+                    hint={t('checkout.saveCardHint')}
+                  />
+                )}
+              </div>
+
               <div className="mb-5 flex justify-between border-t border-border/40 pt-3">
                 <span className="text-[12px] uppercase tracking-[0.15em] text-foreground">{t('checkout.total')}</span>
                 <span className="font-serif text-xl font-light text-gold">{formatPrice(total)}</span>
@@ -405,6 +586,59 @@ export function CheckoutPanel() {
         )}
       </div>
     </>
+  )
+}
+
+/**
+ * Minimal switch in the dark-gold aesthetic.
+ *
+ * A real <input type="checkbox"> underneath, visually hidden rather than
+ * replaced: that keeps it focusable, announced correctly by screen readers,
+ * and togglable with the spacebar. The gold track is decoration drawn on top.
+ */
+function SaveToggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  hint: string
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <span className="relative mt-0.5 inline-flex shrink-0">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-[18px] w-[32px] items-center border p-[2px] transition-all duration-300',
+            'peer-focus-visible:ring-1 peer-focus-visible:ring-gold/60',
+            checked ? 'border-gold/60 bg-gold/20' : 'border-border bg-transparent',
+          )}
+        >
+          <span
+            className={cn(
+              'size-[12px] transition-all duration-300',
+              checked ? 'translate-x-[14px] bg-gold' : 'translate-x-0 bg-muted-foreground/40',
+            )}
+          />
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12px] font-light leading-snug text-foreground">{label}</span>
+        <span className="mt-1 block text-[11px] font-light leading-relaxed text-muted-foreground/70">
+          {hint}
+        </span>
+      </span>
+    </label>
   )
 }
 

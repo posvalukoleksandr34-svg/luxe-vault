@@ -254,6 +254,20 @@ export function ProductModal() {
               {localize(p.description)}
             </p>
 
+            {/* Standing replica disclosure, directly beneath the description so
+                it is read as part of the product, not as small print. Rendered
+                from i18n for every product unconditionally — the catalogue is
+                Postgres-backed, so a disclosure that depended on per-product
+                copy would be missing on anything added via the admin panel. */}
+            <div className="mt-5 border-l-2 border-gold/40 bg-gold/[0.04] py-3 pl-4 pr-3">
+              <p className="text-[12px] font-light leading-relaxed text-muted-foreground">
+                <span className="mr-1.5 uppercase tracking-[0.15em] text-gold/90">
+                  {t('product.replicaBadge')}.
+                </span>
+                {t('product.replicaNotice')}
+              </p>
+            </div>
+
             {/* Color */}
             {p.colors.length > 0 && (
               <div className="mt-8">

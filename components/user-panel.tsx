@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
 import { PasswordResetModal } from '@/components/password-reset-modal'
@@ -72,8 +73,17 @@ export function UserPanel() {
   }, [])
 
   useEffect(() => {
-    if (panel === 'user') void loadOrders()
-  }, [panel, loadOrders])
+    // Signed-in only. Order history is account data, and the lookup tokens
+    // that used to back the guest view live in this browser's local storage —
+    // on a shared machine that showed the previous visitor's orders to whoever
+    // opened the drawer next.
+    if (panel === 'user' && currentUser) {
+      void loadOrders()
+      return
+    }
+    setMyOrders([])
+    setOrdersLoading(false)
+  }, [panel, currentUser, loadOrders])
 
   // Tick the resend cooldown down to zero.
   useEffect(() => {
@@ -205,18 +215,6 @@ export function UserPanel() {
 
         {!currentUser ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-6 py-6">
-            {/* Orders are tied to this browser, not to an account — so an
-                unpaid order stays reachable even before signing in. */}
-            {unpaidCount > 0 && (
-              <div className="w-full max-w-sm">
-                <AccountOrders
-                  orders={myOrders}
-                  loading={ordersLoading}
-                  onReload={() => void loadOrders()}
-                  unpaidOnly
-                />
-              </div>
-            )}
             {/* Registration is not finished until the emailed code is entered,
                 so while one is outstanding this REPLACES the sign-in form
                 rather than sitting above it — two live forms would leave the
@@ -491,6 +489,8 @@ export function UserPanel() {
                       <ProfileRow label={t('user.email')} value={currentUser.email} />
                     </div>
                   </div>
+
+                  <SavedCards />
                   <div className="card-gold p-4">
                     <h3 className="mb-3 font-serif text-base font-medium text-foreground">
                       {t('user.orders')}

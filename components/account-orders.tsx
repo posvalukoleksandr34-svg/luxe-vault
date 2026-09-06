@@ -18,7 +18,7 @@ const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 }
 
 /** An order still owes money whenever it carries a payment status that isn't
- * `paid` — cash-on-delivery orders carry none at all, so they never show up
+ * `paid`. Orders without a payment status predate prepayment and never show up
  * in the unpaid list. */
 export function isUnpaid(order: Order): boolean {
   return Boolean(order.paymentStatus) && order.paymentStatus !== 'paid'

@@ -8,7 +8,7 @@ import type { Product, SizeMeasurement, StatusKey } from '@/lib/types'
 const STATUS_OPTIONS: { key: StatusKey; label: string }[] = [
   { key: 'in_stock', label: 'В наличии' },
   { key: 'out_of_stock', label: 'Нет в наличии' },
-  { key: 'mirror_quality', label: 'Зеркальное качество' },
+  { key: 'mirror_quality', label: 'Премиальная реплика' },
   { key: 'limited_edition', label: 'Лимитированная серия' },
   { key: 'premium_quality', label: 'Премиум качество' },
 ]

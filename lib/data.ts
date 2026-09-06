@@ -266,20 +266,28 @@ const now = Date.now()
 
 export const CRYPTO_PAYMENT_METHOD = 'Криптовалюта'
 
-/** The one method that is settled on delivery — every other method has to be
- * paid up front, so its order is stored as `pending_payment` until the
- * customer completes the payment (immediately, or later from their account). */
-export const COD_PAYMENT_METHOD = 'При получении'
+/** Online card payment, settled through Stripe Checkout. */
+export const CARD_PAYMENT_METHOD = 'Карта онлайн'
 
-export const PAYMENT_METHODS = [
-  'Карта онлайн',
-  'СБП / Перевод',
-  COD_PAYMENT_METHOD,
-  CRYPTO_PAYMENT_METHOD,
-]
+/**
+ * "SBP / transfer" and "cash on delivery" were removed deliberately.
+ *
+ * Both settled outside the app: SBP produced a manual bank transfer nobody
+ * reconciled automatically, and cash on delivery let an order ship before any
+ * money existed. Card payments now run through Stripe Checkout, which
+ * confirms the payment through a signed webhook before the order is marked
+ * paid.
+ */
+export const PAYMENT_METHODS = [CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD]
 
-export function requiresPrepayment(method: string): boolean {
-  return method !== COD_PAYMENT_METHOD
+/**
+ * Every remaining method is paid up front, so every order starts life as
+ * `pending_payment` and is promoted only when the provider confirms it.
+ * Kept as a function rather than inlined `true`: it is the single place to
+ * change if a settle-later method is ever reintroduced.
+ */
+export function requiresPrepayment(_method: string): boolean {
+  return true
 }
 
 export const DEFAULT_SIZE_CHART: SizeMeasurement[] = [
@@ -306,7 +314,7 @@ export const SEED_REVIEWS: Review[] = [
     id: 'rev-1001',
     name: 'Алексей М.',
     rating: 5,
-    message: 'Худи Gucci пришло раньше срока, качество пошива и вышивки — на уровне оригинала. Уже заказал второй раз.',
+    message: 'Худи пришло раньше срока, качество пошива и вышивки — отличное для реплики. Уже заказал второй раз.',
     createdAt: now - 1000 * 60 * 60 * 24 * 9,
     status: 'approved',
   },

@@ -43,6 +43,15 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
+        {/* Standing replica disclosure. Rendered unconditionally, from i18n —
+            NOT from the product's own statuses or copy. The live catalogue is
+            served from Postgres and edited in the admin panel, so anything
+            driven by per-product data would silently go missing the moment
+            someone adds a product without ticking the right box. */}
+        <span className="absolute right-3 top-3 border border-gold/40 bg-background/85 px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-gold backdrop-blur-md">
+          {t('product.replicaBadge')}
+        </span>
+
         <div className="absolute left-3 top-3 flex flex-col gap-1.5">
           {outOfStock && (
             <span className="bg-background/90 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
