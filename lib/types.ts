@@ -242,3 +242,26 @@ export type SupportTicket = {
   createdAt: number
   status: SupportTicketStatus
 }
+
+
+/** Mirrors the public.notification_type enum. */
+export type NotificationType = 'payment_failed' | 'status_update'
+
+/**
+ * An in-app notification, as the bell and its panel consume it.
+ *
+ * Distinct from the transactional emails in lib/server/mailer.ts: email is
+ * push (it reaches someone who is away), this is pull (it waits for them to
+ * come back). A payment failure warrants both.
+ */
+export type Notification = {
+  id: string
+  createdAt: number
+  type: NotificationType
+  title: string
+  body?: string
+  /** In-app path, e.g. `/order/LV-ABC123`. Always relative. */
+  actionUrl?: string
+  orderId?: string
+  isRead: boolean
+}

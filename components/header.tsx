@@ -2,6 +2,7 @@
 
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { useState } from 'react'
+import { NotificationCenter } from '@/components/notification-center'
 import { LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -153,6 +154,10 @@ export function Header() {
               </>
             )}
           </div>
+
+          {/* Renders nothing for signed-out visitors, so the header keeps its
+              shape rather than showing a bell that could only ever be empty. */}
+          <NotificationCenter />
 
           <button
             type="button"

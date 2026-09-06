@@ -5,6 +5,7 @@ import {
   setPaymentStatus,
 } from '@/lib/server/orders-store'
 import { isMailConfigured, sendPaymentReceipt } from '@/lib/server/mailer'
+import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import type { PaymentStatus } from '@/lib/types'
 
@@ -92,6 +93,23 @@ export async function POST(request: NextRequest) {
       // 200, not 404: a missing order is not something Stripe can fix by
       // retrying, and a non-2xx would have it retry for days.
       return NextResponse.json({ received: true, matched: false })
+    }
+
+    // In-app notification for a failed payment. Guest orders have no user_id
+    // and therefore nowhere to deliver a notification — they still get the
+    // order page via their lookup token.
+    //
+    // Deliberately not awaited for its result beyond a boolean: a failed
+    // insert must never turn this handler non-2xx, because Stripe would then
+    // retry the whole event and re-run the money-state update above.
+    if (next === 'failed' && order.userId) {
+      await notifyPaymentFailed({
+        userId: order.userId,
+        orderId: order.id,
+        reason: event.type === 'payment_intent.payment_failed'
+          ? event.data.object.last_payment_error?.message
+          : undefined,
+      })
     }
 
     // Transactional receipt, sent only on a real settlement.

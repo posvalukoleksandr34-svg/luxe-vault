@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteOrder, setOrderStatus } from '@/lib/server/orders-store'
+import { notifyStatusUpdate } from '@/lib/server/notifications'
 import { ORDER_STATUSES, type OrderStatus } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -50,6 +51,22 @@ export async function PATCH(
   if (!updated) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
+
+  // Tell the customer their order moved. Only for account-bound orders — a
+  // guest order has no user_id and therefore no feed to deliver into.
+  //
+  // Fires after the status is committed, and its failure is swallowed inside
+  // notifyStatusUpdate: the admin's action succeeded, and reporting an error
+  // here would make staff retry a status change that already applied.
+  if (updated.userId) {
+    await notifyStatusUpdate({
+      userId: updated.userId,
+      orderId: updated.id,
+      status: updated.status,
+      trackingNumber: updated.trackingNumber,
+    })
+  }
+
   return NextResponse.json({ order: updated })
 }
 
