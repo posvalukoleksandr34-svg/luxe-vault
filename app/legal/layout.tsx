@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { LegalLangSwitch } from './_content/LegalLangSwitch'
 
 /**
  * Shared shell for the legal documents.
@@ -11,13 +12,19 @@ import { ArrowLeft } from 'lucide-react'
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
-      <Link
-        href="/"
-        className="mb-10 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-gold"
-      >
-        <ArrowLeft className="size-3" />
-        LUXE VAULT
-      </Link>
+      {/* The site header is not rendered on these pages, so the language
+          control has to live here — otherwise anyone arriving from a footer
+          link or a shared URL cannot change it. */}
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-gold"
+        >
+          <ArrowLeft className="size-3" />
+          LUXE VAULT
+        </Link>
+        <LegalLangSwitch />
+      </div>
       <article
         className="
           space-y-5 text-[14px] font-light leading-relaxed text-muted-foreground
