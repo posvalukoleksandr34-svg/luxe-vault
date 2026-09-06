@@ -1,7 +1,7 @@
 'use client'
 
-import { AlertCircle, ArrowLeft, Ban, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
@@ -18,10 +18,24 @@ const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
-/** An order still owes money whenever it carries a payment status that isn't
- * `paid`. Orders without a payment status predate prepayment and never show up
- * in the unpaid list. */
+/** Terminal states. An order here is finished — nothing about it is actionable
+ *  and it must never appear among orders awaiting payment. */
+export function isCancelled(order: Order): boolean {
+  return order.status === 'cancelled' || order.status === 'refunded'
+}
+
+/**
+ * An order still owes money.
+ *
+ * The `isCancelled` guard is load-bearing, not defensive. Cancelling writes
+ * payment_status 'expired', which is "not paid" — so without it a cancelled
+ * order stayed in the unpaid list showing a live "Pay now" button, letting the
+ * customer pay for an order that no longer exists.
+ *
+ * Orders with no payment status at all predate prepayment and never appear.
+ */
 export function isUnpaid(order: Order): boolean {
+  if (isCancelled(order)) return false
   return Boolean(order.paymentStatus) && order.paymentStatus !== 'paid'
 }
 
@@ -43,13 +57,17 @@ export function AccountOrders({
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<{ id: string; message: string } | null>(null)
   const [refunding, setRefunding] = useState<string | null>(null)
+  // The order awaiting confirmation. window.confirm() was replaced because it
+  // is unstyled, unlocalisable beyond its button labels, and on mobile Safari
+  // renders as a jarring system sheet over a dark luxury UI.
+  const [confirmOrder, setConfirmOrder] = useState<Order | null>(null)
+  const [cancelledOpen, setCancelledOpen] = useState(false)
 
   const load = onReload
 
   async function cancel(order: Order) {
     if (cancelling) return
-    if (!window.confirm(t('orders.cancelConfirm'))) return
-
+    setConfirmOrder(null)
     setCancelling(order.id)
     setCancelError(null)
     try {
@@ -77,8 +95,11 @@ export function AccountOrders({
       setCancelling(null)
     }
   }
+  // Three buckets, in order of how much attention each deserves: something to
+  // act on, the record of what happened, and the closed-off remainder.
   const unpaid = orders.filter(isUnpaid)
-  const history = orders.filter((o) => !isUnpaid(o))
+  const cancelled = orders.filter(isCancelled)
+  const history = orders.filter((o) => !isUnpaid(o) && !isCancelled(o))
 
   function startPayment(order: Order) {
     const token = order.lookupToken ?? tokenFor(order.id)
@@ -193,7 +214,7 @@ export function AccountOrders({
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => void cancel(order)}
+                        onClick={() => setConfirmOrder(order)}
                         disabled={cancelling === order.id}
                         className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-destructive/50 hover:text-destructive disabled:opacity-40"
                       >
@@ -277,7 +298,123 @@ export function AccountOrders({
           </div>
         </section>
       )}
+
+      {/* Cancelled orders are collapsed by default and muted. They are kept —
+          a customer needs to see that a cancellation actually happened — but
+          they are visually inert so they never compete with a live order. */}
+      {!unpaidOnly && cancelled.length > 0 && (
+        <section>
+          <button
+            type="button"
+            onClick={() => setCancelledOpen((v) => !v)}
+            className="flex w-full items-center justify-between border-b border-border/60 pb-2 text-left"
+          >
+            <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/50">
+              {t('orders.cancelledTitle')} · {cancelled.length}
+            </span>
+            <ChevronDown
+              className={cn(
+                'size-3.5 text-muted-foreground/50 transition-transform duration-300',
+                cancelledOpen && 'rotate-180',
+              )}
+            />
+          </button>
+          {cancelledOpen && (
+            <div className="mt-3 space-y-3">
+              {cancelled.map((order) => (
+                <OrderCard key={order.id} order={order} locale={locale} muted />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {confirmOrder && (
+        <CancelDialog
+          order={confirmOrder}
+          onDismiss={() => setConfirmOrder(null)}
+          onConfirm={() => void cancel(confirmOrder)}
+        />
+      )}
     </div>
+  )
+}
+
+/**
+ * Cancellation confirmation.
+ *
+ * Destructive and irreversible, so the affirmative action is the one styled as
+ * dangerous and "keep the order" is the visually calm default — the reverse
+ * would make the destructive path the one a distracted thumb finds first.
+ */
+function CancelDialog({
+  order,
+  onDismiss,
+  onConfirm,
+}: {
+  order: Order
+  onDismiss: () => void
+  onConfirm: () => void
+}) {
+  const { t } = useStore()
+
+  // Escape closes, matching every other dismissible surface in the app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onDismiss()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onDismiss])
+
+  return (
+    <>
+      <div
+        className="animate-fade-in fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm"
+        onClick={onDismiss}
+        aria-hidden
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cancel-dialog-title"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl"
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" strokeWidth={1.5} />
+          <div className="min-w-0 flex-1">
+            <h3
+              id="cancel-dialog-title"
+              className="font-serif text-base font-semibold text-foreground"
+            >
+              {t('orders.cancelConfirmTitle')}
+            </h3>
+            <p className="mt-2 text-[13px] font-light leading-relaxed text-muted-foreground">
+              {t('orders.cancelConfirm')}
+            </p>
+            <p className="mt-2 font-mono text-[12px] text-muted-foreground/70">{order.id}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onDismiss}
+            autoFocus
+            className="border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+          >
+            {t('orders.cancelKeep')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="border border-destructive/40 bg-destructive/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-destructive transition-all duration-300 hover:bg-destructive hover:text-destructive-foreground"
+          >
+            {t('orders.cancelConfirmCta')}
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -305,16 +442,32 @@ function OrderCard({
   locale,
   action,
   highlight,
+  muted,
 }: {
   order: Order
   locale: string
   action?: React.ReactNode
   highlight?: boolean
+  /** Terminal order: visually inert so it cannot compete with a live one. */
+  muted?: boolean
 }) {
   const { t } = useStore()
 
   return (
-    <div className={cn('border p-4', highlight ? 'border-gold/30 bg-gold/[0.03]' : 'border-border bg-card')}>
+    <div
+      className={cn(
+        'border p-4 transition-opacity duration-300',
+        highlight && 'border-gold/30 bg-gold/[0.03]',
+        !highlight && !muted && 'border-border bg-card',
+        // Greyed out rather than hidden: the customer needs to see that the
+        // cancellation actually took effect. Opacity lifts on hover so the
+        // details stay readable when someone deliberately looks.
+        // opacity-50, not opacity-55: Tailwind 3.3's default opacity scale has
+        // no 55 step, so that class emitted no CSS at all and the card stayed
+        // fully opaque (measured: computed opacity 1).
+        muted && 'border-border/40 bg-card/30 opacity-50 hover:opacity-90',
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-mono text-[13px] font-medium text-foreground">{order.id}</p>
@@ -323,7 +476,9 @@ function OrderCard({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          <span className="font-serif text-lg text-gold">{formatPrice(order.total)}</span>
+          <span className={cn('font-serif text-lg', muted ? 'text-muted-foreground/60 line-through' : 'text-gold')}>
+            {formatPrice(order.total)}
+          </span>
           <div className="flex flex-wrap justify-end gap-1.5">
             <span
               className={cn(
@@ -333,7 +488,10 @@ function OrderCard({
             >
               {t(ORDER_STATUS_KEYS[order.status])}
             </span>
-            {order.paymentStatus && <PaymentBadge status={order.paymentStatus} />}
+            {/* Suppressed on a cancelled order: "payment expired" beside
+                "cancelled" is redundant, and reads as a second, different
+                problem rather than a consequence of the first. */}
+            {order.paymentStatus && !muted && <PaymentBadge status={order.paymentStatus} />}
           </div>
           {order.refundedAmount != null && order.refundedAmount > 0 && (
             <span className="text-[10px] uppercase tracking-[0.1em] text-violet-300/80">
@@ -347,7 +505,11 @@ function OrderCard({
         {order.items.map((item) => (
           <div key={item.key} className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.image} alt={item.name} className="size-10 shrink-0 object-cover" />
+            <img
+              src={item.image}
+              alt={item.name}
+              className={cn('size-10 shrink-0 object-cover', muted && 'grayscale')}
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-light text-foreground">{item.name}</p>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">

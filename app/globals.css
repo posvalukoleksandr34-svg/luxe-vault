@@ -634,3 +634,41 @@ button:disabled:hover,
       0 8px 30px -12px hsl(var(--gold) / 0.34);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Stripe developer-tools overlay
+   ---------------------------------------------------------------------------
+   Stripe.js injects a floating "developer tools" panel (its internal name is
+   "easel") pinned bottom-right at z-index 99999. It is rendered ONLY when
+   Elements is initialised with a test publishable key — a pk_live_ key never
+   produces it — so this rule is a no-op in production. It is hidden anyway so
+   that test-mode demos, screenshots and client review look like the real
+   checkout.
+
+   Matched on the src, deliberately. The iframe's `name` carries a random
+   numeric suffix (__privateStripeFrame1557) that changes on every mount, and
+   its `title` is localised into the user's language; the bundle filename is
+   the only stable identifier. Note that `iframe[name^="__privateStripeFrame"]`
+   would also match the real PaymentElement and blank the card form.
+
+   Hiding it is safe: it is a diagnostic panel, not part of the payment flow.
+--------------------------------------------------------------------------- */
+iframe[src*="elements-inner-easel"] {
+  /* NOT `display: none`. Stripe writes `display: block !important` as an
+     INLINE style, and an inline !important beats a stylesheet !important — so
+     a display rule here is silently ignored (measured: it was).
+
+     Only border, padding, overflow, display, user-select and color-scheme
+     carry inline !important. Everything below is therefore free to override. */
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  /* Parked off-screen as well, so it can never intercept a tap on mobile even
+     if a future Stripe build stops honouring visibility. */
+  position: fixed !important;
+  bottom: -9999px !important;
+  right: -9999px !important;
+  z-index: -1 !important;
+}
