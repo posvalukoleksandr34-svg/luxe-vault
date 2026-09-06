@@ -3,6 +3,8 @@
 import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
+import { StripePayment } from '@/components/stripe-payment'
+import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
@@ -51,7 +53,12 @@ export function AccountOrders({
   unpaidOnly?: boolean
 }) {
   const { t, locale, pushToast } = useStore()
-  const [paying, setPaying] = useState<{ orderId: string; token: string } | null>(null)
+  const [paying, setPaying] = useState<{ order: Order; token: string } | null>(null)
+  // Client secret for a card retry. Minted on demand: a PaymentIntent created
+  // eagerly for every unpaid order would leave abandoned intents in Stripe.
+  const [retrySecret, setRetrySecret] = useState<string | null>(null)
+  const [retryError, setRetryError] = useState<string | null>(null)
+  const [startingPayment, setStartingPayment] = useState<string | null>(null)
   // Keyed by order id rather than a single boolean, so two cards cannot both
   // show a spinner when only one request is in flight.
   const [cancelling, setCancelling] = useState<string | null>(null)
@@ -101,10 +108,47 @@ export function AccountOrders({
   const cancelled = orders.filter(isCancelled)
   const history = orders.filter((o) => !isUnpaid(o) && !isCancelled(o))
 
-  function startPayment(order: Order) {
+  /**
+   * Resume payment on an unpaid order, using the method chosen at checkout.
+   *
+   * This used to hand every retry to CryptoPayment regardless of
+   * `order.payment`, so a customer who picked a card and came back later was
+   * silently pushed into a crypto flow. The method was already stored on the
+   * order — nothing needed persisting, the retry just ignored it.
+   */
+  async function startPayment(order: Order) {
     const token = order.lookupToken ?? tokenFor(order.id)
-    if (!token) return
-    setPaying({ orderId: order.id, token })
+    if (!token || startingPayment) return
+
+    setRetryError(null)
+    setRetrySecret(null)
+
+    if (order.payment === CARD_PAYMENT_METHOD) {
+      // A PaymentIntent is per-attempt, so a retry needs a fresh one; the
+      // route rebuilds the amount from the stored order, never from here.
+      setStartingPayment(order.id)
+      try {
+        const res = await fetch('/api/payments/stripe/intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: order.id, token }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.clientSecret) {
+          setRetryError(data.error ?? t('checkout.paymentUnavailable'))
+          return
+        }
+        setRetrySecret(data.clientSecret)
+        setPaying({ order, token })
+      } catch {
+        setRetryError(t('checkout.paymentUnavailable'))
+      } finally {
+        setStartingPayment(null)
+      }
+      return
+    }
+
+    setPaying({ order, token })
   }
 
   async function askRefund(order: Order) {
@@ -143,17 +187,37 @@ export function AccountOrders({
           {t('crypto.back')}
         </button>
         <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-          {t('orders.payingFor')} <span className="text-foreground">{paying.orderId}</span>
+          {t('orders.payingFor')} <span className="text-foreground">{paying.order.id}</span>
+          <span className="ml-2 text-muted-foreground/50">· {paying.order.payment}</span>
         </p>
-        <CryptoPayment
-          orderId={paying.orderId}
-          token={paying.token}
-          onPaid={() => {
-            setPaying(null)
-            load()
-          }}
-          onBack={() => setPaying(null)}
-        />
+
+        {/* Branches on the method stored with the order, so a card order
+            resumes as a card and a crypto order as crypto. */}
+        {paying.order.payment === CARD_PAYMENT_METHOD && retrySecret ? (
+          <StripePayment
+            order={paying.order}
+            clientSecret={retrySecret}
+            onPaid={() => {
+              setPaying(null)
+              setRetrySecret(null)
+              load()
+            }}
+            onBack={() => {
+              setPaying(null)
+              setRetrySecret(null)
+            }}
+          />
+        ) : (
+          <CryptoPayment
+            orderId={paying.order.id}
+            token={paying.token}
+            onPaid={() => {
+              setPaying(null)
+              load()
+            }}
+            onBack={() => setPaying(null)}
+          />
+        )}
       </div>
     )
   }
@@ -227,14 +291,19 @@ export function AccountOrders({
                       </button>
                       <button
                         type="button"
-                        onClick={() => startPayment(order)}
-                        disabled={cancelling === order.id}
+                        onClick={() => void startPayment(order)}
+                        disabled={cancelling === order.id || startingPayment === order.id}
                         className="flex items-center justify-center gap-2 border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:opacity-40"
                       >
                         <Wallet className="size-3.5" />
                         {t('orders.payNow')}
                       </button>
                     </div>
+                    {retryError && startingPayment === null && paying === null && (
+                      <p className="text-right text-[11px] font-light text-destructive">
+                        {retryError}
+                      </p>
+                    )}
                     {cancelError?.id === order.id && (
                       <p className="flex items-start gap-1.5 text-right text-[11px] font-light leading-snug text-destructive">
                         <AlertCircle className="mt-px size-3 shrink-0" />

@@ -391,6 +391,17 @@ export const UI = {
   'track.placed': { ru: 'Заказ оформлен', en: 'Order placed', it: 'Ordine effettuato', fr: 'Commande passée', de: 'Bestellung aufgegeben' },
   'track.notFound': { ru: 'Заказ не найден', en: 'Order not found', it: 'Ordine non trovato', fr: 'Commande introuvable', de: 'Bestellung nicht gefunden' },
   'track.cancelled': { ru: 'Этот заказ отменён', en: 'This order was cancelled', it: 'Questo ordine è stato annullato', fr: 'Cette commande a été annulée', de: 'Diese Bestellung wurde storniert' },
+  'track.step.pending.sub': { ru: 'Заказ принят и ожидает оплаты или подтверждения.', en: 'Order received, awaiting payment or confirmation.', it: 'Ordine ricevuto, in attesa di pagamento o conferma.', fr: 'Commande reçue, en attente de paiement ou de confirmation.', de: 'Bestellung eingegangen, wartet auf Zahlung oder Bestätigung.' },
+  'track.step.processing.sub': { ru: 'Позиция заказана у поставщика и проходит проверку качества. Обычно 20–35 дней.', en: 'Ordered from the supplier and undergoing quality checks. Typically 20–35 days.', it: 'Ordinato dal fornitore e in controllo qualità. Di norma 20–35 giorni.', fr: 'Commandé auprès du fournisseur et en contrôle qualité. Généralement 20 à 35 jours.', de: 'Beim Lieferanten bestellt und in der Qualitätsprüfung. Üblicherweise 20–35 Tage.' },
+  'track.step.shipped.sub': { ru: 'Отправлено Швейцарской почтой. Трек-номер появится ниже.', en: 'Dispatched via Swiss Post. The tracking number appears below.', it: 'Spedito con la Posta Svizzera. Il numero di tracciamento appare sotto.', fr: 'Expédié via la Poste Suisse. Le numéro de suivi apparaît ci-dessous.', de: 'Mit der Schweizerischen Post versandt. Die Sendungsnummer erscheint unten.' },
+  'track.step.delivered.sub': { ru: 'Посылка вручена. 14 дней на возврат с этого момента.', en: 'Parcel delivered. You have 14 days to return from this point.', it: 'Pacco consegnato. Hai 14 giorni per il reso da questo momento.', fr: 'Colis livré. Vous disposez de 14 jours pour le retour à compter de cette date.', de: 'Paket zugestellt. Ab jetzt haben Sie 14 Tage für eine Rücksendung.' },
+  'track.timeline': { ru: 'Прямая поставка: 20–35 дней от подтверждения до вручения', en: 'Direct supply: 20–35 days from confirmation to delivery', it: 'Fornitura diretta: 20–35 giorni dalla conferma alla consegna', fr: 'Approvisionnement direct : 20 à 35 jours de la confirmation à la livraison', de: 'Direktbezug: 20–35 Tage von der Bestätigung bis zur Zustellung' },
+  'track.summary': { ru: 'Итого по заказу', en: 'Order summary', it: 'Riepilogo ordine', fr: 'Récapitulatif', de: 'Bestellübersicht' },
+  'track.subtotal': { ru: 'Подытог', en: 'Subtotal', it: 'Subtotale', fr: 'Sous-total', de: 'Zwischensumme' },
+  'track.discount': { ru: 'Скидка', en: 'Discount', it: 'Sconto', fr: 'Remise', de: 'Rabatt' },
+  'track.total': { ru: 'К оплате', en: 'Total', it: 'Totale', fr: 'Total', de: 'Gesamt' },
+  'track.paymentMethod': { ru: 'Способ оплаты', en: 'Payment method', it: 'Metodo di pagamento', fr: 'Moyen de paiement', de: 'Zahlungsart' },
+  'track.currentStep': { ru: 'Текущий этап', en: 'Current step', it: 'Fase attuale', fr: 'Étape actuelle', de: 'Aktueller Schritt' },
   'track.shippingTo': { ru: 'Адрес доставки', en: 'Shipping to', it: 'Spedizione a', fr: 'Livraison à', de: 'Lieferung an' },
 } as const
 
