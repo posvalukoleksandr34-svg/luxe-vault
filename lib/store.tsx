@@ -667,11 +667,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    */
   const requestRecoveryCode = useCallback(async (email: string) => {
     try {
-      const { error } = await createClient().auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo: authCallbackUrl('/auth/update-password') },
-      )
-      if (error) return { ok: false, message: error.message }
+      // Server route, not supabase.auth.resetPasswordForEmail().
+      //
+      // Supabase's own send works (measured: 200 in ~1.4s), but the body comes
+      // from a template in its dashboard — if that template still ships the
+      // stock {{ .ConfirmationURL }} the customer gets a link and no code,
+      // while this UI asks for a code. And `redirectTo` is silently downgraded
+      // to the project's Site URL unless the exact URL is in the dashboard
+      // allow-list (verified: the callback URL came back as bare
+      // https://luxe-vault.store), so the link landed on the homepage.
+      //
+      // The route mints the same one-time OTP via admin/generate_link and
+      // sends it through Resend, so neither dashboard setting can break it.
+      const res = await fetch('/api/auth/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      })
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}))
+        return { ok: false, message: data.error ?? 'Too many requests' }
+      }
+      // Any other outcome reports success: the endpoint answers identically
+      // for registered and unregistered addresses so it cannot be used to
+      // discover which emails have accounts.
       return { ok: true }
     } catch (e) {
       return { ok: false, message: (e as Error).message }

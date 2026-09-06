@@ -27,17 +27,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
 
-  // Bind the order to the buyer when there is a session. Read from the
-  // verified cookie via getUser(), never from a user id in the request body —
-  // a client-supplied id would let anyone file orders against another account.
-  // Null is expected and fine: guest checkout stays supported, and those
-  // orders remain reachable through their lookup token.
+  // Every order must belong to an account.
+  //
+  // Read from the verified cookie via getUser(), never from a user id in the
+  // request body — a client-supplied id would let anyone file orders against
+  // another account.
+  //
+  // This used to fall back to a guest order when the lookup failed, which is
+  // how LV-JX59CL ended up unattached: a real, paid order that never appeared
+  // in its owner's dashboard and that support had no way to link back. A
+  // transient Supabase blip must not silently orphan an order, so a failure
+  // here is now a hard 503 the customer can retry, not a quiet downgrade.
   let userId: string | undefined
   try {
     userId = (await getCurrentUser())?.id
   } catch {
-    // Supabase unreachable or unconfigured — fall back to a guest order rather
-    // than failing a checkout the customer has already paid attention to.
+    return NextResponse.json(
+      { error: 'Не удалось подтвердить сессию. Повторите попытку.' },
+      { status: 503 },
+    )
+  }
+
+  if (!userId) {
+    // Mirrors the sign-in gate in the checkout drawer. Enforced here too
+    // because the UI gate is not a security boundary — anyone can POST here.
+    return NextResponse.json(
+      { error: 'Для оформления заказа необходимо войти в аккаунт.' },
+      { status: 401 },
+    )
   }
 
   const order = buildOrder(result.draft, userId)
