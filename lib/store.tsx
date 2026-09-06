@@ -96,8 +96,6 @@ type StoreContextValue = {
 
   panel: PanelState
   setPanel: (p: PanelState) => void
-  activeProduct: Product | null
-  openProduct: (p: Product | null) => void
   toasts: Toast[]
   query: string
   setQuery: (q: string) => void
@@ -399,7 +397,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const t = useCallback((key: UIKey) => translate(UI[key], locale), [locale])
 
   const [panel, setPanel] = useState<PanelState>(null)
-  const [activeProduct, setActiveProduct] = useState<Product | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>({
@@ -466,7 +463,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
 
-  const openProduct = useCallback((p: Product | null) => setActiveProduct(p), [])
 
   const addToCart = useCallback(
     (item: Omit<CartItem, 'key'>) => {
@@ -909,8 +905,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localize,
     panel,
     setPanel,
-    activeProduct,
-    openProduct,
     toasts,
     query,
     setQuery,

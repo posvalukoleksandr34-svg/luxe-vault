@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { listProductSlugs } from '@/lib/server/catalog-store'
 
 /**
  * XML sitemap, served at /sitemap.xml by the App Router.
@@ -29,12 +30,13 @@ const BASE = 'https://luxe-vault.store'
 const SECTIONS_ARE_ANCHORS = true
 
 /**
- * Products open in a client-side modal and `Product` carries no slug, so there
- * is no per-product URL to submit. Giving each product a route (and a `slug`)
- * is the single highest-value SEO change available to this site — product
- * pages are what rank for "<brand> <item>" queries.
+ * Products now have real routes at /product/[slug], so every one is listed
+ * below. The slug is `products.slug`, surfaced as `Product.id`.
+ *
+ * Read from the database at request time rather than baked in at build: a
+ * product added through the admin panel appears in the sitemap without a
+ * redeploy, which is the whole reason the catalogue lives in Postgres.
  */
-const PRODUCTS_HAVE_NO_ROUTES = true
 
 /**
  * Deliberately excluded, and also disallowed in robots.ts:
@@ -47,14 +49,23 @@ const PRODUCTS_HAVE_NO_ROUTES = true
 /** The legal documents' stated effective date, which is their real lastModified. */
 const LEGAL_UPDATED = new Date('2026-09-06T00:00:00.000Z')
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Build time. The storefront's content changes when the catalogue is
   // redeployed, so this is an honest signal rather than a hardcoded date that
   // would go stale and teach Google to ignore the field.
   const now = new Date()
 
   void SECTIONS_ARE_ANCHORS
-  void PRODUCTS_HAVE_NO_ROUTES
+
+  // A failed catalogue read must not take the whole sitemap down: serving the
+  // static pages is strictly better than serving Google a 500, which it treats
+  // as "could not fetch" and retries with backoff.
+  let products: { slug: string; updatedAt: Date }[] = []
+  try {
+    products = await listProductSlugs()
+  } catch (error) {
+    console.error('[sitemap] product slugs unavailable:', error)
+  }
 
   return [
     {
@@ -63,6 +74,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1.0,
     },
+    // Product pages rank for the queries that actually convert, so they carry
+    // the highest priority after the homepage.
+    ...products.map((p) => ({
+      url: `${BASE}/product/${encodeURIComponent(p.slug)}`,
+      lastModified: p.updatedAt,
+      changeFrequency: 'daily' as const,
+      priority: 0.9,
+    })),
     {
       url: `${BASE}/legal/terms`,
       lastModified: LEGAL_UPDATED,

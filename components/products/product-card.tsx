@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 
 export function ProductCard({ product }: { product: Product }) {
-  const { openProduct, localize, t, categoryLabels } = useStore()
+  const { localize, t, categoryLabels } = useStore()
   const outOfStock = product.statuses.includes('out_of_stock')
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
@@ -16,7 +17,11 @@ export function ProductCard({ product }: { product: Product }) {
   const secondaryImage = product.images?.[1]
 
   return (
-    <div className="group cursor-pointer" onClick={() => openProduct(product)}>
+    // A real <a href>, not an onClick. A div with a click handler is invisible
+    // to crawlers, cannot be opened in a new tab, middle-clicked, copied as a
+    // link, or reached by keyboard — all of which a product page exists to
+    // support. next/link also prefetches the route on hover.
+    <Link href={`/product/${encodeURIComponent(product.id)}`} className="group block">
       <div className="card-gold relative aspect-[3/4] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -103,6 +108,6 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

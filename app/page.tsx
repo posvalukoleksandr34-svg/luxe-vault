@@ -8,7 +8,6 @@ import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { Hero } from '@/components/hero'
 import { PasswordRecoveryModal } from '@/components/password-recovery-modal'
-import { ProductModal } from '@/components/products/product-modal'
 import { ProductGrid } from '@/components/products/product-grid'
 import { Reviews } from '@/components/reviews'
 import { SupportWidget } from '@/components/support-widget'
@@ -36,7 +35,6 @@ export default function Home() {
         <Footer />
       </main>
 
-      <ProductModal />
       <CartPanel />
       <CheckoutPanel />
       <UserPanel />

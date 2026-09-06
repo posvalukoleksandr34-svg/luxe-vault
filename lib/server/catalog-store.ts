@@ -245,3 +245,47 @@ export async function deleteProduct(slug: string): Promise<boolean> {
   if (error) throw new Error(`Failed to delete product: ${error.message}`)
   return Boolean(data)
 }
+
+/**
+ * One product by its slug — the value stored in `products.slug`, which is also
+ * `Product.id` in the app and the segment in /product/[slug].
+ *
+ * A single-row query rather than filtering readCatalog(): a product page is
+ * rendered per request per product, and pulling the whole catalogue to throw
+ * away all but one row makes every product page pay for every other product.
+ *
+ * Returns null for an unknown slug so the caller can render notFound() rather
+ * than a 500 — a mistyped URL is a 404, not a server error.
+ */
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const { data, error } = await createAdminClient()
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to read product: ${error.message}`)
+  return data ? rowToProduct(data) : null
+}
+
+/**
+ * Every product slug, for the sitemap.
+ *
+ * Selects only the two columns it needs: a sitemap of a large catalogue would
+ * otherwise transfer every description and image array to emit a list of URLs.
+ * `updated_at` becomes each entry's <lastmod>, which is the honest signal —
+ * using the build time would tell Google every product changed on every deploy
+ * and teach it to ignore the field.
+ */
+export async function listProductSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+  const { data, error } = await createAdminClient()
+    .from('products')
+    .select('slug, updated_at')
+    .order('updated_at', { ascending: false })
+
+  if (error) throw new Error(`Failed to list product slugs: ${error.message}`)
+  return (data ?? []).map((row) => ({
+    slug: row.slug as string,
+    updatedAt: new Date((row.updated_at as string) ?? Date.now()),
+  }))
+}
