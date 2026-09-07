@@ -32,7 +32,15 @@ export function ProductDetail({ product }: { product: Product }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const touchStartX = useRef<number | null>(null)
 
-  const allImages = p.images && p.images.length > 0 ? p.images : [p.image]
+  const activeColor = p.colors.find((c) => c.name === color)
+  // A colour with its own photo puts it first, so selecting "Charcoal" shows
+  // the charcoal one rather than leaving the customer to hunt the carousel.
+  const allImages = (() => {
+    const base = p.images && p.images.length > 0 ? p.images : [p.image]
+    const variant = activeColor?.image?.trim()
+    if (!variant) return base
+    return [variant, ...base.filter((img) => img !== variant)]
+  })()
 
   const goToIndex = useCallback(
     (index: number) => {
@@ -57,7 +65,11 @@ export function ProductDetail({ product }: { product: Product }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [allImages.length, goPrev, goNext])
 
-  const outOfStock = p.statuses.includes('out_of_stock')
+  // Colour-level stock. `undefined` means untracked, so only an explicit 0
+  // marks a variant sold out — treating absent as zero would black out every
+  // product saved before per-colour stock existed.
+  const colorSoldOut = activeColor?.stock === 0
+  const outOfStock = p.statuses.includes('out_of_stock') || colorSoldOut
   const selectedImage = allImages[selectedIndex] ?? p.image
   // Only the product's own measurements — never a shared default, which would
   // show every product the same invented numbers.
@@ -215,23 +227,45 @@ export function ProductDetail({ product }: { product: Product }) {
             <p className="mb-3 text-[11px] uppercase tracking-[0.15em] text-foreground">
               {t('product.color')} —{' '}
               <span className="normal-case tracking-normal text-muted-foreground">{color}</span>
+              {/* Only shown when stock is tracked AND low: a permanent counter
+                  on a well-stocked item is noise, and manufactured urgency. */}
+              {activeColor?.stock !== undefined &&
+                activeColor.stock > 0 &&
+                activeColor.stock <= 5 && (
+                  <span className="ml-2 normal-case tracking-normal text-gold/80">
+                    {t('product.lowStock')} {activeColor.stock}
+                  </span>
+                )}
             </p>
             <div className="flex gap-2">
               {p.colors.map((c) => (
                 <button
                   key={c.name}
                   type="button"
-                  onClick={() => setColor(c.name)}
+                  onClick={() => {
+                    setColor(c.name)
+                    // Back to the first image, which is now this colour's own.
+                    setSelectedIndex(0)
+                  }}
                   className={cn(
-                    'no-juice flex size-9 items-center justify-center rounded-full border transition-all duration-200',
+                    'no-juice relative flex size-9 items-center justify-center rounded-full border transition-all duration-200',
                     color === c.name
                       ? 'border-gold ring-1 ring-gold/30 ring-offset-2 ring-offset-background'
                       : 'border-border hover:border-foreground/30',
+                    // Still selectable when sold out: the customer needs to be
+                    // able to look at it and see why they cannot buy it.
+                    c.stock === 0 && 'opacity-40',
                   )}
                   style={{ backgroundColor: c.hex }}
-                  aria-label={c.name}
-                  title={c.name}
+                  aria-label={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
+                  title={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
                 >
+                  {c.stock === 0 && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-0 top-1/2 h-px -rotate-45 bg-foreground/70"
+                    />
+                  )}
                   {color === c.name && (
                     <Check className="size-3.5 text-foreground mix-blend-difference" />
                   )}

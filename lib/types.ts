@@ -40,9 +40,24 @@ export type StatusKey =
   | 'limited_edition'
   | 'premium_quality'
 
+/**
+ * A colour variant.
+ *
+ * `name` and `hex` were the whole model; `image` and `stock` are additive and
+ * optional, so every product already in the catalogue stays valid — the column
+ * is jsonb, which is why widening the shape needs no migration.
+ *
+ * `stock` is deliberately `undefined` rather than `0` when untracked: zero
+ * means "sold out", absent means "we do not count this one", and collapsing
+ * the two would hide every legacy variant from the storefront.
+ */
 export type Color = {
   name: string
   hex: string
+  /** Swatch or variant photo shown when this colour is selected. */
+  image?: string
+  /** Units on hand. Undefined = not tracked; 0 = sold out. */
+  stock?: number
 }
 
 export type SizeMeasurement = {

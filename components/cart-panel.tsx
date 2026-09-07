@@ -1,10 +1,13 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
+
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
 import { TrustBadges } from '@/components/trust-badges'
 import { formatPrice, useStore } from '@/lib/store'
 
 export function CartPanel() {
+  const router = useRouter()
   const {
     cart,
     panel,
@@ -121,7 +124,14 @@ export function CartPanel() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPanel('checkout')}
+                  onClick={() => {
+                    // Close the drawer and navigate in the same tick. The
+                    // panel state is what renders the backdrop, so clearing it
+                    // releases the overlay as the route changes rather than
+                    // leaving a dimmed layer over the new page.
+                    setPanel(null)
+                    router.push('/checkout')
+                  }}
                   className="flex-1 border border-gold/30 bg-gold/5 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
                 >
                   {t('cart.checkout')}

@@ -3,7 +3,7 @@
 import { ImagePlus, Loader2, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
-import type { Product, SizeMeasurement, StatusKey } from '@/lib/types'
+import type { Color, Product, SizeMeasurement, StatusKey } from '@/lib/types'
 
 const STATUS_OPTIONS: { key: StatusKey; label: string }[] = [
   { key: 'in_stock', label: 'В наличии' },
@@ -84,6 +84,26 @@ export function ProductForm({
   const [measurements, setMeasurements] = useState<SizeMeasurement[]>(
     product?.sizeChart ?? [],
   )
+
+  /**
+   * Colour variants.
+   *
+   * Previously there was no colour UI at all — every product silently saved
+   * the hardcoded default below, so the storefront's colour picker showed one
+   * invented swatch on everything. An existing product keeps whatever it has;
+   * only a brand-new one starts from the default.
+   */
+  const [colors, setColors] = useState<Color[]>(
+    product?.colors?.length ? product.colors : [{ name: 'Onyx', hex: '#141414' }],
+  )
+
+  function updateColor(index: number, patch: Partial<Color>) {
+    setColors((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
+  }
+
+  function addColor() {
+    setColors((prev) => [...prev, { name: '', hex: '#888888' }])
+  }
 
   function updateMeasurement(index: number, field: keyof SizeMeasurement, value: string) {
     setMeasurements((prev) =>
@@ -220,7 +240,19 @@ export function ProductForm({
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
-      colors: product?.colors ?? [{ name: 'Onyx', hex: '#141414' }],
+      // Rows with no name are abandoned edits, not variants, and would render
+      // as a nameless swatch the customer cannot identify in their order.
+      colors: colors
+        .filter((c) => c.name.trim())
+        .map((c) => ({
+          name: c.name.trim(),
+          hex: c.hex,
+          image: c.image?.trim() || undefined,
+          // Undefined, not 0: absent means "not tracked", 0 means "sold out".
+          // Coercing one to the other would hide untracked variants entirely.
+          stock:
+            c.stock === undefined || Number.isNaN(c.stock) ? undefined : Math.max(0, c.stock),
+        })),
       image: images[0],
       images,
       description: localizedDesc,
@@ -337,6 +369,115 @@ export function ProductForm({
             value={form.sizes}
             onChange={(v) => setForm({ ...form, sizes: v })}
           />
+
+          {/* Colour variants. Each row is one swatch the customer sees on the
+              product page: a name they can recognise in their order, a hex for
+              the swatch itself, an optional photo of the product in that
+              colour, and an optional stock count. */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="text-xs font-medium uppercase tracking-wider text-foreground">
+                Цвета
+              </span>
+              <button
+                type="button"
+                onClick={addColor}
+                className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-gold/50 hover:text-gold"
+              >
+                <Plus className="size-3" />
+                Цвет
+              </button>
+            </div>
+            <p className="mb-2 text-[11px] text-muted-foreground/60">
+              Название обязательно — по нему покупатель узнаёт цвет в заказе. Остаток
+              можно оставить пустым: пусто — не отслеживается, 0 — распродано.
+            </p>
+
+            {colors.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/70">
+                Цвета не заданы
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {colors.map((c, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2"
+                  >
+                    {/* Native colour input: it gives the OS picker for free and
+                        stays keyboard-accessible, which a custom swatch grid
+                        would have to reimplement. */}
+                    <input
+                      type="color"
+                      value={/^#[0-9a-f]{6}$/i.test(c.hex) ? c.hex : '#888888'}
+                      onChange={(e) => updateColor(i, { hex: e.target.value })}
+                      className="size-9 shrink-0 cursor-pointer rounded border border-border bg-background"
+                      aria-label="Выбрать цвет"
+                    />
+
+                    <input
+                      type="text"
+                      value={c.name}
+                      onChange={(e) => updateColor(i, { name: e.target.value })}
+                      placeholder="Название, напр. Onyx"
+                      className="w-36 flex-1 rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-gold"
+                    />
+
+                    {/* Typed alongside the picker so an admin can paste a hex
+                        from a brand palette instead of eyeballing it. */}
+                    <input
+                      type="text"
+                      value={c.hex}
+                      onChange={(e) => updateColor(i, { hex: e.target.value })}
+                      placeholder="#141414"
+                      spellCheck={false}
+                      className="w-24 rounded border border-border bg-background px-2 py-1.5 font-mono text-[12px] text-foreground outline-none focus:border-gold"
+                    />
+
+                    <input
+                      type="url"
+                      value={c.image ?? ''}
+                      onChange={(e) => updateColor(i, { image: e.target.value })}
+                      placeholder="URL фото этого цвета (необязательно)"
+                      className="w-full min-w-[10rem] flex-1 rounded border border-border bg-background px-2 py-1.5 text-[12px] text-foreground outline-none focus:border-gold sm:w-auto"
+                    />
+
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={c.stock ?? ''}
+                      onChange={(e) =>
+                        updateColor(i, {
+                          stock: e.target.value === '' ? undefined : Number(e.target.value),
+                        })
+                      }
+                      placeholder="Остаток"
+                      className="w-24 rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-gold"
+                    />
+
+                    {/* Preview of the variant photo, so a wrong URL is obvious
+                        before saving rather than after a customer sees it. */}
+                    {c.image?.trim() ? (
+                      <span className="size-9 shrink-0 overflow-hidden rounded border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={c.image} alt="" className="size-full object-cover" />
+                      </span>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setColors((prev) => prev.filter((_, x) => x !== i))}
+                      className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-accent hover:text-destructive"
+                      aria-label="Удалить цвет"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Per-size measurements. These feed the size-guide table the
               customer opens from the product page, so the column order here

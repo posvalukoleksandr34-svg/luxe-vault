@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
@@ -25,9 +26,8 @@ import type { Order } from '@/lib/types'
 
 type FieldKey = 'name' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
-export function CheckoutPanel() {
+export function CheckoutFlow() {
   const {
-    panel,
     setPanel,
     cart,
     cartSubtotal,
@@ -38,6 +38,8 @@ export function CheckoutPanel() {
     currentUser,
     t,
   } = useStore()
+
+  const router = useRouter()
 
   const [form, setForm] = useState({
     name: '',
@@ -72,22 +74,14 @@ export function CheckoutPanel() {
 
   // Entering the checkout panel fresh (e.g. after a previous crypto flow
   // completed or was abandoned) should never resume mid-payment.
+  // Runs once on mount. The drawer version keyed this off `panel` flipping to
+  // 'checkout'; on a route, mounting IS the open event.
   useEffect(() => {
-    if (panel === 'checkout') {
-      setShowCrypto(false)
-      setCryptoOrder(null)
-      setCardOrder(null)
-      setClientSecret(null)
-      setErrors({})
-      // Detect saved details on open, and pre-arm the save toggle for anyone
-      // who has used it before — re-ticking it every time would be a chore.
-      const saved = readSavedProfile()
-      setHasSaved(Boolean(saved))
-      setSaveDetails(Boolean(saved))
-    }
-  }, [panel])
+    const saved = readSavedProfile()
+    setHasSaved(Boolean(saved))
+    setSaveDetails(Boolean(saved))
+  }, [])
 
-  if (panel !== 'checkout') return null
 
   const discount = appliedPromo
     ? Math.round((cartSubtotal * appliedPromo.percent) / 100)
@@ -245,7 +239,7 @@ export function CheckoutPanel() {
 
         // Stripe unreachable or misconfigured. The order is safe, so say so
         // rather than implying the checkout failed outright.
-        setPanel(null)
+        router.push('/')
         pushToast({
           title: t('checkout.paymentUnavailable'),
           description: `${order.id} — ${t('orders.awaitingPayment')}`,
@@ -254,7 +248,7 @@ export function CheckoutPanel() {
         return
       }
 
-      setPanel(null)
+      router.push('/')
       pushToast({
         title: t('toast.orderPlaced'),
         description:
@@ -302,7 +296,7 @@ export function CheckoutPanel() {
     if (cardOrder) {
       pushToast({ title: t('toast.orderPlaced'), description: cardOrder.id, variant: 'success' })
     }
-    setPanel(null)
+    router.push('/')
     setCardOrder(null)
     setClientSecret(null)
   }
@@ -313,7 +307,7 @@ export function CheckoutPanel() {
     const left = cardOrder
     setCardOrder(null)
     setClientSecret(null)
-    setPanel(null)
+    router.push('/')
     if (left) {
       pushToast({
         title: t('toast.orderPlaced'),
@@ -327,7 +321,7 @@ export function CheckoutPanel() {
     if (cryptoOrder) {
       pushToast({ title: t('toast.orderPlaced'), description: cryptoOrder.id, variant: 'success' })
     }
-    setPanel(null)
+    router.push('/')
     setShowCrypto(false)
     setCryptoOrder(null)
   }
@@ -336,7 +330,7 @@ export function CheckoutPanel() {
    * unpaid order waiting in the personal account. */
   function handleCryptoBack() {
     setShowCrypto(false)
-    setPanel(null)
+    router.push('/')
     if (cryptoOrder) {
       pushToast({
         title: t('toast.orderPlaced'),
@@ -351,25 +345,7 @@ export function CheckoutPanel() {
 
   return (
     <>
-      <div
-        className="animate-fade-in fixed inset-0 z-[60] bg-background/70 backdrop-blur-sm"
-        onClick={() => setPanel('cart')}
-        aria-hidden
-      />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col border-l border-border bg-popover">
-        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
-          <button
-            type="button"
-            onClick={() => setPanel('cart')}
-            className="flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground"
-          >
-            <ArrowLeft className="size-[18px]" />
-          </button>
-          <h2 className="font-serif text-xl font-bold tracking-tight text-foreground">
-            {t('checkout.title')}
-          </h2>
-        </div>
-
+      <div className="flex w-full flex-col">
         {!currentUser ? (
           /* Checkout requires an account. An order is the anchor for its own
              history, returns and "pay later" — all of which need something
@@ -396,7 +372,10 @@ export function CheckoutPanel() {
             </button>
             <button
               type="button"
-              onClick={() => setPanel('cart')}
+              onClick={() => {
+              router.push('/')
+              setPanel('cart')
+            }}
               className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
             >
               {t('checkout.backToCart')}
@@ -427,8 +406,8 @@ export function CheckoutPanel() {
             />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col overflow-y-auto">
-            <div className="flex-1 space-y-5 px-6 py-5">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col">
+            <div className="flex-1 space-y-5">
               {/* Offered, never applied automatically — a silently repopulated
                   form is disorienting, and someone shipping a gift elsewhere
                   would have to clear it field by field. */}
