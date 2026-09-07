@@ -108,13 +108,13 @@ export function PasswordRecoveryModal() {
       {/* No click-to-dismiss on the backdrop: the recovery session is
           single-use, so an accidental click outside would strand the customer
           with no way back in. Closing is an explicit choice. */}
-      <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm" aria-hidden />
+      <div className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm" aria-hidden />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="recovery-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[101] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         {done ? (
           <div className="flex flex-col items-center gap-4 py-4 text-center">

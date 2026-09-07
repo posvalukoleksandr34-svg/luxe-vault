@@ -20,7 +20,7 @@ export function SupportWidget() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t('support.title')}
         aria-expanded={open}
-        className="group fixed bottom-5 left-5 z-[90] flex items-center gap-2.5 border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+        className="group fixed bottom-5 left-5 z-[40] flex items-center gap-2.5 border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
       >
         {open ? <X className="size-[18px]" /> : <LifeBuoy className="size-[18px]" />}
         <span className="hidden text-[11px] uppercase tracking-[0.2em] sm:inline">
@@ -31,11 +31,11 @@ export function SupportWidget() {
       {open && (
         <>
           <div
-            className="animate-fade-in fixed inset-0 z-[85] bg-background/50 backdrop-blur-[2px]"
+            className="animate-fade-in fixed inset-0 z-[40] bg-background/50 backdrop-blur-[2px]"
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="animate-fade-up fixed bottom-[5.5rem] left-5 z-[90] w-[calc(100vw-2.5rem)] max-w-sm border border-border bg-popover shadow-2xl">
+          <div className="animate-fade-up fixed bottom-[5.5rem] left-5 z-[40] w-[calc(100vw-2.5rem)] max-w-sm border border-border bg-popover shadow-2xl">
             <SupportPanel onClose={() => setOpen(false)} />
           </div>
         </>

@@ -77,7 +77,7 @@ export function CookieConsent() {
         role="dialog"
         aria-live="polite"
         aria-label={t('cookies.title')}
-        className="animate-fade-up fixed inset-x-0 bottom-0 z-[95] border-t border-gold/25 bg-popover/95 backdrop-blur-md"
+        className="animate-fade-up fixed inset-x-0 bottom-0 z-[30] border-t border-gold/25 bg-popover/95 backdrop-blur-md"
       >
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10">
           <div className="flex items-start gap-3">

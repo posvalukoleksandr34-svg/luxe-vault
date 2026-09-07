@@ -108,6 +108,33 @@
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
+/* ---------------------------------------------------------------------------
+   Stacking order
+   ---------------------------------------------------------------------------
+   One scale, written down, because these were assigned ad hoc per component
+   and drifted into a real bug: the cookie banner sat at z-95 and the support
+   widget at z-90, both ABOVE the z-70 drawers — so with the account drawer
+   open, the banner painted across its lower third and won the hit test
+   (verified with elementFromPoint).
+
+      30   cookie banner           page furniture, deliberately not modal
+      40   support widget          floating, page-level
+      90   drawer backdrop
+     100   drawers                 cart, account
+     110   password modal backdrop
+     111   password modal
+     120   confirm dialog backdrop
+     121   confirm dialog          cancel-order, opened FROM the drawer
+     200   toasts                  always on top, never blocks input
+
+   Drawers sit at 100 as specified. Modals are deliberately ABOVE them rather
+   than level: the cancel-order dialog and the password modal are both opened
+   from inside a drawer, so at an equal z-index they would render behind the
+   surface that launched them and be unreachable.
+
+   Anything new goes in one of these bands rather than picking a bigger number.
+--------------------------------------------------------------------------- */
+
 html {
   scroll-behavior: smooth;
 

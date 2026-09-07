@@ -24,11 +24,11 @@ export function CartPanel() {
   return (
     <>
       <div
-        className="animate-fade-in fixed inset-0 z-[60] bg-background/70 backdrop-blur-sm"
+        className="animate-fade-in fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm"
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col border-l border-border bg-popover">
+      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-md flex-col border-l border-border bg-popover">
         <div className="flex items-center justify-between border-b border-border/40 px-6 py-5">
           <h2 className="font-serif text-xl font-bold tracking-tight text-foreground">
             {t('cart.title')}

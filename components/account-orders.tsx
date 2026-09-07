@@ -439,7 +439,7 @@ function CancelDialog({
   return (
     <>
       <div
-        className="animate-fade-in fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm"
+        className="animate-fade-in fixed inset-0 z-[120] bg-background/80 backdrop-blur-sm"
         onClick={onDismiss}
         aria-hidden
       />
@@ -447,7 +447,7 @@ function CancelDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="cancel-dialog-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[121] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl"
       >
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" strokeWidth={1.5} />

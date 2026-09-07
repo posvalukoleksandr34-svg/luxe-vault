@@ -195,11 +195,11 @@ export function UserPanel() {
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] bg-background/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[90] bg-background/60 backdrop-blur-sm"
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl">
+      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="font-serif text-lg font-bold tracking-tight text-foreground">
             {t('user.title')}

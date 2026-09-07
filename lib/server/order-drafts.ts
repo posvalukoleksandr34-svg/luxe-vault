@@ -2,7 +2,8 @@
 // it is paid immediately or left for later — is created through here, so the
 // id, the lookup token and the payment status can never be dictated by the
 // browser.
-import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
+import { PAYMENT_METHODS, SEED_PROMOS, requiresPrepayment } from '@/lib/data'
+import { readCatalog } from '@/lib/server/catalog-store'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order } from '@/lib/types'
 
@@ -33,6 +34,9 @@ export type ValidatedDraft = {
   subtotal: number
   discount: number
   total: number
+  /** What the browser claimed the total was. Compared against the recomputed
+   *  figure so a mismatch can be logged; never trusted, never stored. */
+  claimedTotal?: number
   promo?: string
   payment: string
 }
@@ -100,12 +104,10 @@ export function validateOrderDraft(
   const items = Array.isArray(body.items) ? body.items.filter(isValidItem) : []
   if (items.length === 0) return { ok: false, error: 'Empty cart' }
 
-  const subtotal = Number(body.subtotal)
-  const total = Number(body.total)
-  const discount = Number(body.discount) || 0
-  if (!Number.isFinite(subtotal) || !Number.isFinite(total) || total <= 0) {
-    return { ok: false, error: 'Invalid totals' }
-  }
+  // NOTE: prices are NOT taken from the body. See repriceItems() in the caller
+  // — every figure below is recomputed from the catalogue. The client's
+  // subtotal/discount/total are read only to detect a mismatch worth logging.
+  const claimedTotal = Number(body.total)
 
   const payment = (body.payment ?? '').trim()
   if (!payment) return { ok: false, error: 'Missing payment method' }
@@ -121,10 +123,13 @@ export function validateOrderDraft(
     draft: {
       customer: { name, phone, email, address, street, postalCode, city, country },
       items,
-      subtotal,
-      discount,
-      total,
-      promo: typeof body.promo === 'string' ? body.promo : undefined,
+      // Placeholders. The caller replaces all three with catalogue-derived
+      // figures before the order is built; they are never persisted as-is.
+      subtotal: 0,
+      discount: 0,
+      total: 0,
+      claimedTotal: Number.isFinite(claimedTotal) ? claimedTotal : undefined,
+      promo: typeof body.promo === 'string' ? body.promo.trim().toUpperCase() : undefined,
       payment,
     },
   }
@@ -167,4 +172,72 @@ export function buildOrder(draft: ValidatedDraft, userId?: string): Order {
     lookupToken: generateLookupToken(),
     paymentStatus: requiresPrepayment(draft.payment) ? 'pending_payment' : undefined,
   }
+}
+
+
+/**
+ * Recomputes every monetary figure from the catalogue.
+ *
+ * THIS IS THE TRUST BOUNDARY. Before it existed the route accepted `price`,
+ * `subtotal`, `discount` and `total` straight from the request body and only
+ * checked they were finite numbers — so a crafted POST could buy a CHF 900
+ * basket for CHF 0.05. Nothing downstream caught it: the Stripe intent route
+ * faithfully rebuilds its amount from the *stored* order, and the stored order
+ * was whatever the client said.
+ *
+ * Every price now comes from `products.price`. An item whose productId is not
+ * in the catalogue is rejected outright rather than silently priced at zero.
+ */
+export async function repriceItems(
+  draft: ValidatedDraft,
+): Promise<{ ok: true; draft: ValidatedDraft } | { ok: false; error: string }> {
+  const { products } = await readCatalog()
+  const byId = new Map(products.map((p) => [p.id, p]))
+
+  const priced: CartItem[] = []
+  for (const item of draft.items) {
+    const product = byId.get(item.productId)
+    // Unknown product: refuse. Accepting it would let anyone invent a line.
+    if (!product) return { ok: false, error: `Unknown product: ${item.productId}` }
+
+    const qty = Math.max(1, Math.min(Math.trunc(item.qty), 20))
+    priced.push({
+      ...item,
+      qty,
+      // The only source of truth for money.
+      price: product.price,
+      // Names are shown on receipts and in the admin; take the catalogue's.
+      name: typeof product.name === 'object' ? (product.name.ru ?? item.name) : item.name,
+    })
+  }
+
+  const subtotal = round2(priced.reduce((sum, i) => sum + i.price * i.qty, 0))
+
+  // Promo codes are re-checked here too — a client could otherwise send any
+  // code string and have the discount it claimed applied.
+  const promo = draft.promo
+    ? SEED_PROMOS.find((p) => p.active && p.code === draft.promo)
+    : undefined
+  const discount = promo ? round2((subtotal * promo.percent) / 100) : 0
+  const total = round2(subtotal - discount)
+
+  if (total <= 0) return { ok: false, error: 'Invalid totals' }
+
+  if (draft.claimedTotal !== undefined && Math.abs(draft.claimedTotal - total) > 0.01) {
+    // Usually a stale cart or a race with a price edit; occasionally an
+    // attempt. Either way the server's figure wins — this is only a signal.
+    console.warn(
+      `[orders] total mismatch: client claimed ${draft.claimedTotal}, server computed ${total}`,
+    )
+  }
+
+  return {
+    ok: true,
+    draft: { ...draft, items: priced, subtotal, discount, total, promo: promo?.code },
+  }
+}
+
+/** Money is stored as numeric(12,2); float drift must not reach the column. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
 }

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { addOrder } from '@/lib/server/orders-store'
-import { buildOrder, validateOrderDraft, type OrderDraftBody } from '@/lib/server/order-drafts'
+import {
+  buildOrder,
+  repriceItems,
+  validateOrderDraft,
+  type OrderDraftBody,
+} from '@/lib/server/order-drafts'
 import { isMailConfigured, sendOrderConfirmation } from '@/lib/server/mailer'
 import { getCurrentUser } from '@/lib/supabase/server'
 
@@ -57,7 +62,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const order = buildOrder(result.draft, userId)
+  // Reprice from the catalogue before anything is persisted. The body's
+  // prices and totals are advisory only — see repriceItems().
+  const priced = await repriceItems(result.draft)
+  if (!priced.ok) {
+    return NextResponse.json({ error: priced.error }, { status: 400 })
+  }
+
+  const order = buildOrder(priced.draft, userId)
   await addOrder(order)
 
   // Confirmation is sent only after the order is committed, and its failure is
@@ -75,5 +87,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ order, emailed }, { status: 201 })
+  // `orderId` at the top level is what the checkout handler redirects with;
+  // the full order is kept for the existing callers.
+  return NextResponse.json({ orderId: order.id, order, emailed }, { status: 201 })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
@@ -77,6 +77,16 @@ export function CheckoutFlow({
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [submitting, setSubmitting] = useState(false)
+  /**
+   * Submission failure, shown inline above the button.
+   *
+   * A toast was the only feedback before, which is wrong for this step: it
+   * auto-dismisses, it can be missed while the customer is looking at the
+   * form, and it discarded the server's actual message — so "please sign in"
+   * (401), "invalid address" (400) and "could not verify session" (503) all
+   * read as the same opaque failure.
+   */
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Remembered checkout details. `hasSaved` is read once on open rather than
   // on every render: localStorage is synchronous and would otherwise be hit
@@ -173,6 +183,7 @@ export function CheckoutFlow({
     if (!customer) return
 
     setSubmitting(true)
+    setSubmitError(null)
     try {
       // The order is always persisted first — the server mints the id, the
       // lookup token and the payment status. If the customer then walks away
@@ -193,7 +204,9 @@ export function CheckoutFlow({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.order) {
-        pushToast({ title: t('checkout.orderFailed'), variant: 'default' })
+        // Surface the server's own wording — it is written for customers and
+        // says what to actually do about it.
+        setSubmitError(data.error || t('checkout.orderFailed'))
         return
       }
 
@@ -218,11 +231,22 @@ export function CheckoutFlow({
         clearSavedProfile()
       }
 
-      // Tell the page first, THEN clear. Reversing these two lines re-creates
-      // the unmount bug: the guard fires on the empty cart before the page has
-      // been told to hold the flow open.
+      // Order-first, pay-on-the-tracking-page.
+      //
+      // The cart is cleared and the customer is sent straight to the order's
+      // own page, where an unpaid order offers "Pay now". The alternative —
+      // holding them on /checkout for an inline card form — is what the
+      // embedded PaymentElement did; this is the explicitly requested flow,
+      // and it survives a refresh because the order already exists server-side
+      // whereas the in-memory cart does not.
       onOrderCreated?.()
       clearCart()
+
+      const orderId: string = data.orderId ?? order.id
+      // Hard navigation, not router.push: the store is client state and the
+      // order page must mount against a clean one, with the cart already gone.
+      window.location.href = `/order?id=${encodeURIComponent(orderId)}`
+      return
 
       if (form.payment === CRYPTO_PAYMENT_METHOD && order.lookupToken) {
         // Pay immediately, against the order we just created.
@@ -613,6 +637,20 @@ export function CheckoutFlow({
               </div>
               {hasErrors && (
                 <p className="mb-3 text-[11px] text-destructive">{t('checkout.fillRequired')}</p>
+              )}
+              {/* Persistent, and carries the server's reason. Sits directly
+                  above the button so it is in the eye-line of whoever just
+                  pressed it, rather than in a corner toast that fades. */}
+              {submitError && (
+                <div
+                  role="alert"
+                  className="mb-3 flex items-start gap-2 border-l-2 border-destructive bg-destructive/5 py-2.5 pl-3 pr-2"
+                >
+                  <AlertCircle className="mt-px size-3.5 shrink-0 text-destructive" strokeWidth={1.5} />
+                  <p className="text-[12px] font-light leading-relaxed text-destructive">
+                    {submitError}
+                  </p>
+                </div>
               )}
               <button
                 type="submit"

@@ -198,7 +198,7 @@ export function PasswordResetModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
@@ -207,7 +207,7 @@ export function PasswordResetModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[101] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
