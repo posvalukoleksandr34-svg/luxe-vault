@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { FULFILMENT, TOTAL_WINDOW } from '@/lib/fulfilment'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Notification, NotificationType } from '@/lib/types'
 
@@ -88,11 +89,11 @@ const STATUS_TITLES: Record<string, string> = {
 }
 
 const STATUS_BODIES: Record<string, string> = {
-  processing: 'Позиция заказана у поставщика и проходит проверку качества. Обычно 20–35 дней.',
+  processing: `Позиция заказана у поставщика и проходит проверку качества. Обычно ${TOTAL_WINDOW.min}–${TOTAL_WINDOW.max} дней.`,
   shipped: 'Посылка передана Швейцарской почте. Трек-номер доступен на странице заказа.',
-  delivered: 'Посылка вручена. С этого момента у вас есть 14 дней на возврат.',
+  delivered: `Посылка вручена. С этого момента у вас есть ${FULFILMENT.returnWindowDays} дней на возврат.`,
   cancelled: 'Заказ отменён. Если списание было — средства вернутся автоматически.',
-  refunded: 'Возврат отправлен в банк. Обычно зачисление занимает 5–10 рабочих дней.',
+  refunded: `Возврат отправлен в банк. Обычно зачисление занимает ${FULFILMENT.refund.min}–${FULFILMENT.refund.max} рабочих дней.`,
 }
 
 /**

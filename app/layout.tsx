@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
+import { readCatalog } from '@/lib/server/catalog-store';
 import { AmbientBackground } from '@/components/ambient-background';
 import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
@@ -48,6 +49,19 @@ const SITE_DESCRIPTION =
 // Shorter variant for link previews, where Telegram/WhatsApp truncate hard.
 const SITE_DESCRIPTION_SHORT =
   'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
+
+/**
+ * Without this the layout's catalogue read makes every page fully static and
+ * bakes the product list into the build — an admin adding a product would not
+ * see it until the next deploy, which is exactly what moving the catalogue
+ * into Postgres was meant to end. Verified: `/` was emitted as ○ (static)
+ * before this line, and ISR after it.
+ *
+ * 60s is the staleness ceiling for the FIRST PAINT only. StoreProvider still
+ * runs loadCatalog() on mount, so a client corrects itself within a second of
+ * hydrating; this only governs what a crawler or a cold visitor sees first.
+ */
+export const revalidate = 60
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -121,11 +135,23 @@ export const metadata: Metadata = {
   category: 'shopping',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read on the server so the storefront's first painted frame already has the
+  // products. This is the fix for the only measured layout shift on the site:
+  // the #shop section reflowing when a client-side /api/catalog call resolved.
+  //
+  // A failure degrades to the previous behaviour — the client fetch still runs
+  // on mount — rather than taking down every page in the app.
+  let initialCatalog
+  try {
+    initialCatalog = await readCatalog()
+  } catch (error) {
+    console.error('[layout] catalogue unavailable for SSR:', error)
+  }
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${bodoni.variable} font-sans`}>
@@ -133,7 +159,7 @@ export default function RootLayout({
             and sits at z-index -1 so it never participates in the app's own
             stacking or event handling. */}
         <AmbientBackground />
-        <StoreProvider>
+        <StoreProvider initialCatalog={initialCatalog}>
           {children}
           {/* Cart / checkout / account drawers. Mounted here, not per page: a
               page that renders a trigger but not its panel is a dead end. */}

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/accordion'
 import { openCookieSettings } from '@/components/cookie-consent'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
+import { TOTAL_WINDOW } from '@/lib/fulfilment'
 import { useStore } from '@/lib/store'
 
 function scrollTo(id: string) {
@@ -27,7 +28,7 @@ function scrollTo(id: string) {
  * appear open at the same time and clicking one never toggles another.
  */
 export function Footer() {
-  const { t } = useStore()
+  const { t, tf } = useStore()
 
   return (
     <footer className="border-t border-border bg-card/20">
@@ -81,7 +82,7 @@ export function Footer() {
                   {t('footer.delivery')}
                 </AccordionTrigger>
                 <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
-                  {t('help.delivery.content')}
+                  {tf('help.delivery.content', TOTAL_WINDOW)}
                 </AccordionContent>
               </AccordionItem>
 

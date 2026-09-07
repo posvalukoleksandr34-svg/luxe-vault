@@ -108,7 +108,34 @@
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+
+  /* Reserves the scrollbar's width whether or not a scrollbar is present, so
+     the content column never changes width.
+     
+     Without it, navigating from a long page (the storefront) to a short one
+     (/checkout with an empty cart, a 404, the account drawer's empty state)
+     removes the scrollbar and the whole layout jumps sideways by its width —
+     ~15px on Windows, which is very visible on a centred layout. The same
+     jump happens if any future code locks body scroll for a modal.
+
+     `stable` rather than `stable both-edges`: reserving on both sides would
+     re-introduce an asymmetry on platforms with overlay scrollbars, where the
+     gutter is 0 anyway. */
+  scrollbar-gutter: stable;
+}
+
+/* Overlay scrollbars (macOS default, iOS, Android) have zero width, so the
+   gutter would be a no-op there — but Firefox reserves space for its thin
+   scrollbar regardless. Matching the two keeps the measured content width the
+   same across engines. */
+@supports (scrollbar-width: thin) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--background));
+  }
+}
 
 /* ---------------------------------------------------------------------------
    Native password controls

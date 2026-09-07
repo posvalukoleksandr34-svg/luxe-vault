@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { ORDER_STATUS_KEYS, type UIKey } from '@/lib/i18n'
+import { FULFILMENT, TOTAL_WINDOW, estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -51,10 +52,13 @@ function stepTimestamp(order: Order, status: OrderStatus): number | undefined {
 }
 
 export function OrderTracker({ order }: { order: Order }) {
-  const { t, locale } = useStore()
+  const { t, tf, locale } = useStore()
   const [copied, setCopied] = useState(false)
 
   const terminal = order.status === 'cancelled' || order.status === 'refunded'
+  // Driven by status + timestamps, so the estimate narrows as the parcel
+  // advances instead of repeating one static sentence for a month.
+  const eta = estimateDelivery(order)
   const currentIndex = terminal ? -1 : STEPS.findIndex((s) => s.status === order.status)
 
   async function copyTracking() {
@@ -114,10 +118,21 @@ export function OrderTracker({ order }: { order: Order }) {
         </div>
       ) : (
         <section className="space-y-3">
-          <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
-            <MapPin className="size-3 text-gold/60" strokeWidth={1.5} />
-            {t('track.timeline')}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
+              <MapPin className="size-3 text-gold/60" strokeWidth={1.5} />
+              {tf('track.timeline', TOTAL_WINDOW)}
+            </p>
+            {/* The projected date, computed from this order's own timestamps.
+                A range of days is abstract; "12 — 27 October" is the answer
+                the customer came for. */}
+            {eta && (
+              <p className="text-[11px] text-muted-foreground/70">
+                {t(order.status === 'delivered' ? 'track.deliveredOn' : 'track.expected')}{' '}
+                <span className="text-gold/90">{formatDeliveryWindow(eta, locale)}</span>
+              </p>
+            )}
+          </div>
 
           {/* One card per step rather than dots on a rail. A dot can only say
               "reached"; a card carries the icon, the date and the sentence
@@ -202,7 +217,11 @@ export function OrderTracker({ order }: { order: Order }) {
                           reached ? 'text-muted-foreground' : 'text-muted-foreground/45',
                         )}
                       >
-                        {t(subtitle)}
+                        {subtitle === 'track.step.processing.sub'
+                          ? tf(subtitle, FULFILMENT.supply)
+                          : subtitle === 'track.step.delivered.sub'
+                            ? tf(subtitle, { days: FULFILMENT.returnWindowDays })
+                            : t(subtitle)}
                       </p>
                     </div>
                   </div>

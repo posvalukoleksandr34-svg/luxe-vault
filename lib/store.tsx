@@ -165,11 +165,31 @@ export function formatPrice(value: number) {
 
 let toastSeq = 0
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>([])
-  const [productsHydrated, setProductsHydrated] = useState(false)
-  const [collections, setCollections] = useState<Collection[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+export function StoreProvider({
+  children,
+  initialCatalog,
+}: {
+  children: ReactNode
+  /**
+   * Catalogue read on the server and handed in as the initial state.
+   *
+   * Without it the grid was empty in the server HTML and only appeared when
+   * /api/catalog resolved on the client — the single measured source of layout
+   * shift on the storefront (CLS 0.0376, the #shop section reflowing ~3.5s in).
+   * Seeding here means the first painted frame already has the products.
+   *
+   * loadCatalog() still runs on mount so an admin edit made after this page
+   * was rendered still lands; it just no longer decides whether anything is
+   * visible at all.
+   */
+  initialCatalog?: { products: Product[]; collections: Collection[]; categories: Category[] }
+}) {
+  const [products, setProducts] = useState<Product[]>(initialCatalog?.products ?? [])
+  // Already hydrated when the server supplied the catalogue — otherwise the
+  // grid would render its "loading" branch over content it already has.
+  const [productsHydrated, setProductsHydrated] = useState(Boolean(initialCatalog))
+  const [collections, setCollections] = useState<Collection[]>(initialCatalog?.collections ?? [])
+  const [categories, setCategories] = useState<Category[]>(initialCatalog?.categories ?? [])
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [cart, setCart] = useState<CartItem[]>([])
   const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
