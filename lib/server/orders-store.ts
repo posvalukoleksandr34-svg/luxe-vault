@@ -26,6 +26,7 @@ const ORDER_SELECT = `
   cancelled_reason, refunded_amount, refunded_at, stripe_refund_id,
   return_status, return_reason, return_requested_at,
   receipt_sent_at,
+  courier_name, shipping_type, delivery_estimate_min, delivery_estimate_max,
   order_items (
     id, product_id, name, image, unit_price, size, color, qty
   )
@@ -113,6 +114,14 @@ function rowToOrder(row: Record<string, unknown>): Order {
     refundedAt: row.refunded_at ? Date.parse(row.refunded_at as string) : undefined,
     stripeRefundId: (row.stripe_refund_id as string | null) ?? undefined,
     receiptSentAt: row.receipt_sent_at ? Date.parse(row.receipt_sent_at as string) : undefined,
+    courierName: (row.courier_name as string | null) ?? undefined,
+    shippingType: (row.shipping_type as 'standard' | 'express' | null) ?? undefined,
+    deliveryEstimateMin: row.delivery_estimate_min
+      ? Date.parse(row.delivery_estimate_min as string)
+      : undefined,
+    deliveryEstimateMax: row.delivery_estimate_max
+      ? Date.parse(row.delivery_estimate_max as string)
+      : undefined,
   }
 }
 
@@ -150,6 +159,15 @@ export async function addOrder(order: Order): Promise<void> {
       promo: order.promo ?? null,
       payment: order.payment,
       payment_status: order.paymentStatus ?? null,
+      // Quoted at purchase and frozen. Stored as ISO so Postgres keeps them
+      // as timestamptz rather than re-deriving anything.
+      shipping_type: order.shippingType ?? 'standard',
+      delivery_estimate_min: order.deliveryEstimateMin
+        ? new Date(order.deliveryEstimateMin).toISOString()
+        : null,
+      delivery_estimate_max: order.deliveryEstimateMax
+        ? new Date(order.deliveryEstimateMax).toISOString()
+        : null,
     })
     .select('id')
     .single()
@@ -304,12 +322,18 @@ export async function setOrderStatus(
   id: string,
   status: OrderStatus,
   trackingNumber?: string | null,
+  courierName?: string | null,
 ): Promise<Order | null> {
   // processing_at / shipped_at / delivered_at / cancelled_at are stamped by the
   // orders_stamp_status trigger, so the timeline cannot drift from the status.
   const patch: Record<string, unknown> = { status }
   if (trackingNumber !== undefined) {
     patch.tracking_number = trackingNumber?.trim() || null
+  }
+  // A tracking number without a carrier renders as a bare string with no
+  // link, so the two are set together.
+  if (courierName !== undefined) {
+    patch.courier_name = courierName?.trim() || null
   }
 
   const { data, error } = await createAdminClient()

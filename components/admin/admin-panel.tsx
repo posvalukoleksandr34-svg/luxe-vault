@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABELS } from '@/lib/i18n'
+import { COURIER_NAMES } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
@@ -119,12 +120,18 @@ export function AdminPanel() {
     id: string,
     status: OrderStatus,
     trackingNumber?: string,
+    courierName?: string,
   ) {
     const previous = orders
     setOrders((prev) =>
       prev.map((o) =>
         o.id === id
-          ? { ...o, status, trackingNumber: trackingNumber ?? o.trackingNumber }
+          ? {
+              ...o,
+              status,
+              trackingNumber: trackingNumber ?? o.trackingNumber,
+              courierName: courierName ?? o.courierName,
+            }
           : o,
       ),
     )
@@ -132,7 +139,7 @@ export function AdminPanel() {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, trackingNumber }),
+        body: JSON.stringify({ status, trackingNumber, courierName }),
       })
       if (!res.ok) throw new Error('failed')
       const data = await res.json()
@@ -594,8 +601,8 @@ export function AdminPanel() {
 
                     <OrderStatusControl
                       order={order}
-                      onSave={(status, trackingNumber) =>
-                        handleUpdateStatus(order.id, status, trackingNumber)
+                      onSave={(status, trackingNumber, courierName) =>
+                        handleUpdateStatus(order.id, status, trackingNumber, courierName)
                       }
                     />
 
@@ -907,19 +914,26 @@ function OrderStatusControl({
   onSave,
 }: {
   order: Order
-  onSave: (status: OrderStatus, trackingNumber?: string) => void
+  onSave: (status: OrderStatus, trackingNumber?: string, courierName?: string) => void
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status)
   const [tracking, setTracking] = useState(order.trackingNumber ?? '')
+  // Defaulted rather than blank: nearly every parcel goes via Swiss Post, and
+  // a carrier left empty means the customer gets a bare number with no link.
+  const [courier, setCourier] = useState(order.courierName ?? COURIER_NAMES[0] ?? '')
 
   // Re-sync when the server's copy comes back (or another admin changes it).
   useEffect(() => {
     setStatus(order.status)
     setTracking(order.trackingNumber ?? '')
-  }, [order.status, order.trackingNumber])
+    setCourier(order.courierName ?? COURIER_NAMES[0] ?? '')
+  }, [order.status, order.trackingNumber, order.courierName])
 
   const needsTracking = status === 'shipped'
-  const dirty = status !== order.status || tracking !== (order.trackingNumber ?? '')
+  const dirty =
+    status !== order.status ||
+    tracking !== (order.trackingNumber ?? '') ||
+    courier !== (order.courierName ?? COURIER_NAMES[0] ?? '')
   const trackingTooShort = needsTracking && tracking.trim().length > 0 && tracking.trim().length < 4
 
   function handleSelect(next: OrderStatus) {
@@ -959,10 +973,27 @@ function OrderStatusControl({
             maxLength={64}
             className="w-48 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] text-foreground outline-none focus:border-gold"
           />
+          {/* A datalist, not a select: these are the carriers we can deep-link
+              to, but a private seller may use another and must not be blocked
+              from typing it. */}
+          <input
+            type="text"
+            list="courier-options"
+            value={courier}
+            onChange={(e) => setCourier(e.target.value)}
+            placeholder="Перевозчик"
+            maxLength={60}
+            className="w-40 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[12px] text-foreground outline-none focus:border-gold"
+          />
+          <datalist id="courier-options">
+            {COURIER_NAMES.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
           <button
             type="button"
             disabled={!dirty || trackingTooShort}
-            onClick={() => onSave('shipped', tracking.trim())}
+            onClick={() => onSave('shipped', tracking.trim(), courier.trim())}
             className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-[11px] font-medium text-gold transition hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
           >
             Сохранить

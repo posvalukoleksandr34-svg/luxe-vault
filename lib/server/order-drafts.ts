@@ -3,6 +3,7 @@
 // id, the lookup token and the payment status can never be dictated by the
 // browser.
 import { PAYMENT_METHODS, SEED_PROMOS, requiresPrepayment } from '@/lib/data'
+import { quoteDeliveryWindow, type ShippingType } from '@/lib/fulfilment'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order } from '@/lib/types'
@@ -156,11 +157,22 @@ export function generateLookupToken(): string {
  * checkout becomes an unpaid order the customer can settle later rather than
  * vanishing.
  */
-export function buildOrder(draft: ValidatedDraft, userId?: string): Order {
+export function buildOrder(
+  draft: ValidatedDraft,
+  userId?: string,
+  shippingType: ShippingType = 'standard',
+): Order {
+  const createdAt = Date.now()
+  // Stamped here, once. Everything downstream reads the stored dates.
+  const quote = quoteDeliveryWindow(createdAt, shippingType)
+
   return {
     id: generateOrderId(),
     userId,
-    createdAt: Date.now(),
+    createdAt,
+    shippingType,
+    deliveryEstimateMin: quote.min.getTime(),
+    deliveryEstimateMax: quote.max.getTime(),
     customer: draft.customer,
     items: draft.items,
     subtotal: draft.subtotal,

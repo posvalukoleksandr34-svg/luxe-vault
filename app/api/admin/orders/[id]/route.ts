@@ -13,7 +13,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  let body: { status?: string; trackingNumber?: unknown }
+  let body: { status?: string; trackingNumber?: unknown; courierName?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -43,10 +43,25 @@ export async function PATCH(
     trackingNumber = trimmed.length > 0 ? trimmed : null
   }
 
+  // Same undefined/empty-string contract as trackingNumber: undefined leaves
+  // the stored value alone, "" clears it.
+  let courierName: string | null | undefined
+  if (body.courierName !== undefined) {
+    if (typeof body.courierName !== 'string') {
+      return NextResponse.json({ error: 'Invalid courier name' }, { status: 400 })
+    }
+    const trimmed = body.courierName.trim()
+    if (trimmed.length > 60) {
+      return NextResponse.json({ error: 'Courier name too long' }, { status: 400 })
+    }
+    courierName = trimmed.length > 0 ? trimmed : null
+  }
+
   const updated = await setOrderStatus(
     params.id,
     body.status as OrderStatus,
     trackingNumber,
+    courierName,
   )
   if (!updated) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })

@@ -179,6 +179,16 @@ export type Order = {
 
   /** Carrier reference, set by the admin when the order is marked `shipped`. */
   trackingNumber?: string
+  /** Carrier handling the parcel, e.g. "Swiss Post". Drives the deep-link. */
+  courierName?: string
+
+  /** Shipping tier chosen at checkout. */
+  shippingType?: 'standard' | 'express'
+  /** Delivery window QUOTED AT PURCHASE, in absolute dates. Stamped once and
+   *  never recomputed, so a later config change cannot silently re-date an
+   *  order the customer was already given a promise for. */
+  deliveryEstimateMin?: number
+  deliveryEstimateMax?: number
 
   /** Status timeline, stamped in Postgres by the orders_stamp_status trigger.
    *  Drives the customer-facing progress bar. */

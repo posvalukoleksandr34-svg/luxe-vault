@@ -9,12 +9,19 @@ import {
   PackageCheck,
   PackageSearch,
   Receipt,
+  ExternalLink,
   Truck,
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
 import { ORDER_STATUS_KEYS, type UIKey } from '@/lib/i18n'
-import { FULFILMENT, TOTAL_WINDOW, estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
+import {
+  FULFILMENT,
+  TOTAL_WINDOW,
+  courierTrackingUrl,
+  estimateDelivery,
+  formatDeliveryWindow,
+} from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -58,7 +65,26 @@ export function OrderTracker({ order }: { order: Order }) {
   const terminal = order.status === 'cancelled' || order.status === 'refunded'
   // Driven by status + timestamps, so the estimate narrows as the parcel
   // advances instead of repeating one static sentence for a month.
-  const eta = estimateDelivery(order)
+  /**
+   * The window QUOTED AT PURCHASE wins over a freshly computed one.
+   *
+   * Recomputing would silently re-date an existing order whenever the config
+   * changes — the customer was promised specific dates and must keep seeing
+   * them. estimateDelivery() remains the fallback for orders placed before
+   * migration 0011 stamped anything.
+   */
+  const stamped =
+    order.deliveryEstimateMin && order.deliveryEstimateMax
+      ? {
+          earliest: new Date(order.deliveryEstimateMin),
+          latest: new Date(order.deliveryEstimateMax),
+        }
+      : null
+  const computed = estimateDelivery(order)
+  const eta =
+    order.status === 'delivered' || !stamped ? computed : stamped
+
+  const courier = courierTrackingUrl(order.courierName, order.trackingNumber)
   const currentIndex = terminal ? -1 : STEPS.findIndex((s) => s.status === order.status)
 
   async function copyTracking() {
@@ -233,13 +259,25 @@ export function OrderTracker({ order }: { order: Order }) {
       )}
 
       {/* ---------------------------------------------------- tracking number */}
+      {/* Shipping. Rendered ONLY once the admin has entered a tracking number —
+          an empty "your parcel" panel on a 26-day-old order that has not moved
+          reads as something being broken. The internal LV- id stays in the
+          header above; this section is the carrier's own reference, which is
+          the number the customer needs on the carrier's website. */}
       {order.trackingNumber && (
         <section className="glow-breathe border border-gold/45 bg-gold/[0.05] p-5 sm:p-6">
-          <div className="flex items-center gap-2">
-            <Truck className="size-3.5 text-gold" strokeWidth={1.5} />
-            <span className="text-[10px] uppercase tracking-[0.2em] text-gold">
-              {t('track.trackingNumber')}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Truck className="size-3.5 text-gold" strokeWidth={1.5} />
+              <span className="text-[10px] uppercase tracking-[0.2em] text-gold">
+                {t('track.trackingNumber')}
+              </span>
+            </div>
+            {order.courierName && (
+              <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                {order.courierName}
+              </span>
+            )}
           </div>
           <div className="mt-3.5 flex flex-wrap items-center gap-3">
             <code className="select-all break-all font-mono text-lg tracking-wide text-foreground sm:text-xl">
@@ -257,6 +295,21 @@ export function OrderTracker({ order }: { order: Order }) {
               )}
               {copied ? t('track.copied') : t('track.copy')}
             </button>
+
+            {/* Only for carriers we have a URL pattern for. An unrecognised
+                carrier shows the number alone rather than a guessed link
+                that would 404 on the customer. */}
+            {courier && (
+              <a
+                href={courier.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex shrink-0 items-center gap-1.5 border border-gold/40 bg-gold/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-gold transition hover:bg-gold hover:text-gold-foreground"
+              >
+                <ExternalLink className="size-3" strokeWidth={1.5} />
+                {t('track.openCourier')}
+              </a>
+            )}
           </div>
         </section>
       )}

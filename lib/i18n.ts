@@ -387,6 +387,7 @@ export const UI = {
   // Order tracking page
   'track.title': { ru: 'Отслеживание заказа', en: 'Order tracking', it: 'Tracciamento ordine', fr: 'Suivi de commande', de: 'Sendungsverfolgung' },
   'track.trackingNumber': { ru: 'Трек-номер', en: 'Tracking number', it: 'Numero di tracciamento', fr: 'Numéro de suivi', de: 'Sendungsnummer' },
+  'track.openCourier': { ru: 'Отследить у перевозчика', en: 'Track with carrier', it: 'Traccia con il corriere', fr: 'Suivre chez le transporteur', de: 'Beim Transporteur verfolgen' },
   'track.copy': { ru: 'Копировать', en: 'Copy', it: 'Copia', fr: 'Copier', de: 'Kopieren' },
   'track.copied': { ru: 'Скопировано', en: 'Copied', it: 'Copiato', fr: 'Copié', de: 'Kopiert' },
   'track.items': { ru: 'Состав заказа', en: 'Items in this order', it: "Articoli dell'ordine", fr: 'Articles de la commande', de: 'Artikel dieser Bestellung' },

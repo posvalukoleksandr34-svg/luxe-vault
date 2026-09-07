@@ -16,6 +16,9 @@ export const FULFILMENT = {
   /** Supplier lead time — ordering the item and quality-checking it. */
   supply: { min: 20, max: 35 },
 
+  /** Express skips the supplier queue for stock already on hand. */
+  expressSupply: { min: 2, max: 5 },
+
   /** Packing and handing the parcel to Swiss Post, after payment clears. */
   dispatch: { min: 2, max: 4 },
 
@@ -102,4 +105,88 @@ export function formatDeliveryWindow(
   const a = fmt.format(window.earliest)
   const b = fmt.format(window.latest)
   return a === b ? a : `${a} — ${b}`
+}
+
+
+export type ShippingType = 'standard' | 'express'
+
+/** End-to-end window per shipping type. Express shortens the supplier leg
+ *  only — dispatch and postal transit are the same parcel either way. */
+export function windowFor(shipping: ShippingType): Range {
+  const supply = shipping === 'express' ? FULFILMENT.expressSupply : FULFILMENT.supply
+  return {
+    min: supply.min + FULFILMENT.dispatch.min + FULFILMENT.transit.min,
+    max: supply.max + FULFILMENT.dispatch.max + FULFILMENT.transit.max,
+  }
+}
+
+/**
+ * The window to STAMP on a new order.
+ *
+ * Called once, server-side, at creation. Everything afterwards reads the
+ * stored dates — see migration 0011 for why the promise is frozen rather than
+ * recomputed on every render.
+ */
+export function quoteDeliveryWindow(
+  createdAt: number,
+  shipping: ShippingType = 'standard',
+): { min: Date; max: Date } {
+  const w = windowFor(shipping)
+  const d = (days: number) => {
+    const x = new Date(createdAt)
+    x.setDate(x.getDate() + days)
+    return x
+  }
+  return { min: d(w.min), max: d(w.max) }
+}
+
+// ------------------------------------------------------------------ couriers
+
+/**
+ * Tracking deep-links, keyed by a normalised carrier name.
+ *
+ * A number alone makes the customer find the carrier's site and paste it; a
+ * link is the difference between "we told you" and "you can check". Unknown
+ * carriers simply render the number with no link rather than guessing a URL
+ * that 404s.
+ */
+const COURIERS: { match: RegExp; label: string; url: (n: string) => string }[] = [
+  {
+    match: /swiss\s*post|die\s*post|la\s*poste|post\.ch/i,
+    label: 'Swiss Post',
+    url: (n) => `https://service.post.ch/ekp-web/ui/entry/search/${encodeURIComponent(n)}`,
+  },
+  {
+    match: /dhl/i,
+    label: 'DHL',
+    url: (n) => `https://www.dhl.com/ch-en/home/tracking.html?tracking-id=${encodeURIComponent(n)}`,
+  },
+  {
+    match: /\bups\b/i,
+    label: 'UPS',
+    url: (n) => `https://www.ups.com/track?tracknum=${encodeURIComponent(n)}`,
+  },
+  {
+    match: /fedex/i,
+    label: 'FedEx',
+    url: (n) => `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(n)}`,
+  },
+  {
+    match: /\bdpd\b/i,
+    label: 'DPD',
+    url: (n) => `https://tracking.dpd.de/status/en_US/parcel/${encodeURIComponent(n)}`,
+  },
+]
+
+/** Known carrier names, for the admin's picker. */
+export const COURIER_NAMES = COURIERS.map((c) => c.label)
+
+export function courierTrackingUrl(
+  courier: string | undefined,
+  trackingNumber: string | undefined,
+): { label: string; url: string } | null {
+  if (!courier?.trim() || !trackingNumber?.trim()) return null
+  const hit = COURIERS.find((c) => c.match.test(courier))
+  if (!hit) return null
+  return { label: hit.label, url: hit.url(trackingNumber.trim()) }
 }
