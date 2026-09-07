@@ -26,7 +26,20 @@ import type { Order } from '@/lib/types'
 
 type FieldKey = 'name' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
-export function CheckoutFlow() {
+export function CheckoutFlow({
+  onOrderCreated,
+}: {
+  /**
+   * Fired the moment the order exists server-side, before the cart is cleared.
+   *
+   * The page guards on an empty cart and shows "your cart is empty" — correct
+   * for someone who lands on /checkout directly, but fatal mid-flow: clearing
+   * the cart used to unmount this component before the payment step could
+   * render, which read to the customer as "Confirm Order wiped my basket".
+   * This lets the page know an order is in flight and keep the flow mounted.
+   */
+  onOrderCreated?: () => void
+} = {}) {
   const {
     setPanel,
     cart,
@@ -205,6 +218,10 @@ export function CheckoutFlow() {
         clearSavedProfile()
       }
 
+      // Tell the page first, THEN clear. Reversing these two lines re-creates
+      // the unmount bug: the guard fires on the empty cart before the page has
+      // been told to hold the flow open.
+      onOrderCreated?.()
       clearCart()
 
       if (form.payment === CRYPTO_PAYMENT_METHOD && order.lookupToken) {

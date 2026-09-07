@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { CheckoutFlow } from '@/components/checkout-flow'
 import { Header } from '@/components/header'
 import { formatPrice, useStore } from '@/lib/store'
@@ -24,11 +25,16 @@ import { formatPrice, useStore } from '@/lib/store'
 export default function CheckoutPage() {
   const { cart, cartCount, cartSubtotal, t } = useStore()
 
+  // Set once the order exists server-side. From that point the cart is
+  // legitimately empty — the order holds the items — so the empty-cart screen
+  // must not take over and unmount the payment step mid-flow.
+  const [orderPlaced, setOrderPlaced] = useState(false)
+
   // The cart is in-memory, so a hard refresh or a pasted /checkout URL lands
   // here with nothing to buy. Showing the form against an empty cart would let
   // someone fill in an address and then fail at submit; saying so up front and
   // pointing back to the shop is the honest version.
-  if (cart.length === 0) {
+  if (cart.length === 0 && !orderPlaced) {
     return (
       <>
         <Header />
@@ -69,9 +75,12 @@ export default function CheckoutPage() {
             customer works down the form. */}
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
           <div className="min-w-0">
-            <CheckoutFlow />
+            <CheckoutFlow onOrderCreated={() => setOrderPlaced(true)} />
           </div>
 
+          {/* Hidden once the order exists: the cart is empty by then, and an
+              empty summary beside a live payment form is just confusing. */}
+          {!orderPlaced && (
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="card-gold p-5">
               <h2 className="mb-4 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -108,6 +117,7 @@ export default function CheckoutPage() {
               </div>
             </div>
           </aside>
+          )}
         </div>
       </main>
     </>

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
@@ -74,10 +75,16 @@ export function Header() {
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-baseline gap-0.5 select-none"
+        {/* A Link, not a scroll-to-top button.
+            The header is global, so on /product/[slug], /checkout, /order/[id]
+            and the legal pages the old handler scrolled a page the visitor was
+            already at the top of and went nowhere — the wordmark looked dead.
+            An <a href="/"> also gets middle-click, "open in new tab", keyboard
+            focus and crawlable internal linking, none of which a button has. */}
+        <Link
+          href="/"
+          aria-label="LUXE VAULT — home"
+          className="flex select-none items-baseline gap-0.5"
         >
           <span className="font-serif text-xl font-bold tracking-[0.22em] text-foreground">
             LUXE
@@ -85,7 +92,7 @@ export function Header() {
           <span className="font-serif text-xl font-bold tracking-[0.22em] text-gold">
             VAULT
           </span>
-        </button>
+        </Link>
 
         {/* gap-8 -> gap-9: hover scales each item 5%, and at the old spacing
             an enlarged item nearly touched its neighbour. */}
