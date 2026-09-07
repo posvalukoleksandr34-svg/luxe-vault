@@ -231,22 +231,13 @@ export function CheckoutFlow({
         clearSavedProfile()
       }
 
-      // Order-first, pay-on-the-tracking-page.
+      // The customer stays on /checkout and pays here. The cart is cleared so
+      // the page's empty-cart guard does not fight the payment step — see
+      // onOrderCreated, which tells the page to hold the flow mounted.
       //
-      // The cart is cleared and the customer is sent straight to the order's
-      // own page, where an unpaid order offers "Pay now". The alternative —
-      // holding them on /checkout for an inline card form — is what the
-      // embedded PaymentElement did; this is the explicitly requested flow,
-      // and it survives a refresh because the order already exists server-side
-      // whereas the in-memory cart does not.
+      // Nothing navigates until the payment actually succeeds.
       onOrderCreated?.()
       clearCart()
-
-      const orderId: string = data.orderId ?? order.id
-      // Hard navigation, not router.push: the store is client state and the
-      // order page must mount against a clean one, with the cart already gone.
-      window.location.href = `/order?id=${encodeURIComponent(orderId)}`
-      return
 
       if (form.payment === CRYPTO_PAYMENT_METHOD && order.lookupToken) {
         // Pay immediately, against the order we just created.
@@ -333,13 +324,17 @@ export function CheckoutFlow({
     pushToast({ title: t('checkout.savedCleared'), variant: 'default' })
   }
 
+  /**
+   * Payment confirmed. This is the ONLY path that leaves /checkout forwards.
+   *
+   * A hard navigation rather than router.push: the success page must mount
+   * against a clean store with the cart already gone, and it also drops the
+   * checkout out of the history entry the customer would hit with Back —
+   * landing them on an empty-cart guard rather than a re-submittable form.
+   */
   function handleCardPaid() {
-    if (cardOrder) {
-      pushToast({ title: t('toast.orderPlaced'), description: cardOrder.id, variant: 'success' })
-    }
-    router.push('/')
-    setCardOrder(null)
-    setClientSecret(null)
+    if (!cardOrder) return
+    window.location.href = `/checkout/success?order=${encodeURIComponent(cardOrder.id)}`
   }
 
   /** Leaving the card step keeps the order — it becomes an unpaid order
@@ -360,7 +355,8 @@ export function CheckoutFlow({
 
   function handleCryptoPaid() {
     if (cryptoOrder) {
-      pushToast({ title: t('toast.orderPlaced'), description: cryptoOrder.id, variant: 'success' })
+      window.location.href = `/checkout/success?order=${encodeURIComponent(cryptoOrder.id)}`
+      return
     }
     router.push('/')
     setShowCrypto(false)

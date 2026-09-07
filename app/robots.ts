@@ -13,7 +13,8 @@ import type { MetadataRoute } from 'next'
  *   /order/                order pages contain a customer's name, address and
  *                          basket, gated only by a per-order token — a crawled
  *                          and cached order page is a privacy incident
- *   /success               post-payment landing, no standalone content
+ *   /success               3-D Secure return hop, no standalone content
+ *   /checkout/success      thank-you page; renders one customer's order
  *   /api/                  JSON endpoints, never useful in an index
  *
  * NOTE: robots.txt controls crawling, not indexing. A disallowed URL can still
@@ -27,7 +28,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin', '/auth/', '/order/', '/success', '/api/'],
+        disallow: ['/admin', '/auth/', '/order/', '/success', '/checkout/success', '/api/'],
       },
     ],
     sitemap: 'https://luxe-vault.store/sitemap.xml',

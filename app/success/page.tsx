@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { CheckCircle2, Clock, XCircle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -6,15 +7,20 @@ export const dynamic = 'force-dynamic'
 /**
  * Landing page for payments that had to leave the site.
  *
- * Most card payments never reach here: `redirect: 'if_required'` keeps them in
- * the checkout drawer, and the drawer shows its own confirmation. This page is
+ * Most card payments never reach here: `redirect: 'if_required'` keeps them on
+ * /checkout, and that page routes straight to /checkout/success. This page is
  * where a 3-D Secure step-up or a redirect-based method returns to.
  *
+ * A successful return is forwarded to /checkout/success so a customer who was
+ * bounced through their bank sees the same thank-you page as everyone else,
+ * rather than a second, thinner confirmation screen. Only the outcomes that
+ * page cannot express — still processing, or declined — are rendered here.
+ *
  * IMPORTANT: `redirect_status` in this URL is a display hint, nothing more.
- * Anyone can type `?redirect_status=succeeded`, so this page deliberately does
- * not mark anything paid or read any order data. The order's real state is set
- * only by the signed webhook at /api/payments/stripe/webhook, and the customer
- * sees the authoritative version on their order page.
+ * Anyone can type `?redirect_status=succeeded`, so neither this page nor the
+ * one it forwards to marks anything paid or trusts the value: /checkout/success
+ * re-reads the order as the signed-in customer, and the order's real state is
+ * set only by the signed webhook at /api/payments/stripe/webhook.
  */
 export default function SuccessPage({
   searchParams,
@@ -30,6 +36,10 @@ export default function SuccessPage({
       : status === 'processing'
         ? ('processing' as const)
         : ('succeeded' as const)
+
+  if (state === 'succeeded' && orderId) {
+    redirect(`/checkout/success?order=${encodeURIComponent(orderId)}`)
+  }
 
   const copy = {
     succeeded: {

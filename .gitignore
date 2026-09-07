@@ -45,3 +45,6 @@ next-env.d.ts
 /data/orders.json
 /data/reviews.json
 /data/support.json
+
+# Local Claude Code skill docs — not part of the app build
+skills/

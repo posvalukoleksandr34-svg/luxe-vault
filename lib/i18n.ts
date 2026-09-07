@@ -385,6 +385,13 @@ export const UI = {
   'orders.refundedAmount': { ru: 'Возвращено', en: 'Refunded', it: 'Rimborsato', fr: 'Remboursé', de: 'Erstattet' },
 
   // Order tracking page
+  'success.thankYou': { ru: 'Спасибо за заказ', en: 'Thank you for your order', it: 'Grazie per il tuo ordine', fr: 'Merci pour votre commande', de: 'Danke für Ihre Bestellung' },
+  'success.subtitle': { ru: 'Оплата прошла успешно. Подтверждение отправлено на вашу почту — мы начинаем готовить заказ.', en: 'Your payment went through. A confirmation is on its way to your inbox and we are preparing your order.', it: 'Il pagamento è andato a buon fine. La conferma è in arrivo via email e stiamo preparando il tuo ordine.', fr: 'Votre paiement a été accepté. Une confirmation arrive par e-mail et nous préparons votre commande.', de: 'Ihre Zahlung war erfolgreich. Eine Bestätigung ist unterwegs, und wir bereiten Ihre Bestellung vor.' },
+  'success.orderNumber': { ru: 'Номер заказа', en: 'Order number', it: 'Numero ordine', fr: 'Numéro de commande', de: 'Bestellnummer' },
+  'success.expectedDelivery': { ru: 'Ожидаемая доставка', en: 'Expected delivery', it: 'Consegna prevista', fr: 'Livraison prévue', de: 'Voraussichtliche Lieferung' },
+  'success.totalPaid': { ru: 'Оплачено', en: 'Total paid', it: 'Totale pagato', fr: 'Total payé', de: 'Bezahlt' },
+  'success.trackOrder': { ru: 'Отследить заказ', en: 'Track order', it: 'Traccia ordine', fr: 'Suivre la commande', de: 'Bestellung verfolgen' },
+  'success.emailNote': { ru: 'Подтверждение и чек придут на указанный email. Заказ также доступен в личном кабинете.', en: 'A confirmation and receipt are on their way to the email you provided. The order is also in your account.', it: 'Conferma e ricevuta arriveranno all’email indicata. L’ordine è anche nel tuo account.', fr: 'Confirmation et reçu arrivent à l’adresse indiquée. La commande figure aussi dans votre compte.', de: 'Bestätigung und Beleg gehen an die angegebene E-Mail. Die Bestellung finden Sie auch in Ihrem Konto.' },
   'track.title': { ru: 'Отслеживание заказа', en: 'Order tracking', it: 'Tracciamento ordine', fr: 'Suivi de commande', de: 'Sendungsverfolgung' },
   'track.trackingNumber': { ru: 'Трек-номер', en: 'Tracking number', it: 'Numero di tracciamento', fr: 'Numéro de suivi', de: 'Sendungsnummer' },
   'track.openCourier': { ru: 'Отследить у перевозчика', en: 'Track with carrier', it: 'Traccia con il corriere', fr: 'Suivre chez le transporteur', de: 'Beim Transporteur verfolgen' },

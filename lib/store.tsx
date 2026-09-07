@@ -5,11 +5,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
 import { createClient } from './supabase/client'
 import { isSupabaseConfigured } from './supabase/env'
@@ -146,6 +149,15 @@ type StoreContextValue = {
 
   paymentMethods: string[]
 }
+
+/**
+ * useLayoutEffect warns during SSR because it cannot run there. The saved cart
+ * must be restored BEFORE the browser paints, though, or the header badge
+ * would render "0" for one frame and then jump — so the layout variant is used
+ * in the browser and the passive one on the server, where it is inert anyway.
+ */
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 const StoreContext = createContext<StoreContextValue | null>(null)
 
@@ -518,6 +530,50 @@ export function StoreProvider({
   }, [])
 
   const clearCart = useCallback(() => setCart([]), [])
+
+  // ---------------------------------------------------------------- cart ----
+  // The cart survives a reload. See lib/cart-storage.ts for why localStorage
+  // and not a cookie, and why an attacker-editable cart is harmless here.
+
+  /* Restore. Runs once, before the first paint, so the badge never flashes 0.
+     Cannot be an initial useState value: localStorage does not exist during
+     SSR, and reading it in the initialiser would make the server and client
+     render different markup — a hydration mismatch. */
+  const cartRestored = useRef(false)
+  useIsomorphicLayoutEffect(() => {
+    const saved = readCart()
+    if (saved.length > 0) setCart(saved)
+    cartRestored.current = true
+  }, [])
+
+  /* Persist on every change. Gated on the restore having run, or this effect's
+     own first pass would write the empty initial state over the saved cart
+     before the restore above could read it. */
+  useEffect(() => {
+    if (!cartRestored.current) return
+    writeCart(cart)
+  }, [cart])
+
+  /* Realign a restored cart with the catalogue once it loads — refreshed
+     prices, re-localised names, deleted products dropped. reconcileCart
+     returns the same array when nothing moved, so React bails out of the
+     update rather than re-rendering every consumer on each catalogue poll. */
+  useEffect(() => {
+    if (!cartRestored.current) return
+    setCart((prev) => reconcileCart(prev, products, localize))
+  }, [products, localize])
+
+  /* Keep two open tabs in step. Without this the last tab to write wins, and
+     a customer who adds a coat in one tab and a bag in another silently loses
+     one of them at checkout. */
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== CART_STORAGE_KEY && event.key !== null) return
+      setCart(readCart())
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   const cartCount = useMemo(
     () => cart.reduce((sum, c) => sum + c.qty, 0),
