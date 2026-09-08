@@ -4,13 +4,11 @@ import Image from 'next/image'
 import {
   Check,
   Clock,
-  Copy,
   Home,
   MapPin,
   PackageCheck,
   PackageSearch,
   Receipt,
-  ExternalLink,
   Truck,
   XCircle,
 } from 'lucide-react'
@@ -23,6 +21,7 @@ import {
   estimateDelivery,
   formatDeliveryWindow,
 } from '@/lib/fulfilment'
+import { TrackingDetails } from '@/components/tracking-details'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -61,7 +60,6 @@ function stepTimestamp(order: Order, status: OrderStatus): number | undefined {
 
 export function OrderTracker({ order }: { order: Order }) {
   const { t, tf, locale } = useStore()
-  const [copied, setCopied] = useState(false)
 
   const terminal = order.status === 'cancelled' || order.status === 'refunded'
   // Driven by status + timestamps, so the estimate narrows as the parcel
@@ -87,18 +85,6 @@ export function OrderTracker({ order }: { order: Order }) {
 
   const courier = courierTrackingUrl(order.courierName, order.trackingNumber)
   const currentIndex = terminal ? -1 : STEPS.findIndex((s) => s.status === order.status)
-
-  async function copyTracking() {
-    if (!order.trackingNumber) return
-    try {
-      await navigator.clipboard.writeText(order.trackingNumber)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard blocked (insecure origin or denied permission) — the number
-      // is still on screen to copy by hand, so this is not worth an error.
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -265,55 +251,7 @@ export function OrderTracker({ order }: { order: Order }) {
           reads as something being broken. The internal LV- id stays in the
           header above; this section is the carrier's own reference, which is
           the number the customer needs on the carrier's website. */}
-      {order.trackingNumber && (
-        <section className="glow-breathe border border-gold/45 bg-gold/[0.05] p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Truck className="size-3.5 text-gold" strokeWidth={1.5} />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gold">
-                {t('track.trackingNumber')}
-              </span>
-            </div>
-            {order.courierName && (
-              <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                {order.courierName}
-              </span>
-            )}
-          </div>
-          <div className="mt-3.5 flex flex-wrap items-center gap-3">
-            <code className="select-all break-all font-mono text-lg tracking-wide text-foreground sm:text-xl">
-              {order.trackingNumber}
-            </code>
-            <button
-              type="button"
-              onClick={copyTracking}
-              className="flex shrink-0 items-center gap-1.5 border border-gold/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-gold/80 transition hover:border-gold/60 hover:text-gold"
-            >
-              {copied ? (
-                <Check className="size-3" strokeWidth={2} />
-              ) : (
-                <Copy className="size-3" strokeWidth={1.5} />
-              )}
-              {copied ? t('track.copied') : t('track.copy')}
-            </button>
-
-            {/* Only for carriers we have a URL pattern for. An unrecognised
-                carrier shows the number alone rather than a guessed link
-                that would 404 on the customer. */}
-            {courier && (
-              <a
-                href={courier.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex shrink-0 items-center gap-1.5 border border-gold/40 bg-gold/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-gold transition hover:bg-gold hover:text-gold-foreground"
-              >
-                <ExternalLink className="size-3" strokeWidth={1.5} />
-                {t('track.openCourier')}
-              </a>
-            )}
-          </div>
-        </section>
-      )}
+      {order.trackingNumber && <TrackingDetails order={order} prominent />}
 
       {/* -------------------------------------------------------------- items */}
       <section className="card-gold p-5 sm:p-6">

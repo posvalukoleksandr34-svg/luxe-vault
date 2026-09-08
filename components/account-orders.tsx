@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
 import { StripePayment } from '@/components/stripe-payment'
+import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
@@ -570,6 +571,16 @@ function OrderCard({
           )}
         </div>
       </div>
+
+      {/* Above the items, not below: on a shipped order "where is it" is the
+          only question the customer opened this card to answer, and it should
+          not be under a list they have already seen. Renders nothing until the
+          admin enters a number. */}
+      {order.trackingNumber && (
+        <div className="mt-3">
+          <TrackingDetails order={order} compact />
+        </div>
+      )}
 
       <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
         {order.items.map((item) => (

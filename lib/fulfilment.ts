@@ -242,6 +242,14 @@ const COURIERS: { match: RegExp; label: string; url: (n: string) => string }[] =
     label: 'DPD',
     url: (n) => `https://tracking.dpd.de/status/en_US/parcel/${encodeURIComponent(n)}`,
   },
+  {
+    // Matches the Latin and Cyrillic spellings, and the "NP" the label is
+    // often abbreviated to — an admin typing "Нова Пошта" must get the same
+    // deep-link as one typing "Nova Poshta".
+    match: /nova\s*posh?ta|нова\s*пошта|новая\s*почта|\bnp\b/i,
+    label: 'Nova Poshta',
+    url: (n) => `https://novaposhta.ua/tracking/?cargo_number=${encodeURIComponent(n)}`,
+  },
 ]
 
 /** Known carrier names, for the admin's picker. */
