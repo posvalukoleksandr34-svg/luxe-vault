@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { listProductSlugs } from '@/lib/server/catalog-store'
+import { readTaxonomy } from '@/lib/server/taxonomy'
 
 /**
  * XML sitemap, served at /sitemap.xml by the App Router.
@@ -17,15 +18,15 @@ import { listProductSlugs } from '@/lib/server/catalog-store'
 const BASE = 'https://luxe-vault.store'
 
 /**
- * The storefront is a single page. "Collections", "Shop", "About" and
- * "Reviews" are anchor sections on `/` (#collections, #shop, #about,
- * #reviews), not routes — /collections, /catalog, /new-arrivals, /sale,
- * /about, /reviews and /contacts all return 404.
+ * The catalogue is no longer a single page: every collection and subcategory
+ * has a real route at /category/[collection][/subcategory], and those are
+ * listed below. They are the pages that can rank for a category query at all —
+ * "#shop" never could, because Google treats `/#shop` and `/` as one URL.
  *
- * Anchors are deliberately NOT listed: Google treats `/#shop` and `/` as the
- * same URL, so adding them would submit the homepage five times rather than
- * gaining five entries. Splitting these into real routes is a prerequisite for
- * ranking them separately.
+ * What remains anchors-only is the editorial content: #about and #reviews are
+ * still sections of `/`, and /about, /reviews, /contacts, /new-arrivals and
+ * /sale return 404. Anchors are deliberately NOT listed — submitting them
+ * would submit the homepage several times over rather than gain entries.
  */
 const SECTIONS_ARE_ANCHORS = true
 
@@ -67,6 +68,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('[sitemap] product slugs unavailable:', error)
   }
 
+  // Category URLs, from the same taxonomy the routes themselves resolve, so
+  // the sitemap cannot list a collection the route would 404. EMPTY ONES ARE
+  // SKIPPED: the route renders them (an existing link must not break the day
+  // stock runs out), but submitting a page with no products to Google is
+  // exactly the "crawled — currently not indexed" outcome the file's opening
+  // note is about.
+  const categoryUrls: MetadataRoute.Sitemap = []
+  try {
+    const { tree } = await readTaxonomy()
+    for (const node of tree) {
+      if (node.count === 0) continue
+      categoryUrls.push({
+        url: `${BASE}/category/${encodeURIComponent(node.slug)}`,
+        lastModified: now,
+        changeFrequency: 'daily',
+        priority: 0.8,
+      })
+      for (const category of node.categories) {
+        if (category.count === 0) continue
+        categoryUrls.push({
+          url: `${BASE}/category/${encodeURIComponent(node.slug)}/${encodeURIComponent(category.slug)}`,
+          lastModified: now,
+          changeFrequency: 'daily',
+          priority: 0.7,
+        })
+      }
+    }
+  } catch (error) {
+    console.error('[sitemap] taxonomy unavailable:', error)
+  }
+
   return [
     {
       url: `${BASE}/`,
@@ -74,6 +106,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 1.0,
     },
+    // Category pages sit between the homepage and the products: broader than a
+    // single item, narrower than the shop.
+    ...categoryUrls,
     // Product pages rank for the queries that actually convert, so they carry
     // the highest priority after the homepage.
     ...products.map((p) => ({

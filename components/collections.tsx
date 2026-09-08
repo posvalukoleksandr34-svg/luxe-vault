@@ -2,15 +2,14 @@
 
 import { ArrowUpRight } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useMemo } from 'react'
 import { Reveal } from '@/components/reveal'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { useStore } from '@/lib/store'
-import type { CategoryGroupKey } from '@/lib/types'
 
 export function Collections() {
-  const { t, localize, setFilter, filter, products, categoryImages, categoryTree, groupLabels } =
-    useStore()
+  const { t, localize, products, categoryImages, categoryTree, groupLabels } = useStore()
 
   // Counts (and which cards even appear) are derived live from the actual
   // product catalog on every render — never a hardcoded number — so
@@ -25,15 +24,6 @@ export function Collections() {
       })).filter((col) => col.count > 0),
     [products, categoryImages, categoryTree],
   )
-
-  function goToGroup(group: CategoryGroupKey) {
-    setFilter({ ...filter, group, category: null, sale: false })
-    const el = document.getElementById('shop')
-    if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 72
-      window.scrollTo({ top, behavior: 'smooth' })
-    }
-  }
 
   if (collections.length === 0) return null
 
@@ -52,10 +42,14 @@ export function Collections() {
         <div className="grid gap-4 md:grid-cols-3">
           {collections.map((col, i) => (
             <Reveal key={col.group} delay={i * 120}>
-              <button
-                type="button"
-                onClick={() => goToGroup(col.group)}
-                className="card-gold group relative aspect-[4/5] w-full overflow-hidden text-left"
+              {/* Was a <button> that set a store filter and smooth-scrolled to
+                  `#shop`. That made a collection unlinkable: no URL to share,
+                  no new tab, nothing for a crawler to follow, and a back button
+                  that left the shop scrolled and filtered. It is a real route
+                  now, so it is a real link. */}
+              <Link
+                href={`/category/${col.group}`}
+                className="card-gold group relative block aspect-[4/5] w-full overflow-hidden text-left"
               >
                 {/* Collection covers are the largest images on the homepage and
                     the usual LCP element, so they are the ones that most need
@@ -84,7 +78,7 @@ export function Collections() {
                 </div>
 
                 <span className="absolute left-0 top-0 h-px w-0 bg-gold transition-all duration-500 group-hover:w-full" />
-              </button>
+              </Link>
             </Reveal>
           ))}
         </div>

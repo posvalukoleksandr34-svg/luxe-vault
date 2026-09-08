@@ -31,15 +31,46 @@ function isBuyable(p: Product): boolean {
   return p.variants.some((v) => v.stock > 0)
 }
 
-export function ProductGrid() {
+export function ProductGrid({
+  lockedGroup,
+  lockedCategory,
+  wrap = true,
+}: {
+  /**
+   * Pins the grid to one collection — and optionally to one category — from
+   * the ROUTE rather than from store filter state.
+   *
+   * A category page's taxonomy is decided by its URL; that is the point of
+   * having the URL. So on those routes the group and category chips are hidden
+   * and the sidebar owns navigation instead, while every other facet (size,
+   * colour, price, availability, sort, paging) still applies — those are
+   * refinements within a category rather than a change of place.
+   *
+   * Left undefined on the homepage, where the chips remain the navigation and
+   * nothing about the existing behaviour changes.
+   */
+  lockedGroup?: string
+  lockedCategory?: string
+  /**
+   * The homepage renders this as its own `#shop` section. A category route
+   * already has a page shell around it, so it opts out of the outer padding.
+   */
+  wrap?: boolean
+} = {}) {
   const { products, filter, setFilter, query, t, localize, categoryTree, groupLabels, categoryLabels } =
     useStore()
-  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // When the route pins the taxonomy, the store's own group/category are
+  // ignored entirely rather than merged — a filter left over from the homepage
+  // must not silently narrow a category page the customer just navigated to.
+  const locked = lockedGroup !== undefined
+  const activeGroup = locked ? lockedGroup : filter.group
+  const activeCategory = locked ? (lockedCategory ?? null) : filter.category
 
   const filtered = useMemo(() => {
     const result = products.filter((p) => {
-      if (filter.group && p.group !== filter.group) return false
-      if (filter.category && p.category !== filter.category) return false
+      if (activeGroup && p.group !== activeGroup) return false
+      if (activeCategory && p.category !== activeCategory) return false
       if (filter.sale && !p.oldPrice) return false
       if (filter.sizes.length > 0 && !filter.sizes.some((s) => p.sizes.includes(s))) {
         return false
@@ -92,7 +123,7 @@ export function ProductGrid() {
     }
 
     return result
-  }, [products, filter, query, localize, categoryLabels, groupLabels])
+  }, [products, filter, activeGroup, activeCategory, query, localize, categoryLabels, groupLabels])
 
   // Counts are derived live from `products` on every render, and any group
   // or category with zero matching products is dropped from the filter bar
@@ -109,18 +140,34 @@ export function ProductGrid() {
   )
 
   const categories = useMemo(() => {
-    if (!filter.group) return []
-    const items = categoryTree.find((n) => n.group === filter.group)?.items ?? []
+    if (!activeGroup) return []
+    const items = categoryTree.find((n) => n.group === activeGroup)?.items ?? []
     return items
       .map((c) => ({
         key: c,
         label: localize(categoryLabels[c] ?? {}),
-        count: products.filter((p) => p.group === filter.group && p.category === c).length,
+        count: products.filter((p) => p.group === activeGroup && p.category === c).length,
       }))
       .filter((c) => c.count > 0)
-  }, [products, filter.group, localize, categoryTree, categoryLabels])
+  }, [products, activeGroup, localize, categoryTree, categoryLabels])
 
-  const saleCount = useMemo(() => products.filter((p) => p.oldPrice).length, [products])
+  /**
+   * The products this view could ever show, before any refinement.
+   *
+   * Facet options are derived from THIS rather than from the whole catalogue,
+   * so a category page's swatches and price range describe what is on the page
+   * — a "Bordeaux" swatch that matches nothing in Shoes is a dead control.
+   * On the homepage it is the whole catalogue, exactly as before, because
+   * there the taxonomy chips are themselves the navigation.
+   */
+  const scoped = useMemo(() => {
+    if (!locked) return products
+    return products.filter(
+      (p) => p.group === activeGroup && (!activeCategory || p.category === activeCategory),
+    )
+  }, [products, locked, activeGroup, activeCategory])
+
+  const saleCount = useMemo(() => scoped.filter((p) => p.oldPrice).length, [scoped])
 
   function toggleSize(size: string) {
     setFilter({
@@ -147,7 +194,7 @@ export function ProductGrid() {
     // spreading a Map iterator needs --downlevelIteration.
     const seen = new Set<string>()
     const out: { name: string; hex: string }[] = []
-    for (const p of products) {
+    for (const p of scoped) {
       for (const c of p.colors) {
         if (c.name && !seen.has(c.name)) {
           seen.add(c.name)
@@ -156,18 +203,21 @@ export function ProductGrid() {
       }
     }
     return out
-  }, [products])
+  }, [scoped])
 
   /** Bounds for the price inputs, from the catalogue itself. */
   const priceBounds = useMemo(() => {
-    if (products.length === 0) return { min: 0, max: 0 }
-    const prices = products.map((p) => p.price)
+    if (scoped.length === 0) return { min: 0, max: 0 }
+    const prices = scoped.map((p) => p.price)
     return { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) }
-  }, [products])
+  }, [scoped])
 
+  // On a locked route the group and category are the ADDRESS, not a filter, so
+  // they are not counted and "clear all" does not offer to remove them —
+  // clearing your way out of the page you navigated to is not a filter reset.
   const activeFilterCount =
-    (filter.group ? 1 : 0) +
-    (filter.category ? 1 : 0) +
+    (!locked && filter.group ? 1 : 0) +
+    (!locked && filter.category ? 1 : 0) +
     (filter.sale ? 1 : 0) +
     filter.sizes.length +
     filter.colors.length +
@@ -200,18 +250,31 @@ export function ProductGrid() {
   // they have not seen page one of.
   useEffect(() => {
     setVisible(PAGE_SIZE)
-  }, [filter, query])
+  }, [filter, query, activeGroup, activeCategory])
 
   const shown = filtered.slice(0, visible)
 
+  const Wrapper = wrap ? 'section' : 'div'
+
   return (
-    <section id="shop" className="mx-auto max-w-[1400px] scroll-mt-20 px-4 py-20 sm:px-6 lg:px-10">
+    <Wrapper
+      // The `#shop` anchor belongs to the homepage's one grid. A category route
+      // is its own page, so it neither claims the id nor re-applies the
+      // section padding its shell already has.
+      {...(wrap ? { id: 'shop' } : {})}
+      className={cn(wrap && 'mx-auto max-w-[1400px] scroll-mt-20 px-4 py-20 sm:px-6 lg:px-10')}
+    >
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {t('nav.shop')}
-          </h2>
-          <p className="mt-2 text-[12px] uppercase tracking-[0.15em] text-muted-foreground/50">
+          {/* A category route puts its own name in an <h1> above this, so a
+              second "Shop" heading here would be noise — and two headings for
+              one list of products reads wrong to a screen reader. */}
+          {wrap && (
+            <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              {t('nav.shop')}
+            </h2>
+          )}
+          <p className={cn('text-[12px] uppercase tracking-[0.15em] text-muted-foreground/50', wrap && 'mt-2')}>
             {filtered.length} {t('filter.results')}
           </p>
         </div>
@@ -260,42 +323,66 @@ export function ProductGrid() {
       </div>
 
       <div className="mb-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border/40 pb-4">
-        <FilterLink
-          active={!filter.group && !filter.sale}
-          onClick={() => setFilter({ ...filter, group: null, category: null, sale: false })}
-        >
-          {t('filter.all')} <span className="text-muted-foreground/40">· {products.length}</span>
-        </FilterLink>
-        {groups.map((g) => (
-          <FilterLink
-            key={g.key}
-            active={filter.group === g.key && !filter.sale}
-            onClick={() =>
-              setFilter({
-                ...filter,
-                group: g.key,
-                category: null,
-                sale: false,
-              })
-            }
-          >
-            {g.label} <span className="text-muted-foreground/40">· {g.count}</span>
-          </FilterLink>
-        ))}
-        {saleCount > 0 && (
+        {/* Taxonomy chips are the homepage's navigation. On a category route
+            the URL and the sidebar are, so these are dropped there rather than
+            duplicated — two controls for one piece of state is how a filter
+            and a route end up disagreeing. */}
+        {!locked && (
           <>
-            <span className="mx-1 h-3 w-px bg-border/60" />
             <FilterLink
-              active={filter.sale}
-              onClick={() => setFilter({ ...filter, sale: !filter.sale, group: null, category: null })}
-              accent
+              active={!filter.group && !filter.sale}
+              onClick={() => setFilter({ ...filter, group: null, category: null, sale: false })}
             >
-              {t('filter.sale')} <span className="text-muted-foreground/40">· {saleCount}</span>
+              {t('filter.all')} <span className="text-muted-foreground/40">· {products.length}</span>
             </FilterLink>
+            {groups.map((g) => (
+              <FilterLink
+                key={g.key}
+                active={filter.group === g.key && !filter.sale}
+                onClick={() =>
+                  setFilter({
+                    ...filter,
+                    group: g.key,
+                    category: null,
+                    sale: false,
+                  })
+                }
+              >
+                {g.label} <span className="text-muted-foreground/40">· {g.count}</span>
+              </FilterLink>
+            ))}
+            {saleCount > 0 && (
+              <>
+                <span className="mx-1 h-3 w-px bg-border/60" />
+                <FilterLink
+                  active={filter.sale}
+                  onClick={() => setFilter({ ...filter, sale: !filter.sale, group: null, category: null })}
+                  accent
+                >
+                  {t('filter.sale')} <span className="text-muted-foreground/40">· {saleCount}</span>
+                </FilterLink>
+              </>
+            )}
+
+            <span className="mx-1 h-3 w-px bg-border/60" />
           </>
         )}
 
-        <span className="mx-1 h-3 w-px bg-border/60" />
+        {/* Sale survives the lock, because "on sale" is a refinement WITHIN a
+            category rather than a different place — unlike the homepage
+            version it therefore leaves the route's taxonomy alone. */}
+        {locked && saleCount > 0 && (
+          <>
+            <FilterLink
+              active={filter.sale}
+              onClick={() => setFilter({ ...filter, sale: !filter.sale })}
+              accent
+            >
+              {t('filter.sale')}
+            </FilterLink>
+            <span className="mx-1 h-3 w-px bg-border/60" />
+          </>
+        )}
 
         {/* Size filter — multi-select; a product matches if it has ANY of
             the currently selected sizes. Updates the grid instantly. */}
@@ -407,7 +494,7 @@ export function ProductGrid() {
         )}
       </div>
 
-      {categories.length > 0 && (
+      {!locked && categories.length > 0 && (
         <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <span className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
             <SlidersHorizontal className="size-3" />
@@ -474,7 +561,7 @@ export function ProductGrid() {
           )}
         </>
       )}
-    </section>
+    </Wrapper>
   )
 }
 

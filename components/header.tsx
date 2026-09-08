@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
 import { useState } from 'react'
@@ -9,12 +10,12 @@ import { LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-function scrollToId(id: string) {
+function scrollToId(id: string): boolean {
   const el = document.getElementById(id)
-  if (el) {
-    const top = el.getBoundingClientRect().top + window.scrollY - 72
-    window.scrollTo({ top, behavior: 'smooth' })
-  }
+  if (!el) return false
+  const top = el.getBoundingClientRect().top + window.scrollY - 72
+  window.scrollTo({ top, behavior: 'smooth' })
+  return true
 }
 
 export function Header() {
@@ -33,37 +34,42 @@ export function Header() {
     openAccount,
   } = useStore()
 
+  const router = useRouter()
+  const pathname = usePathname()
+
   const [mobileOpen, setMobileOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
   const currentLang = LOCALES.find((l) => l.code === locale)
 
-  function goCollections() {
+  /**
+   * These target sections of the homepage. Now that the catalogue has its own
+   * routes, the header is often rendered somewhere those sections do not
+   * exist — on /category/shoes, `scrollToId('about')` found nothing and the
+   * link did nothing at all. Falling back to a real navigation makes every
+   * header link work from every page.
+   */
+  function goSection(id: string) {
     setMobileOpen(false)
-    scrollToId('collections')
+    if (pathname === '/' && scrollToId(id)) return
+    router.push(`/#${id}`)
   }
 
-  function goAbout() {
-    setMobileOpen(false)
-    scrollToId('about')
-  }
-
-  function goReviews() {
-    setMobileOpen(false)
-    scrollToId('reviews')
-  }
+  const goCollections = () => goSection('collections')
+  const goAbout = () => goSection('about')
+  const goReviews = () => goSection('reviews')
 
   function goSale() {
-    setMobileOpen(false)
     setFilter({ ...filter, sale: true, group: null, category: null })
-    setTimeout(() => scrollToId('shop'), 100)
+    // The filter is store state the homepage grid reads, so the scroll (or the
+    // navigation) has to happen after it is set either way.
+    setTimeout(() => goSection('shop'), 100)
   }
 
   function goNew() {
-    setMobileOpen(false)
     setFilter({ ...filter, sale: false, group: null, category: null })
-    setTimeout(() => scrollToId('shop'), 100)
+    setTimeout(() => goSection('shop'), 100)
   }
 
   return (

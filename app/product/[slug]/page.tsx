@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChevronRight } from 'lucide-react'
+import { Breadcrumbs, breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductDetail } from '@/components/products/product-detail'
@@ -163,42 +162,31 @@ function productJsonLd(product: Product) {
   }
 }
 
-/**
- * schema.org/BreadcrumbList.
- *
- * Gives search results the "Shop › Clothing › Coats" trail instead of a bare
- * URL, and tells a crawler where this page sits in the catalogue. Built from
- * the product's own collection and category so it can never describe a path
- * that does not exist.
- */
-function breadcrumbJsonLd(product: Product, trail: { name: string; url: string }[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: trail.map((crumb, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      name: crumb.name,
-      item: `${SITE_URL}${crumb.url}`,
-    })),
-  }
-}
-
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductBySlug(params.slug)
   if (!product) notFound()
 
-  // Shop → collection → category → product. Collection and category links
-  // point at the shop anchor rather than at their own routes, because those
-  // routes do not exist — the grid filters in place. A breadcrumb that 404s is
-  // worse than one that lands a level up.
+  // Shop → collection → category → product. The collection and category
+  // crumbs point at their own routes now; they used to point back at the
+  // homepage anchor because those routes did not exist and a breadcrumb that
+  // 404s is worse than one that lands a level up.
   const trail = [
     { name: 'Shop', url: '/#shop' },
     ...(product.group
-      ? [{ name: pick(GROUP_LABELS[product.group]) || product.group, url: '/#shop' }]
+      ? [
+          {
+            name: pick(GROUP_LABELS[product.group]) || product.group,
+            url: `/category/${product.group}`,
+          },
+        ]
       : []),
-    ...(product.category
-      ? [{ name: pick(CATEGORY_LABELS[product.category]) || product.category, url: '/#shop' }]
+    ...(product.group && product.category
+      ? [
+          {
+            name: pick(CATEGORY_LABELS[product.category]) || product.category,
+            url: `/category/${product.group}/${product.category}`,
+          },
+        ]
       : []),
     { name: pick(product.name), url: `/product/${product.id}` },
   ]
@@ -208,36 +196,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <Header />
 
       <main id="main" className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-        {/* Real breadcrumbs, replacing a single "← Shop" link.
-            A <nav> with an ordered list is what assistive technology and
-            crawlers both expect; the arrow link told either of them nothing
-            about where the page sits. Server-rendered, so it is in the initial
-            HTML alongside the matching BreadcrumbList JSON-LD below.
-
-            Labels come from the catalogue, which stores them per locale — the
-            page is a server component and the store's translator is
-            client-side, so this picks the same locale `pick()` uses for the
-            title and description. */}
-        <nav aria-label="Breadcrumb" className="mb-8">
-          <ol className="flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-            {trail.map((crumb, i) => (
-              <li key={crumb.url} className="flex items-center gap-1.5">
-                {i > 0 && <ChevronRight className="size-3 text-muted-foreground/40" aria-hidden />}
-                {i === trail.length - 1 ? (
-                  // The current page is not a link — a self-link is noise for
-                  // a screen reader and a wasted crawl for a bot.
-                  <span aria-current="page" className="text-foreground/70">
-                    {crumb.name}
-                  </span>
-                ) : (
-                  <Link href={crumb.url} className="transition hover:text-gold">
-                    {crumb.name}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ol>
-        </nav>
+        <Breadcrumbs trail={trail} />
 
         <ProductDetail product={product} />
 
@@ -261,7 +220,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbJsonLd(product, trail)),
+          __html: JSON.stringify(breadcrumbJsonLd(trail)),
         }}
       />
     </>
