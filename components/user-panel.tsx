@@ -7,9 +7,13 @@ import {
   Package,
   User as UserIcon,
   X,
+  Heart,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { PasswordForm } from '@/components/account/password-form'
+import { ProfileForm } from '@/components/account/profile-form'
+import { WishlistGrid } from '@/components/account/wishlist-grid'
 import { SavedAddresses } from '@/components/saved-addresses'
 import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
@@ -20,7 +24,7 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
 
-type Tab = 'orders' | 'profile'
+type Tab = 'orders' | 'wishlist' | 'profile'
 
 export function UserPanel() {
   const {
@@ -36,6 +40,7 @@ export function UserPanel() {
     t,
     tf,
     pushToast,
+    wishlist,
   } = useStore()
 
   const [tab, setTab] = useState<Tab>('orders')
@@ -480,6 +485,18 @@ export function UserPanel() {
                   </span>
                 )}
               </TabButton>
+              <TabButton
+                active={tab === 'wishlist'}
+                onClick={() => setTab('wishlist')}
+                icon={<Heart className="size-4" />}
+              >
+                {t('wishlist.title')}
+                {wishlist.length > 0 && (
+                  <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">
+                    {wishlist.length}
+                  </span>
+                )}
+              </TabButton>
               <TabButton active={tab === 'profile'} onClick={() => setTab('profile')} icon={<UserIcon className="size-4" />}>
                 {t('user.profile')}
               </TabButton>
@@ -494,17 +511,15 @@ export function UserPanel() {
                 />
               )}
 
+              {tab === 'wishlist' && <WishlistGrid compact />}
+
               {tab === 'profile' && (
                 <div className="space-y-4">
-                  <div className="card-gold p-4">
-                    <h3 className="mb-3 font-serif text-base font-medium text-foreground">
-                      {t('user.profile')}
-                    </h3>
-                    <div className="space-y-3">
-                      <ProfileRow label={t('user.name')} value={currentUser.name} />
-                      <ProfileRow label={t('user.email')} value={currentUser.email} />
-                    </div>
-                  </div>
+                  {/* Editable, and the same component the /account route
+                      renders — one implementation, so the drawer and the page
+                      cannot save differently. */}
+                  <ProfileForm compact />
+                  <PasswordForm compact />
 
                   <SavedAddresses />
                   <SavedCards />
@@ -574,14 +589,6 @@ function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
   )
 }
 
-function ProfileRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-border pb-2 last:border-0">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground">{value}</span>
-    </div>
-  )
-}
 
 /** Google's brand mark, inlined as SVG. An <img> would need a network fetch
  *  and would render as a broken icon while offline or blocked. */

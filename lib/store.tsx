@@ -145,6 +145,11 @@ type StoreContextValue = {
   cartSubtotal: number
   applyPromo: (code: string) => Promise<Promo | null>
 
+  /** Saved product slugs. Empty for a signed-out visitor. */
+  wishlist: string[]
+  toggleWishlist: (productId: string) => Promise<void>
+  isWishlisted: (productId: string) => boolean
+
   login: (email: string, password: string) => Promise<boolean>
   register: (
     name: string,
@@ -628,6 +633,76 @@ function maybeSendWelcome() {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
+  // ------------------------------------------------------------ wishlist ----
+  // Server-backed, because the point of a wishlist is that it survives: the
+  // customer who saves a coat on their phone is the one who buys it on a
+  // laptop that evening. Loaded per signed-in user; a signed-out visitor has
+  // an empty list rather than a local one that would silently fail to merge.
+  const [wishlist, setWishlist] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!currentUser) {
+      setWishlist([])
+      return
+    }
+    let active = true
+    fetch('/api/account/wishlist')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.productIds) setWishlist(d.productIds)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [currentUser])
+
+  const isWishlisted = useCallback(
+    (productId: string) => wishlist.includes(productId),
+    [wishlist],
+  )
+
+  /**
+   * Adds or removes a product.
+   *
+   * Optimistic: the heart fills the instant it is clicked, and reverts if the
+   * server disagrees. A wishlist toggle that waits on a round trip feels
+   * broken, and the cost of being briefly wrong is one icon.
+   */
+  const toggleWishlist = useCallback(
+    async (productId: string) => {
+      if (!currentUser) {
+        setPanel('user')
+        return
+      }
+
+      const saved = wishlist.includes(productId)
+      setWishlist((prev) =>
+        saved ? prev.filter((id) => id !== productId) : [productId, ...prev],
+      )
+
+      try {
+        const res = saved
+          ? await fetch(`/api/account/wishlist?productId=${encodeURIComponent(productId)}`, {
+              method: 'DELETE',
+            })
+          : await fetch('/api/account/wishlist', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ productId }),
+            })
+
+        if (!res.ok) throw new Error('rejected')
+      } catch {
+        setWishlist((prev) =>
+          saved ? [productId, ...prev] : prev.filter((id) => id !== productId),
+        )
+        pushToast({ title: t('wishlist.failed'), variant: 'default' })
+      }
+    },
+    [currentUser, wishlist, setPanel, pushToast, t],
+  )
+
   const cartCount = useMemo(
     () => cart.reduce((sum, c) => sum + c.qty, 0),
     [cart],
@@ -1088,6 +1163,9 @@ function maybeSendWelcome() {
     clearCart,
     cartCount,
     cartSubtotal,
+    wishlist,
+    toggleWishlist,
+    isWishlisted,
     applyPromo,
     login,
     register,

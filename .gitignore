@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Local Claude Code skill docs — not part of the app build
 skills/
+
+.vercel
+.env*
