@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
 import { useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
@@ -29,6 +29,8 @@ export function Header() {
     currentUser,
     setFilter,
     filter,
+    wishlist,
+    openAccount,
   } = useStore()
 
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -87,10 +89,15 @@ export function Header() {
           aria-label="LUXE VAULT — home"
           className="flex select-none items-baseline gap-0.5"
         >
-          <span className="font-serif text-xl font-bold tracking-[0.22em] text-foreground">
+          {/* Tighter below sm. The action bar gained a sixth control and the
+              row overflowed by ~35px on a 375px screen, which scrolled the
+              whole PAGE sideways — the wordmark's 0.22em tracking was the
+              cheapest 40px to reclaim, and shrinking it costs less than
+              hiding a control the customer came to use. */}
+          <span className="font-serif text-lg font-bold tracking-[0.1em] text-foreground sm:text-xl sm:tracking-[0.22em]">
             LUXE
           </span>
-          <span className="font-serif text-xl font-bold tracking-[0.22em] text-gold">
+          <span className="font-serif text-lg font-bold tracking-[0.1em] text-gold sm:text-xl sm:tracking-[0.22em]">
             VAULT
           </span>
         </Link>
@@ -159,9 +166,35 @@ export function Header() {
               shape rather than showing a bell that could only ever be empty. */}
           <NotificationCenter />
 
+          {/* Wishlist. Sits with the other account actions rather than in the
+              nav, because it is a thing you own, not a place you go.
+
+              Opens the account drawer ON the wishlist section — hence
+              openAccount(tab) rather than setPanel('user'), which would land
+              on whatever section was open last. */}
           <button
             type="button"
-            onClick={() => setPanel('user')}
+            onClick={() => openAccount('wishlist')}
+            className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+            aria-label={
+              wishlist.length > 0
+                ? `${t('wishlist.title')} (${wishlist.length})`
+                : t('wishlist.title')
+            }
+          >
+            <Heart className="size-[18px]" />
+            {/* Same badge treatment as the cart, so two counters in one bar do
+                not read as two different kinds of thing. */}
+            {wishlist.length > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold tabular-nums text-gold-foreground">
+                {wishlist.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openAccount('orders')}
             className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
             aria-label={t('nav.profile')}
           >

@@ -24,8 +24,6 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
 
-type Tab = 'orders' | 'wishlist' | 'profile'
-
 export function UserPanel() {
   const {
     panel,
@@ -41,9 +39,10 @@ export function UserPanel() {
     tf,
     pushToast,
     wishlist,
+    accountTab: tab,
+    setAccountTab: setTab,
   } = useStore()
 
-  const [tab, setTab] = useState<Tab>('orders')
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [authBusy, setAuthBusy] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })

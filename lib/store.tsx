@@ -51,6 +51,11 @@ export type Toast = {
 
 export type PanelState = 'cart' | 'checkout' | 'user' | null
 
+/** Which section the account drawer shows. Lifted out of the drawer so the
+ *  header can open it on a specific tab — the wishlist icon needs to land on
+ *  the wishlist, not on whatever was open last. */
+export type AccountTab = 'orders' | 'wishlist' | 'profile'
+
 export type SortKey =
   | 'default'
   | 'newest'
@@ -129,6 +134,11 @@ type StoreContextValue = {
 
   panel: PanelState
   setPanel: (p: PanelState) => void
+  accountTab: AccountTab
+  setAccountTab: (t: AccountTab) => void
+  /** Opens the account drawer on a given section in one call, so a caller
+   *  cannot set the tab and forget to open the panel. */
+  openAccount: (tab?: AccountTab) => void
   toasts: Toast[]
   query: string
   setQuery: (q: string) => void
@@ -488,6 +498,20 @@ function maybeSendWelcome() {
   const t = useCallback((key: UIKey) => translate(UI[key], locale), [locale])
 
   const [panel, setPanel] = useState<PanelState>(null)
+  const [accountTab, setAccountTab] = useState<AccountTab>('orders')
+
+  /**
+   * Opens the account drawer on a specific section.
+   *
+   * One call rather than two, because setting the tab and opening the panel
+   * separately is an ordering bug waiting to happen: the header's wishlist
+   * icon must land on the wishlist, not on whatever section was open the last
+   * time the drawer was used.
+   */
+  const openAccount = useCallback((tab: AccountTab = 'orders') => {
+    setAccountTab(tab)
+    setPanel('user')
+  }, [])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER)
@@ -1150,6 +1174,9 @@ function maybeSendWelcome() {
     localize,
     panel,
     setPanel,
+    accountTab,
+    setAccountTab,
+    openAccount,
     toasts,
     query,
     setQuery,
