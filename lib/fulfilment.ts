@@ -110,6 +110,72 @@ export function formatDeliveryWindow(
 
 export type ShippingType = 'standard' | 'express'
 
+/**
+ * What delivery costs.
+ *
+ * PLACEHOLDER RATES. These are in the right shape and the right ballpark for
+ * Swiss Post parcels, but they are a business decision, not a technical one —
+ * set them to what shipping actually costs you. Everything that displays or
+ * charges for delivery reads this object, so changing a number here is the
+ * whole change.
+ *
+ * `freeAbove` is a threshold on the discounted subtotal, not the total: free
+ * shipping earned by a large order should not evaporate because the order also
+ * qualified for a discount code.
+ */
+export const SHIPPING = {
+  standard: { price: 9.9, freeAbove: 200 },
+  /** Express skips the supplier queue, and is never free — the cost is real
+   *  and a "free express" offer would be paid for out of margin. */
+  express: { price: 24.9, freeAbove: null },
+} as const
+
+/**
+ * Tax rate applied to an order.
+ *
+ * Zero, deliberately. The shop trades as a Swiss Privatverkauf — a private
+ * individual, not VAT-registered and below the CHF 100k registration
+ * threshold — so it must not charge or display VAT. See migration 0014.
+ *
+ * If the seller registers, set this to 0.081 and the line appears everywhere
+ * at once; nothing else needs to change.
+ */
+export const TAX_RATE = 0
+
+/**
+ * The delivery charge for a basket, computed server-side.
+ *
+ * Takes the already-discounted subtotal so the free-shipping threshold is
+ * applied to what the customer is actually spending.
+ */
+export function quoteShipping(
+  discountedSubtotal: number,
+  shipping: ShippingType = 'standard',
+): number {
+  const rule = SHIPPING[shipping]
+  if (rule.freeAbove !== null && discountedSubtotal >= rule.freeAbove) return 0
+  return rule.price
+}
+
+/**
+ * How much more the customer needs to spend to earn free shipping.
+ *
+ * Returns null when the threshold is already met or does not exist, so the
+ * caller renders nothing rather than "0 CHF to go".
+ */
+export function freeShippingGap(
+  discountedSubtotal: number,
+  shipping: ShippingType = 'standard',
+): { remaining: number; threshold: number } | null {
+  const rule = SHIPPING[shipping]
+  if (rule.freeAbove === null) return null
+  if (discountedSubtotal >= rule.freeAbove) return null
+  return {
+    remaining: Math.round((rule.freeAbove - discountedSubtotal) * 100) / 100,
+    threshold: rule.freeAbove,
+  }
+}
+
 /** End-to-end window per shipping type. Express shortens the supplier leg
  *  only — dispatch and postal transit are the same parcel either way. */
 export function windowFor(shipping: ShippingType): Range {

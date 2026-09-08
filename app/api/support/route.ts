@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import {
   isMailConfigured,
   sendSupportConfirmation,
@@ -20,6 +21,9 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 // Public — anyone can open a support ticket. Only the admin-protected
 // /api/admin/support can list or manage them afterward.
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('support.create', request)
+  if (limited) return limited
+
   let body: { name?: unknown; email?: unknown; message?: unknown }
   try {
     body = await request.json()

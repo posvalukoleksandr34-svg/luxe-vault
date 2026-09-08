@@ -1,10 +1,12 @@
 'use client'
 
 import { ArrowRight, CheckCircle2, Loader2, MapPin, Package, SearchX, Truck } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { Header } from '@/components/header'
+import { trackPurchase } from '@/lib/analytics'
 import { estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { fetchMyOrders } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
@@ -21,12 +23,12 @@ import type { Order } from '@/lib/types'
  * The order is fetched through /api/orders/lookup rather than trusted from the
  * query string, so `?order=LV-XXXXXX` for somebody else's order shows the
  * not-found state instead of their name and address.
- */
-/**
- * `useSearchParams` opts its whole subtree out of prerendering. Without this
- * boundary the entire route — header included — deopts to client-side
- * rendering and the customer stares at a blank page after paying. The boundary
- * keeps the shell static and confines the wait to the order card.
+ *
+ * The Suspense boundary is load-bearing: `useSearchParams` opts its whole
+ * subtree out of prerendering, and without it the entire route — header
+ * included — deopts to client-side rendering and the customer stares at a
+ * blank page immediately after paying. The boundary keeps the shell static and
+ * confines the wait to the order card.
  */
 export default function CheckoutSuccessPage() {
   return (
@@ -40,7 +42,7 @@ function SuccessSkeleton() {
   return (
     <>
       <Header />
-      <main className="flex min-h-[60vh] items-center justify-center">
+      <main id="main" className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="size-5 animate-spin text-gold" />
       </main>
     </>
@@ -73,6 +75,13 @@ function SuccessContent() {
       active = false
     }
   }, [orderId])
+
+  // The purchase event fires once, keyed on the order id. GA4 and every other
+  // tool de-duplicates on transaction_id, so a customer refreshing the
+  // thank-you page cannot double-count revenue.
+  useEffect(() => {
+    if (order) trackPurchase(order)
+  }, [order])
 
   // Prefer the window stamped at purchase; fall back for pre-0011 orders.
   const eta = order
@@ -152,10 +161,11 @@ function SuccessContent() {
           <ul className="divide-y divide-border/40">
             {order.items.map((item) => (
               <li key={item.key} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={item.image}
                   alt={item.name}
+                  width={56}
+                  height={56}
                   className="size-14 shrink-0 border border-border/60 object-cover"
                 />
                 <div className="min-w-0 flex-1">
@@ -185,6 +195,20 @@ function SuccessContent() {
                   )}
                 </dt>
                 <dd className="tabular-nums text-destructive">−{formatPrice(order.discount)}</dd>
+              </div>
+            )}
+            {/* Always shown on a real order: "Free" is a result, not an absence. */}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">{t('cart.shipping')}</dt>
+              <dd className={order.shippingCost ? 'tabular-nums text-foreground' : 'tabular-nums text-gold'}>
+                {order.shippingCost ? formatPrice(order.shippingCost) : t('cart.free')}
+              </dd>
+            </div>
+            {/* Only when actually charged — see TAX_RATE in lib/fulfilment.ts. */}
+            {(order.tax ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">{t('order.tax')}</dt>
+                <dd className="tabular-nums text-foreground">{formatPrice(order.tax ?? 0)}</dd>
               </div>
             )}
             <div className="flex justify-between border-t border-border/50 pt-3">

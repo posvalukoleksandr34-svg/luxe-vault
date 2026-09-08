@@ -3,17 +3,28 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE_SECONDS,
   createSessionToken,
-  isRateLimited,
+  isAdminConfigured,
   verifyAdminPassword,
 } from '@/lib/server/admin-auth'
+import { enforceLimit } from '@/lib/server/rate-limit'
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  // Shared across instances now — see lib/server/rate-limit.ts. The previous
+  // in-memory throttle lived in one lambda's heap and did nothing about a
+  // distributed or simply lucky attempt.
+  const limited = await enforceLimit('admin.login', request)
+  if (limited) return limited
 
-  if (isRateLimited(ip)) {
+  // Answered before any credential work so a misconfigured deployment says so
+  // plainly instead of failing as though the password were wrong.
+  if (!isAdminConfigured()) {
+    console.error(
+      '[admin/login] ADMIN_PASSWORD and/or ADMIN_SESSION_SECRET are not set. ' +
+        'The console has no default credentials.',
+    )
     return NextResponse.json(
-      { error: 'Слишком много попыток. Попробуйте позже.' },
-      { status: 429 },
+      { error: 'Админ-панель не настроена' },
+      { status: 503 },
     )
   }
 
@@ -25,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Некорректный запрос' }, { status: 400 })
   }
 
-  if (!verifyAdminPassword(password)) {
+  if (!(await verifyAdminPassword(password))) {
     return NextResponse.json({ error: 'Неверный пароль' }, { status: 401 })
   }
 
@@ -36,6 +47,8 @@ export async function POST(request: NextRequest) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    // Matches the expiry signed into the token itself. The cookie's lifetime
+    // is a browser convenience; the token's is what the server enforces.
     maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
   })
   return response

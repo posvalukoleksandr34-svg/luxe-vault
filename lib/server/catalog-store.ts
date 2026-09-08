@@ -19,17 +19,22 @@ import type {
   Color,
   LocalizedText,
   Product,
+  Variant,
   SizeMeasurement,
   StatusKey,
 } from '@/lib/types'
 
 const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
-const PRODUCT_SELECT = `
+const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
-  colors, statuses, is_new, limited, size_chart,
+  colors, statuses, is_new, limited, size_chart, specs,
   collection:collections ( slug ),
   category:categories ( slug )
+`
+
+const PRODUCT_SELECT = `${PRODUCT_BASE_SELECT},
+  variants:product_variants ( size, color, stock, low_stock_at, sku )
 `
 
 const num = (v: string | number | null | undefined): number =>
@@ -52,9 +57,46 @@ function rowToCollection(row: Record<string, unknown>): Collection {
   }
 }
 
+type VariantRow = {
+  size: string
+  color: string
+  stock: number | string
+  low_stock_at: number | string
+  sku: string | null
+}
+
 function rowToProduct(row: Record<string, unknown>): Product {
+  const variants: Variant[] = ((row.variants as VariantRow[] | null) ?? []).map((v) => ({
+    size: v.size,
+    color: v.color,
+    stock: Math.max(0, Math.trunc(num(v.stock))),
+    lowStockAt: Math.max(0, Math.trunc(num(v.low_stock_at))),
+    sku: v.sku ?? undefined,
+  }))
+
+  const rawColors = ((row.colors as Color[] | null) ?? []) as Color[]
+
+  /**
+   * Colour-level stock is the sum of that colour's sizes.
+   *
+   * The colour swatches and the sold-out styling already read `Color.stock`,
+   * so deriving it here keeps every one of those call sites working unchanged
+   * while the real numbers move to the variants table. Left undefined when the
+   * product is untracked, because undefined and zero mean different things to
+   * the components downstream.
+   */
+  const colors: Color[] = variants.length
+    ? rawColors.map((c) => ({
+        ...c,
+        stock: variants
+          .filter((v) => v.color === c.name)
+          .reduce((sum, v) => sum + v.stock, 0),
+      }))
+    : rawColors
+
   return {
     id: row.slug as string,
+    variants: variants.length ? variants : undefined,
     name: (row.name ?? {}) as LocalizedText,
     description: (row.description ?? {}) as LocalizedText,
     group: refSlug(row.collection as Ref),
@@ -66,11 +108,12 @@ function rowToProduct(row: Record<string, unknown>): Product {
       ? (row.images as string[])
       : undefined,
     sizes: (row.sizes as string[] | null) ?? [],
-    colors: ((row.colors as Color[] | null) ?? []) as Color[],
+    colors,
     statuses: ((row.statuses as string[] | null) ?? []) as StatusKey[],
     isNew: Boolean(row.is_new),
     limited: Boolean(row.limited),
     sizeChart: (row.size_chart as SizeMeasurement[] | null) ?? undefined,
+    specs: ((row.specs as { label: string; value: string }[] | null) ?? []).filter((s) => s?.label && s?.value),
   }
 }
 
@@ -78,6 +121,67 @@ export type Catalog = {
   collections: Collection[]
   categories: Category[]
   products: Product[]
+}
+
+/**
+ * Products, with variant stock when the inventory migration has been applied.
+ *
+ * The embedded `product_variants` join fails with PGRST200 ("could not find a
+ * relationship") on a database still on 0011. Retrying without it means a
+ * deploy that lands before the migration serves an untracked catalogue rather
+ * than taking the entire shop down — every product simply reads as it did
+ * before inventory existed.
+ *
+ * The retry can be deleted once 0012 is applied everywhere.
+ */
+/**
+ * The product select this database can actually satisfy, probed once.
+ *
+ * Columns and relations arrive with migrations, and PostgREST rejects the
+ * whole SELECT when one of them is unknown — so naming them unconditionally
+ * makes a deploy that lands ahead of its migration take the shop down. This
+ * asks the database what it has, once, and caches the answer.
+ *
+ * A retry-on-error version of this lived only inside readCatalog, which meant
+ * getProductBySlug — the product page — still asked for everything and threw.
+ * Resolving in one place is what stops the two drifting again.
+ *
+ * Both branches can be deleted once 0012 and 0018 are applied everywhere.
+ */
+let productSelectCache: string | null = null
+
+async function resolveProductSelect(): Promise<string> {
+  if (productSelectCache) return productSelectCache
+
+  const supabase = createAdminClient()
+
+  const [variants, specs] = await Promise.all([
+    supabase.from('product_variants').select('id').limit(1),
+    supabase.from('products').select('specs').limit(1),
+  ])
+
+  let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
+
+  if (variants.error) {
+    console.error(
+      '[catalog] product_variants is missing — stock is NOT being tracked. ' +
+        'Apply supabase/migrations/0012_inventory.sql.',
+    )
+  }
+  if (specs.error) {
+    console.error('[catalog] products.specs is missing. Apply 0018_product_specs.sql.')
+    select = select.replace(' specs,', '')
+  }
+
+  productSelectCache = select
+  return select
+}
+
+async function readProducts(supabase: ReturnType<typeof createAdminClient>) {
+  return supabase
+    .from('products')
+    .select(await resolveProductSelect())
+    .order('created_at', { ascending: false })
 }
 
 /** One round trip for the whole catalogue — it is small and always needed
@@ -88,7 +192,7 @@ export async function readCatalog(): Promise<Catalog> {
   const [collectionsRes, categoriesRes, productsRes] = await Promise.all([
     supabase.from('collections').select(COLLECTION_SELECT).order('sort_order'),
     supabase.from('categories').select(CATEGORY_SELECT).order('sort_order'),
-    supabase.from('products').select(PRODUCT_SELECT).order('created_at', { ascending: false }),
+    readProducts(supabase),
   ])
 
   if (collectionsRes.error) throw new Error(`Failed to read collections: ${collectionsRes.error.message}`)
@@ -107,7 +211,12 @@ export async function readCatalog(): Promise<Catalog> {
     sortOrder: (row.sort_order as number) ?? 0,
   }))
 
-  return { collections, categories, products: (productsRes.data ?? []).map(rowToProduct) }
+  // The select string is chosen at runtime by readProducts(), which costs
+  // PostgREST's compile-time row typing. rowToProduct reads every field
+  // defensively, so the cast is safe.
+  const productRows = (productsRes.data ?? []) as unknown as Record<string, unknown>[]
+
+  return { collections, categories, products: productRows.map(rowToProduct) }
 }
 
 // ------------------------------------------------------------ collections ----
@@ -206,6 +315,61 @@ function productToRow(product: Product, collectionId: string, categoryId: string
     is_new: Boolean(product.isNew),
     limited: Boolean(product.limited),
     size_chart: product.sizeChart ?? null,
+    specs: (product.specs ?? []).filter((s) => s.label?.trim() && s.value?.trim()),
+  }
+}
+
+/**
+ * Writes the product's variant rows, adding, updating and removing as needed.
+ *
+ * Deliberately NOT a delete-then-insert. Deleting every row and re-creating it
+ * would take each variant's stock to zero and back on every save, and any
+ * checkout landing in that window would be told the item is sold out — an
+ * admin editing a description must not be able to reject a customer's order.
+ *
+ * Passing `undefined` for variants leaves the table alone entirely, so callers
+ * that know nothing about stock cannot wipe it.
+ */
+async function syncVariants(productUuid: string, variants: Variant[] | undefined) {
+  if (!variants) return
+
+  const supabase = createAdminClient()
+
+  const rows = variants
+    .filter((v) => v.size.trim() && v.color.trim())
+    .map((v) => ({
+      product_id: productUuid,
+      size: v.size.trim(),
+      color: v.color.trim(),
+      stock: Math.max(0, Math.trunc(v.stock)),
+      low_stock_at: Math.max(0, Math.trunc(v.lowStockAt ?? 5)),
+      sku: v.sku?.trim() || null,
+    }))
+
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from('product_variants')
+      .upsert(rows, { onConflict: 'product_id,size,color' })
+    if (error) throw new Error(`Failed to save variants: ${error.message}`)
+  }
+
+  // Drop combinations the admin removed. Done after the upsert so a variant
+  // that was only renamed is never briefly absent.
+  const keep = new Set(rows.map((r) => `${r.size} ${r.color}`))
+  const { data: existing, error: readError } = await supabase
+    .from('product_variants')
+    .select('id, size, color')
+    .eq('product_id', productUuid)
+
+  if (readError) throw new Error(`Failed to read variants: ${readError.message}`)
+
+  const stale = (existing ?? [])
+    .filter((r) => !keep.has(`${r.size} ${r.color}`))
+    .map((r) => r.id as string)
+
+  if (stale.length > 0) {
+    const { error } = await supabase.from('product_variants').delete().in('id', stale)
+    if (error) throw new Error(`Failed to remove variants: ${error.message}`)
   }
 }
 
@@ -214,11 +378,16 @@ export async function createProduct(product: Product): Promise<Product> {
   const { data, error } = await createAdminClient()
     .from('products')
     .insert(productToRow(product, collectionId, categoryId))
-    .select(PRODUCT_SELECT)
+    .select(await resolveProductSelect())
     .single()
 
   if (error) throw new Error(`Failed to create product: ${error.message}`)
-  return rowToProduct(data)
+
+  await syncVariants((data as unknown as { id: string }).id, product.variants)
+
+  // Re-read so the returned product carries the variants that were just
+  // written, rather than the empty set the insert saw.
+  return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }
 
 export async function updateProduct(product: Product): Promise<Product | null> {
@@ -227,11 +396,15 @@ export async function updateProduct(product: Product): Promise<Product | null> {
     .from('products')
     .update(productToRow(product, collectionId, categoryId))
     .eq('slug', product.id)
-    .select(PRODUCT_SELECT)
+    .select(await resolveProductSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to update product: ${error.message}`)
-  return data ? rowToProduct(data) : null
+  if (!data) return null
+
+  await syncVariants((data as unknown as { id: string }).id, product.variants)
+
+  return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }
 
 export async function deleteProduct(slug: string): Promise<boolean> {
@@ -260,12 +433,12 @@ export async function deleteProduct(slug: string): Promise<boolean> {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await createAdminClient()
     .from('products')
-    .select(PRODUCT_SELECT)
+    .select(await resolveProductSelect())
     .eq('slug', slug)
     .maybeSingle()
 
   if (error) throw new Error(`Failed to read product: ${error.message}`)
-  return data ? rowToProduct(data) : null
+  return data ? rowToProduct(data as unknown as Record<string, unknown>) : null
 }
 
 /**

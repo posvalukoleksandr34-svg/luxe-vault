@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -23,10 +24,11 @@ export function ProductCard({ product }: { product: Product }) {
     // support. next/link also prefetches the route on hover.
     <Link href={`/product/${encodeURIComponent(product.id)}`} className="group block">
       <div className="card-gold relative aspect-[3/4] overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={product.image}
           alt={localize(product.name)}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
           className={cn(
             'size-full object-cover transition-[transform,opacity] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.045]',
             outOfStock && 'opacity-40 grayscale',
@@ -35,9 +37,11 @@ export function ProductCard({ product }: { product: Product }) {
         />
 
         {secondaryImage && (
-          <img
+          <Image
             src={secondaryImage}
             alt=""
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
             aria-hidden
             className={cn(
               'absolute inset-0 size-full scale-[1.045] object-cover opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100',

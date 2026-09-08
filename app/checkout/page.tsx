@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, ShoppingBag } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { CheckoutFlow } from '@/components/checkout-flow'
@@ -38,7 +39,7 @@ export default function CheckoutPage() {
     return (
       <>
         <Header />
-        <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
+        <main id="main" className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
           <ShoppingBag className="size-9 text-muted-foreground/30" strokeWidth={1} />
           <p className="text-sm font-light text-muted-foreground">{t('cart.empty')}</p>
           <Link
@@ -89,10 +90,11 @@ export default function CheckoutPage() {
               <ul className="divide-y divide-border/40">
                 {cart.map((item) => (
                   <li key={item.key} className="flex items-center gap-3 py-3 first:pt-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={item.image}
                       alt={item.name}
+                      width={48}
+                      height={48}
                       className="size-12 shrink-0 border border-border/60 object-cover"
                     />
                     <div className="min-w-0 flex-1">

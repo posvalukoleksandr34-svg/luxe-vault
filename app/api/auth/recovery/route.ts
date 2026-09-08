@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import {
   passwordRecoveryHtml,
   passwordRecoverySubject,
@@ -58,6 +59,9 @@ function throttled(key: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('auth.recovery', request)
+  if (limited) return limited
+
   let body: { email?: string }
   try {
     body = await request.json()

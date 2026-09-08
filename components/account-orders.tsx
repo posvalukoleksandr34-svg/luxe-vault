@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
 import { StripePayment } from '@/components/stripe-payment'
@@ -573,10 +574,11 @@ function OrderCard({
       <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
         {order.items.map((item) => (
           <div key={item.key} className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={item.image}
               alt={item.name}
+              width={40}
+              height={40}
               className={cn('size-10 shrink-0 object-cover', muted && 'grayscale')}
             />
             <div className="min-w-0 flex-1">

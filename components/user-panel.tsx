@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { SavedAddresses } from '@/components/saved-addresses'
 import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
@@ -91,6 +92,18 @@ export function UserPanel() {
     const id = setTimeout(() => setResendCooldown((n) => n - 1), 1000)
     return () => clearTimeout(id)
   }, [resendCooldown])
+
+  // Escape closes the drawer. The backdrop already did, but a keyboard user
+  // could not reach the backdrop — so without this the only way out was to
+  // tab to the close button.
+  useEffect(() => {
+    if (panel !== 'user') return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPanel(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panel, setPanel])
 
   if (panel !== 'user') return null
 
@@ -199,7 +212,10 @@ export function UserPanel() {
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl">
+      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('nav.profile')}>
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="font-serif text-lg font-bold tracking-tight text-foreground">
             {t('user.title')}
@@ -490,6 +506,7 @@ export function UserPanel() {
                     </div>
                   </div>
 
+                  <SavedAddresses />
                   <SavedCards />
                   <div className="card-gold p-4">
                     <h3 className="mb-3 font-serif text-base font-medium text-foreground">

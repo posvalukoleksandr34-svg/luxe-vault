@@ -1,7 +1,11 @@
 'use client'
 
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck, X } from 'lucide-react'
+import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { rememberViewed } from '@/components/products/product-rail'
+import { StockAlert } from '@/components/products/stock-alert'
+import { trackViewItem } from '@/lib/analytics'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -65,16 +69,140 @@ export function ProductDetail({ product }: { product: Product }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [allImages.length, goPrev, goNext])
 
-  // Colour-level stock. `undefined` means untracked, so only an explicit 0
-  // marks a variant sold out — treating absent as zero would black out every
-  // product saved before per-colour stock existed.
+  /**
+   * Availability, from the variants table when this product is tracked.
+   *
+   * `tracked` is the load-bearing distinction: a product with no variant rows
+   * is one whose stock nobody is counting, not one that has sold out. Reading
+   * absent as zero would black out the entire catalogue.
+   */
+  const tracked = Boolean(p.variants?.length)
+
+  const stockFor = useCallback(
+    (sizeName: string | null, colorName: string | null): number | undefined => {
+      if (!tracked || !sizeName || !colorName) return undefined
+      // A tracked product with no row for this combination has none of it —
+      // which is also how place_order() treats it, so the button and the
+      // database agree.
+      return p.variants?.find((v) => v.size === sizeName && v.color === colorName)?.stock ?? 0
+    },
+    [tracked, p.variants],
+  )
+
+  // Colour-level stock is summed across sizes upstream; `undefined` means
+  // untracked, so only an explicit 0 marks a colour sold out.
   const colorSoldOut = activeColor?.stock === 0
-  const outOfStock = p.statuses.includes('out_of_stock') || colorSoldOut
+  const selectedStock = stockFor(size, color)
+  const selectedVariant = tracked
+    ? p.variants?.find((v) => v.size === size && v.color === color)
+    : undefined
+
+  const outOfStock =
+    p.statuses.includes('out_of_stock') || colorSoldOut || selectedStock === 0
+
+  // Never offer more than exists. 10 stays the ceiling for untracked products
+  // and is the previous behaviour.
+  const maxQty = selectedStock === undefined ? 10 : Math.min(10, selectedStock)
+
+  // Switching to a size with less on hand must not carry a now-impossible
+  // quantity across with it.
+  useEffect(() => {
+    setQty((q) => Math.min(q, Math.max(1, maxQty)))
+  }, [maxQty])
   const selectedImage = allImages[selectedIndex] ?? p.image
   // Only the product's own measurements — never a shared default, which would
   // show every product the same invented numbers.
   const sizeChart = p.sizeChart ?? []
   const productName = localize(p.name)
+
+  // One view_item per product, not per render. The dependency is the id
+  // rather than the object so a catalogue refresh does not re-fire it.
+  useEffect(() => {
+    trackViewItem(p, productName)
+    // Local history for the "recently viewed" rail. Separate from the
+    // analytics event above: this one never leaves the browser.
+    rememberViewed(p.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id])
+
+  /**
+   * Mobile sticky buy bar.
+   *
+   * The product page is long — gallery, colours, sizes, size guide, delivery
+   * and returns copy — so on a phone the only button that matters scrolls out
+   * of view within a screen and never comes back until the customer scrolls up
+   * hunting for it.
+   *
+   * The bar appears only once the real button has been scrolled PAST — not
+   * merely while it is off-screen. The button sits ~1200px down, so on load it
+   * is already outside the viewport, and showing the bar then would cover the
+   * gallery to advertise a control the customer has not reached yet.
+   *
+   * Measured from the button's own position rather than a scroll offset: the
+   * page height varies with the size guide and the colour list, so any fixed
+   * threshold would be wrong on most products.
+   *
+   * NOT an IntersectionObserver. That only fires when a threshold is crossed,
+   * and a fast fling, a jump link or a restored scroll position can take the
+   * button from below the viewport to above it without ever intersecting — no
+   * crossing, no callback, and the bar never appears. A passive scroll
+   * listener reading the rect is always correct, and rAF-throttling keeps it
+   * to one measurement per frame.
+   */
+  const buyButtonRef = useRef<HTMLButtonElement>(null)
+  const [showStickyBuy, setShowStickyBuy] = useState(false)
+
+  const [zoomed, setZoomed] = useState(false)
+
+  // Escape closes the lightbox, and the page behind it must not scroll while
+  // it is open — a zoomed image that slides away under the overlay is the
+  // classic broken lightbox.
+  useEffect(() => {
+    if (!zoomed) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setZoomed(false)
+    }
+    window.addEventListener('keydown', onKey)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [zoomed])
+
+  // The exact unit being bought, when the product is tracked. Shown next to
+  // the price because a customer contacting support about "the black one in
+  // medium" is far harder to help than one quoting a code.
+  const sku = selectedVariant?.sku
+
+  useEffect(() => {
+    let frame = 0
+
+    function measure() {
+      frame = 0
+      const el = buyButtonRef.current
+      if (!el) return
+      // Fully above the viewport's top edge: scrolled past, so offer it again.
+      setShowStickyBuy(el.getBoundingClientRect().bottom < 0)
+    }
+
+    function onScroll() {
+      if (frame) return
+      frame = requestAnimationFrame(measure)
+    }
+
+    measure()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null
@@ -112,10 +240,25 @@ export function ProductDetail({ product }: { product: Product }) {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          {/* The LCP element on every product page — hence `priority`, which
+              preloads it instead of waiting for the image to be discovered
+              during layout.
+
+              Click-to-zoom rather than hover-magnifier: a magnifier needs a
+              pointer, so it does nothing on the half of traffic that is a
+              phone, and it fights the swipe gesture on the rest. */}
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            aria-label={t('product.zoom')}
+            className="no-juice absolute inset-0 z-10 cursor-zoom-in"
+          />
+          <Image
             src={selectedImage}
             alt={productName}
+            fill
+            sizes="(max-width: 1024px) 100vw, 560px"
+            priority
             className={cn('size-full object-cover', outOfStock && 'opacity-40 grayscale')}
           />
 
@@ -155,10 +298,11 @@ export function ProductDetail({ product }: { product: Product }) {
                     : 'border-transparent opacity-50 hover:opacity-90',
                 )}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={imgSrc}
                   alt={`${productName} — ${i + 1}`}
+                  fill
+                  sizes="64px"
                   className="size-full object-cover"
                 />
               </button>
@@ -187,6 +331,22 @@ export function ProductDetail({ product }: { product: Product }) {
             </span>
           )}
         </div>
+
+        {/* Brand and SKU. The brand is always Luxe Vault — never the designer
+            name an item imitates, which is the same line the JSON-LD, the
+            replica badge and the Terms all hold. The SKU appears only when the
+            product is tracked and a code has been entered. */}
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+          <span>{t('product.brand')}: Luxe Vault</span>
+          {sku && (
+            <>
+              <span aria-hidden className="text-muted-foreground/30">
+                ·
+              </span>
+              <span className="font-mono normal-case tracking-normal">SKU {sku}</span>
+            </>
+          )}
+        </p>
 
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5">
           {outOfStock && (
@@ -227,15 +387,10 @@ export function ProductDetail({ product }: { product: Product }) {
             <p className="mb-3 text-[11px] uppercase tracking-[0.15em] text-foreground">
               {t('product.color')} —{' '}
               <span className="normal-case tracking-normal text-muted-foreground">{color}</span>
-              {/* Only shown when stock is tracked AND low: a permanent counter
-                  on a well-stocked item is noise, and manufactured urgency. */}
-              {activeColor?.stock !== undefined &&
-                activeColor.stock > 0 &&
-                activeColor.stock <= 5 && (
-                  <span className="ml-2 normal-case tracking-normal text-gold/80">
-                    {t('product.lowStock')} {activeColor.stock}
-                  </span>
-                )}
+              {/* The low-stock count now sits under the size picker, where it
+                  refers to the exact variant being bought. A colour-level
+                  total shown here as well contradicted it — "3 left" beside
+                  the swatch and "1 left" under the size. */}
             </p>
             <div className="flex gap-2">
               {p.colors.map((c) => (
@@ -294,23 +449,43 @@ export function ProductDetail({ product }: { product: Product }) {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {p.sizes.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSize(s)}
-                className={cn(
-                  'min-w-11 border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
-                  size === s
-                    ? 'border-gold bg-gold/5 text-gold'
-                    : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
-                )}
-              >
-                {s}
-              </button>
-            ))}
+            {p.sizes.map((s) => {
+              // Struck through and unclickable rather than hidden: a customer
+              // looking for their size needs to see that it exists and is gone,
+              // not silently find a shorter list.
+              const soldOut = stockFor(s, color) === 0
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSize(s)}
+                  disabled={soldOut}
+                  aria-label={soldOut ? `${s} — ${t('sold.out')}` : s}
+                  title={soldOut ? `${s} — ${t('sold.out')}` : undefined}
+                  className={cn(
+                    'min-w-11 border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
+                    size === s
+                      ? 'border-gold bg-gold/5 text-gold'
+                      : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
+                    soldOut &&
+                      'cursor-not-allowed border-border/40 text-muted-foreground/40 line-through hover:border-border/40 hover:text-muted-foreground/40',
+                  )}
+                >
+                  {s}
+                </button>
+              )
+            })}
           </div>
           {!size && <p className="mt-2 text-[11px] text-destructive/80">{t('product.selectSize')}</p>}
+          {/* Only when tracked AND actually low — a permanent counter on a
+              well-stocked item is noise and manufactured urgency. */}
+          {selectedVariant &&
+            selectedVariant.stock > 0 &&
+            selectedVariant.stock <= selectedVariant.lowStockAt && (
+              <p className="mt-2 text-[11px] text-gold/80">
+                {t('product.lowStock')} {selectedVariant.stock}
+              </p>
+            )}
         </div>
 
         {showGuide && (
@@ -358,8 +533,9 @@ export function ProductDetail({ product }: { product: Product }) {
             </span>
             <button
               type="button"
-              onClick={() => setQty((q) => Math.min(10, q + 1))}
-              className="no-juice flex size-11 items-center justify-center text-muted-foreground transition hover:text-foreground"
+              onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+              disabled={qty >= maxQty}
+              className="no-juice flex size-11 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               aria-label={t('product.increase')}
             >
               <Plus className="size-3.5" />
@@ -370,11 +546,100 @@ export function ProductDetail({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAdd}
+          ref={buyButtonRef}
           disabled={!size || outOfStock}
           className="mt-4 w-full border border-gold/30 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
         >
           {outOfStock ? t('sold.out') : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
         </button>
+
+        {/* Offered only where the disappointment happens: a tracked variant the
+            customer has actually chosen, which has none left. */}
+        {tracked && size && color && selectedStock === 0 && (
+          <StockAlert productId={p.id} size={size} color={color} />
+        )}
+      </div>
+
+      {/* Specifications. Composition, care, dimensions — the details someone
+          checks before spending CHF 400, and the ones that reduce returns when
+          they are there. Hidden entirely when empty: an empty table is worse
+          than no table. */}
+      {p.specs && p.specs.length > 0 && (
+        <section className="lg:col-span-2">
+          <h2 className="mb-4 mt-12 font-serif text-2xl font-bold tracking-tight text-foreground">
+            {t('product.specs')}
+          </h2>
+          <dl className="max-w-2xl divide-y divide-border/40 border-y border-border/40">
+            {p.specs.map((spec) => (
+              <div key={spec.label} className="flex gap-4 py-3">
+                <dt className="w-40 shrink-0 text-[12px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {spec.label}
+                </dt>
+                <dd className="text-[13px] font-light text-foreground">{spec.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {/* Full-screen image. Rendered outside the gallery box so it is not
+          clipped by its overflow-hidden. */}
+      {zoomed && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={productName}
+          onClick={() => setZoomed(false)}
+          className="animate-fade-in fixed inset-0 z-[130] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label={t('product.closeZoom')}
+            className="absolute right-4 top-4 flex size-10 items-center justify-center border border-border/60 bg-background/60 text-foreground transition hover:bg-background/90"
+          >
+            <X className="size-4" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={selectedImage}
+            alt={productName}
+            // Deliberately NOT next/image: the point of this view is the
+            // original at full resolution, and the optimiser would serve a
+            // viewport-sized copy — exactly what the customer opened it to
+            // get past.
+            className="max-h-full max-w-full cursor-zoom-out object-contain"
+          />
+        </div>
+      )}
+
+      {/* Sticky buy bar — phones only; on a laptop the button is rarely far
+          away and a permanent bar would just eat viewport. */}
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-popover/95 px-4 py-3 backdrop-blur-md transition-transform duration-300 sm:hidden',
+          showStickyBuy ? 'translate-y-0' : 'translate-y-full',
+        )}
+        // Hidden from assistive technology while off-screen: the real button
+        // is still in the document, and announcing two "add to cart" controls
+        // would be confusing rather than helpful.
+        aria-hidden={!showStickyBuy}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] font-light text-foreground">{productName}</p>
+            <p className="text-[13px] text-gold">{formatPrice(p.price * qty)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!size || outOfStock}
+            tabIndex={showStickyBuy ? 0 : -1}
+            className="shrink-0 border border-gold/40 bg-gold/10 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+          >
+            {outOfStock ? t('sold.out') : !size ? t('product.selectSize') : t('product.addToCart')}
+          </button>
+        </div>
       </div>
     </div>
   )

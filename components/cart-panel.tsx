@@ -1,9 +1,13 @@
 'use client'
 
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
 import { TrustBadges } from '@/components/trust-badges'
+import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
+import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 
 export function CartPanel() {
@@ -19,6 +23,31 @@ export function CartPanel() {
     t,
   } = useStore()
 
+  // An estimate against the undiscounted subtotal — the drawer has no promo
+  // code. repriceItems() computes the figure that is actually charged.
+  const estimatedShipping = quoteShipping(cartSubtotal)
+  const shippingGap = freeShippingGap(cartSubtotal)
+
+  // Fired when the drawer opens, before the early return below — a hook after
+  // it would run conditionally and break the rules of hooks.
+  const cartOpen = panel === 'cart'
+  useEffect(() => {
+    if (cartOpen && cart.length > 0) trackViewCart(cart, cartSubtotal)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartOpen])
+
+  // Escape closes the drawer. The backdrop already did, but a keyboard user
+  // could not reach the backdrop — so without this the only way out was to
+  // tab to the close button.
+  useEffect(() => {
+    if (panel !== 'cart') return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPanel(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panel, setPanel])
+
   if (panel !== 'cart') return null
 
   return (
@@ -28,7 +57,10 @@ export function CartPanel() {
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-md flex-col border-l border-border bg-popover">
+      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-md flex-col border-l border-border bg-popover"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('cart.title')}>
         <div className="flex items-center justify-between border-b border-border/40 px-6 py-5">
           <h2 className="font-serif text-xl font-bold tracking-tight text-foreground">
             {t('cart.title')}
@@ -53,10 +85,11 @@ export function CartPanel() {
               <div className="space-y-5">
                 {cart.map((item) => (
                   <div key={item.key} className="flex gap-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={item.image}
                       alt={item.name}
+                      width={96}
+                      height={96}
                       className="size-24 shrink-0 object-cover"
                     />
                     <div className="flex flex-1 flex-col">
@@ -106,12 +139,54 @@ export function CartPanel() {
             </div>
 
             <div className="border-t border-border/40 px-6 py-5">
-              <div className="mb-4 flex items-center justify-between">
+              {/* Free-shipping progress. Shown only while it is achievable and
+                  not yet earned — a full bar that says "you did it" on every
+                  subsequent render is noise, and a bar on an order that can
+                  never qualify is a tease. */}
+              {shippingGap ? (
+                <div className="mb-4">
+                  <p className="mb-2 text-[11px] font-light text-muted-foreground">
+                    {t('cart.freeShippingGap')}{' '}
+                    <span className="text-gold">{formatPrice(shippingGap.remaining)}</span>
+                  </p>
+                  <div
+                    className="h-px w-full bg-border"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={shippingGap.threshold}
+                    aria-valuenow={cartSubtotal}
+                  >
+                    <div
+                      className="h-px bg-gold transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, (cartSubtotal / shippingGap.threshold) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                cart.length > 0 && (
+                  <p className="mb-4 text-[11px] font-light text-gold/80">
+                    {t('cart.freeShippingEarned')}
+                  </p>
+                )
+              )}
+
+              <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground">
                   {t('cart.subtotal')}
                 </span>
                 <span className="font-serif text-xl font-light text-foreground">
                   {formatPrice(cartSubtotal)}
+                </span>
+              </div>
+              {/* Delivery is quoted, not charged, here: the authoritative
+                  figure is computed server-side at checkout, and a promo code
+                  entered later can still push the basket over the threshold. */}
+              <div className="mb-4 flex items-center justify-between text-[12px] font-light">
+                <span className="text-muted-foreground">{t('cart.shipping')}</span>
+                <span className={estimatedShipping === 0 ? 'text-gold' : 'text-muted-foreground'}>
+                  {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping)}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -129,6 +204,7 @@ export function CartPanel() {
                     // panel state is what renders the backdrop, so clearing it
                     // releases the overlay as the route changes rather than
                     // leaving a dimmed layer over the new page.
+                    trackBeginCheckout(cart, cartSubtotal)
                     setPanel(null)
                     router.push('/checkout')
                   }}

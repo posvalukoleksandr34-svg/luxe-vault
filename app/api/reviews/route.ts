@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import { addReview, readReviews } from '@/lib/server/reviews-store'
 import { getCurrentUser } from '@/lib/supabase/server'
 
@@ -27,6 +28,9 @@ export async function GET() {
 // Public — anyone can submit a review, but it starts out `pending` and only
 // becomes visible on the storefront once an admin approves it.
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('review.create', request)
+  if (limited) return limited
+
   let body: { name?: string; rating?: number; message?: string }
   try {
     body = await request.json()

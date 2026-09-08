@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import { getOrdersByCredentials, getOrdersByUserId } from '@/lib/server/orders-store'
 import { getCurrentUser } from '@/lib/supabase/server'
 import type { Order } from '@/lib/types'
@@ -14,6 +15,9 @@ const MAX_LOOKUPS = 50
  * is what keeps one shopper from reading another's name, address and phone.
  */
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('order.lookup', request)
+  if (limited) return limited
+
   let body: { orders?: { id?: unknown; token?: unknown }[] }
   try {
     body = await request.json()

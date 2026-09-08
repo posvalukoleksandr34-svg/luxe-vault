@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { addOrder } from '@/lib/server/orders-store'
+import { enforceLimit } from '@/lib/server/rate-limit'
+import { addOrder, InsufficientStockError } from '@/lib/server/orders-store'
 import {
   buildOrder,
   repriceItems,
@@ -20,6 +21,9 @@ export const dynamic = 'force-dynamic'
  * being thrown away, so the customer can pay them later from their account.
  */
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('order.create', request)
+  if (limited) return limited
+
   let body: OrderDraftBody
   try {
     body = await request.json()
@@ -64,13 +68,29 @@ export async function POST(request: NextRequest) {
 
   // Reprice from the catalogue before anything is persisted. The body's
   // prices and totals are advisory only — see repriceItems().
-  const priced = await repriceItems(result.draft)
+  // userId scopes coupons issued to one customer; the draft carries it so
+  // repriceItems can validate a personal code.
+  const priced = await repriceItems({ ...result.draft, userId })
   if (!priced.ok) {
     return NextResponse.json({ error: priced.error }, { status: 400 })
   }
 
   const order = buildOrder(priced.draft, userId)
-  await addOrder(order)
+
+  try {
+    await addOrder(order)
+  } catch (e) {
+    // Running out between adding to the cart and paying is an ordinary race,
+    // not a server fault. 409 with the item named lets the cart say which line
+    // to change instead of showing a generic failure.
+    if (e instanceof InsufficientStockError) {
+      return NextResponse.json(
+        { error: 'OUT_OF_STOCK', item: e.message },
+        { status: 409 },
+      )
+    }
+    throw e
+  }
 
   // Confirmation is sent only after the order is committed, and its failure is
   // never allowed to fail the request. The purchase is already real at this

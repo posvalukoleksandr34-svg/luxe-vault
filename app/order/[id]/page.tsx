@@ -50,7 +50,7 @@ export default function OrderTrackingPage() {
   }, [orderId])
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-2xl px-6 py-16">
+    <main id="main" className="mx-auto min-h-screen w-full max-w-2xl px-6 py-16">
       <Link
         href="/"
         className="mb-10 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-foreground"

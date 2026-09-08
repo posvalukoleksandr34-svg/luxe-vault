@@ -56,8 +56,33 @@ export type Color = {
   hex: string
   /** Swatch or variant photo shown when this colour is selected. */
   image?: string
-  /** Units on hand. Undefined = not tracked; 0 = sold out. */
+  /**
+   * Units on hand across every size in this colour.
+   *
+   * DERIVED, not stored: summed from `Product.variants` when the catalogue is
+   * read. Undefined means nobody is counting this product's stock, which is
+   * not the same as zero — see the note on `variants`.
+   */
   stock?: number
+}
+
+/**
+ * One sellable combination: a size, in a colour, of a product.
+ *
+ * This is the granularity a customer actually buys at, and therefore the
+ * granularity stock has to be tracked at — three larges in the stockroom do
+ * not help someone who wants the last medium.
+ *
+ * Authoritative in `public.product_variants`. The copy here is for rendering
+ * availability; every decision that spends stock is made by the database.
+ */
+export type Variant = {
+  size: string
+  color: string
+  stock: number
+  /** Below this, the product page says "only N left". */
+  lowStockAt: number
+  sku?: string
 }
 
 export type SizeMeasurement = {
@@ -84,6 +109,23 @@ export type Product = {
   isNew?: boolean
   limited?: boolean
   sizeChart?: SizeMeasurement[]
+
+  /** Specification rows shown on the product page: composition, care,
+   *  dimensions. Plain strings rather than localised text — an admin will not
+   *  maintain five translations of "100% cotton", and a half-translated spec
+   *  list looks worse than an untranslated one. */
+  specs?: { label: string; value: string }[]
+
+  /**
+   * Per-(size, colour) stock, when this product is tracked.
+   *
+   * An EMPTY array means untracked — nobody has entered quantities, and the
+   * product sells exactly as it did before inventory existed. It does NOT mean
+   * sold out. Treating absent as zero would black out the whole catalogue the
+   * moment this shipped, which is why every availability check in the UI asks
+   * `variants.length > 0` first.
+   */
+  variants?: Variant[]
 }
 
 export type CartItem = {
@@ -164,8 +206,15 @@ export type Order = {
   items: CartItem[]
   subtotal: number
   discount: number
+  /** Delivery charge. 0 means free shipping was earned, not that it is absent. */
+  shippingCost?: number
+  /** Tax charged. 0 while the seller trades as a non-VAT-registered private
+   *  individual — see TAX_RATE in lib/fulfilment.ts. */
+  tax?: number
   total: number
   promo?: string
+  /** public.coupons.id, when a code was redeemed. Audit trail for the discount. */
+  couponId?: string
   payment: string
   status: OrderStatus
 

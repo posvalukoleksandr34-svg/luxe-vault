@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowUpRight } from 'lucide-react'
+import Image from 'next/image'
 import { useMemo } from 'react'
 import { Reveal } from '@/components/reveal'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
@@ -56,10 +57,16 @@ export function Collections() {
                 onClick={() => goToGroup(col.group)}
                 className="card-gold group relative aspect-[4/5] w-full overflow-hidden text-left"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                {/* Collection covers are the largest images on the homepage and
+                    the usual LCP element, so they are the ones that most need
+                    the optimiser's resizing and AVIF/WebP re-encoding. `fill`
+                    because the button already establishes the 4:5 box. */}
+                <Image
                   src={col.image}
                   alt={localize(groupLabels[col.group] ?? {})}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                  priority={i === 0}
                   className="size-full object-cover opacity-70 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />

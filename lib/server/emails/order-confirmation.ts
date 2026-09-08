@@ -81,6 +81,8 @@ export function orderConfirmationText(order: Order): string {
     '',
     `Subtotal: ${money(order.subtotal)}`,
     ...(order.discount > 0 ? [`Discount: -${money(order.discount)}`] : []),
+    `Shipping: ${order.shippingCost ? money(order.shippingCost) : 'Free'}`,
+    ...((order.tax ?? 0) > 0 ? [`Tax: ${money(order.tax ?? 0)}`] : []),
     `Total: ${money(order.total)}`,
     '',
     `Shipping to: ${order.customer.address}`,
@@ -94,6 +96,18 @@ export function orderConfirmationText(order: Order): string {
 export function orderConfirmationHtml(order: Order): string {
   const discountRow =
     order.discount > 0 ? totalRow('Discount', `-${money(order.discount)}`) : ''
+
+  // Always on a receipt: "Free" is a line the customer earned, and an invoice
+  // that omits delivery entirely invites a support ticket asking what the
+  // difference between the subtotal and the total was.
+  const shippingRow = totalRow(
+    'Shipping',
+    order.shippingCost ? money(order.shippingCost) : 'Free',
+  )
+
+  // Only when actually charged. A "Tax: CHF 0.00" line on a receipt from an
+  // unregistered private seller turns a non-question into a tax question.
+  const taxRow = (order.tax ?? 0) > 0 ? totalRow('Tax', money(order.tax ?? 0)) : ''
 
   return `<!doctype html>
 <html lang="en">
@@ -172,6 +186,8 @@ export function orderConfirmationHtml(order: Order): string {
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${totalRow('Subtotal', money(order.subtotal))}
                   ${discountRow}
+                  ${shippingRow}
+                  ${taxRow}
                   ${totalRow('Total', money(order.total), true)}
                 </table>
               </td>

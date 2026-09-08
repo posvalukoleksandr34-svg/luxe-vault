@@ -11,16 +11,54 @@
 // the admin panel did not have to change.
 import 'server-only'
 
+import { sendOrderStatusEmail } from '@/lib/server/emails/send-lifecycle'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
 
+/**
+ * Columns added by 0014/0015. Requested only once the database actually has
+ * them.
+ *
+ * PostgREST rejects the whole SELECT when one column is unknown, so naming
+ * these unconditionally would make every order read fail — the order page, the
+ * account drawer, the admin, the webhooks — on any deployment where the code
+ * landed before the migration. `MONEY_COLUMNS` is spliced in after a one-time
+ * probe instead; see resolveOrderSelect() below.
+ *
+ * Delete the probe and inline these once 0015 is applied everywhere.
+ */
+const MONEY_COLUMNS = 'shipping_cost, tax, coupon_id,'
+
+let orderSelectCache: string | null = null
+
+async function resolveOrderSelect(): Promise<string> {
+  if (orderSelectCache) return orderSelectCache
+
+  const { error } = await createAdminClient()
+    .from('orders')
+    .select('shipping_cost, tax, coupon_id')
+    .limit(1)
+
+  if (error) {
+    console.error(
+      '[orders] shipping_cost/tax/coupon_id are missing — orders will read ' +
+        'without them. Apply migrations 0014 and 0015.',
+    )
+    orderSelectCache = ORDER_SELECT_TEMPLATE.replace(MONEY_COLUMNS, '')
+  } else {
+    orderSelectCache = ORDER_SELECT_TEMPLATE
+  }
+
+  return orderSelectCache
+}
+
 /** Columns of `orders` plus its nested items, as selected below. */
-const ORDER_SELECT = `
+const ORDER_SELECT_TEMPLATE = `
   id, order_number, created_at, user_id, lookup_token, status, tracking_number,
   processing_at, shipped_at, delivered_at, cancelled_at,
   customer_name, customer_email, customer_phone,
   address_line, street, postal_code, city, country,
-  subtotal, discount, total, promo, payment,
+  subtotal, discount, ${MONEY_COLUMNS} total, promo, payment,
   payment_status, payment_provider, payment_id, payment_currency,
   payment_address, payment_amount,
   cancelled_reason, refunded_amount, refunded_at, stripe_refund_id,
@@ -31,6 +69,12 @@ const ORDER_SELECT = `
     id, product_id, name, image, unit_price, size, color, qty
   )
 `
+
+/** PostgREST cannot infer row types from a select string built at runtime.
+ *  rowToOrder() reads every field defensively, so the cast is safe. */
+type OrderRow = Record<string, unknown>
+const asRows = (d: unknown): OrderRow[] => (d ?? []) as OrderRow[]
+const asRow = (d: unknown): OrderRow => d as OrderRow
 
 type ItemRow = {
   id: string
@@ -84,8 +128,11 @@ function rowToOrder(row: Record<string, unknown>): Order {
     items,
     subtotal: num(row.subtotal as string),
     discount: num(row.discount as string),
+    shippingCost: num(row.shipping_cost as string),
+    tax: num(row.tax as string),
     total: num(row.total as string),
     promo: (row.promo as string | null) ?? undefined,
+    couponId: (row.coupon_id as string | null) ?? undefined,
     payment: row.payment as string,
     status: row.status as OrderStatus,
     trackingNumber: (row.tracking_number as string | null) ?? undefined,
@@ -128,16 +175,117 @@ function rowToOrder(row: Record<string, unknown>): Order {
 export async function readOrders(): Promise<Order[]> {
   const { data, error } = await createAdminClient()
     .from('orders')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`Failed to read orders: ${error.message}`)
-  return (data ?? []).map(rowToOrder)
+  return asRows(data).map(rowToOrder)
+}
+
+/**
+ * Raised when a tracked variant cannot cover the quantity ordered.
+ *
+ * A distinct class rather than a string match, so the API route can answer 409
+ * with the customer's own words instead of a 500 — running out of stock is a
+ * normal outcome, not a server fault.
+ */
+export class InsufficientStockError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InsufficientStockError'
+  }
 }
 
 export async function addOrder(order: Order): Promise<void> {
   const supabase = createAdminClient()
 
+  // One transaction for the order, its items and the stock decrement. See
+  // migration 0012 for why the guarantee has to live in the database: two
+  // checkouts for the last item both read `stock: 1` from here and both
+  // succeed, no matter how carefully this function is written.
+  const { data: rpcId, error: rpcError } = await supabase.rpc('place_order', {
+    p_order: {
+      order_number: order.id,
+      user_id: order.userId ?? '',
+      lookup_token: order.lookupToken,
+      status: order.status,
+      customer_name: order.customer.name,
+      customer_email: order.customer.email ?? '',
+      customer_phone: order.customer.phone,
+      address_line: order.customer.address,
+      street: order.customer.street ?? '',
+      postal_code: order.customer.postalCode ?? '',
+      city: order.customer.city ?? '',
+      country: order.customer.country ?? '',
+      subtotal: order.subtotal,
+      discount: order.discount,
+      shipping_cost: order.shippingCost ?? 0,
+      tax: order.tax ?? 0,
+      total: order.total,
+      promo: order.promo ?? '',
+      coupon_id: order.couponId ?? '',
+      payment: order.payment,
+      payment_status: order.paymentStatus ?? '',
+      shipping_type: order.shippingType ?? 'standard',
+      delivery_estimate_min: order.deliveryEstimateMin
+        ? new Date(order.deliveryEstimateMin).toISOString()
+        : '',
+      delivery_estimate_max: order.deliveryEstimateMax
+        ? new Date(order.deliveryEstimateMax).toISOString()
+        : '',
+    },
+    p_items: order.items.map((i) => ({
+      product_id: i.productId,
+      name: i.name,
+      image: i.image || '',
+      unit_price: i.price,
+      size: i.size,
+      color: i.color,
+      qty: i.qty,
+    })),
+  })
+
+  if (!rpcError && rpcId) return
+
+  if (rpcError) {
+    if (rpcError.message.includes('INSUFFICIENT_STOCK')) {
+      throw new InsufficientStockError(
+        rpcError.message.replace(/^.*INSUFFICIENT_STOCK:\s*/, '').trim(),
+      )
+    }
+
+    // The function does not exist yet — the database is still on 0011. Fall
+    // through to the pre-0012 path so checkout keeps working, but say loudly
+    // that nothing is guarding against overselling.
+    const missingFunction =
+      rpcError.code === 'PGRST202' || /place_order/i.test(rpcError.message)
+
+    if (!missingFunction) {
+      throw new Error(`Failed to create order: ${rpcError.message}`)
+    }
+
+    console.error(
+      '[orders] place_order() is missing — orders are being created WITHOUT ' +
+        'the oversell guard. Apply supabase/migrations/0012_inventory.sql.',
+    )
+  }
+
+  await addOrderLegacy(order, supabase)
+}
+
+/**
+ * Pre-0012 order creation: two separate inserts and a compensating delete.
+ *
+ * Kept only so a deploy that lands before the migration still takes orders.
+ * It cannot decrement stock, and its "transaction" is a manual cleanup that
+ * does nothing if the process dies between the two statements — which is
+ * precisely what place_order() exists to fix. Delete this once 0012 is applied
+ * in every environment.
+ */
+async function addOrderLegacy(
+  order: Order,
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<void> {
   const { data, error } = await supabase
     .from('orders')
     .insert({
@@ -155,8 +303,11 @@ export async function addOrder(order: Order): Promise<void> {
       country: order.customer.country ?? null,
       subtotal: order.subtotal,
       discount: order.discount,
+      shipping_cost: order.shippingCost ?? 0,
+      tax: order.tax ?? 0,
       total: order.total,
       promo: order.promo ?? null,
+      coupon_id: order.couponId ?? null,
       payment: order.payment,
       payment_status: order.paymentStatus ?? null,
       // Quoted at purchase and frozen. Stored as ISO so Postgres keeps them
@@ -201,12 +352,12 @@ export async function addOrder(order: Order): Promise<void> {
 export async function getOrderById(id: string): Promise<Order | null> {
   const { data, error } = await createAdminClient()
     .from('orders')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .eq('order_number', id)
     .maybeSingle()
 
   if (error) throw new Error(`Failed to load order: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  return data ? rowToOrder(asRow(data)) : null
 }
 
 /**
@@ -221,7 +372,7 @@ export async function getOrdersByCredentials(
 
   const { data, error } = await createAdminClient()
     .from('orders')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .in(
       'order_number',
       credentials.map((c) => c.id),
@@ -233,7 +384,7 @@ export async function getOrdersByCredentials(
   // query fetches candidates by id, and only rows whose token matches the
   // caller's are returned.
   const wanted = new Map(credentials.map((c) => [c.id, c.token]))
-  return (data ?? [])
+  return asRows(data)
     .map(rowToOrder)
     .filter((o) => Boolean(o.lookupToken) && wanted.get(o.id) === o.lookupToken)
 }
@@ -242,12 +393,12 @@ export async function getOrdersByCredentials(
 export async function getOrdersByUserId(userId: string): Promise<Order[]> {
   const { data, error } = await createAdminClient()
     .from('orders')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`Failed to load orders: ${error.message}`)
-  return (data ?? []).map(rowToOrder)
+  return asRows(data).map(rowToOrder)
 }
 
 /**
@@ -280,22 +431,22 @@ export async function setOrderPaymentSession(
       payment_amount: session.paymentAmount ?? null,
     })
     .eq('order_number', id)
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to attach payment session: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  return data ? rowToOrder(asRow(data)) : null
 }
 
 export async function findOrderByPaymentId(paymentId: string): Promise<Order | null> {
   const { data, error } = await createAdminClient()
     .from('orders')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .eq('payment_id', paymentId)
     .maybeSingle()
 
   if (error) throw new Error(`Failed to find order by payment id: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  return data ? rowToOrder(asRow(data)) : null
 }
 
 /**
@@ -311,11 +462,11 @@ export async function setPaymentStatus(
     .from('orders')
     .update({ payment_status: paymentStatus })
     .eq('payment_id', paymentId)
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to set payment status: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  return data ? rowToOrder(asRow(data)) : null
 }
 
 export async function setOrderStatus(
@@ -340,11 +491,17 @@ export async function setOrderStatus(
     .from('orders')
     .update(patch)
     .eq('order_number', id)
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
-  if (error) throw new Error(`Failed to set order status: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  if (error) throw new Error()
+  if (!data) return null
+
+  const updated = rowToOrder(asRow(data))
+  // Fire-and-forget: an admin marking twenty parcels shipped should not wait
+  // on twenty SMTP round trips, and a mail failure must not undo the status.
+  void sendOrderStatusEmail(updated, status)
+  return updated
 }
 
 /**
@@ -386,12 +543,39 @@ export async function cancelOrder(
     .eq('order_number', id)
     .neq('status', 'cancelled')
     .neq('payment_status', 'paid')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to cancel order: ${error.message}`)
   // No row updated means the guards rejected it: already cancelled, or paid.
-  return { order: data ? rowToOrder(data) : null, conflict: !data }
+  if (!data) return { order: null, conflict: true }
+
+  await restoreStock(id)
+  const cancelled = rowToOrder(asRow(data))
+  void sendOrderStatusEmail(cancelled, 'cancelled')
+  return { order: cancelled, conflict: false }
+}
+
+/**
+ * Returns a dead order's units to stock.
+ *
+ * Deliberately non-throwing. The order is already cancelled or refunded by the
+ * time this runs, and failing the customer's request because the restock leg
+ * had a problem would be the wrong trade — an under-counted shelf is an
+ * inventory discrepancy an admin can correct, whereas a 500 on a cancellation
+ * leaves the customer believing they are still committed.
+ *
+ * Idempotency lives in the database (orders.restocked_at), not here, so a
+ * webhook delivered twice cannot credit the same units twice.
+ */
+async function restoreStock(orderNumber: string): Promise<void> {
+  const { error } = await createAdminClient().rpc('restore_order_stock', {
+    p_order_number: orderNumber,
+  })
+
+  if (error && error.code !== 'PGRST202') {
+    console.error(`[orders] restock failed for ${orderNumber}:`, error.message)
+  }
 }
 
 /**
@@ -417,11 +601,23 @@ export async function recordRefund(
       stripe_refund_id: params.refundId,
     })
     .eq('order_number', id)
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to record refund: ${error.message}`)
-  return data ? rowToOrder(data) : null
+
+  // Only a full refund puts the goods back. A partial refund is usually a
+  // price adjustment or one line of several, and guessing which units came
+  // back would corrupt the count.
+  if (!data) return null
+
+  if (params.fully) await restoreStock(id)
+
+  const refunded = rowToOrder(asRow(data))
+  // Silence after money moves is what turns a refund into a chargeback, so
+  // this goes out for partial refunds too — the amount is in the email.
+  void sendOrderStatusEmail(refunded, 'refunded')
+  return refunded
 }
 
 
@@ -446,11 +642,11 @@ export async function requestRefund(
     })
     .eq('order_number', id)
     .eq('return_status', 'none')
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to request refund: ${error.message}`)
-  return { order: data ? rowToOrder(data) : null, conflict: !data }
+  return { order: data ? rowToOrder(asRow(data)) : null, conflict: !data }
 }
 
 
@@ -476,11 +672,11 @@ export async function claimReceiptSend(paymentIntentId: string): Promise<Order |
     .update({ receipt_sent_at: new Date().toISOString() })
     .eq('payment_id', paymentIntentId)
     .is('receipt_sent_at', null)
-    .select(ORDER_SELECT)
+    .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to claim receipt send: ${error.message}`)
-  return data ? rowToOrder(data) : null
+  return data ? rowToOrder(asRow(data)) : null
 }
 
 /**

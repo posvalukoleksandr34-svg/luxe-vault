@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import {
   Check,
   Clock,
@@ -323,10 +324,11 @@ export function OrderTracker({ order }: { order: Order }) {
         <ul className="divide-y divide-border/40">
           {order.items.map((item) => (
             <li key={item.key} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={item.image}
                 alt={item.name}
+                width={64}
+                height={64}
                 className="size-16 shrink-0 border border-border/60 object-cover"
               />
               <div className="min-w-0 flex-1">
@@ -366,6 +368,20 @@ export function OrderTracker({ order }: { order: Order }) {
                 )}
               </dt>
               <dd className="tabular-nums text-destructive">−{formatPrice(order.discount)}</dd>
+            </div>
+          )}
+          {/* Always shown on a real order: "Free" is a result, not an absence. */}
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">{t('cart.shipping')}</dt>
+            <dd className={order.shippingCost ? 'tabular-nums text-foreground' : 'tabular-nums text-gold'}>
+              {order.shippingCost ? formatPrice(order.shippingCost) : t('cart.free')}
+            </dd>
+          </div>
+          {/* Only when actually charged — see TAX_RATE in lib/fulfilment.ts. */}
+          {(order.tax ?? 0) > 0 && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">{t('order.tax')}</dt>
+              <dd className="tabular-nums text-foreground">{formatPrice(order.tax ?? 0)}</dd>
             </div>
           )}
           <div className="flex justify-between border-t border-border/50 pt-3">

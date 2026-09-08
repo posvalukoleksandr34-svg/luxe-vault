@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
 import { createClient } from './supabase/client'
@@ -50,7 +51,12 @@ export type Toast = {
 
 export type PanelState = 'cart' | 'checkout' | 'user' | null
 
-export type SortKey = 'default' | 'price_asc' | 'price_desc'
+export type SortKey =
+  | 'default'
+  | 'newest'
+  | 'price_asc'
+  | 'price_desc'
+  | 'discount'
 
 export type Filter = {
   group: string | null
@@ -58,6 +64,30 @@ export type Filter = {
   sale: boolean
   sizes: string[]
   sort: SortKey
+
+  /** Colour names, matched against Product.colors[].name. */
+  colors: string[]
+  /** Inclusive bounds in CHF. null means unbounded on that side, which is not
+   *  the same as 0 — a minimum of 0 would still exclude nothing, but writing
+   *  it as null keeps "no filter" distinguishable from "free or more". */
+  minPrice: number | null
+  maxPrice: number | null
+  /** Hide anything a customer cannot actually buy right now. */
+  inStockOnly: boolean
+}
+
+/** The empty filter. One definition so "clear all" and the initial state can
+ *  never drift apart — they did, and a cleared filter kept its sizes. */
+export const EMPTY_FILTER: Filter = {
+  group: null,
+  category: null,
+  sale: false,
+  sizes: [],
+  sort: 'default',
+  colors: [],
+  minPrice: null,
+  maxPrice: null,
+  inStockOnly: false,
 }
 
 /** Products (incl. admin-uploaded images) are cached here so a page reload
@@ -113,7 +143,7 @@ type StoreContextValue = {
   clearCart: () => void
   cartCount: number
   cartSubtotal: number
-  applyPromo: (code: string) => Promo | null
+  applyPromo: (code: string) => Promise<Promo | null>
 
   login: (email: string, password: string) => Promise<boolean>
   register: (
@@ -211,6 +241,27 @@ export function StoreProvider({
 
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
 
+/**
+ * Asks the server to send the welcome email.
+ *
+ * There is no reliable client-side "this is the first ever sign-in" signal, so
+ * the once-only guarantee lives in the database: /api/auth/welcome claims a
+ * stamp atomically and answers { sent: false } every time after the first.
+ *
+ * The sessionStorage guard is not that guarantee — it just stops a pointless
+ * request on every page load in the same tab. Failure is ignored entirely; a
+ * missing welcome email must never interfere with signing in.
+ */
+function maybeSendWelcome() {
+  try {
+    if (sessionStorage.getItem('lv.welcome-checked')) return
+    sessionStorage.setItem('lv.welcome-checked', '1')
+  } catch {
+    // Storage blocked. Fall through — the server still de-duplicates.
+  }
+  void fetch('/api/auth/welcome', { method: 'POST' }).catch(() => {})
+}
+
   // ---------------------------------------------------------------- auth ----
   // Single source of truth for "who is signed in". Both a fresh login and a
   // session restored from the cookie on page load land here, so the two can
@@ -243,7 +294,10 @@ export function StoreProvider({
       setAuthLoading(false)
     }
 
-    supabase.auth.getSession().then(({ data }) => applySession(data.session))
+    supabase.auth.getSession().then(({ data }) => {
+      applySession(data.session)
+      if (data.session) maybeSendWelcome()
+    })
 
     // NOTE: this callback stays synchronous on purpose. Awaiting another
     // supabase call inside onAuthStateChange can deadlock the client, so the
@@ -431,13 +485,7 @@ export function StoreProvider({
   const [panel, setPanel] = useState<PanelState>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<Filter>({
-    group: null,
-    category: null,
-    sale: false,
-    sizes: [],
-    sort: 'default',
-  })
+  const [filter, setFilter] = useState<Filter>(EMPTY_FILTER)
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -508,6 +556,7 @@ export function StoreProvider({
         }
         return [...prev, { ...item, key }]
       })
+      trackAddToCart(item)
       pushToast({
         title: t('toast.addedToCart'),
         description: `${item.name} · ${item.size} · ${item.color}`,
@@ -526,7 +575,11 @@ export function StoreProvider({
   }, [])
 
   const removeFromCart = useCallback((key: string) => {
-    setCart((prev) => prev.filter((c) => c.key !== key))
+    setCart((prev) => {
+      const going = prev.find((c) => c.key === key)
+      if (going) trackRemoveFromCart(going)
+      return prev.filter((c) => c.key !== key)
+    })
   }, [])
 
   const clearCart = useCallback(() => setCart([]), [])
@@ -584,14 +637,48 @@ export function StoreProvider({
     [cart],
   )
 
+  /**
+   * Previews a discount code.
+   *
+   * Was a lookup against a hardcoded two-entry array, so the browser decided
+   * whether a code was valid and what it was worth. Coupons now live in
+   * Postgres with expiry, usage limits, minimum orders and per-customer
+   * scoping, none of which the client can evaluate — and none of which it
+   * should, since a discount is money.
+   *
+   * This call only PREVIEWS. The redemption is consumed once, server-side, at
+   * order creation; otherwise abandoning checkout would burn a single-use code.
+   */
   const applyPromo = useCallback(
-    (code: string) => {
-      const promo = promos.find(
-        (p) => p.active && p.code.toUpperCase() === code.trim().toUpperCase(),
-      )
-      return promo ?? null
+    async (code: string): Promise<Promo | null> => {
+      const trimmed = code.trim().toUpperCase()
+      if (!trimmed) return null
+
+      try {
+        const res = await fetch('/api/coupons/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: trimmed,
+            subtotal: cart.reduce((sum, i) => sum + i.price * i.qty, 0),
+            productSlugs: cart.map((i) => i.productId),
+          }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok || !data?.ok) return null
+
+        // `percent` is kept in the returned shape because the existing
+        // checkout UI displays it. For a fixed-amount coupon it is the
+        // effective percentage of this basket, which is what a customer
+        // reading "−CHF 20" alongside it would expect it to mean.
+        const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0)
+        const percent = subtotal > 0 ? Math.round((data.discount / subtotal) * 100) : 0
+        return { code: data.code, percent, active: true }
+      } catch {
+        return null
+      }
     },
-    [promos],
+    [cart],
   )
 
   /**
@@ -622,6 +709,7 @@ export function StoreProvider({
       // onAuthStateChange (below) is what actually populates currentUser, so
       // both this path and a session restored on page load go through one
       // code path and can never disagree.
+      trackLogin()
       return true
     },
     [pushToast, t],
@@ -686,10 +774,16 @@ export function StoreProvider({
         return { ok: true, needsConfirmation: true, alreadyRegistered: false }
       }
 
+      trackSignUp()
       pushToast({ title: t('toast.accountCreated'), variant: 'success' })
       return { ok: true, needsConfirmation: false, alreadyRegistered: false }
     },
-    [pushToast, t],
+    // `locale` is written into the account's signUp metadata, so it has to be
+    // a dependency: without it the callback keeps the locale captured when the
+    // provider first rendered, and a visitor who switches language before
+    // registering has their account — and every transactional email after it —
+    // stamped with the language they did not choose.
+    [pushToast, t, locale],
   )
 
   /**

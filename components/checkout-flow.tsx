@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { CountrySelect } from '@/components/country-select'
@@ -11,6 +11,8 @@ import { StripePayment } from '@/components/stripe-payment'
 import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
 import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
+import { trackAddPaymentInfo } from '@/lib/analytics'
+import { quoteShipping } from '@/lib/fulfilment'
 import { rememberOrder } from '@/lib/order-registry'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
 import { useStore, formatPrice } from '@/lib/store'
@@ -105,11 +107,57 @@ export function CheckoutFlow({
     setSaveDetails(Boolean(saved))
   }, [])
 
+  /**
+   * The signed-in customer's default address, if they have one.
+   *
+   * Prefilling from the server rather than from localStorage is what makes the
+   * address book worth having: it follows the customer to a second device.
+   * Only the DEFAULT is applied, and only when the form is still untouched —
+   * overwriting something already typed would be hostile, and someone sending
+   * a gift elsewhere would have to clear it.
+   */
+  useEffect(() => {
+    if (!currentUser) return
+    let active = true
+
+    fetch('/api/account/addresses')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !data?.addresses?.length) return
+        const preferred = data.addresses.find((a: { isDefault: boolean }) => a.isDefault)
+        if (!preferred) return
+        setForm((prev) =>
+          prev.name || prev.street
+            ? prev
+            : {
+                ...prev,
+                name: preferred.name ?? '',
+                phone: preferred.phone ?? '',
+                street: preferred.street ?? '',
+                postalCode: preferred.postalCode ?? '',
+                city: preferred.city ?? '',
+                country: (preferred.country ?? prev.country) as CountryCode,
+                phoneCountry: (preferred.country ?? prev.phoneCountry) as CountryCode,
+              },
+        )
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [currentUser])
+
 
   const discount = appliedPromo
     ? Math.round((cartSubtotal * appliedPromo.percent) / 100)
     : 0
-  const total = cartSubtotal - discount
+  // Mirrors repriceItems() so the customer sees the same figure the server
+  // will charge. The server's version is authoritative; this one exists so the
+  // summary is not a lie while they are deciding.
+  const discountedSubtotal = cartSubtotal - discount
+  const shippingCost = quoteShipping(discountedSubtotal)
+  const total = discountedSubtotal + shippingCost
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -122,8 +170,8 @@ export function CheckoutFlow({
     }
   }
 
-  function handleApplyPromo() {
-    const promo = applyPromo(form.promo)
+  async function handleApplyPromo() {
+    const promo = await applyPromo(form.promo)
     if (promo) {
       setAppliedPromo({ code: promo.code, percent: promo.percent })
       setPromoError(false)
@@ -204,12 +252,21 @@ export function CheckoutFlow({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.order) {
-        // Surface the server's own wording — it is written for customers and
-        // says what to actually do about it.
+        // Sold out between adding to the cart and paying. Name the line so the
+        // customer knows which one to change rather than hunting the basket.
+        if (res.status === 409 && data.error === 'OUT_OF_STOCK') {
+          setSubmitError(
+            data.item ? `${t('checkout.outOfStock')} — ${data.item}` : t('checkout.outOfStock'),
+          )
+          return
+        }
+        // Otherwise surface the server's own wording — it is written for
+        // customers and says what to actually do about it.
         setSubmitError(data.error || t('checkout.orderFailed'))
         return
       }
 
+      trackAddPaymentInfo(data.order.total, form.payment)
       const order: Order = data.order
       if (order.lookupToken) rememberOrder({ id: order.id, token: order.lookupToken })
 
@@ -606,6 +663,12 @@ export function CheckoutFlow({
                   <span className="font-light text-destructive">−{formatPrice(discount)}</span>
                 </div>
               )}
+              <div className="mb-2 flex justify-between text-[13px]">
+                <span className="font-light text-muted-foreground">{t('cart.shipping')}</span>
+                <span className={shippingCost === 0 ? 'font-light text-gold' : 'font-light text-foreground'}>
+                  {shippingCost === 0 ? t('cart.free') : formatPrice(shippingCost)}
+                </span>
+              </div>
               {/* Save toggles. Two separate switches on purpose: agreeing to
                   remember an address is not agreeing to store a payment
                   credential, and bundling them would make the second decision
@@ -760,6 +823,11 @@ function Field({
   placeholder?: string
   autoComplete?: string
 }) {
+  // aria-invalid alone tells a screen reader THAT the field is wrong; without
+  // aria-describedby it never reads WHY, so the customer hears "invalid" and
+  // has to guess. The id has to be unique per field, hence useId.
+  const errorId = useId()
+
   return (
     <label className="block">
       <span className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
@@ -774,12 +842,17 @@ function Field({
         placeholder={placeholder}
         autoComplete={autoComplete}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         className={cn(
           'w-full border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/40',
           error ? 'border-destructive focus:border-destructive' : 'border-border focus:border-gold/40',
         )}
       />
-      {error && <span className="mt-1.5 block text-[11px] text-destructive">{error}</span>}
+      {error && (
+        <span id={errorId} role="alert" className="mt-1.5 block text-[11px] text-destructive">
+          {error}
+        </span>
+      )}
     </label>
   )
 }

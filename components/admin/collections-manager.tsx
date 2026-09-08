@@ -6,15 +6,26 @@ import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { useStore } from '@/lib/store'
 import type { CategoryGroupKey } from '@/lib/types'
 
-const MAX_FILE_SIZE_MB = 4
+// Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
+const MAX_FILE_SIZE_MB = 5
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
+/** Uploads one collection cover and returns its public URL. Collection covers
+ *  went to Storage for the same reason product images did: a base64 cover sat
+ *  in the homepage HTML on every single visit. */
+async function uploadCover(file: File): Promise<string> {
+  const body = new FormData()
+  body.append('folder', 'collections')
+  body.append('files', file)
+
+  const res = await fetch('/api/admin/uploads', { method: 'POST', body })
+  const json = (await res.json().catch(() => null)) as
+    | { urls?: string[]; error?: string }
+    | null
+
+  if (!res.ok || !json?.urls?.[0]) {
+    throw new Error(json?.error || 'Не удалось загрузить изображение')
+  }
+  return json.urls[0]
 }
 
 /** Admin control for the Collections (Collezioni) preview cards shown on
@@ -135,8 +146,12 @@ function CategorySlot({
 
     setUploading(true)
     try {
-      const dataUrl = await readFileAsDataUrl(file)
-      onChange(dataUrl)
+      onChange(await uploadCover(file))
+    } catch (err) {
+      pushToast({
+        title: err instanceof Error ? err.message : 'Не удалось загрузить изображение',
+        variant: 'default',
+      })
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''

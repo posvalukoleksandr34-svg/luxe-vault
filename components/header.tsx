@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { SearchBox } from '@/components/search-box'
 import { useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { LOCALES } from '@/lib/i18n'
@@ -116,16 +117,8 @@ export function Header() {
             <Search className="size-[18px]" />
           </button>
 
-          <div className="relative hidden sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => scrollToId('shop')}
-              placeholder={t('filter.search')}
-              className="w-36 border border-transparent bg-transparent py-2 pl-9 pr-3 text-[13px] text-foreground outline-none transition-all duration-300 placeholder:text-muted-foreground/60 focus:w-52 focus:border-border"
-            />
+          <div className="hidden sm:block">
+            <SearchBox variant="desktop" />
           </div>
 
           <div className="relative">
@@ -196,17 +189,7 @@ export function Header() {
 
       {searchOpen && (
         <div className="border-t border-border px-4 py-3 sm:hidden">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('filter.search')}
-              className="w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-3 text-sm text-foreground outline-none focus:border-gold/30"
-            />
-          </div>
+          <SearchBox variant="mobile" onNavigate={() => setSearchOpen(false)} />
         </div>
       )}
 

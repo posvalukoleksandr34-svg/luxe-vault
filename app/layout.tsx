@@ -159,6 +159,23 @@ export default async function RootLayout({
             and sits at z-index -1 so it never participates in the app's own
             stacking or event handling. */}
         <AmbientBackground />
+
+        {/* Skip link. The header carries a logo, five nav items, a search box,
+            a language menu and four icon buttons, so a keyboard or screen
+            reader user previously had to tab through all of it on every page
+            before reaching the content.
+
+            Visually hidden until focused — `sr-only focus:not-sr-only` — so it
+            costs sighted visitors nothing and appears the moment it is
+            reachable. Rendered before everything else so it is the first stop
+            in the tab order, which is the only position that helps. */}
+        <a
+          href="#main"
+          className="sr-only left-4 top-4 z-[200] border border-gold bg-background px-4 py-2 text-[12px] uppercase tracking-[0.12em] text-gold focus:not-sr-only focus:absolute"
+        >
+          Skip to content
+        </a>
+
         <StoreProvider initialCatalog={initialCatalog}>
           {children}
           {/* Cart / checkout / account drawers. Mounted here, not per page: a

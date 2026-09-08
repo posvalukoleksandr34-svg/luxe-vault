@@ -2,9 +2,15 @@
 // it is paid immediately or left for later — is created through here, so the
 // id, the lookup token and the payment status can never be dictated by the
 // browser.
-import { PAYMENT_METHODS, SEED_PROMOS, requiresPrepayment } from '@/lib/data'
-import { quoteDeliveryWindow, type ShippingType } from '@/lib/fulfilment'
+import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
+import {
+  quoteDeliveryWindow,
+  quoteShipping,
+  TAX_RATE,
+  type ShippingType,
+} from '@/lib/fulfilment'
 import { readCatalog } from '@/lib/server/catalog-store'
+import { applyCoupon } from '@/lib/server/coupons'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order } from '@/lib/types'
 
@@ -34,12 +40,19 @@ export type ValidatedDraft = {
   items: CartItem[]
   subtotal: number
   discount: number
+  shippingCost: number
+  tax: number
   total: number
   /** What the browser claimed the total was. Compared against the recomputed
    *  figure so a mismatch can be logged; never trusted, never stored. */
   claimedTotal?: number
   promo?: string
+  couponId?: string
+  /** auth.users.id of the buyer, when signed in. Scopes user-specific codes. */
+  userId?: string
   payment: string
+  /** Chosen at checkout; drives both the delivery window and the charge. */
+  shippingType?: ShippingType
 }
 
 function isValidItem(item: unknown): item is CartItem {
@@ -128,6 +141,8 @@ export function validateOrderDraft(
       // figures before the order is built; they are never persisted as-is.
       subtotal: 0,
       discount: 0,
+      shippingCost: 0,
+      tax: 0,
       total: 0,
       claimedTotal: Number.isFinite(claimedTotal) ? claimedTotal : undefined,
       promo: typeof body.promo === 'string' ? body.promo.trim().toUpperCase() : undefined,
@@ -177,8 +192,11 @@ export function buildOrder(
     items: draft.items,
     subtotal: draft.subtotal,
     discount: draft.discount,
+    shippingCost: draft.shippingCost,
+    tax: draft.tax,
     total: draft.total,
     promo: draft.promo,
+    couponId: draft.couponId,
     payment: draft.payment,
     status: 'pending',
     lookupToken: generateLookupToken(),
@@ -225,15 +243,47 @@ export async function repriceItems(
 
   const subtotal = round2(priced.reduce((sum, i) => sum + i.price * i.qty, 0))
 
-  // Promo codes are re-checked here too — a client could otherwise send any
-  // code string and have the discount it claimed applied.
-  const promo = draft.promo
-    ? SEED_PROMOS.find((p) => p.active && p.code === draft.promo)
-    : undefined
-  const discount = promo ? round2((subtotal * promo.percent) / 100) : 0
-  const total = round2(subtotal - discount)
+  // Codes are re-checked here too — a client could otherwise send any string
+  // and have the discount it claimed applied. This is also the call that
+  // CONSUMES a redemption (`commit: true`), which is why it happens once, at
+  // order creation, and not when the customer previews the code in the cart.
+  let discount = 0
+  let couponId: string | undefined
+  let appliedCode: string | undefined
 
-  if (total <= 0) return { ok: false, error: 'Invalid totals' }
+  if (draft.promo) {
+    const coupon = await applyCoupon(draft.promo, subtotal, {
+      userId: draft.userId,
+      productSlugs: priced.map((i) => i.productId),
+      commit: true,
+    })
+    if (coupon.ok) {
+      discount = round2(coupon.discount)
+      couponId = coupon.couponId
+      appliedCode = coupon.code
+    }
+    // A code that no longer validates is silently dropped rather than failing
+    // the order. It expired, or ran out, between the cart and the button —
+    // refusing the whole purchase over a lost discount loses the sale too. The
+    // customer sees the real total on the confirmation either way.
+  }
+
+  // Shipping is priced here for the same reason everything else is: the
+  // browser showing "free delivery" must not be what decides whether delivery
+  // is free. The threshold is applied to the discounted subtotal.
+  const discounted = round2(subtotal - discount)
+  const shippingCost = round2(quoteShipping(discounted, draft.shippingType ?? 'standard'))
+
+  // Zero while the seller is an unregistered private individual — see
+  // TAX_RATE in lib/fulfilment.ts and migration 0014.
+  const tax = round2((discounted + shippingCost) * TAX_RATE)
+
+  const total = round2(discounted + shippingCost + tax)
+
+  // Goods must be worth something; a basket that is only a delivery charge is
+  // not a sale. Checked on the discounted subtotal rather than the total so a
+  // shipping charge cannot mask a zeroed-out basket.
+  if (discounted <= 0) return { ok: false, error: 'Invalid totals' }
 
   if (draft.claimedTotal !== undefined && Math.abs(draft.claimedTotal - total) > 0.01) {
     // Usually a stale cart or a race with a price edit; occasionally an
@@ -245,7 +295,17 @@ export async function repriceItems(
 
   return {
     ok: true,
-    draft: { ...draft, items: priced, subtotal, discount, total, promo: promo?.code },
+    draft: {
+      ...draft,
+      items: priced,
+      subtotal,
+      discount,
+      shippingCost,
+      tax,
+      total,
+      promo: appliedCode,
+      couponId,
+    },
   }
 }
 

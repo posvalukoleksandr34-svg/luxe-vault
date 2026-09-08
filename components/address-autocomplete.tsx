@@ -1,7 +1,7 @@
 'use client'
 
 import { Loader2, MapPin } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useId } from 'react'
 import type { AddressSuggestion } from '@/app/api/geo/address/route'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +40,12 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false)
   const [highlighted, setHighlighted] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Stable across renders and unique per instance, so two address fields on
+  // one page cannot both claim the same listbox. useId is SSR-safe; a
+  // hand-rolled random id would differ between server and client and trip
+  // hydration.
+  const listboxId = useId()
 
   // Set when the value change came from picking a suggestion, so the effect
   // below does not immediately re-query for the text it just wrote.
@@ -137,6 +143,10 @@ export function AddressAutocomplete({
           autoComplete="off"
           role="combobox"
           aria-expanded={open}
+          // Required alongside role="combobox": without it assistive
+          // technology is told a listbox exists but not which element it is,
+          // so the suggestions are announced as unrelated content.
+          aria-controls={listboxId}
           aria-autocomplete="list"
           className={cn(
             'w-full border bg-background px-3 py-3 pr-9 text-[13px] font-light text-foreground outline-none transition',
@@ -152,6 +162,7 @@ export function AddressAutocomplete({
 
       {open && suggestions.length > 0 && (
         <ul
+          id={listboxId}
           role="listbox"
           className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto border border-border bg-popover shadow-2xl"
         >

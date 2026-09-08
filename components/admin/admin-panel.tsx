@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Boxes,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -15,6 +16,7 @@ import {
   Trash2,
   TrendingUp,
   Truck,
+  Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABELS } from '@/lib/i18n'
@@ -22,12 +24,23 @@ import { COURIER_NAMES } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
+import { CustomersManager } from './customers-manager'
+import { InventoryManager } from './inventory-manager'
 import { ProductForm } from './product-form'
 import { ReviewsManager } from './reviews-manager'
 import { SupportManager } from './support-manager'
 import { ORDER_STATUSES, type Order, type OrderStatus, PaymentStatus, Product } from '@/lib/types'
 
-type AdminTab = 'dashboard' | 'products' | 'collections' | 'orders' | 'reviews' | 'support' | 'promos'
+type AdminTab =
+  | 'dashboard'
+  | 'products'
+  | 'collections'
+  | 'inventory'
+  | 'orders'
+  | 'customers'
+  | 'reviews'
+  | 'support'
+  | 'promos'
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'text-muted-foreground bg-muted/40 border-border',
@@ -277,10 +290,16 @@ export function AdminPanel() {
               <NavButton active={tab === 'collections'} onClick={() => setTab('collections')} icon={<Images className="size-4" />}>
                 {t('admin.collections')}
               </NavButton>
-              <NavButton active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Truck className="size-4" />}>
+              <NavButton active={tab === 'inventory'} onClick={() => setTab('inventory')} icon={<Boxes className="size-4" />}>
+              Остатки
+            </NavButton>
+            <NavButton active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Truck className="size-4" />}>
                 {t('admin.orders')}
               </NavButton>
-              <NavButton active={tab === 'reviews'} onClick={() => setTab('reviews')} icon={<Star className="size-4" />}>
+              <NavButton active={tab === 'customers'} onClick={() => setTab('customers')} icon={<Users className="size-4" />}>
+              Клиенты
+            </NavButton>
+            <NavButton active={tab === 'reviews'} onClick={() => setTab('reviews')} icon={<Star className="size-4" />}>
                 {t('reviews.title')}
               </NavButton>
               <NavButton active={tab === 'support'} onClick={() => setTab('support')} icon={<LifeBuoy className="size-4" />}>
@@ -315,8 +334,14 @@ export function AdminPanel() {
             <NavButton active={tab === 'collections'} onClick={() => setTab('collections')} icon={<Images className="size-4" />}>
               {t('admin.collections')}
             </NavButton>
+            <NavButton active={tab === 'inventory'} onClick={() => setTab('inventory')} icon={<Boxes className="size-4" />}>
+              Остатки
+            </NavButton>
             <NavButton active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Truck className="size-4" />}>
               {t('admin.orders')}
+            </NavButton>
+            <NavButton active={tab === 'customers'} onClick={() => setTab('customers')} icon={<Users className="size-4" />}>
+              Клиенты
             </NavButton>
             <NavButton active={tab === 'reviews'} onClick={() => setTab('reviews')} icon={<Star className="size-4" />}>
               {t('reviews.title')}
@@ -522,6 +547,10 @@ export function AdminPanel() {
           )}
 
           {tab === 'collections' && <CollectionsManager />}
+
+          {tab === 'inventory' && <InventoryManager />}
+
+          {tab === 'customers' && <CustomersManager />}
 
           {tab === 'orders' && (
             <div>

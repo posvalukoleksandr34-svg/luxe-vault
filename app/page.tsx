@@ -14,7 +14,7 @@ export default function Home() {
     <>
       <Header />
 
-      <main>
+      <main id="main">
         <Hero />
         <Collections />
         <ProductGrid />
