@@ -1,12 +1,11 @@
 'use client'
 
 import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loader2, Package, RefreshCw, Truck, Wallet } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { CryptoPayment } from '@/components/crypto-payment'
 import { LoadError } from '@/components/load-error'
 import { OrderListSkeleton } from '@/components/skeletons'
-import { StripePayment } from '@/components/stripe-payment'
 import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
@@ -14,6 +13,28 @@ import { tokenFor } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus, PaymentStatus } from '@/lib/types'
+
+/**
+ * The payment SDKs are loaded ON DEMAND.
+ *
+ * This file is reached from the root layout — layout -> GlobalPanels ->
+ * UserPanel -> AccountOrders -> here — so a static import put the whole
+ * Stripe client SDK into the FIRST-LOAD bundle of every page on the site:
+ * the homepage, the category pages, the legal pages. It is needed only when
+ * a signed-in customer retries payment on an unpaid order, which is a click
+ * that happens on a small minority of sessions.
+ *
+ * `ssr: false` because both mount third-party widgets that cannot render on
+ * the server anyway, and neither is content a crawler should see.
+ */
+const CryptoPayment = dynamic(
+  () => import('@/components/crypto-payment').then((m) => m.CryptoPayment),
+  { ssr: false },
+)
+const StripePayment = dynamic(
+  () => import('@/components/stripe-payment').then((m) => m.StripePayment),
+  { ssr: false },
+)
 
 const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'text-muted-foreground bg-muted/40 border-border',

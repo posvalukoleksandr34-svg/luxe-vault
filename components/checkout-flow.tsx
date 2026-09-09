@@ -1,18 +1,35 @@
 'use client'
 
 import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { CountrySelect } from '@/components/country-select'
-import { CryptoPayment } from '@/components/crypto-payment'
-import { StripePayment } from '@/components/stripe-payment'
 import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
 import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
 import { trackAddPaymentInfo } from '@/lib/analytics'
 import { quoteShipping } from '@/lib/fulfilment'
+
+/**
+ * The payment SDKs, loaded when the customer actually reaches the payment
+ * step rather than when the page does.
+ *
+ * Even on /checkout this is worth splitting: the form is long, and Stripe's
+ * client SDK is not needed while someone is still typing their address. It
+ * is fetched in parallel with them filling the form in, so by the time they
+ * press through it is already there.
+ */
+const CryptoPayment = dynamic(
+  () => import('@/components/crypto-payment').then((m) => m.CryptoPayment),
+  { ssr: false },
+)
+const StripePayment = dynamic(
+  () => import('@/components/stripe-payment').then((m) => m.StripePayment),
+  { ssr: false },
+)
 import { rememberOrder } from '@/lib/order-registry'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
 import { useStore, formatPrice } from '@/lib/store'

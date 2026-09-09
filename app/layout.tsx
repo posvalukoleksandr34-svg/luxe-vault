@@ -5,7 +5,7 @@ import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { AmbientBackground } from '@/components/ambient-background';
 import { PageTransition } from '@/components/page-transition';
-import { PointerAtmosphere } from '@/components/pointer-atmosphere';
+import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
@@ -14,11 +14,32 @@ import { ToastViewport } from '@/components/toast-viewport';
 // Moda is the heavy, high-contrast display serif used for every headline —
 // the same family of cut that gives fashion-house wordmarks (Vogue, YSL,
 // Gucci editorial spreads) their commanding weight.
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+  fallback: ['system-ui', 'Segoe UI', 'Helvetica Neue', 'Arial', 'sans-serif'],
+});
+/**
+ * The display serif. Measured, not guessed: with 400-900 declared, the browser
+ * only ever downloaded 500, 600 and 700 — every 800 and 900 face reported
+ * `unloaded`, because nothing in the app asks for them. Declaring them cost
+ * extra @font-face rules and preload candidates for faces nobody renders.
+ *
+ * `fallback` matters more than it looks. next/font could not compute metric
+ * overrides for Bodoni Moda (it says so at build time), so there is no
+ * generated `Bodoni_Moda_Fallback` face — unlike Inter, which gets one. The
+ * hero wordmark is this page's LCP element, so without a named serif here the
+ * pre-swap frame renders in the browser's default and visibly reflows when
+ * the real face arrives. Georgia is the closest high-contrast serif that is
+ * on effectively every machine.
+ */
 const bodoni = Bodoni_Moda({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-display',
+  display: 'swap',
+  fallback: ['Georgia', 'Times New Roman', 'serif'],
 });
 
 // The canonical production origin. Used to build absolute URLs for canonical
@@ -166,7 +187,7 @@ export default async function RootLayout({
             so the cursor light pools on top of the drifting smoke rather than
             under it. Also outside StoreProvider: decorative, stateless, and
             it must never re-render when the cart does. */}
-        <PointerAtmosphere />
+        <PointerAtmosphereLazy />
 
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen

@@ -36,7 +36,11 @@ function check(label, actual, expected) {
 }
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`, { redirect: 'manual' })
+  // `cache: 'no-store'` matters against a PRODUCTION server: without it the
+  // conditional request gets a 304 with an empty body, and every assertion
+  // about the HTML fails for a reason that has nothing to do with the page.
+  // Dev always answered 200, which is why this only showed up later.
+  const res = await fetch(`${BASE}${path}`, { redirect: 'manual', cache: 'no-store' })
   return { status: res.status, html: await res.text() }
 }
 
