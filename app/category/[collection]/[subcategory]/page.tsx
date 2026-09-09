@@ -56,7 +56,7 @@ export async function generateMetadata({
 
   return {
     title: `${name} — ${groupName}`,
-    description: `${name} — premium replicas from the ${groupName} collection, shipped from Switzerland.`,
+    description: `${name} from the ${groupName} collection, shipped from Switzerland.`,
     alternates: { canonical: url },
     openGraph: {
       title: `${name} — LUXE VAULT`,

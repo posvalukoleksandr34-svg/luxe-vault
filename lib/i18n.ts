@@ -28,7 +28,6 @@ export const CATEGORY_LABELS: Record<CategoryKey, LocalizedText> = {
 export const STATUS_LABELS: Record<StatusKey, LocalizedText> = {
   in_stock: { ru: 'В наличии', en: 'In Stock', it: 'Disponibile', fr: 'En stock', de: 'Auf Lager' },
   out_of_stock: { ru: 'Нет в наличии', en: 'Out of Stock', it: 'Esaurito', fr: 'Rupture de stock', de: 'Nicht auf Lager' },
-  mirror_quality: { ru: 'Премиальная реплика', en: 'Premium Replica', it: 'Replica Premium', fr: 'Réplique Premium', de: 'Premium-Replika' },
   limited_edition: { ru: 'Лимитированная серия', en: 'Limited Edition', it: 'Edizione Limitata', fr: 'Édition Limitée', de: 'Limitierte Auflage' },
   premium_quality: { ru: 'Премиум качество', en: 'Premium Quality', it: 'Qualità Premium', fr: 'Qualité Premium', de: 'Premium-Qualität' },
 }
@@ -52,12 +51,6 @@ export const UI = {
   'filter.new': { ru: 'Новинки', en: 'New', it: 'Novità', fr: 'Nouveau', de: 'Neu' },
   'filter.search': { ru: 'Поиск...', en: 'Search...', it: 'Cerca...', fr: 'Rechercher...', de: 'Suchen...' },
   'product.addToCart': { ru: 'В корзину', en: 'Add to Cart', it: 'Aggiungi', fr: 'Ajouter', de: 'In den Warenkorb' },
-  // Standing replica disclosure. Lives in i18n and is rendered by the card and
-  // modal components rather than baked into each product's copy, because the
-  // live catalogue is served from Postgres — per-product text edited in the
-  // admin panel would otherwise ship with no disclosure at all.
-  'product.replicaBadge': { ru: 'Премиальная реплика', en: 'Premium Replica', it: 'Replica Premium', fr: 'Réplique Premium', de: 'Premium-Replika' },
-  'product.replicaNotice': { ru: 'Это премиальная реплика, а не оригинальное изделие бренда. Мы не связаны с правообладателем и не выдаём товар за оригинал. Название бренда указано исключительно для описания фасона и дизайна.', en: 'This is a premium replica, not an authentic branded item. We are not affiliated with the rights holder and do not present this product as original. The brand name is used solely to describe the cut and design.', it: 'Questa è una replica premium, non un articolo di marca originale. Non siamo affiliati al titolare dei diritti e non presentiamo il prodotto come originale. Il nome del marchio è usato solo per descrivere taglio e design.', fr: "Ceci est une réplique premium, et non un article de marque authentique. Nous ne sommes affiliés à aucun ayant droit et ne présentons pas ce produit comme un original. Le nom de la marque sert uniquement à décrire la coupe et le design.", de: 'Dies ist eine Premium-Replika und kein Original-Markenartikel. Wir sind mit dem Rechteinhaber nicht verbunden und geben das Produkt nicht als Original aus. Der Markenname dient allein der Beschreibung von Schnitt und Design.' },
   'product.close': { ru: 'Закрыть', en: 'Close', it: 'Chiudi', fr: 'Fermer', de: 'Schließen' },
   'product.lowStock': { ru: 'осталось', en: 'left', it: 'rimasti', fr: 'restants', de: 'übrig' },
   'product.color': { ru: 'Цвет', en: 'Color', it: 'Colore', fr: 'Couleur', de: 'Farbe' },

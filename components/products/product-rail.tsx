@@ -10,9 +10,9 @@ import type { Product } from '@/lib/types'
  *
  * Both are horizontal rails of the SAME card the grid uses. Reusing
  * ProductCard rather than writing a compact variant means the hover
- * cross-fade, the replica badge, the sold-out treatment and the discount
- * chip all behave identically wherever a product appears — three card
- * components is how those quietly drift apart.
+ * cross-fade, the brand line, the sold-out treatment and the discount chip
+ * all behave identically wherever a product appears — three card components
+ * is how those quietly drift apart.
  *
  * Rendered client-side from the catalogue already in the store, so neither
  * rail costs a request.

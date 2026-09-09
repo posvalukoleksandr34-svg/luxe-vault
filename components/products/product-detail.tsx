@@ -332,21 +332,26 @@ export function ProductDetail({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Brand and SKU. The brand is always Luxe Vault — never the designer
-            name an item imitates, which is the same line the JSON-LD, the
-            replica badge and the Terms all hold. The SKU appears only when the
-            product is tracked and a code has been entered. */}
-        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
-          <span>{t('product.brand')}: Luxe Vault</span>
-          {sku && (
-            <>
+        {/* Brand and SKU, both optional. The brand is whatever the admin
+            entered for this product — it was a hardcoded "Luxe Vault" on every
+            item, which told a customer nothing. With no brand set, the line is
+            omitted rather than rendered as a label with nothing after it; with
+            neither brand nor SKU the whole row goes. */}
+        {(p.brand || sku) && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+            {p.brand && (
+              <span>
+                {t('product.brand')}: <span className="text-foreground/80">{p.brand}</span>
+              </span>
+            )}
+            {p.brand && sku && (
               <span aria-hidden className="text-muted-foreground/30">
                 ·
               </span>
-              <span className="font-mono normal-case tracking-normal">SKU {sku}</span>
-            </>
-          )}
-        </p>
+            )}
+            {sku && <span className="font-mono normal-case tracking-normal">SKU {sku}</span>}
+          </p>
+        )}
 
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5">
           {outOfStock && (
@@ -367,20 +372,6 @@ export function ProductDetail({ product }: { product: Product }) {
         <p className="mt-6 text-[14px] font-light leading-relaxed text-muted-foreground">
           {localize(p.description)}
         </p>
-
-        {/* Standing replica disclosure, directly beneath the description so it
-            reads as part of the product rather than as small print. Rendered
-            unconditionally from i18n — the catalogue is Postgres-backed, so a
-            disclosure driven by per-product copy would be missing on anything
-            added through the admin panel. */}
-        <div className="mt-5 border-l-2 border-gold/40 bg-gold/[0.04] py-3 pl-4 pr-3">
-          <p className="text-[12px] font-light leading-relaxed text-muted-foreground">
-            <span className="mr-1.5 uppercase tracking-[0.15em] text-gold/90">
-              {t('product.replicaBadge')}.
-            </span>
-            {t('product.replicaNotice')}
-          </p>
-        </div>
 
         {p.colors.length > 0 && (
           <div className="mt-8">

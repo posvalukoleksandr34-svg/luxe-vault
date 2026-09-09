@@ -28,7 +28,7 @@ const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
 const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
-  colors, statuses, is_new, limited, size_chart, specs,
+  colors, statuses, is_new, limited, size_chart, specs, brand,
   collection:collections ( slug ),
   category:categories ( slug )
 `
@@ -36,6 +36,14 @@ const PRODUCT_BASE_SELECT = `
 const PRODUCT_SELECT = `${PRODUCT_BASE_SELECT},
   variants:product_variants ( size, color, stock, low_stock_at, sku )
 `
+
+/** Status keys this build can label. See rowToProduct. */
+const KNOWN_STATUSES: StatusKey[] = [
+  'in_stock',
+  'out_of_stock',
+  'limited_edition',
+  'premium_quality',
+]
 
 const num = (v: string | number | null | undefined): number =>
   v === null || v === undefined ? 0 : typeof v === 'number' ? v : parseFloat(v)
@@ -109,7 +117,18 @@ function rowToProduct(row: Record<string, unknown>): Product {
       : undefined,
     sizes: (row.sizes as string[] | null) ?? [],
     colors,
-    statuses: ((row.statuses as string[] | null) ?? []) as StatusKey[],
+    // Unknown keys are dropped rather than passed through. `mirror_quality`
+    // was removed with the replica badge, and rows saved before that still
+    // carry it — STATUS_LABELS has no entry, so rendering it would print
+    // nothing useful at best. Filtering here means every consumer sees only
+    // statuses it can actually label.
+    statuses: ((row.statuses as string[] | null) ?? []).filter((s): s is StatusKey =>
+      KNOWN_STATUSES.includes(s as StatusKey),
+    ),
+    // Null, absent (pre-0022) and whitespace all mean "no brand", so they
+    // collapse to undefined here and the label is omitted downstream rather
+    // than rendered empty.
+    brand: ((row.brand as string | null | undefined) ?? '').trim() || undefined,
     isNew: Boolean(row.is_new),
     limited: Boolean(row.limited),
     sizeChart: (row.size_chart as SizeMeasurement[] | null) ?? undefined,
@@ -146,7 +165,8 @@ export type Catalog = {
  * getProductBySlug — the product page — still asked for everything and threw.
  * Resolving in one place is what stops the two drifting again.
  *
- * Both branches can be deleted once 0012 and 0018 are applied everywhere.
+ * All three branches can be deleted once 0012, 0018 and 0022 are applied
+ * everywhere.
  */
 let productSelectCache: string | null = null
 
@@ -155,9 +175,10 @@ async function resolveProductSelect(): Promise<string> {
 
   const supabase = createAdminClient()
 
-  const [variants, specs] = await Promise.all([
+  const [variants, specs, brand] = await Promise.all([
     supabase.from('product_variants').select('id').limit(1),
     supabase.from('products').select('specs').limit(1),
+    supabase.from('products').select('brand').limit(1),
   ])
 
   let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
@@ -171,6 +192,10 @@ async function resolveProductSelect(): Promise<string> {
   if (specs.error) {
     console.error('[catalog] products.specs is missing. Apply 0018_product_specs.sql.')
     select = select.replace(' specs,', '')
+  }
+  if (brand.error) {
+    console.error('[catalog] products.brand is missing. Apply 0022_product_brand.sql.')
+    select = select.replace(' brand,', '')
   }
 
   productSelectCache = select
@@ -298,8 +323,22 @@ async function resolveRefs(groupSlug: string, categorySlug: string) {
 
 // --------------------------------------------------------------- products ----
 
-function productToRow(product: Product, collectionId: string, categoryId: string) {
-  return {
+/**
+ * The row to write for a product.
+ *
+ * Async because it has to ask which columns this database actually has. The
+ * read path already degrades when a migration has not landed yet; the write
+ * path did not, so a deploy ahead of its migration served the catalogue fine
+ * and then rejected every admin save with "column does not exist". Dropping
+ * the unknown keys means an admin can still edit a price on a database that
+ * has no `brand` or `specs` column — they simply cannot set those two.
+ *
+ * Both guards can go once 0018 and 0022 are applied everywhere.
+ */
+async function productToRow(product: Product, collectionId: string, categoryId: string) {
+  const select = await resolveProductSelect()
+
+  const row: Record<string, unknown> = {
     slug: product.id,
     name: product.name,
     description: product.description,
@@ -316,7 +355,15 @@ function productToRow(product: Product, collectionId: string, categoryId: string
     limited: Boolean(product.limited),
     size_chart: product.sizeChart ?? null,
     specs: (product.specs ?? []).filter((s) => s.label?.trim() && s.value?.trim()),
+    // Empty writes back as null, not '', so "no brand" has one representation
+    // in the column instead of two the reads would have to keep untangling.
+    brand: product.brand?.trim() || null,
   }
+
+  if (!select.includes(' specs,')) delete row.specs
+  if (!select.includes(' brand,')) delete row.brand
+
+  return row
 }
 
 /**
@@ -377,7 +424,7 @@ export async function createProduct(product: Product): Promise<Product> {
   const { collectionId, categoryId } = await resolveRefs(product.group, product.category)
   const { data, error } = await createAdminClient()
     .from('products')
-    .insert(productToRow(product, collectionId, categoryId))
+    .insert(await productToRow(product, collectionId, categoryId))
     .select(await resolveProductSelect())
     .single()
 
@@ -394,7 +441,7 @@ export async function updateProduct(product: Product): Promise<Product | null> {
   const { collectionId, categoryId } = await resolveRefs(product.group, product.category)
   const { data, error } = await createAdminClient()
     .from('products')
-    .update(productToRow(product, collectionId, categoryId))
+    .update(await productToRow(product, collectionId, categoryId))
     .eq('slug', product.id)
     .select(await resolveProductSelect())
     .maybeSingle()

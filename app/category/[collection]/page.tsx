@@ -46,8 +46,8 @@ export async function generateMetadata({
   return {
     title: name,
     description: subcategories
-      ? `${name} — ${subcategories}. Premium replicas shipped from Switzerland.`
-      : `${name} — premium replicas shipped from Switzerland.`,
+      ? `${name} — ${subcategories}. Shipped from Switzerland.`
+      : `${name} — shipped from Switzerland.`,
     alternates: { canonical: `/category/${node.slug}` },
     openGraph: {
       title: `${name} — LUXE VAULT`,

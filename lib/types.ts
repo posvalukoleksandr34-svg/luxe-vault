@@ -33,10 +33,15 @@ export type Category = {
   sortOrder: number
 }
 
+/**
+ * `mirror_quality` is gone: its only label was "Премиальная реплика", the
+ * badge that was removed from the cards and the product page, so leaving the
+ * key would have put that text back on screen through the status row. Rows
+ * saved with it are dropped when the catalogue is read — see rowToProduct.
+ */
 export type StatusKey =
   | 'in_stock'
   | 'out_of_stock'
-  | 'mirror_quality'
   | 'limited_edition'
   | 'premium_quality'
 
@@ -109,6 +114,11 @@ export type Product = {
   isNew?: boolean
   limited?: boolean
   sizeChart?: SizeMeasurement[]
+
+  /** Free text, set per product in the admin panel. Undefined when the admin
+   *  has not set one — the card and the product page then render no brand
+   *  line at all rather than a label with nothing after it. */
+  brand?: string
 
   /** Specification rows shown on the product page: composition, care,
    *  dimensions. Plain strings rather than localised text — an admin will not

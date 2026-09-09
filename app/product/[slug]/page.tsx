@@ -70,9 +70,14 @@ export async function generateMetadata({
   }
 
   const name = pick(product.name)
+  // The fallback is only reached for a product with no description at all.
+  // It leads with the product's own brand when it has one, so the sentence
+  // says something specific rather than repeating boilerplate.
   const description =
     truncate(pick(product.description)) ||
-    `${name} — premium replica from Luxe Vault. Designer-inspired, limited drops, shipped from Switzerland.`
+    [product.brand, `${name} — designer-inspired, limited drops, shipped from Switzerland.`]
+      .filter(Boolean)
+      .join(' · ')
   const url = `${SITE_URL}/product/${product.id}`
 
   return {
@@ -104,11 +109,13 @@ export async function generateMetadata({
 /**
  * schema.org/Product as JSON-LD.
  *
- * `brand` is Luxe Vault, never the designer name the item imitates. Declaring
- * someone else's brand here would be a machine-readable assertion that these
- * are that brand's goods — the same false authenticity claim the product
- * copy, the Terms and the replica badge all exist to avoid, except stated in
- * the format search engines trust most.
+ * `brand` stays Luxe Vault — the seller — and deliberately does NOT follow
+ * the product's own brand field, which is free text an admin can set to any
+ * designer name. Declaring someone else's brand here would be a
+ * machine-readable assertion that these are that brand's goods, in the format
+ * search engines trust most, which is a claim the Terms explicitly deny.
+ * Displaying a name on the page is description; asserting it in structured
+ * data is provenance.
  */
 function productJsonLd(product: Product) {
   const name = pick(product.name)

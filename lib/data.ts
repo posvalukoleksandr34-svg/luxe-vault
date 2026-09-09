@@ -61,7 +61,7 @@ export const SEED_PRODUCTS: Product[] = [
       fr: 'Sweat à capuche noir Gucci en coton premium épais, orné de l\'inscription rouge contrastante « BLIND FOR LOVE » et d\'un écusson brodé en relief représentant un tigre sur la poitrine.',
       de: 'Schwarzer Gucci-Hoodie aus schwerer Premium-Baumwolle mit kontrastierendem rotem „BLIND FOR LOVE"-Schriftzug und einer plastisch gestickten Tiger-Patch-Stickerei auf der Brust.',
     },
-    statuses: ['in_stock', 'mirror_quality'],
+    statuses: ['in_stock'],
     isNew: true,
     sizeChart: [
       { size: 'S', length: 63, chest: 106, shoulder: 47, sleeve: 60 },
@@ -93,7 +93,7 @@ export const SEED_PRODUCTS: Product[] = [
       fr: "Sweat épais en coton premium de 480 g/m². Coupe ample, cordon de serrage fini à la main, intérieur brossé. L'ajustement parfait pour un luxe au quotidien.",
       de: 'Schwerer Hoodie aus Premium-Baumwolle mit 480 g/m². Lockere Passform, handgefertigte Kordel, gebürstetes Innenfutter. Die perfekte Passform für alltäglichen Luxus.',
     },
-    statuses: ['in_stock', 'mirror_quality'],
+    statuses: ['in_stock'],
   },
   {
     id: 'p-tee-blanc',
@@ -145,7 +145,7 @@ export const SEED_PRODUCTS: Product[] = [
       fr: 'Blouson bomber en cuir nappa véritable avec doublure en satin. Quincaillerie italienne et finitions des bords à la main.',
       de: 'Bomberjacke aus echtem Nappaleder mit Satinfutter. Italienische Beschläge und handveredelte Kanten.',
     },
-    statuses: ['limited_edition', 'mirror_quality'],
+    statuses: ['limited_edition'],
     limited: true,
   },
   {
@@ -224,7 +224,7 @@ export const SEED_PRODUCTS: Product[] = [
       fr: 'Grand tote bag en cuir grainé avec quincaillerie dorée. Pochette intérieure amovible et anses renforcées finies à la main.',
       de: 'Geräumiger Tote Bag aus genarbtem Leder mit goldenen Beschlägen. Abnehmbare Innentasche und verstärkte, handgefertigte Henkel.',
     },
-    statuses: ['in_stock', 'mirror_quality'],
+    statuses: ['in_stock'],
   },
   {
     id: 'p-cap-signature',
