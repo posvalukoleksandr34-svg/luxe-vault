@@ -7,13 +7,11 @@ import {
   Package,
   User as UserIcon,
   X,
-  Heart,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
-import { WishlistGrid } from '@/components/account/wishlist-grid'
 import { SavedAddresses } from '@/components/saved-addresses'
 import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
@@ -38,7 +36,6 @@ export function UserPanel() {
     t,
     tf,
     pushToast,
-    wishlist,
     accountTab: tab,
     setAccountTab: setTab,
   } = useStore()
@@ -484,18 +481,6 @@ export function UserPanel() {
                   </span>
                 )}
               </TabButton>
-              <TabButton
-                active={tab === 'wishlist'}
-                onClick={() => setTab('wishlist')}
-                icon={<Heart className="size-4" />}
-              >
-                {t('wishlist.title')}
-                {wishlist.length > 0 && (
-                  <span className="ml-1 text-[10px] tabular-nums text-muted-foreground/60">
-                    {wishlist.length}
-                  </span>
-                )}
-              </TabButton>
               <TabButton active={tab === 'profile'} onClick={() => setTab('profile')} icon={<UserIcon className="size-4" />}>
                 {t('user.profile')}
               </TabButton>
@@ -509,8 +494,6 @@ export function UserPanel() {
                   onReload={() => void loadOrders()}
                 />
               )}
-
-              {tab === 'wishlist' && <WishlistGrid compact />}
 
               {tab === 'profile' && (
                 <div className="space-y-4">

@@ -1,6 +1,5 @@
 'use client'
 
-import { Heart } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { formatPrice, useStore } from '@/lib/store'
@@ -8,8 +7,7 @@ import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 
 export function ProductCard({ product }: { product: Product }) {
-  const { localize, t, categoryLabels, toggleWishlist, isWishlisted } = useStore()
-  const saved = isWishlisted(product.id)
+  const { localize, t, categoryLabels } = useStore()
   const outOfStock = product.statuses.includes('out_of_stock')
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
@@ -62,30 +60,6 @@ export function ProductCard({ product }: { product: Product }) {
         <span className="absolute right-3 top-3 border border-gold/40 bg-background/85 px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-gold backdrop-blur-md">
           {t('product.replicaBadge')}
         </span>
-
-        {/* Inside the card's <Link>, so the click has to be stopped from
-            navigating as well as from bubbling — otherwise saving a product
-            also opens it, which is the opposite of what "save for later"
-            means. */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            void toggleWishlist(product.id)
-          }}
-          aria-label={saved ? t('wishlist.remove') : t('wishlist.add')}
-          aria-pressed={saved}
-          title={saved ? t('wishlist.remove') : t('wishlist.add')}
-          // bottom-RIGHT: the top-left corner holds the status badges and the
-          // bottom-left holds the "Limited" mark, so this is the only free
-          // corner. The replica badge sits top-right, above it.
-          className="no-juice absolute bottom-3 right-3 z-10 flex size-8 items-center justify-center border border-border/60 bg-background/80 backdrop-blur-md transition-colors duration-300 hover:border-gold/50"
-        >
-          <Heart
-            className={cn('size-3.5 transition-colors', saved ? 'fill-gold text-gold' : 'text-muted-foreground')}
-          />
-        </button>
 
         <div className="absolute left-3 top-3 flex flex-col gap-1.5">
           {outOfStock && (

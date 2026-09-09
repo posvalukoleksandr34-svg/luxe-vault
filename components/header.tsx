@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
 import { useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
@@ -30,7 +30,6 @@ export function Header() {
     currentUser,
     setFilter,
     filter,
-    wishlist,
     openAccount,
   } = useStore()
 
@@ -171,32 +170,6 @@ export function Header() {
           {/* Renders nothing for signed-out visitors, so the header keeps its
               shape rather than showing a bell that could only ever be empty. */}
           <NotificationCenter />
-
-          {/* Wishlist. Sits with the other account actions rather than in the
-              nav, because it is a thing you own, not a place you go.
-
-              Opens the account drawer ON the wishlist section — hence
-              openAccount(tab) rather than setPanel('user'), which would land
-              on whatever section was open last. */}
-          <button
-            type="button"
-            onClick={() => openAccount('wishlist')}
-            className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
-            aria-label={
-              wishlist.length > 0
-                ? `${t('wishlist.title')} (${wishlist.length})`
-                : t('wishlist.title')
-            }
-          >
-            <Heart className="size-[18px]" />
-            {/* Same badge treatment as the cart, so two counters in one bar do
-                not read as two different kinds of thing. */}
-            {wishlist.length > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold tabular-nums text-gold-foreground">
-                {wishlist.length}
-              </span>
-            )}
-          </button>
 
           <button
             type="button"

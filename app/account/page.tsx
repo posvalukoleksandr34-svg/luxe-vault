@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Heart,
   Loader2,
   LogIn,
   MapPin,
@@ -15,7 +14,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
-import { WishlistGrid } from '@/components/account/wishlist-grid'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductCard } from '@/components/products/product-card'
@@ -32,9 +30,9 @@ import type { Order } from '@/lib/types'
  *
  * The account UI already existed as a right-hand drawer (components/
  * user-panel.tsx), which is right for a quick look at an order mid-browse and
- * wrong for everything else: 448px cannot hold an address book, a wishlist
- * grid and a profile form, and a drawer has no URL, so "my orders" could not
- * be linked to, bookmarked, or returned to after a redirect.
+ * wrong for everything else: 448px cannot hold an address book and a profile
+ * form, and a drawer has no URL, so "my orders" could not be linked to,
+ * bookmarked, or returned to after a redirect.
  *
  * This is a real route beside it, not a replacement — the drawer stays for the
  * quick path. Both read the same components, so there is one implementation of
@@ -45,13 +43,12 @@ import type { Order } from '@/lib/types'
  * way it looks like it should.
  */
 
-type TabKey = 'profile' | 'orders' | 'addresses' | 'wishlist' | 'settings'
+type TabKey = 'profile' | 'orders' | 'addresses' | 'settings'
 
 const TABS: { key: TabKey; icon: typeof UserIcon; labelKey: Parameters<ReturnType<typeof useStore>['t']>[0] }[] = [
   { key: 'profile', icon: UserIcon, labelKey: 'account.profile' },
   { key: 'orders', icon: Package, labelKey: 'user.orders' },
   { key: 'addresses', icon: MapPin, labelKey: 'address.title' },
-  { key: 'wishlist', icon: Heart, labelKey: 'wishlist.title' },
   { key: 'settings', icon: Settings, labelKey: 'account.settings' },
 ]
 
@@ -168,7 +165,6 @@ function AccountDashboard() {
           {tab === 'profile' && <ProfileTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'addresses' && <SavedAddresses />}
-          {tab === 'wishlist' && <WishlistGrid />}
           {tab === 'settings' && <PasswordForm />}
         </div>
       </div>

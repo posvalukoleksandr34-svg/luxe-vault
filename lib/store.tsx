@@ -51,10 +51,10 @@ export type Toast = {
 
 export type PanelState = 'cart' | 'checkout' | 'user' | null
 
-/** Which section the account drawer shows. Lifted out of the drawer so the
- *  header can open it on a specific tab — the wishlist icon needs to land on
- *  the wishlist, not on whatever was open last. */
-export type AccountTab = 'orders' | 'wishlist' | 'profile'
+/** Which section the account drawer shows. Lifted out of the drawer so a
+ *  caller can open it on a specific tab rather than on whatever was open
+ *  last. */
+export type AccountTab = 'orders' | 'profile'
 
 export type SortKey =
   | 'default'
@@ -154,11 +154,6 @@ type StoreContextValue = {
   cartCount: number
   cartSubtotal: number
   applyPromo: (code: string) => Promise<Promo | null>
-
-  /** Saved product slugs. Empty for a signed-out visitor. */
-  wishlist: string[]
-  toggleWishlist: (productId: string) => Promise<void>
-  isWishlisted: (productId: string) => boolean
 
   login: (email: string, password: string) => Promise<boolean>
   register: (
@@ -504,9 +499,9 @@ function maybeSendWelcome() {
    * Opens the account drawer on a specific section.
    *
    * One call rather than two, because setting the tab and opening the panel
-   * separately is an ordering bug waiting to happen: the header's wishlist
-   * icon must land on the wishlist, not on whatever section was open the last
-   * time the drawer was used.
+   * separately is an ordering bug waiting to happen: a caller that asks for a
+   * section must get it, not whatever section was open the last time the
+   * drawer was used.
    */
   const openAccount = useCallback((tab: AccountTab = 'orders') => {
     setAccountTab(tab)
@@ -656,76 +651,6 @@ function maybeSendWelcome() {
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
-
-  // ------------------------------------------------------------ wishlist ----
-  // Server-backed, because the point of a wishlist is that it survives: the
-  // customer who saves a coat on their phone is the one who buys it on a
-  // laptop that evening. Loaded per signed-in user; a signed-out visitor has
-  // an empty list rather than a local one that would silently fail to merge.
-  const [wishlist, setWishlist] = useState<string[]>([])
-
-  useEffect(() => {
-    if (!currentUser) {
-      setWishlist([])
-      return
-    }
-    let active = true
-    fetch('/api/account/wishlist')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (active && d?.productIds) setWishlist(d.productIds)
-      })
-      .catch(() => {})
-    return () => {
-      active = false
-    }
-  }, [currentUser])
-
-  const isWishlisted = useCallback(
-    (productId: string) => wishlist.includes(productId),
-    [wishlist],
-  )
-
-  /**
-   * Adds or removes a product.
-   *
-   * Optimistic: the heart fills the instant it is clicked, and reverts if the
-   * server disagrees. A wishlist toggle that waits on a round trip feels
-   * broken, and the cost of being briefly wrong is one icon.
-   */
-  const toggleWishlist = useCallback(
-    async (productId: string) => {
-      if (!currentUser) {
-        setPanel('user')
-        return
-      }
-
-      const saved = wishlist.includes(productId)
-      setWishlist((prev) =>
-        saved ? prev.filter((id) => id !== productId) : [productId, ...prev],
-      )
-
-      try {
-        const res = saved
-          ? await fetch(`/api/account/wishlist?productId=${encodeURIComponent(productId)}`, {
-              method: 'DELETE',
-            })
-          : await fetch('/api/account/wishlist', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ productId }),
-            })
-
-        if (!res.ok) throw new Error('rejected')
-      } catch {
-        setWishlist((prev) =>
-          saved ? [productId, ...prev] : prev.filter((id) => id !== productId),
-        )
-        pushToast({ title: t('wishlist.failed'), variant: 'default' })
-      }
-    },
-    [currentUser, wishlist, setPanel, pushToast, t],
-  )
 
   const cartCount = useMemo(
     () => cart.reduce((sum, c) => sum + c.qty, 0),
@@ -1190,9 +1115,6 @@ function maybeSendWelcome() {
     clearCart,
     cartCount,
     cartSubtotal,
-    wishlist,
-    toggleWishlist,
-    isWishlisted,
     applyPromo,
     login,
     register,
