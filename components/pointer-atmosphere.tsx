@@ -78,7 +78,30 @@ export function PointerAtmosphere() {
 
     let frame = 0
     let running = false
-    let seen = false
+
+    /**
+     * Whether the light is currently shown.
+     *
+     * A MIRROR of the attribute, not a latch. The first version set this true
+     * on the first movement and never looked at it again — so once
+     * `pointerleave` had written data-seen="false", nothing could ever write
+     * it back, and the atmosphere stayed at opacity 0 for the rest of the
+     * session while the loop went on tracking the cursor perfectly.
+     *
+     * That is reached by the most ordinary gesture there is: moving the cursor
+     * off the page and into the browser chrome — to press Back, to change tab,
+     * to touch the address bar. Come back to the page and the effect was gone.
+     *
+     * It exists only to keep the loop from writing the same attribute on every
+     * one of ~200 pointer events a second; correctness does not depend on it.
+     */
+    let shown = false
+
+    function setShown(next: boolean) {
+      if (shown === next) return
+      shown = next
+      root!.dataset.seen = next ? 'true' : 'false'
+    }
 
     function step() {
       running = true
@@ -127,11 +150,9 @@ export function PointerAtmosphere() {
 
       // Faded in on the first real movement rather than on mount, so the light
       // does not sit in the middle of the screen waiting for a cursor that may
-      // never arrive (a visitor who scrolled in with the keyboard).
-      if (!seen) {
-        seen = true
-        root!.dataset.seen = 'true'
-      }
+      // never arrive (a visitor who scrolled in with the keyboard). Asserted
+      // on EVERY move, not just the first — see `shown`.
+      setShown(true)
 
       // The ring swells over anything clickable. `closest` on the event target
       // is cheap — no hit-testing, no layout read.
@@ -143,7 +164,19 @@ export function PointerAtmosphere() {
     }
 
     function onLeave() {
-      root!.dataset.seen = 'false'
+      setShown(false)
+    }
+
+    /**
+     * Coming back from the browser chrome.
+     *
+     * Without this the light would wait for the first pointermove, which means
+     * a returning cursor drags a dead trail across the page for a frame or two
+     * before it lights up. Entering is enough to know the cursor is back.
+     */
+    function onEnter() {
+      setShown(true)
+      wake()
     }
 
     function onVisibility() {
@@ -159,13 +192,25 @@ export function PointerAtmosphere() {
     // dispatch it without waiting to find out.
     window.addEventListener('pointermove', onMove, { passive: true })
     document.addEventListener('pointerleave', onLeave)
+    document.addEventListener('pointerenter', onEnter)
     document.addEventListener('visibilitychange', onVisibility)
+    // A back/forward navigation restored from the bfcache does NOT re-run this
+    // effect — the listeners above are still bound, but the rAF loop was
+    // stopped when the page was frozen and nothing would restart it until the
+    // pointer moved. `pageshow` is the one signal that fires in both cases.
+    window.addEventListener('pageshow', wake)
 
     return () => {
       if (frame) cancelAnimationFrame(frame)
       window.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerleave', onLeave)
+      document.removeEventListener('pointerenter', onEnter)
       document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', wake)
+      // Leave the DOM as it was found, so a remount starts from the same
+      // state as a first mount rather than inheriting a stale one.
+      root!.dataset.seen = 'false'
+      root!.dataset.active = 'false'
     }
   }, [])
 
