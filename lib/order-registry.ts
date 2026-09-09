@@ -58,6 +58,27 @@ export function forgetOrder(id: string): void {
  * order history from the session.
  */
 export async function fetchMyOrders(): Promise<import('@/lib/types').Order[]> {
+  const result = await loadMyOrders()
+  if (!result.ok) throw new Error('order lookup failed')
+  return result.orders
+}
+
+/**
+ * The same lookup, but it says whether it WORKED.
+ *
+ * This exists because the version above returned `[]` on any failure, and
+ * every caller rendered that as an empty state. A dropped connection or a 500
+ * therefore told a customer with a dozen orders "you have no orders yet" — and
+ * on /order/[id], that their order could not be found. Both are assertions
+ * about their account that the app had no evidence for; the only thing that
+ * had actually happened was a failed request.
+ *
+ * `ok: false` is not the same as `orders: []`, and callers must render them
+ * differently: one is a fact, the other is an apology with a retry button.
+ */
+export async function loadMyOrders(): Promise<
+  { ok: true; orders: import('@/lib/types').Order[] } | { ok: false; orders: [] }
+> {
   const credentials = readOrderRegistry()
   try {
     const res = await fetch('/api/orders/lookup', {
@@ -65,11 +86,14 @@ export async function fetchMyOrders(): Promise<import('@/lib/types').Order[]> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orders: credentials }),
     })
-    if (!res.ok) return []
+    if (!res.ok) return { ok: false, orders: [] }
     const data = await res.json()
-    return Array.isArray(data.orders) ? data.orders : []
+    // A 200 whose body is not the expected shape is still a failure — better
+    // to offer a retry than to report an empty history on malformed JSON.
+    if (!Array.isArray(data.orders)) return { ok: false, orders: [] }
+    return { ok: true, orders: data.orders }
   } catch {
-    return []
+    return { ok: false, orders: [] }
   }
 }
 

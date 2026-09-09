@@ -14,12 +14,13 @@ import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductCard } from '@/components/products/product-card'
 import { SavedAddresses } from '@/components/saved-addresses'
 import { SavedCards } from '@/components/saved-cards'
-import { fetchMyOrders } from '@/lib/order-registry'
+import { loadMyOrders } from '@/lib/order-registry'
 import { useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -126,6 +127,19 @@ function AccountDashboard() {
 
   return (
     <Shell>
+      <Breadcrumbs
+        trail={[
+          { name: t('common.home'), url: '/' },
+          { name: t('account.title'), url: '/account' },
+          // The active tab, so the trail reflects the query string the tabs
+          // already write. Omitted on the default tab, where it would only
+          // repeat the page title.
+          ...(tab !== 'profile'
+            ? [{ name: t(TABS.find((x) => x.key === tab)!.labelKey), url: `/account?tab=${tab}` }]
+            : []),
+        ]}
+      />
+
       <header className="mb-8 border-b border-border/50 pb-6">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">
           {t('account.title')}
@@ -297,11 +311,15 @@ function ProfileTab() {
 function OrdersTab() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
 
   async function load() {
     setLoading(true)
     try {
-      setOrders(await fetchMyOrders())
+      const result = await loadMyOrders()
+      // Keep whatever we already had if a refresh fails — see the drawer.
+      if (result.ok) setOrders(result.orders)
+      setFailed(!result.ok)
     } finally {
       setLoading(false)
     }
@@ -314,7 +332,14 @@ function OrdersTab() {
   // The same component the drawer uses, so the status timeline, the pay-now
   // retry, cancellation and refund requests all behave identically in both
   // places rather than being implemented twice.
-  return <AccountOrders orders={orders} loading={loading} onReload={load} />
+  return (
+    <AccountOrders
+      orders={orders}
+      loading={loading}
+      failed={failed && orders.length === 0}
+      onReload={load}
+    />
+  )
 }
 
 

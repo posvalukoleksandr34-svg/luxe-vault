@@ -1511,3 +1511,95 @@ iframe[src*="elements-inner-easel"] {
     cursor: pointer;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Skeletons
+   ---------------------------------------------------------------------------
+   A warm charcoal bar with a slow gold sheen crossing it, rather than the
+   grey pulse a default skeleton uses — on a near-black ground a pulsing grey
+   block reads as a failed image, not as loading.
+
+   The sheen is a background-position animation on a small element, which
+   repaints only that element. Skeletons are on screen for a second or two at
+   a time, so this is the one place a paint-per-frame animation is affordable;
+   everything permanent on this site is transform/opacity only.
+--------------------------------------------------------------------------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: hsl(var(--muted) / 0.55);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    hsl(var(--gold) / 0.07) 42%,
+    hsl(var(--gold) / 0.12) 50%,
+    hsl(var(--gold) / 0.07) 58%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sheen 1.7s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+
+@keyframes skeleton-sheen {
+  from {
+    background-position: 140% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    /* Without the sweep it still needs to read as "not content yet". */
+    background-image: none;
+    background-color: hsl(var(--muted) / 0.45);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Touch targets
+   ---------------------------------------------------------------------------
+   Measured on a 375px viewport: sixteen interactive elements fell below the
+   24x24 CSS-pixel minimum, several of them core catalogue controls — the
+   filter chips at 20px tall, the footer links at 18px.
+
+   The fix must not change a single visible pixel: this is a fashion-house
+   layout whose whole character is small, widely-tracked type, and padding the
+   chips out to 44px would wreck the rhythm of the filter bar.
+
+   So the target is enlarged with an INVISIBLE pseudo-element instead. It is
+   absolutely positioned, so it takes part in hit-testing but not in layout,
+   and it grows along the vertical axis — the constrained one — leaving the
+   horizontal extent as the text itself.
+
+   Coarse pointers only. A mouse is precise enough not to need it, and on
+   desktop an overlapping invisible box would only create surprising hover
+   regions between adjacent chips.
+--------------------------------------------------------------------------- */
+
+@media (pointer: coarse) {
+  .tap-safe {
+    position: relative;
+  }
+
+  .tap-safe::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* Grows on BOTH axes, because the offenders come in two shapes: wide,
+       short text links, and small square icon buttons. `width: 100%` keeps a
+       long link's own width; `min-width` rescues a 20px icon. */
+    width: 100%;
+    min-width: 44px;
+    /* 44px is the figure both Apple's and Google's guidance land on, and it
+       is comfortably above the 24px WCAG 2.2 AA floor. */
+    height: 44px;
+    transform: translate(-50%, -50%);
+    /* Nothing to see — this exists purely to be tapped. */
+  }
+}

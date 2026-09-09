@@ -398,7 +398,10 @@ export function ProductGrid({
                 type="button"
                 onClick={() => toggleSize(size)}
                 className={cn(
-                  'flex size-7 items-center justify-center border text-[11px] font-medium transition-colors duration-200',
+                  // shrink-0 is load-bearing: `size-7` sets the width, but a flex item
+                  // still shrinks, and in this wrapped row on a 375px screen these
+                  // measured 8-9px wide — a size filter nobody could reliably hit.
+                  'flex size-7 shrink-0 items-center justify-center border text-[11px] font-medium transition-colors duration-200',
                   active
                     ? 'border-gold bg-gold text-gold-foreground'
                     : 'border-border/60 text-muted-foreground/70 hover:border-foreground/40 hover:text-foreground',
@@ -618,7 +621,9 @@ function FilterLink({
       type="button"
       onClick={onClick}
       className={cn(
-        'relative tracking-wide transition-colors duration-300',
+        // tap-safe adds an invisible 44px-tall hit area on touch devices; the
+        // chips are 20px tall, which is below the minimum and felt like it.
+        'tap-safe relative tracking-wide transition-colors duration-300',
         small ? 'text-[12px]' : 'text-[13px]',
         active
           ? accent

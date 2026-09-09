@@ -181,6 +181,20 @@ export const UI = {
   'search.didYouMean': { ru: 'Возможно, вы искали это', en: 'Showing closest matches', it: 'Risultati più simili', fr: 'Résultats les plus proches', de: 'Ähnlichste Treffer' },
   'search.tryInstead': { ru: 'Попробуйте', en: 'Try instead', it: 'Prova invece', fr: 'Essayez plutôt', de: 'Versuchen Sie stattdessen' },
   'search.browseAll': { ru: 'Смотреть каталог', en: 'Browse the catalogue', it: 'Sfoglia il catalogo', fr: 'Parcourir le catalogue', de: 'Katalog durchsuchen' },
+  // Generic, shared strings. These exist because the account and the order
+  // page were reaching into the CRYPTO namespace for "Loading" and "Back" —
+  // correct text, wrong home: editing a payment string would have silently
+  // reworded the account.
+  'common.loading': { ru: 'Загрузка...', en: 'Loading...', it: 'Caricamento...', fr: 'Chargement...', de: 'Wird geladen...' },
+  'common.back': { ru: 'Назад', en: 'Back', it: 'Indietro', fr: 'Retour', de: 'Zurück' },
+  'common.retry': { ru: 'Повторить', en: 'Try again', it: 'Riprova', fr: 'Réessayer', de: 'Erneut versuchen' },
+  'common.home': { ru: 'Главная', en: 'Home', it: 'Home', fr: 'Accueil', de: 'Startseite' },
+  // Failure is NOT emptiness. Both of these replace a state that previously
+  // told the customer they had no orders, or that their order did not exist,
+  // when the only thing that had actually happened was a failed request.
+  'error.loadFailed': { ru: 'Не удалось загрузить данные', en: 'Could not load this', it: 'Impossibile caricare', fr: 'Chargement impossible', de: 'Konnte nicht geladen werden' },
+  'error.loadFailedHint': { ru: 'Проверьте соединение и попробуйте ещё раз. Ваши данные не потеряны.', en: 'Check your connection and try again. Nothing has been lost.', it: 'Controlla la connessione e riprova. Non è stato perso nulla.', fr: "Vérifiez votre connexion et réessayez. Rien n'est perdu.", de: 'Prüfen Sie Ihre Verbindung und versuchen Sie es erneut. Es ist nichts verloren.' },
+  'error.ordersFailed': { ru: 'Не удалось загрузить заказы', en: 'Could not load your orders', it: 'Impossibile caricare gli ordini', fr: 'Impossible de charger vos commandes', de: 'Bestellungen konnten nicht geladen werden' },
   'common.cancel': { ru: 'Отмена', en: 'Cancel', it: 'Annulla', fr: 'Annuler', de: 'Abbrechen' },
   'address.title': { ru: 'Адреса доставки', en: 'Delivery addresses', it: 'Indirizzi di consegna', fr: 'Adresses de livraison', de: 'Lieferadressen' },
   'address.add': { ru: 'Добавить', en: 'Add', it: 'Aggiungi', fr: 'Ajouter', de: 'Hinzufügen' },

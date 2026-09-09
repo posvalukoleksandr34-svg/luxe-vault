@@ -54,17 +54,17 @@ export function Footer() {
             </h3>
             <ul className="space-y-2.5">
               <li>
-                <button onClick={() => scrollTo('shop')} className="text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
                   {t('footer.new')}
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollTo('collections')} className="text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('collections')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
                   {t('nav.collections')}
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollTo('shop')} className="text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
                   {t('footer.sale')}
                 </button>
               </li>
@@ -116,7 +116,7 @@ export function Footer() {
                   href={`https://t.me/${TELEGRAM_ADMIN.replace('@', '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
                 >
                   <Send className="size-3.5 shrink-0" />
                   {TELEGRAM_ADMIN}
@@ -125,7 +125,7 @@ export function Footer() {
               <li>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
                 >
                   <Mail className="size-3.5 shrink-0" />
                   {SUPPORT_EMAIL}
@@ -134,7 +134,7 @@ export function Footer() {
               <li>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="flex items-center gap-2 text-[12px] font-light text-gold/80 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-gold/80 transition hover:text-gold"
                 >
                   <LifeBuoy className="size-3.5 shrink-0" />
                   {t('support.footerLink')}
@@ -149,13 +149,13 @@ export function Footer() {
               and app stores check for them, and GDPR requires the privacy
               notice to be reachable from anywhere. */}
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <a href="/legal/terms" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <a href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.terms')}
             </a>
-            <a href="/legal/privacy" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <a href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.privacy')}
             </a>
-            <a href="/legal/refunds" className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <a href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.refunds')}
             </a>
             {/* Consent must be withdrawable as easily as it was given, which
@@ -163,7 +163,7 @@ export function Footer() {
             <button
               type="button"
               onClick={openCookieSettings}
-              className="text-[11px] font-light text-muted-foreground/50 transition hover:text-gold"
+              className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold"
             >
               {t('cookies.settings')}
             </button>

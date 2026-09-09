@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { CheckoutFlow } from '@/components/checkout-flow'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Header } from '@/components/header'
 import { formatPrice, useStore } from '@/lib/store'
 
@@ -58,6 +59,17 @@ export default function CheckoutPage() {
       <Header />
 
       <main className="mx-auto w-full max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        {/* Breadcrumbs AND the back link, which do different jobs: the trail
+            says where this page sits, the link is the explicit way out that a
+            checkout should always offer. */}
+        <Breadcrumbs
+          className="mb-4"
+          trail={[
+            { name: t('common.home'), url: '/' },
+            { name: t('checkout.title'), url: '/checkout' },
+          ]}
+        />
+
         <Link
           href="/#shop"
           className="mb-8 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-gold"

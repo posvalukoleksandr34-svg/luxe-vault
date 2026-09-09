@@ -4,6 +4,8 @@ import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loa
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { CryptoPayment } from '@/components/crypto-payment'
+import { LoadError } from '@/components/load-error'
+import { OrderListSkeleton } from '@/components/skeletons'
 import { StripePayment } from '@/components/stripe-payment'
 import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
@@ -46,11 +48,20 @@ export function isUnpaid(order: Order): boolean {
 export function AccountOrders({
   orders,
   loading,
+  failed = false,
   onReload,
   unpaidOnly = false,
 }: {
   orders: Order[]
   loading: boolean
+  /**
+   * The fetch FAILED, as opposed to succeeding with nothing in it.
+   *
+   * Without this the two were indistinguishable here: a timeout arrived as an
+   * empty array and rendered "you have no orders yet" to a customer who had
+   * plenty. See loadMyOrders in lib/order-registry.ts.
+   */
+  failed?: boolean
   onReload: () => void
   unpaidOnly?: boolean
 }) {
@@ -186,7 +197,7 @@ export function AccountOrders({
           className="mb-5 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" />
-          {t('crypto.back')}
+          {t('common.back')}
         </button>
         <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
           {t('orders.payingFor')} <span className="text-foreground">{paying.order.id}</span>
@@ -229,14 +240,17 @@ export function AccountOrders({
   if (unpaidOnly && (loading || unpaid.length === 0)) return null
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-12">
-        <Loader2 className="size-4 animate-spin text-gold" />
-        <span className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground">
-          {t('crypto.loading')}
-        </span>
-      </div>
-    )
+    // A skeleton in the shape of the order cards, not a centred spinner: the
+    // spinner reserved no space, so the account jumped by several hundred
+    // pixels the moment the list arrived.
+    return <OrderListSkeleton rows={2} label={t('common.loading')} />
+  }
+
+  // Checked BEFORE the empty state, which is the whole point — the empty
+  // state is a statement about the account and must not be reachable by a
+  // request that never came back.
+  if (failed) {
+    return <LoadError title={t('error.ordersFailed')} onRetry={() => void load()} compact />
   }
 
   if (orders.length === 0) {

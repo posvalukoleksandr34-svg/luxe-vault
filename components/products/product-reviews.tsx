@@ -2,6 +2,7 @@
 
 import { BadgeCheck, Loader2, MessageSquare, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ReviewListSkeleton } from '@/components/skeletons'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -109,11 +110,15 @@ export function ProductReviews({ productId }: { productId: string }) {
   const shown = starFilter ? reviews.filter((r) => r.rating === starFilter) : reviews
 
   if (loading) {
+    // The heading is rendered during loading too. Reviews sit below the fold
+    // on a long product page, and a bare spinner gave no clue what the reader
+    // was scrolling towards.
     return (
       <section className="mt-16 border-t border-border/50 pt-10">
-        <div className="flex justify-center py-8">
-          <Loader2 className="size-4 animate-spin text-gold" />
-        </div>
+        <h2 className="mb-6 font-serif text-2xl font-bold tracking-tight text-foreground">
+          {t('review.title')}
+        </h2>
+        <ReviewListSkeleton rows={3} label={t('common.loading')} />
       </section>
     )
   }

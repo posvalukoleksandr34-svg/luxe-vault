@@ -102,7 +102,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
-          className="lg:hidden text-muted-foreground transition hover:text-foreground"
+          className="tap-safe lg:hidden text-muted-foreground transition hover:text-foreground"
           aria-label="Menu"
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}

@@ -17,7 +17,7 @@ import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
 import { PasswordResetModal } from '@/components/password-reset-modal'
-import { fetchMyOrders } from '@/lib/order-registry'
+import { loadMyOrders } from '@/lib/order-registry'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
@@ -66,11 +66,16 @@ export function UserPanel() {
   // can still be paid days later.
   const [myOrders, setMyOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersFailed, setOrdersFailed] = useState(false)
 
   const loadOrders = useCallback(async () => {
     setOrdersLoading(true)
-    const mine = await fetchMyOrders()
-    setMyOrders(mine)
+    const result = await loadMyOrders()
+    // On failure the previous list is KEPT rather than blanked: if a refresh
+    // fails, showing the orders we already had beside a retry is better than
+    // throwing them away because one request did not land.
+    if (result.ok) setMyOrders(result.orders)
+    setOrdersFailed(!result.ok)
     setOrdersLoading(false)
   }, [])
 
@@ -491,6 +496,7 @@ export function UserPanel() {
                 <AccountOrders
                   orders={myOrders}
                   loading={ordersLoading}
+                  failed={ordersFailed && myOrders.length === 0}
                   onReload={() => void loadOrders()}
                 />
               )}

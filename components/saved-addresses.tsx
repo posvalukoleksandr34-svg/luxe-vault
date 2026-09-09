@@ -4,6 +4,7 @@ import { Check, Loader2, MapPin, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CountrySelect } from '@/components/country-select'
 import { DEFAULT_COUNTRY } from '@/components/phone-input'
+import { AddressListSkeleton } from '@/components/skeletons'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -139,9 +140,7 @@ export function SavedAddresses() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6">
-          <Loader2 className="size-4 animate-spin text-gold" />
-        </div>
+        <AddressListSkeleton rows={2} label={t('common.loading')} />
       ) : (
         <>
           {addresses.length === 0 && !adding && (

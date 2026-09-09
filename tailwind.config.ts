@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
   darkMode: ['class'],
@@ -123,6 +124,34 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+
+    /**
+     * `size-*`, backported.
+     *
+     * The utility shipped in Tailwind 3.4; this project is on 3.3.3, where it
+     * does not exist and therefore emits NOTHING. The codebase uses it about
+     * 240 times — `<Icon className="size-4" />` on nearly every icon, and on
+     * layout boxes like the size-filter chips.
+     *
+     * The result was invisible in review and obvious once measured: the
+     * compiled stylesheet contained zero `.size-*` rules, so every icon fell
+     * back to lucide's intrinsic 24px instead of the 16px the author asked
+     * for, and the filter chips — declared `size-7`, i.e. 28x28 — rendered at
+     * 9x19 with no dimensions at all.
+     *
+     * Defined here rather than by upgrading Tailwind: a minor-version bump
+     * across a project this size is a much larger change than one utility,
+     * and this is exactly the shape 3.4 gives it (width and height from the
+     * spacing scale, arbitrary values allowed).
+     */
+    plugin(({ matchUtilities, theme }) => {
+      matchUtilities(
+        { size: (value) => ({ width: value, height: value }) },
+        { values: theme('spacing') },
+      );
+    }),
+  ],
 };
 export default config;
