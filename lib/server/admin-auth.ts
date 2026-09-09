@@ -36,10 +36,36 @@ function requireEnv(name: 'ADMIN_PASSWORD' | 'ADMIN_SESSION_SECRET'): string {
   return value
 }
 
-/** True when both variables are present. Lets a caller answer 503 rather than
- *  leak a stack trace when the console is simply not configured. */
+/**
+ * The configured password, with surrounding whitespace removed.
+ *
+ * ONE function, used by both the login check and the session fingerprint. If
+ * those two read the variable differently — one trimmed, one not — a login
+ * would succeed and then mint a token bound to a different fingerprint, and
+ * every request after it would be rejected. That is a genuinely confusing
+ * failure, so there is exactly one way to read this value.
+ *
+ * Trimmed because a `.env` file is edited by hand and a stray trailing space
+ * is invisible in an editor. This console has already lost an afternoon to an
+ * env file that looked correct and was not.
+ */
+function adminPassword(): string {
+  const value = requireEnv('ADMIN_PASSWORD').trim()
+  if (!value) {
+    throw new Error(
+      'ADMIN_PASSWORD is set but empty once trimmed. The admin console has no ' +
+        'default credentials — set a real value and redeploy.',
+    )
+  }
+  return value
+}
+
+/** True when both variables are present and not blank. Lets a caller answer
+ *  503 rather than leak a stack trace when the console is simply not
+ *  configured — including the whitespace-only case, which used to read as
+ *  "configured" here and then throw further in. */
 export function isAdminConfigured(): boolean {
-  return Boolean(process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET)
+  return Boolean(process.env.ADMIN_PASSWORD?.trim() && process.env.ADMIN_SESSION_SECRET?.trim())
 }
 
 const encoder = new TextEncoder()
@@ -85,15 +111,31 @@ function timingSafeEqual(a: string, b: string): boolean {
 /**
  * Checks the submitted password.
  *
- * Both sides are hashed first so the comparison runs over two fixed-length
- * digests. Comparing the raw strings would exit on the first length mismatch
- * and hand an attacker the password's length for free.
+ * Both sides are trimmed, then HASHED, and the comparison runs over the two
+ * fixed-length digests.
+ *
+ * The hashing is not decoration and is deliberately kept rather than replaced
+ * with `submitted === process.env.ADMIN_PASSWORD`. A direct string compare
+ * returns as soon as two characters differ, so the time it takes reveals how
+ * much of the password was right — and it exits immediately on a length
+ * mismatch, which hands over the password's length for free. Over a few
+ * thousand requests that is a measurable oracle, and this is the only
+ * credential guarding the admin console. Digests are always 64 characters, so
+ * the loop below always runs the same number of times whatever was submitted.
+ *
+ * Trimming the submitted value is the convenience: a password pasted from a
+ * password manager or typed on a phone keyboard often carries a trailing
+ * space, and rejecting it teaches the admin their password is wrong when it
+ * is not.
  */
 export async function verifyAdminPassword(password: string): Promise<boolean> {
-  if (typeof password !== 'string' || password.length === 0) return false
+  if (typeof password !== 'string') return false
+  const submittedRaw = password.trim()
+  if (submittedRaw.length === 0) return false
+
   const [submitted, expected] = await Promise.all([
-    sha256Hex(password),
-    sha256Hex(requireEnv('ADMIN_PASSWORD')),
+    sha256Hex(submittedRaw),
+    sha256Hex(adminPassword()),
   ])
   return timingSafeEqual(submitted, expected)
 }
@@ -106,7 +148,8 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
  * entire reason to change a password after a suspected leak.
  */
 async function passwordFingerprint(): Promise<string> {
-  return (await sha256Hex(requireEnv('ADMIN_PASSWORD'))).slice(0, 16)
+  // Same reader as verifyAdminPassword — see adminPassword().
+  return (await sha256Hex(adminPassword())).slice(0, 16)
 }
 
 /**
