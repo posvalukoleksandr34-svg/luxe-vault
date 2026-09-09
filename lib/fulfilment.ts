@@ -250,6 +250,13 @@ const COURIERS: { match: RegExp; label: string; url: (n: string) => string }[] =
     label: 'Nova Poshta',
     url: (n) => `https://novaposhta.ua/tracking/?cargo_number=${encodeURIComponent(n)}`,
   },
+  {
+    // Cyrillic spellings too, for the same reason as Nova Poshta above: the
+    // admin types whatever is printed on the label in front of them.
+    match: /meest|міст експрес|меест/i,
+    label: 'Meest',
+    url: (n) => `https://meest.com/tracking/?barcode=${encodeURIComponent(n)}`,
+  },
 ]
 
 /** Known carrier names, for the admin's picker. */
