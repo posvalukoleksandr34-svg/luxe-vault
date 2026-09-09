@@ -4,6 +4,8 @@ import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { AmbientBackground } from '@/components/ambient-background';
+import { PageTransition } from '@/components/page-transition';
+import { PointerAtmosphere } from '@/components/pointer-atmosphere';
 import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
@@ -160,6 +162,12 @@ export default async function RootLayout({
             stacking or event handling. */}
         <AmbientBackground />
 
+        {/* Rendered AFTER the ambient layer and at the same negative z-index,
+            so the cursor light pools on top of the drifting smoke rather than
+            under it. Also outside StoreProvider: decorative, stateless, and
+            it must never re-render when the cart does. */}
+        <PointerAtmosphere />
+
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen
             reader user previously had to tab through all of it on every page
@@ -177,7 +185,7 @@ export default async function RootLayout({
         </a>
 
         <StoreProvider initialCatalog={initialCatalog}>
-          {children}
+          <PageTransition>{children}</PageTransition>
           {/* Cart / checkout / account drawers. Mounted here, not per page: a
               page that renders a trigger but not its panel is a dead end. */}
           <GlobalPanels />

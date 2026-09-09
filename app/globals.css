@@ -726,3 +726,646 @@ iframe[src*="elements-inner-easel"] {
   right: -9999px !important;
   z-index: -1 !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Pointer atmosphere — liquid gold that follows the cursor
+   ---------------------------------------------------------------------------
+   Paired with <PointerAtmosphere />. Read that file first: it explains the
+   three-rate chase that produces the stretch-and-pour, and why one rAF loop
+   drives all four layers.
+
+   This stylesheet's job is to make every one of those layers cost nothing per
+   frame. Each pool is a radial gradient that is rasterised ONCE — the blur,
+   the gradient and the rotation all live on elements the script never touches.
+   The script writes `transform` on the wrappers and nothing else, so a frame
+   is a matrix multiply on an existing texture.
+
+   The whole thing sits at z-index -1, above `.ambient` in paint order because
+   it comes later in the DOM, and below every scrap of page content because
+   content paints above negative z-index. Nothing here can ever cover text or
+   intercept a click.
+--------------------------------------------------------------------------- */
+
+.pa {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Contains the `screen` blending so the pools brighten one another and the
+     ambient waves behind them, but never reach through to the page. */
+  isolation: isolate;
+  /* Hidden until the effect script decides this device should have it. A
+     touch device, or someone with reduced motion, gets nothing rendered at
+     all rather than a static blob parked mid-screen. */
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pa[data-active='true'][data-seen='true'] {
+  opacity: 1;
+}
+
+.pa__layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  /* Promoted for the life of the page. These four are the only permanently
+     promoted layers on the site, and they are the ones being transformed
+     every frame — exactly what the hint is for. */
+  will-change: transform;
+}
+
+.pa__blob {
+  position: absolute;
+  display: block;
+  /* Centred on the wrapper's origin, which is the point the script moves. */
+  transform: translate(-50%, -50%);
+  mix-blend-mode: screen;
+  border-radius: 0;
+}
+
+/* The far pool: broad, dim, and slow enough to read as the room lighting
+   changing rather than as an object. This is the layer doing the "cinematic"
+   work — most of the gold you notice is this one. */
+.pa__blob--far {
+  width: 1100px;
+  height: 780px;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(43 74% 56% / 0.105) 0%,
+    hsl(38 70% 46% / 0.062) 34%,
+    hsl(36 60% 30% / 0.028) 58%,
+    transparent 74%
+  );
+  filter: blur(46px);
+  animation: pa-churn-a 21s ease-in-out infinite;
+}
+
+/* The middle pool: the body of the liquid. Elongated, and rotating against
+   the far layer so the two never line up into one shape. */
+.pa__blob--mid {
+  width: 620px;
+  height: 380px;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(45 80% 62% / 0.15) 0%,
+    hsl(41 76% 52% / 0.082) 40%,
+    transparent 72%
+  );
+  filter: blur(34px);
+  animation: pa-churn-b 14s ease-in-out infinite;
+}
+
+/* The core: small, warm, and nearly on the cursor. Kept dim on purpose — a
+   bright point under the mouse is a torch beam, which is the cheap version of
+   this effect. */
+.pa__blob--core {
+  width: 260px;
+  height: 200px;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(46 88% 70% / 0.15) 0%,
+    hsl(43 80% 58% / 0.07) 45%,
+    transparent 70%
+  );
+  filter: blur(22px);
+  animation: pa-churn-c 9s ease-in-out infinite;
+}
+
+/* Slow, unequal churn. Different periods and different axes, so the three
+   pools drift in and out of alignment forever without repeating — the same
+   trick the ambient smoke uses, at a smaller scale. */
+@keyframes pa-churn-a {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(9deg) scale(1.14);
+  }
+}
+
+@keyframes pa-churn-b {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.06, 0.95);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(-14deg) scale(0.92, 1.12);
+  }
+}
+
+@keyframes pa-churn-c {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.96);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(18deg) scale(1.12);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Cursor halo
+   ---------------------------------------------------------------------------
+   A thin gold ring trailing the native cursor. The native cursor is NOT
+   hidden: replacing it costs real usability over text fields, resize handles
+   and links, and gains a flourish. This rides alongside it.
+--------------------------------------------------------------------------- */
+
+.pa__ring-mark {
+  position: absolute;
+  display: block;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%) scale(1);
+  border: 1px solid hsl(var(--gold) / 0.34);
+  box-shadow:
+    0 0 12px hsl(var(--gold) / 0.14),
+    inset 0 0 10px hsl(var(--gold) / 0.06);
+  /* The one deliberate exception to the site's square geometry: a square ring
+     tracking the mouse reads as a selection marquee, not as light. */
+  border-radius: 50% !important;
+  transition:
+    width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 420ms ease,
+    box-shadow 420ms ease;
+}
+
+/* Over anything clickable the ring opens up and warms — the whole feedback
+   vocabulary of the effect, in one state change. */
+.pa[data-hot='true'] .pa__ring-mark {
+  width: 58px;
+  height: 58px;
+  border-color: hsl(var(--gold) / 0.55);
+  box-shadow:
+    0 0 22px hsl(var(--gold) / 0.22),
+    inset 0 0 16px hsl(var(--gold) / 0.09);
+}
+
+/* Narrow screens are touch screens in practice, and the script already
+   declines to run there. This is belt and braces for a small laptop reporting
+   a fine pointer — the pools are sized for a desktop canvas. */
+@media (max-width: 900px) {
+  .pa {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Hero — layered cinematic grounds
+   ---------------------------------------------------------------------------
+   See components/hero.tsx for why there are five of these rather than one
+   gradient. All are static paint: they cost one rasterisation at load and
+   nothing thereafter. Only the sheen and the word entrances animate, and both
+   are transform/opacity or a background-position on a single text node.
+--------------------------------------------------------------------------- */
+
+.hero__floor,
+.hero__key,
+.hero__horizon,
+.hero__lines,
+.hero__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Cool wash across the lower two-thirds. Gold reads as LIGHT only when it has
+   something cooler to fall on; over neutral charcoal it reads as a tint. */
+.hero__floor {
+  background: radial-gradient(
+    ellipse 120% 70% at 50% 118%,
+    hsl(210 22% 16% / 0.55) 0%,
+    hsl(215 18% 11% / 0.28) 38%,
+    transparent 70%
+  );
+}
+
+/* Key light, from above and slightly behind. */
+.hero__key {
+  background:
+    radial-gradient(ellipse 90% 46% at 50% -8%, hsl(43 70% 56% / 0.09) 0%, transparent 62%),
+    radial-gradient(ellipse 40% 30% at 78% 12%, hsl(40 65% 50% / 0.045) 0%, transparent 70%);
+}
+
+/* The lit surface the wordmark stands on. Deliberately a thin, wide band
+   rather than a blob — a horizon, not a spotlight. */
+.hero__horizon {
+  background: radial-gradient(
+    ellipse 62% 12% at 50% 62%,
+    hsl(45 78% 58% / 0.1) 0%,
+    hsl(40 70% 48% / 0.04) 45%,
+    transparent 72%
+  );
+}
+
+.hero__lines {
+  opacity: 0.028;
+  background-image: repeating-linear-gradient(
+    0deg,
+    hsl(var(--foreground)) 0px,
+    hsl(var(--foreground)) 1px,
+    transparent 1px,
+    transparent 80px
+  );
+}
+
+.hero__vignette {
+  background: radial-gradient(
+    ellipse 92% 78% at 50% 50%,
+    transparent 46%,
+    hsl(36 8% 5% / 0.5) 100%
+  );
+}
+
+/* --- The wordmark ---------------------------------------------------------
+   Rises out of a blur rather than sliding. A blur that resolves reads as a
+   camera pulling focus; a slide reads as a UI transition, which is the thing
+   this page is trying not to look like. */
+.hero__word {
+  animation: hero-word 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero__word--2 {
+  animation-delay: 140ms;
+}
+
+@keyframes hero-word {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+/* --- The specular sweep ---------------------------------------------------
+   One slow pass of light across the gold word. Replaces the flat
+   `text-gradient-gold` on this element only; everything else keeps the static
+   version, because a page of sweeping text is a casino, not a fashion house.
+
+   The gradient is 260% of the element and slides — a background-position
+   animation on ONE text node, which repaints that node and nothing else. */
+.hero__sheen {
+  background: linear-gradient(
+    100deg,
+    hsl(38 68% 44%) 0%,
+    hsl(43 74% 56%) 26%,
+    hsl(48 96% 82%) 42%,
+    hsl(43 74% 56%) 58%,
+    hsl(38 68% 44%) 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation:
+    hero-word 1500ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both,
+    hero-sheen 11s cubic-bezier(0.45, 0, 0.2, 1) 1.9s infinite;
+}
+
+@keyframes hero-sheen {
+  0% {
+    background-position: 100% 0;
+  }
+  /* The pass takes ~3s of the 11s cycle; the rest is the metal at rest. A
+     continuous sweep is a loading shimmer. */
+  32%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+/* --- The CTA --------------------------------------------------------------
+   A framed button rather than bare text. The fill wipes in from the left on
+   hover — a transform on a pseudo-element, so no layout and no repaint of the
+   label sitting above it. */
+.hero__cta {
+  position: relative;
+  overflow: hidden;
+  transition:
+    color 500ms ease,
+    border-color 500ms ease;
+}
+
+.hero__cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, hsl(43 74% 56% / 0.16), hsl(45 80% 66% / 0.06));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero__cta:hover,
+.hero__cta:focus-visible {
+  border-color: hsl(var(--gold) / 0.6);
+  color: hsl(var(--gold-light));
+}
+
+.hero__cta:hover::before,
+.hero__cta:focus-visible::before {
+  transform: scaleX(1);
+}
+
+/* Keeps the label and arrow above the wipe. */
+.hero__cta > * {
+  position: relative;
+}
+
+/* The scroll cue. `animate-bounce` was a spring; this is a slow fall, which
+   is what a cue should be at the bottom of a still frame. */
+.hero__scroll-dot {
+  animation: hero-scroll-dot 2.6s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+}
+
+@keyframes hero-scroll-dot {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  40% {
+    transform: translateY(9px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__word,
+  .hero__sheen,
+  .hero__scroll-dot {
+    animation: none;
+  }
+  .hero__sheen {
+    /* Without the sweep the clipped gradient still needs a fill, or the word
+       renders transparent. */
+    background-position: 40% 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Product card — depth and a single specular pass
+   ---------------------------------------------------------------------------
+   The card already cross-fades its photograph on hover. What it lacked was
+   DEPTH AT REST: with no shadow, every card sat flat on the page ground and
+   the grid read as a contact sheet. A soft, warm, offset shadow lifts each one
+   just enough to cast — which is also what lets the cursor's gold pool appear
+   to pass *behind* the grid.
+
+   The sweep is a single diagonal band of light crossing the image once per
+   hover. It is a transform on a pseudo-element sitting above the photograph,
+   so it composites — it does not repaint the image underneath.
+--------------------------------------------------------------------------- */
+
+.product-card {
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    0 14px 34px -22px hsl(36 30% 3% / 0.9),
+    0 2px 10px -6px hsl(36 30% 3% / 0.6);
+  transition:
+    box-shadow 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 500ms ease;
+}
+
+.group:hover .product-card,
+.group:focus-visible .product-card {
+  /* Depth only. The gold ring and its pulse come from `.card-gold`, which
+     this class sits alongside — adding a second ring here made the hover
+     read as an outline rather than as light. */
+  box-shadow:
+    0 30px 60px -30px hsl(36 40% 2% / 0.95),
+    0 10px 44px -20px hsl(43 74% 46% / 0.22);
+}
+
+/* The pass. Skewed, so it crosses as a raking highlight rather than as a
+   vertical wipe — the difference between light on a surface and a scanner. */
+.product-card::after {
+  content: '';
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -60%;
+  width: 45%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    hsl(45 85% 72% / 0.05) 38%,
+    hsl(48 92% 82% / 0.085) 50%,
+    hsl(45 85% 72% / 0.05) 62%,
+    transparent 100%
+  );
+  transform: translateX(0) skewX(-14deg);
+  opacity: 0;
+  transition:
+    transform 1100ms cubic-bezier(0.22, 0.8, 0.28, 1),
+    opacity 300ms ease;
+}
+
+.group:hover .product-card::after,
+.group:focus-visible .product-card::after {
+  transform: translateX(360%) skewX(-14deg);
+  opacity: 1;
+}
+
+/* The caption. A hairline that draws in under the product name on hover —
+   the smallest possible acknowledgement that the whole card is one link. */
+.product-card-name {
+  position: relative;
+  display: inline;
+  background-image: linear-gradient(hsl(var(--gold) / 0.7), hsl(var(--gold) / 0.7));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .product-card-name {
+  background-size: 100% 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card::after,
+  .product-card-name {
+    transition: none;
+  }
+  .product-card::after {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Page transition and section reveals
+--------------------------------------------------------------------------- */
+
+/* Route change. Short on purpose — see components/page-transition.tsx. */
+.page-enter {
+  animation: page-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The blur half of <Reveal />. Tailwind's `transition-all` already covers the
+   opacity and the translate; `filter` is added here so a section resolves out
+   of soft focus instead of merely sliding. */
+.reveal {
+  transition-property: opacity, transform, filter;
+}
+
+.reveal--hidden {
+  filter: blur(5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  .reveal--hidden {
+    filter: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Header — a surface only once it has something to separate
+--------------------------------------------------------------------------- */
+
+.site-header {
+  border-color: transparent;
+  background: linear-gradient(hsl(var(--background) / 0.5), hsl(var(--background) / 0.16));
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  transition:
+    background 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 620ms ease,
+    backdrop-filter 620ms ease,
+    box-shadow 620ms ease;
+}
+
+.site-header[data-scrolled='true'] {
+  background: hsl(var(--background) / 0.9);
+  border-color: hsl(var(--gold-hairline) / 0.24);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  box-shadow: 0 18px 40px -34px hsl(36 30% 2% / 0.95);
+}
+
+/* A gold hairline that fades in along the bottom edge as the bar settles —
+   the same detail as the card's edge, at page scale. */
+.site-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--gold) / 0.28) 22%,
+    hsl(var(--gold) / 0.4) 50%,
+    hsl(var(--gold) / 0.28) 78%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 620ms ease;
+}
+
+.site-header[data-scrolled='true']::after {
+  opacity: 1;
+}
+
+/* Nav underline. `nav-gold` supplies the colour and the lift; this adds the
+   rule that grows from the centre, which is the detail that makes a text link
+   feel considered rather than merely coloured. */
+.nav-gold::after {
+  content: '';
+  display: block;
+  height: 1px;
+  margin-top: 3px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0.7;
+  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-gold:hover::after,
+.nav-gold:focus-visible::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .site-header::after,
+  .nav-gold::after {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Film grain
+   ---------------------------------------------------------------------------
+   One inline SVG turbulence, tiled. Generated by the browser at load and then
+   composited like any other image — no canvas, no animation, no per-frame
+   cost. Its job is to keep the large gradients from banding on a wide display
+   and to give the flat charcoal a surface.
+--------------------------------------------------------------------------- */
+
+.ambient__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* The collection cards ARE the `.group` themselves (the card is the link),
+   where a product card is a child of one. Both spellings are needed so the
+   sweep and the lift fire in either arrangement. */
+.product-card.group:hover,
+.product-card.group:focus-visible {
+  box-shadow:
+    0 30px 60px -30px hsl(36 40% 2% / 0.95),
+    0 10px 44px -20px hsl(43 74% 46% / 0.22);
+}
+
+.product-card.group:hover::after,
+.product-card.group:focus-visible::after {
+  transform: translateX(360%) skewX(-14deg);
+  opacity: 1;
+}

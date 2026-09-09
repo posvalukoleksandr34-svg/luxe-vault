@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
@@ -37,6 +37,28 @@ export function Header() {
   const pathname = usePathname()
 
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  /**
+   * Has the page scrolled off the top?
+   *
+   * At rest the bar is nearly transparent, so the hero runs edge to edge and
+   * the wordmark is not sitting under a grey strip. Once content passes
+   * beneath it, the ground deepens and a gold hairline appears — the bar
+   * becomes a surface only when it has something to separate.
+   *
+   * A boolean, not a scroll position: the listener writes state at most twice
+   * per page, when the threshold is crossed in either direction.
+   */
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 24)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const [langOpen, setLangOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -72,7 +94,10 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border glass">
+    <header
+      data-scrolled={scrolled}
+      className="site-header sticky top-0 z-50 border-b"
+    >
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6 lg:px-10">
         <button
           type="button"

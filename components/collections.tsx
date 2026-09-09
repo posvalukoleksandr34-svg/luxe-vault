@@ -49,7 +49,7 @@ export function Collections() {
                   now, so it is a real link. */}
               <Link
                 href={`/category/${col.group}`}
-                className="card-gold group relative block aspect-[4/5] w-full overflow-hidden text-left"
+                className="card-gold product-card group relative block aspect-[4/5] w-full overflow-hidden text-left"
               >
                 {/* Collection covers are the largest images on the homepage and
                     the usual LCP element, so they are the ones that most need

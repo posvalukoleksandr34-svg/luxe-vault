@@ -82,7 +82,12 @@ export function Reveal({
           observer.unobserve(el)
         }
       },
-      { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
+      // Fires as soon as any part of the element enters, with a margin that
+      // starts it slightly BEFORE it does. Measured: at threshold 0.15 with a
+      // -8% inset, a fast scroll (or a jump-to-anchor) landed on a section
+      // that was still blurred and empty — the reveal was arriving after the
+      // reader did.
+      { threshold: 0.01, rootMargin: '0px 0px 6% 0px' },
     )
     observer.observe(el)
     return () => observer.disconnect()
@@ -95,12 +100,16 @@ export function Reveal({
       ref={ref}
       style={{ transitionDelay: state === 'shown' ? `${delay}ms` : '0ms' }}
       className={cn(
-        'transition-all duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)]',
+        // `reveal` carries the blur: a section resolving out of soft focus
+        // reads as depth, where a plain slide reads as a UI transition. The
+        // filter is on the wrapper only, so it rasterises once per element
+        // rather than per child.
+        'reveal transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)]',
         // Promoted only while an animation is actually pending. Leaving
         // will-change on permanently keeps a compositor layer alive for every
         // wrapper on the page.
         hidden && 'will-change-transform',
-        hidden ? 'opacity-0 translate-y-12' : 'opacity-100 translate-y-0',
+        hidden ? 'reveal--hidden opacity-0 translate-y-10' : 'opacity-100 translate-y-0',
         className,
       )}
     >

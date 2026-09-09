@@ -90,6 +90,14 @@ export function AmbientBackground() {
         ))}
       </div>
 
+      {/* Film grain. Static — a STILL texture, not an animated one: animated
+          grain repaints the full viewport every frame, which is the single
+          most expensive thing this layer could possibly do. At 2.5% opacity
+          the eye reads it as film stock rather than as noise, and it earns its
+          place by breaking up the banding that wide gradients produce on a
+          large display. */}
+      <div className="ambient__grain" />
+
       {/* Vignette last, so the corners settle back into charcoal and the motes
           fade out at the edges instead of clipping against them. */}
       <div className="ambient__vignette" />

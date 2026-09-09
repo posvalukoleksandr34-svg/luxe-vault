@@ -23,7 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
     // link, or reached by keyboard — all of which a product page exists to
     // support. next/link also prefetches the route on hover.
     <Link href={`/product/${encodeURIComponent(product.id)}`} className="group block">
-      <div className="card-gold relative aspect-[3/4] overflow-hidden">
+      <div className="card-gold product-card relative aspect-[3/4] overflow-hidden">
         <Image
           src={product.image}
           alt={localize(product.name)}
@@ -97,8 +97,8 @@ export function ProductCard({ product }: { product: Product }) {
             {localize(categoryLabels[product.category] ?? {})}
           </p>
         )}
-        <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-300 group-hover:text-gold/90">
-          {localize(product.name)}
+        <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-500 group-hover:text-gold/90">
+          <span className="product-card-name">{localize(product.name)}</span>
         </h3>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="text-[13px] font-light text-foreground">
