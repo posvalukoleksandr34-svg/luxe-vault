@@ -157,6 +157,18 @@ function toItem(product: Product, slot: Slot, brief: StylistBrief, score: number
 }
 
 /**
+ * One product as a look item, under the SAME availability rule the engine
+ * uses when it builds looks.
+ *
+ * For surfaces that show a saved look rather than build one — the capsule
+ * page. Exported so that page cannot grow its own idea of which sizes are in
+ * stock and drift from what the stylist showed when the look was saved.
+ */
+export function itemForProduct(product: Product): LookItem {
+  return toItem(product, resolveTags(product).slot, {}, 0, [])
+}
+
+/**
  * Assembles the best look that fits a price ceiling.
  *
  * A BOUNDED EXACT SEARCH, not a greedy walk. The first version picked the

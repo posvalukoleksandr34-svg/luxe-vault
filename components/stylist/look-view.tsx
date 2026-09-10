@@ -4,6 +4,8 @@ import { AlertTriangle, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
+import { LookActions } from '@/components/stylist/look-actions'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   STYLIST_COLOR_LABELS,
@@ -120,7 +122,12 @@ export function LookView({
   return (
     <div className={cn('transition-opacity duration-500', busy && 'pointer-events-none opacity-40')}>
       {result.looks.map((look) => (
-        <LookBlock key={look.id} look={look} missing={result.missingSlots} />
+        <LookBlock
+          key={look.id}
+          look={look}
+          missing={result.missingSlots}
+          wantedSizes={result.brief.sizes}
+        />
       ))}
 
       {/* Variations. They re-run the engine with the SAME brief, so nobody is
@@ -151,7 +158,28 @@ export function LookView({
   )
 }
 
-function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
+/**
+ * One look: its pieces, its total, and every way to act on it.
+ *
+ * Exported for the shared-capsule page, which passes its own `heading` and the
+ * capsule's `savedId` so Save/Share reuse the existing row instead of minting
+ * a copy.
+ */
+export function LookBlock({
+  look,
+  missing,
+  wantedSizes,
+  heading,
+  savedId,
+}: {
+  look: Look
+  missing: string[]
+  /** The sizes the customer asked for — used to offer "notify me" when one of
+   *  them is sold out on a piece. */
+  wantedSizes?: string[]
+  heading?: string
+  savedId?: string
+}) {
   const { t, localize, addToCart, pushToast } = useStore()
   const [added, setAdded] = useState(false)
 
@@ -190,7 +218,7 @@ function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
     <section className="mt-12 first:mt-0">
       <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          {look.kind === 'premium' ? t('stylist.premiumAlt') : t('stylist.yourFit')}
+          {heading ?? (look.kind === 'premium' ? t('stylist.premiumAlt') : t('stylist.yourFit'))}
         </h2>
         <p className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground/60">
           {t('stylist.total')} — <span className="text-gold">{formatPrice(look.total)}</span>
@@ -205,7 +233,7 @@ function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {look.items.map((item) => (
-          <PieceCard key={item.product.id} item={item} />
+          <PieceCard key={item.product.id} item={item} wantedSizes={wantedSizes} />
         ))}
       </div>
 
@@ -222,21 +250,36 @@ function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={addOutfit}
-        disabled={buyable.length === 0}
-        className="mt-8 inline-flex w-full items-center justify-center gap-2.5 border border-gold/40 bg-gold/5 px-8 py-4 text-[12px] uppercase tracking-[0.2em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40 sm:w-auto"
-      >
-        <ShoppingBag className="size-4" />
-        {added ? `${t('stylist.addOutfit')} ✓` : `${t('stylist.addOutfit')} — ${formatPrice(look.total)}`}
-      </button>
+      {/* Primary action first and widest; save and share sit beside it on
+          desktop and stack under it on a phone, so "add entire outfit" stays
+          the obvious thing to press. */}
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <button
+          type="button"
+          onClick={addOutfit}
+          disabled={buyable.length === 0}
+          className="inline-flex w-full items-center justify-center gap-2.5 border border-gold/40 bg-gold/5 px-8 py-4 text-[12px] uppercase tracking-[0.2em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40 sm:w-auto"
+        >
+          <ShoppingBag className="size-4" />
+          {added ? `${t('stylist.addOutfit')} ✓` : `${t('stylist.addOutfit')} — ${formatPrice(look.total)}`}
+        </button>
+        <LookActions look={look} savedId={savedId} />
+      </div>
     </section>
   )
 }
 
-function PieceCard({ item }: { item: LookItem }) {
+function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string[] }) {
   const { t, localize, addToCart } = useStore()
+
+  // Sizes the customer asked for that this piece MAKES but cannot sell right
+  // now. availableSizes only ever holds buyable sizes, so anything wanted,
+  // carried and missing from it is sold out — exactly when "notify me" is
+  // worth offering. An untracked product never lands here: all its sizes
+  // count as available.
+  const wantedSoldOut = (wantedSizes ?? []).filter(
+    (s) => item.product.sizes.indexOf(s) !== -1 && item.availableSizes.indexOf(s) === -1,
+  )
   const [size, setSize] = useState(item.suggestedSize)
   const name = localize(item.product.name)
   const soldOut = item.availableSizes.length === 0
@@ -271,9 +314,18 @@ function PieceCard({ item }: { item: LookItem }) {
         </p>
 
         {soldOut ? (
-          <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-destructive/80">
-            {t('stylist.unavailable')}
-          </p>
+          <>
+            <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-destructive/80">
+              {t('stylist.unavailable')}
+            </p>
+            <NotifyWhenAvailable
+              variant="compact"
+              productId={item.product.id}
+              sizes={item.product.sizes}
+              color={item.suggestedColor}
+              className="mt-2"
+            />
+          </>
         ) : (
           <>
             {/* Only the sizes this customer can actually buy — the product's
@@ -321,6 +373,16 @@ function PieceCard({ item }: { item: LookItem }) {
                 {t('stylist.viewProduct')}
               </Link>
             </div>
+
+            {wantedSoldOut.length > 0 && (
+              <NotifyWhenAvailable
+                variant="compact"
+                productId={item.product.id}
+                sizes={wantedSoldOut}
+                color={item.suggestedColor}
+                className="mt-3"
+              />
+            )}
           </>
         )}
       </div>

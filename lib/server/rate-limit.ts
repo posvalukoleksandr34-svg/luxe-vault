@@ -60,6 +60,12 @@ const LIMITS = {
    *  another" repeatedly is the intended way to use the feature. */
   'stylist': { max: 40, windowSeconds: 300 },
 
+  /** Saved looks / share links. Guests can create them (a link has to work for
+   *  whoever receives it), so this is what keeps an anonymous script from
+   *  filling the table. Generous for a person: nobody saves twenty looks in
+   *  ten minutes by hand. */
+  'looks.save': { max: 20, windowSeconds: 600 },
+
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */
   'coupon.validate': { max: 15, windowSeconds: 600 },

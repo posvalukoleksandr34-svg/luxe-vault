@@ -4,7 +4,8 @@ import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck, X } 
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
-import { StockAlert } from '@/components/products/stock-alert'
+import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
+import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
 import { trackViewItem } from '@/lib/analytics'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
@@ -149,7 +150,11 @@ export function ProductDetail({ product }: { product: Product }) {
    * listener reading the rect is always correct, and rAF-throttling keeps it
    * to one measurement per frame.
    */
-  const buyButtonRef = useRef<HTMLButtonElement>(null)
+  // On the WRAPPER around the buy button, not the button: the button is swapped
+  // for "notify when available" when the chosen variant is sold out, and a ref
+  // on it would go null under the sticky bar's scroll handler. The wrapper is
+  // always rendered and sits exactly where the button does.
+  const buyButtonRef = useRef<HTMLDivElement>(null)
   const [showStickyBuy, setShowStickyBuy] = useState(false)
 
   const [zoomed, setZoomed] = useState(false)
@@ -422,22 +427,32 @@ export function ProductDetail({ product }: { product: Product }) {
         )}
 
         <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <p className="text-[11px] uppercase tracking-[0.15em] text-foreground">
               {t('product.size')}
             </p>
-            {/* Hidden entirely when the product has no measurements — an empty
-                guide is worse than no guide. */}
-            {sizeChart.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowGuide((v) => !v)}
-                className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
-              >
-                <Ruler className="size-3" />
-                {t('product.sizeGuide')}
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              {/* Renders nothing unless the run is letter sizes — a
+                  height-and-weight table has nothing to say about 42 or OS.
+                  "Available" means buyable in the colour chosen right now. */}
+              <FitAdvisorModal
+                sizes={p.sizes}
+                isAvailable={(s) => stockFor(s, color) !== 0}
+                onApply={setSize}
+              />
+              {/* Hidden entirely when the product has no measurements — an
+                  empty guide is worse than no guide. */}
+              {sizeChart.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowGuide((v) => !v)}
+                  className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
+                >
+                  <Ruler className="size-3" />
+                  {t('product.sizeGuide')}
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {p.sizes.map((s) => {
@@ -534,21 +549,25 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleAdd}
-          ref={buyButtonRef}
-          disabled={!size || outOfStock}
-          className="mt-4 w-full border border-gold/30 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
-        >
-          {outOfStock ? t('sold.out') : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
-        </button>
-
-        {/* Offered only where the disappointment happens: a tracked variant the
-            customer has actually chosen, which has none left. */}
-        {tracked && size && color && selectedStock === 0 && (
-          <StockAlert productId={p.id} size={size} color={color} />
-        )}
+        <div ref={buyButtonRef} className="mt-4">
+          {/* A tracked variant the customer has chosen, with none left: the
+              add-to-cart button is REPLACED, not joined, by "notify when
+              available" — a dead disabled button is the worst thing to show at
+              the moment of disappointment. An untracked product marked sold
+              out keeps the disabled state: there is no variant to subscribe to. */}
+          {tracked && size && color && selectedStock === 0 ? (
+            <NotifyWhenAvailable productId={p.id} size={size} color={color} />
+          ) : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!size || outOfStock}
+              className="w-full border border-gold/30 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+            >
+              {outOfStock ? t('sold.out') : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Specifications. Composition, care, dimensions — the details someone
