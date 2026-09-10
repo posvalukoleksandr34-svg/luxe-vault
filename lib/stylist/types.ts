@@ -100,6 +100,25 @@ export type Refinement =
 export const SLOTS = ['top', 'bottom', 'shoes', 'accessory'] as const
 export type Slot = (typeof SLOTS)[number]
 
+/**
+ * Why a piece was chosen — as DATA, not prose.
+ *
+ * The engine runs on the server and does not know the visitor's language, so
+ * it names WHICH attribute applied and the client renders it through the
+ * locale's label map. It used to return a pre-joined string like
+ * "onyx · streetwear", which put the system key `streetwear` on the screen in
+ * English on every locale.
+ *
+ * `text` is for strings that are already content rather than keys: the
+ * catalogue's own colour name ("Onyx"), or a word from the customer's notes.
+ */
+export type Reason =
+  | { kind: 'fit'; key: Fit }
+  | { kind: 'style'; key: StyleKey }
+  | { kind: 'occasion'; key: Occasion }
+  | { kind: 'color'; key: ColorFamily }
+  | { kind: 'text'; text: string }
+
 export type LookItem = {
   slot: Slot
   product: Product
@@ -110,8 +129,9 @@ export type LookItem = {
    *  available. Null when nothing is buyable. */
   suggestedSize: string | null
   suggestedColor: string
-  /** Why this piece, in one clause. Composed from real attributes. */
-  note: string
+  /** Up to three reasons for this piece, drawn from attributes it really has.
+   *  Rendered by the client in the visitor's language. */
+  reasons: Reason[]
   score: number
 }
 

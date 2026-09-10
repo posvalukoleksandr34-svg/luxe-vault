@@ -1,4 +1,5 @@
 import type { CategoryKey, Locale, LocalizedText, StatusKey } from './types'
+import type { ColorFamily, Fit, Occasion, StyleKey } from './stylist/types'
 
 export const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: 'ru', label: 'Русский', flag: 'RU' },
@@ -30,6 +31,64 @@ export const STATUS_LABELS: Record<StatusKey, LocalizedText> = {
   out_of_stock: { ru: 'Нет в наличии', en: 'Out of Stock', it: 'Esaurito', fr: 'Rupture de stock', de: 'Nicht auf Lager' },
   limited_edition: { ru: 'Лимитированная серия', en: 'Limited Edition', it: 'Edizione Limitata', fr: 'Édition Limitée', de: 'Limitierte Auflage' },
   premium_quality: { ru: 'Премиум качество', en: 'Premium Quality', it: 'Qualità Premium', fr: 'Qualité Premium', de: 'Premium-Qualität' },
+}
+
+/**
+ * AI Stylist option labels, keyed by the SYSTEM keys the engine filters on.
+ *
+ * The consultation used to carry these as English-only string maps inside the
+ * component, so a Russian visitor answered "Everyday / Streetwear / Black" and
+ * the result cards printed the raw keys back at them. The keys never change —
+ * they are what goes over the wire and what the engine matches — only the
+ * label shown for each one does.
+ *
+ * Typed as Record<Key, ...> on purpose: adding an occasion, style, colour or
+ * fit to lib/stylist/types.ts without a label here in all five locales is now
+ * a compile error, instead of a blank card in production.
+ */
+
+export const STYLIST_OCCASION_LABELS: Record<Occasion, LocalizedText> = {
+  everyday: { ru: "На каждый день", en: "Everyday", it: "Tutti i giorni", fr: "Au quotidien", de: "Alltag" },
+  date: { ru: "Свидание", en: "Date", it: "Appuntamento", fr: "Rendez-vous", de: "Date" },
+  party: { ru: "Вечеринка", en: "Party", it: "Festa", fr: "Soirée", de: "Party" },
+  study: { ru: "Учёба", en: "School / University", it: "Scuola / Università", fr: "École / Université", de: "Schule / Uni" },
+  vacation: { ru: "Отпуск", en: "Vacation", it: "Vacanza", fr: "Vacances", de: "Urlaub" },
+  work: { ru: "Работа", en: "Work", it: "Lavoro", fr: "Travail", de: "Arbeit" },
+  special: { ru: "Особый повод", en: "Special event", it: "Occasione speciale", fr: "Événement spécial", de: "Besonderer Anlass" },
+  browsing: { ru: "Просто смотрю", en: "Just looking", it: "Sto solo guardando", fr: "Je regarde juste", de: "Nur schauen" },
+}
+
+export const STYLIST_STYLE_LABELS: Record<StyleKey, LocalizedText> = {
+  streetwear: { ru: "Стритвир", en: "Streetwear", it: "Streetwear", fr: "Streetwear", de: "Streetwear" },
+  minimal: { ru: "Минимализм", en: "Minimal", it: "Minimal", fr: "Minimaliste", de: "Minimalistisch" },
+  casual: { ru: "Кэжуал", en: "Casual", it: "Casual", fr: "Décontracté", de: "Casual" },
+  old_money: { ru: "Олд мани", en: "Old money", it: "Old money", fr: "Old money", de: "Old Money" },
+  luxury: { ru: "Люкс", en: "Luxury", it: "Lusso", fr: "Luxe", de: "Luxus" },
+  y2k: { ru: "Y2K", en: "Y2K", it: "Y2K", fr: "Y2K", de: "Y2K" },
+  oversized: { ru: "Оверсайз", en: "Oversized", it: "Oversize", fr: "Oversize", de: "Oversized" },
+  smart_casual: { ru: "Смарт-кэжуал", en: "Smart casual", it: "Smart casual", fr: "Smart casual", de: "Smart Casual" },
+  sporty: { ru: "Спортивный", en: "Sporty", it: "Sportivo", fr: "Sportswear", de: "Sportlich" },
+  open: { ru: "Без предпочтений", en: "Let me decide", it: "Nessuna preferenza", fr: "Sans préférence", de: "Keine Präferenz" },
+}
+
+export const STYLIST_COLOR_LABELS: Record<ColorFamily, LocalizedText> = {
+  black: { ru: "Чёрный", en: "Black", it: "Nero", fr: "Noir", de: "Schwarz" },
+  white: { ru: "Белый", en: "White", it: "Bianco", fr: "Blanc", de: "Weiß" },
+  grey: { ru: "Серый", en: "Grey", it: "Grigio", fr: "Gris", de: "Grau" },
+  beige: { ru: "Бежевый", en: "Beige", it: "Beige", fr: "Beige", de: "Beige" },
+  brown: { ru: "Коричневый", en: "Brown", it: "Marrone", fr: "Marron", de: "Braun" },
+  navy: { ru: "Тёмно-синий", en: "Navy", it: "Blu navy", fr: "Bleu marine", de: "Dunkelblau" },
+  green: { ru: "Зелёный", en: "Green", it: "Verde", fr: "Vert", de: "Grün" },
+  red: { ru: "Красный", en: "Red", it: "Rosso", fr: "Rouge", de: "Rot" },
+  blue: { ru: "Синий", en: "Blue", it: "Blu", fr: "Bleu", de: "Blau" },
+  pastel: { ru: "Пастельные", en: "Pastel", it: "Pastello", fr: "Pastel", de: "Pastell" },
+  bright: { ru: "Яркие", en: "Bright", it: "Accesi", fr: "Vifs", de: "Knallig" },
+}
+
+export const STYLIST_FIT_LABELS: Record<Fit, LocalizedText> = {
+  oversized: { ru: "Оверсайз", en: "Oversized", it: "Oversize", fr: "Oversize", de: "Oversized" },
+  regular: { ru: "Прямой крой", en: "Regular fit", it: "Vestibilità regolare", fr: "Coupe droite", de: "Regular Fit" },
+  slim: { ru: "Приталенный", en: "Slim fit", it: "Slim", fr: "Coupe ajustée", de: "Slim Fit" },
 }
 
 export const GROUP_LABELS: Record<string, LocalizedText> = {
@@ -347,6 +406,7 @@ export const UI = {
   "stylist.slot.bottom": { ru: "Низ", en: "Bottom", it: "Sotto", fr: "Bas", de: "Unterteil" },
   "stylist.slot.shoes": { ru: "Обувь", en: "Shoes", it: "Scarpe", fr: "Chaussures", de: "Schuhe" },
   "stylist.slot.accessory": { ru: "Аксессуар", en: "Accessory", it: "Accessorio", fr: "Accessoire", de: "Accessoire" },
+  "stylist.budgetUpTo": { ru: "до {price}", en: "up to {price}", it: "fino a {price}", fr: "jusqu'à {price}", de: "bis {price}" },
   'footer.rights': { ru: '© 2026 LUXE VAULT. Все права защищены.', en: '© 2026 LUXE VAULT. All rights reserved.', it: '© 2026 LUXE VAULT. Tutti i diritti riservati.', fr: '© 2026 LUXE VAULT. Tous droits réservés.', de: '© 2026 LUXE VAULT. Alle Rechte vorbehalten.' },
 
   // Help / FAQ accordion (footer)

@@ -5,6 +5,7 @@ import { SLOTS } from '@/lib/stylist/types'
 import type {
   Look,
   LookItem,
+  Reason,
   Refinement,
   Slot,
   StylistBrief,
@@ -52,25 +53,28 @@ function isBuyable(product: Product): boolean {
 }
 
 /** Score one product against the brief. Higher is better; 0 is "no signal". */
-function scoreProduct(product: Product, brief: StylistBrief): { score: number; why: string[] } {
+function scoreProduct(product: Product, brief: StylistBrief): { score: number; why: Reason[] } {
   const tags = resolveTags(product)
-  const why: string[] = []
+  // Typed reasons, never display strings. These reach the customer's screen
+  // under each piece, and this file does not know which language that screen
+  // is in — see Reason in lib/stylist/types.ts.
+  const why: Reason[] = []
   let score = 0
 
   if (brief.style && brief.style !== 'open') {
     if (tags.style.indexOf(brief.style) !== -1) {
       score += 40
-      why.push(brief.style)
+      why.push({ kind: 'style', key: brief.style })
     } else if (brief.style === 'oversized' && tags.fit === 'oversized') {
       score += 30
-      why.push('oversized')
+      why.push({ kind: 'fit', key: 'oversized' })
     }
   }
 
   if (brief.occasion && brief.occasion !== 'browsing') {
     if (tags.occasion.indexOf(brief.occasion) !== -1) {
       score += 25
-      why.push(brief.occasion)
+      why.push({ kind: 'occasion', key: brief.occasion })
     }
   }
 
@@ -79,7 +83,7 @@ function scoreProduct(product: Product, brief: StylistBrief): { score: number; w
     const hit = brief.colors.filter((c) => families.indexOf(c) !== -1)
     if (hit.length) {
       score += 25
-      why.push(hit[0])
+      why.push({ kind: 'color', key: hit[0] })
     }
   }
 
@@ -104,7 +108,8 @@ function scoreProduct(product: Product, brief: StylistBrief): { score: number; w
     const hits = words.filter((w) => haystack.indexOf(w) !== -1)
     if (hits.length) {
       score += Math.min(20, hits.length * 8)
-      why.push(hits[0])
+      // The customer's own word, so it is shown as they typed it.
+      why.push({ kind: 'text', text: hits[0] })
     }
   }
 
@@ -115,18 +120,29 @@ function scoreProduct(product: Product, brief: StylistBrief): { score: number; w
   return { score, why }
 }
 
-/** One line explaining a piece, composed only from attributes it really has. */
-function noteFor(product: Product, why: string[]): string {
+/** Up to three reasons for a piece, drawn only from attributes it really has. */
+function reasonsFor(product: Product, why: Reason[]): Reason[] {
   const tags = resolveTags(product)
-  const parts: string[] = []
-  if (tags.fit !== 'regular') parts.push(tags.fit)
+  const out: Reason[] = []
+  if (tags.fit !== 'regular') out.push({ kind: 'fit', key: tags.fit })
+
+  // The catalogue's own colour name ("Onyx") is product content, shown as the
+  // admin wrote it — the same name the product page displays.
   const colour = product.colors[0]?.name
-  if (colour) parts.push(colour.toLowerCase())
-  const matched = why.filter((w) => parts.indexOf(w) === -1).slice(0, 1)
-  return [...parts, ...matched].slice(0, 3).join(' · ')
+  if (colour) out.push({ kind: 'text', text: colour })
+
+  // One matched reason. Skip any that would repeat the fit already shown: an
+  // oversized piece matched on the "oversized" style would otherwise read
+  // "Oversized · Onyx · Oversized".
+  const repeatsFit = (r: Reason) =>
+    tags.fit === 'oversized' &&
+    (r.kind === 'fit' || (r.kind === 'style' && r.key === 'oversized'))
+  const matched = why.filter((r) => !repeatsFit(r)).slice(0, 1)
+
+  return out.concat(matched).slice(0, 3)
 }
 
-function toItem(product: Product, slot: Slot, brief: StylistBrief, score: number, why: string[]): LookItem {
+function toItem(product: Product, slot: Slot, brief: StylistBrief, score: number, why: Reason[]): LookItem {
   const sizes = availableSizes(product, brief.sizes)
   const preferred = brief.sizes?.find((s) => sizes.indexOf(s) !== -1)
   return {
@@ -135,7 +151,7 @@ function toItem(product: Product, slot: Slot, brief: StylistBrief, score: number
     availableSizes: sizes,
     suggestedSize: preferred ?? sizes[0] ?? null,
     suggestedColor: product.colors[0]?.name ?? '',
-    note: noteFor(product, why),
+    reasons: reasonsFor(product, why),
     score,
   }
 }
@@ -158,7 +174,7 @@ function toItem(product: Product, slot: Slot, brief: StylistBrief, score: number
  */
 const TOP_N = 5
 
-type Candidate = { product: Product; score: number; why: string[] }
+type Candidate = { product: Product; score: number; why: Reason[] }
 
 function assemble(
   ranked: Record<Slot, Candidate[]>,
@@ -226,7 +242,7 @@ function assemble(
 }
 
 function rank(products: Product[], brief: StylistBrief) {
-  const ranked: Record<Slot, { product: Product; score: number; why: string[] }[]> = {
+  const ranked: Record<Slot, { product: Product; score: number; why: Reason[] }[]> = {
     top: [],
     bottom: [],
     shoes: [],

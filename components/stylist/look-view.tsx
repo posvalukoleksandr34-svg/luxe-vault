@@ -5,9 +5,16 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  STYLIST_COLOR_LABELS,
+  STYLIST_FIT_LABELS,
+  STYLIST_OCCASION_LABELS,
+  STYLIST_STYLE_LABELS,
+} from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import type { Look, LookItem, Refinement, StylistResult } from '@/lib/stylist/types'
+import type { Look, LookItem, Reason, Refinement, StylistResult } from '@/lib/stylist/types'
+import type { LocalizedText } from '@/lib/types'
 
 /**
  * The look, and the ways to act on it.
@@ -27,6 +34,30 @@ const REFINEMENTS: { key: Refinement; label: Parameters<ReturnType<typeof useSto
   { key: 'more_premium', label: 'stylist.morePremium' },
   { key: 'different_colors', label: 'stylist.otherColors' },
 ]
+
+/**
+ * One reason, in the visitor's language.
+ *
+ * Keys go through the same label maps the consultation uses, so the card
+ * under a piece says "Стритвир" on a Russian page and "Streetwear" on an
+ * English one — it used to print the raw key on both. `text` reasons are
+ * already content (a catalogue colour name, the customer's own word) and are
+ * shown as-is.
+ */
+function reasonLabel(r: Reason, localize: (text: LocalizedText) => string): string {
+  switch (r.kind) {
+    case 'fit':
+      return localize(STYLIST_FIT_LABELS[r.key])
+    case 'style':
+      return localize(STYLIST_STYLE_LABELS[r.key])
+    case 'occasion':
+      return localize(STYLIST_OCCASION_LABELS[r.key])
+    case 'color':
+      return localize(STYLIST_COLOR_LABELS[r.key])
+    case 'text':
+      return r.text
+  }
+}
 
 export function LookSkeleton() {
   const { t } = useStore()
@@ -121,7 +152,7 @@ export function LookView({
 }
 
 function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
-  const { t, addToCart, pushToast } = useStore()
+  const { t, localize, addToCart, pushToast } = useStore()
   const [added, setAdded] = useState(false)
 
   const buyable = look.items.filter((i) => i.suggestedSize !== null)
@@ -131,7 +162,11 @@ function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
     for (const item of buyable) {
       addToCart({
         productId: item.product.id,
-        name: Object.values(item.product.name ?? {})[0] ?? item.product.category,
+        // The visitor's locale, like every other add-to-cart on the site.
+        // This took the FIRST key of the name object, which is whatever order
+        // the database returned — measured, that was `de` — so an outfit
+        // added from a Russian page put German names in the cart.
+        name: localize(item.product.name) || item.product.category,
         image: item.product.image,
         price: item.product.price,
         qty: 1,
@@ -145,9 +180,7 @@ function LookBlock({ look, missing }: { look: Look; missing: string[] }) {
     if (unavailable.length) {
       pushToast({
         title: t('stylist.partialAdd'),
-        description: unavailable
-          .map((i) => Object.values(i.product.name ?? {})[0])
-          .join(', '),
+        description: unavailable.map((i) => localize(i.product.name)).join(', '),
         variant: 'default',
       })
     }
@@ -228,9 +261,9 @@ function PieceCard({ item }: { item: LookItem }) {
 
       <div className="mt-3">
         <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground">{name}</h3>
-        {item.note && (
+        {item.reasons.length > 0 && (
           <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/50">
-            {item.note}
+            {item.reasons.map((r) => reasonLabel(r, localize)).join(' · ')}
           </p>
         )}
         <p className="mt-1 text-[13px] font-light text-foreground">

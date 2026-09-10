@@ -2,10 +2,15 @@
 
 import { Check, ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
-import { useStore } from '@/lib/store'
+import {
+  STYLIST_COLOR_LABELS,
+  STYLIST_OCCASION_LABELS,
+  STYLIST_STYLE_LABELS,
+} from '@/lib/i18n'
+import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { COLOR_FAMILIES, OCCASIONS, STYLES } from '@/lib/stylist/types'
-import type { ColorFamily, Occasion, StyleKey, StylistBrief } from '@/lib/stylist/types'
+import type { ColorFamily, StylistBrief } from '@/lib/stylist/types'
 
 /**
  * The consultation.
@@ -19,30 +24,12 @@ import type { ColorFamily, Occasion, StyleKey, StylistBrief } from '@/lib/stylis
  * the last step, so going back and changing an answer costs nothing.
  */
 
-const OCCASION_LABELS: Record<Occasion, string> = {
-  everyday: 'Everyday',
-  date: 'Date',
-  party: 'Party',
-  study: 'School / University',
-  vacation: 'Vacation',
-  work: 'Work',
-  special: 'Special event',
-  browsing: 'Just looking',
-}
+// Option LABELS live in lib/i18n.ts (STYLIST_*_LABELS), keyed by the same
+// system keys used below. The VALUES handed to the brief are always those
+// keys — `occasion: 'everyday'`, never "На каждый день" — so the engine's
+// matching is identical in every language.
 
-const STYLE_LABELS: Record<StyleKey, string> = {
-  streetwear: 'Streetwear',
-  minimal: 'Minimal',
-  casual: 'Casual',
-  old_money: 'Old money',
-  luxury: 'Luxury',
-  y2k: 'Y2K',
-  oversized: 'Oversized',
-  smart_casual: 'Smart casual',
-  sporty: 'Sporty',
-  open: 'Let me decide',
-}
-
+/** Swatch colours are presentation, not copy, so they stay here. */
 const COLOR_SWATCHES: Record<ColorFamily, string> = {
   black: '#141414',
   white: '#EFEBE3',
@@ -70,7 +57,7 @@ export function Consultation({
   initial?: StylistBrief
   onComplete: (brief: StylistBrief) => void
 }) {
-  const { t } = useStore()
+  const { t, tf, localize } = useStore()
   const [index, setIndex] = useState(0)
   const [brief, setBrief] = useState<StylistBrief>(initial ?? {})
 
@@ -129,7 +116,7 @@ export function Consultation({
         <Grid>
           {OCCASIONS.map((o) => (
             <Choice key={o} selected={brief.occasion === o} onClick={() => advance({ occasion: o })}>
-              {OCCASION_LABELS[o]}
+              {localize(STYLIST_OCCASION_LABELS[o])}
             </Choice>
           ))}
         </Grid>
@@ -139,7 +126,7 @@ export function Consultation({
         <Grid>
           {STYLES.map((s) => (
             <Choice key={s} selected={brief.style === s} onClick={() => advance({ style: s })}>
-              {STYLE_LABELS[s]}
+              {localize(STYLIST_STYLE_LABELS[s])}
             </Choice>
           ))}
         </Grid>
@@ -156,7 +143,10 @@ export function Consultation({
                 onClick={() => toggleColor(c)}
                 aria-pressed={on}
                 className={cn(
-                  'flex min-h-[56px] items-center gap-3 border px-4 text-left text-[13px] capitalize transition-all duration-300',
+                  // No `capitalize`: labels arrive correctly cased per
+                  // locale, and title-casing "Bleu marine" or "Blu navy"
+                  // would be wrong in French and Italian.
+                  'flex min-h-[56px] items-center gap-3 border px-4 text-left text-[13px] transition-all duration-300',
                   on
                     ? 'border-gold/60 bg-gold/[0.06] text-foreground'
                     : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
@@ -167,7 +157,7 @@ export function Consultation({
                   style={{ backgroundColor: COLOR_SWATCHES[c] }}
                   aria-hidden
                 />
-                {c}
+                {localize(STYLIST_COLOR_LABELS[c])}
                 {on && <Check className="ml-auto size-3.5 text-gold" />}
               </button>
             )
@@ -179,7 +169,10 @@ export function Consultation({
         <Grid>
           {BUDGETS.map((b) => (
             <Choice key={b} selected={brief.budget === b} onClick={() => advance({ budget: b })}>
-              {`≤ ${b.toLocaleString('de-CH')} CHF`}
+              {/* The shop's own price formatter, so budgets read exactly like
+                  every other price on the site — not a second hand-rolled
+                  'de-CH' format that could drift from it. */}
+              {tf('stylist.budgetUpTo', { price: formatPrice(b) })}
             </Choice>
           ))}
           <Choice
