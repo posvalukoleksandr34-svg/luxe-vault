@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/lib/store'
 
@@ -114,13 +115,25 @@ export function Hero() {
           {t('hero.subtitle')}
         </p>
 
-        <button
-          onClick={scrollToShop}
-          className="hero__cta animate-reveal-up group mt-14 inline-flex items-center gap-2.5 border border-gold/25 px-8 py-3.5 text-[11px] uppercase tracking-[0.28em] text-foreground/90"
-        >
-          {t('hero.cta')}
-          <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />
-        </button>
+        <div className="animate-reveal-up mt-14 flex flex-col items-center gap-4 sm:flex-row">
+          <button
+            onClick={scrollToShop}
+            className="hero__cta group inline-flex items-center gap-2.5 border border-gold/25 px-8 py-3.5 text-[11px] uppercase tracking-[0.28em] text-foreground/90"
+          >
+            {t('hero.cta')}
+            <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />
+          </button>
+
+          {/* Secondary, not competing with the primary CTA: someone who knows
+              what they want browses; someone who does not asks the stylist. */}
+          <Link
+            href="/stylist"
+            className="tap-safe inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gold/80 transition-colors duration-300 hover:text-gold"
+          >
+            <Sparkles className="size-3.5" />
+            {t('stylist.cta')}
+          </Link>
+        </div>
       </div>
 
       {/* 5. Vignette, painted over everything but the content, so the frame

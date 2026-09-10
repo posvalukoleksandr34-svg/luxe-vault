@@ -55,6 +55,11 @@ const LIMITS = {
    *  an unthrottled search endpoint is a cheap way to make the database work. */
   'search': { max: 60, windowSeconds: 300 },
 
+  /** AI Stylist. Each call reads the whole catalogue and may spend a model
+   *  token budget, so it is bounded — but generously, because pressing "try
+   *  another" repeatedly is the intended way to use the feature. */
+  'stylist': { max: 40, windowSeconds: 300 },
+
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */
   'coupon.validate': { max: 15, windowSeconds: 600 },

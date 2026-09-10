@@ -120,6 +120,15 @@ export type Product = {
    *  line at all rather than a label with nothing after it. */
   brand?: string
 
+  /**
+   * AI Stylist metadata: style register, fit, occasion, season.
+   *
+   * Undefined means "not tagged", which is NOT the same as "no style" — the
+   * stylist derives a fallback from the product's category, colours, name and
+   * price rather than excluding it. See lib/stylist/tagging.ts.
+   */
+  styleTags?: import('@/lib/stylist/types').StyleTags
+
   /** Specification rows shown on the product page: composition, care,
    *  dimensions. Plain strings rather than localised text — an admin will not
    *  maintain five translations of "100% cotton", and a half-translated spec

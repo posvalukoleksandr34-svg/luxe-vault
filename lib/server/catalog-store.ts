@@ -28,7 +28,7 @@ const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
 const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
-  colors, statuses, is_new, limited, size_chart, specs, brand,
+  colors, statuses, is_new, limited, size_chart, specs, brand, style_tags,
   collection:collections ( slug ),
   category:categories ( slug )
 `
@@ -129,6 +129,10 @@ function rowToProduct(row: Record<string, unknown>): Product {
     // collapse to undefined here and the label is omitted downstream rather
     // than rendered empty.
     brand: ((row.brand as string | null | undefined) ?? '').trim() || undefined,
+    // Absent (pre-0023) and null both mean "not tagged"; the stylist derives a
+    // fallback rather than dropping the product.
+    styleTags:
+      (row.style_tags as import('@/lib/stylist/types').StyleTags | null | undefined) ?? undefined,
     isNew: Boolean(row.is_new),
     limited: Boolean(row.limited),
     sizeChart: (row.size_chart as SizeMeasurement[] | null) ?? undefined,
@@ -175,10 +179,11 @@ async function resolveProductSelect(): Promise<string> {
 
   const supabase = createAdminClient()
 
-  const [variants, specs, brand] = await Promise.all([
+  const [variants, specs, brand, styleTags] = await Promise.all([
     supabase.from('product_variants').select('id').limit(1),
     supabase.from('products').select('specs').limit(1),
     supabase.from('products').select('brand').limit(1),
+    supabase.from('products').select('style_tags').limit(1),
   ])
 
   let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
@@ -196,6 +201,10 @@ async function resolveProductSelect(): Promise<string> {
   if (brand.error) {
     console.error('[catalog] products.brand is missing. Apply 0022_product_brand.sql.')
     select = select.replace(' brand,', '')
+  }
+  if (styleTags.error) {
+    console.error('[catalog] products.style_tags is missing. Apply 0023_stylist_metadata.sql.')
+    select = select.replace(' style_tags,', '')
   }
 
   productSelectCache = select
@@ -358,10 +367,12 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
     // Empty writes back as null, not '', so "no brand" has one representation
     // in the column instead of two the reads would have to keep untangling.
     brand: product.brand?.trim() || null,
+    style_tags: product.styleTags ?? null,
   }
 
   if (!select.includes(' specs,')) delete row.specs
   if (!select.includes(' brand,')) delete row.brand
+  if (!select.includes(' style_tags,')) delete row.style_tags
 
   return row
 }

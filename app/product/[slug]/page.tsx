@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Sparkles } from 'lucide-react'
 import { Breadcrumbs, breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
@@ -206,6 +208,23 @@ export default async function ProductPage({ params }: { params: { slug: string }
         <Breadcrumbs trail={trail} />
 
         <ProductDetail product={product} />
+
+        {/* "Style this piece" — the stylist opens with this product pinned
+            into its slot and builds the rest of the look around it. A quiet
+            row rather than a banner: someone on a product page is already
+            close to buying, and this is an aid, not an interruption. */}
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-y border-border/40 py-5">
+          <p className="text-[12px] font-light text-muted-foreground">
+            {pick(product.name)} — {pick(CATEGORY_LABELS[product.category]) || product.category}
+          </p>
+          <Link
+            href={`/stylist?product=${encodeURIComponent(product.id)}`}
+            className="inline-flex items-center gap-2 border border-gold/30 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+          >
+            <Sparkles className="size-3.5" />
+            Style this piece
+          </Link>
+        </div>
 
         {/* Everything below the fold. Client components reading the catalogue
             already in the store, so none of them costs a request. */}

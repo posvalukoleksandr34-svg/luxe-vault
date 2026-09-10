@@ -135,6 +135,15 @@ export function Header() {
         {/* gap-8 -> gap-9: hover scales each item 5%, and at the old spacing
             an enlarged item nearly touched its neighbour. */}
         <nav className="ml-10 hidden items-center gap-9 lg:flex">
+          {/* The stylist sits first in the nav: it is the entry point to the
+              catalogue for someone who does not yet know what they want. A
+              real Link, not a scroll handler, because it is its own route. */}
+          <Link
+            href="/stylist"
+            className="nav-gold text-[11px] uppercase tracking-[0.15em]"
+          >
+            {t('stylist.cta')}
+          </Link>
           <NavLink onClick={goCollections}>{t('nav.collections')}</NavLink>
           <NavLink onClick={goAbout}>{t('nav.about')}</NavLink>
           <NavLink onClick={goNew}>{t('filter.new')}</NavLink>
@@ -233,6 +242,13 @@ export function Header() {
       {mobileOpen && (
         <div className="animate-fade-in border-t border-border lg:hidden">
           <nav className="flex flex-col gap-0.5 px-4 py-3">
+            <Link
+              href="/stylist"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]"
+            >
+              {t('stylist.cta')}
+            </Link>
             <button onClick={goCollections} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
               {t('nav.collections')}
             </button>
