@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { openCookieSettings } from '@/components/cookie-consent'
+import { SoundToggle } from '@/components/sound-toggle'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { TOTAL_WINDOW } from '@/lib/fulfilment'
 import { useStore } from '@/lib/store'
@@ -167,6 +168,7 @@ export function Footer() {
             >
               {t('cookies.settings')}
             </button>
+            <SoundToggle />
           </nav>
           <p className="text-[11px] font-light text-muted-foreground/40">
             {t('footer.rights')}

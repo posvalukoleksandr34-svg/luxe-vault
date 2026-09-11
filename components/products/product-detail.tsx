@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
+import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { trackViewItem } from '@/lib/analytics'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
@@ -28,6 +29,7 @@ import type { Product } from '@/lib/types'
  */
 export function ProductDetail({ product }: { product: Product }) {
   const { addToCart, setPanel, t, localize, categoryLabels } = useStore()
+  const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
   const [size, setSize] = useState<string | null>(p.sizes.length === 1 ? p.sizes[0] : null)
@@ -224,6 +226,9 @@ export function ProductDetail({ product }: { product: Product }) {
 
   function handleAdd() {
     if (!size || outOfStock) return
+    // After the guard: the click confirms an item went in, so a press that
+    // added nothing stays silent. Covers the main button and the sticky bar.
+    playClickSound()
     addToCart({
       productId: p.id,
       name: productName,
@@ -465,6 +470,8 @@ export function ProductDetail({ product }: { product: Product }) {
                   key={s}
                   type="button"
                   onClick={() => setSize(s)}
+                  // No tick over a struck-through size: it cannot be chosen.
+                  onMouseEnter={soldOut ? undefined : playHoverSound}
                   disabled={soldOut}
                   aria-label={soldOut ? `${s} — ${t('sold.out')}` : s}
                   title={soldOut ? `${s} — ${t('sold.out')}` : undefined}

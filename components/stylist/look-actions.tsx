@@ -2,6 +2,7 @@
 
 import { Bookmark, Check, Link2, Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { capsuleUrl, rememberLook } from '@/lib/saved-looks'
 import { useStore } from '@/lib/store'
 import type { Look } from '@/lib/stylist/types'
@@ -15,6 +16,7 @@ import type { Look } from '@/lib/stylist/types'
  */
 export function LookActions({ look, savedId: initialId }: { look: Look; savedId?: string }) {
   const { t, tf, pushToast } = useStore()
+  const { playClickSound } = useAudioFeedback()
   const [savedId, setSavedId] = useState<string | null>(initialId ?? null)
   const [busy, setBusy] = useState<'save' | 'share' | null>(null)
   const [justSaved, setJustSaved] = useState(false)
@@ -46,6 +48,8 @@ export function LookActions({ look, savedId: initialId }: { look: Look; savedId?
 
   async function save() {
     if (busy) return
+    // Before the await, while still inside the click's gesture.
+    playClickSound()
     setBusy('save')
     try {
       const id = await ensureSaved()

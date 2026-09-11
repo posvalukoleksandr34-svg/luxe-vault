@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
 import { LookActions } from '@/components/stylist/look-actions'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import {
   STYLIST_COLOR_LABELS,
   STYLIST_FIT_LABELS,
@@ -181,12 +182,14 @@ export function LookBlock({
   savedId?: string
 }) {
   const { t, localize, addToCart, pushToast } = useStore()
+  const { playClickSound } = useAudioFeedback()
   const [added, setAdded] = useState(false)
 
   const buyable = look.items.filter((i) => i.suggestedSize !== null)
   const unavailable = look.items.filter((i) => i.suggestedSize === null)
 
   function addOutfit() {
+    playClickSound()
     for (const item of buyable) {
       addToCart({
         productId: item.product.id,
@@ -271,6 +274,7 @@ export function LookBlock({
 
 function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string[] }) {
   const { t, localize, addToCart } = useStore()
+  const { playHoverSound, playClickSound } = useAudioFeedback()
 
   // Sizes the customer asked for that this piece MAKES but cannot sell right
   // now. availableSizes only ever holds buyable sizes, so anything wanted,
@@ -336,6 +340,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
                   key={s}
                   type="button"
                   onClick={() => setSize(s)}
+                  onMouseEnter={playHoverSound}
                   className={cn(
                     'flex size-8 items-center justify-center border text-[11px] transition-colors duration-200',
                     size === s
@@ -351,7 +356,8 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  playClickSound()
                   addToCart({
                     productId: item.product.id,
                     name,
@@ -361,7 +367,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
                     size: size ?? item.availableSizes[0],
                     color: item.suggestedColor,
                   })
-                }
+                }}
                 className="border border-gold/30 bg-gold/5 px-4 py-2 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
               >
                 {t('product.addToCart')}

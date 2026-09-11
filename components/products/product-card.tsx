@@ -2,12 +2,14 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 
 export function ProductCard({ product }: { product: Product }) {
   const { localize, t, categoryLabels } = useStore()
+  const { playHoverSound } = useAudioFeedback()
   const outOfStock = product.statuses.includes('out_of_stock')
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
@@ -22,7 +24,11 @@ export function ProductCard({ product }: { product: Product }) {
     // to crawlers, cannot be opened in a new tab, middle-clicked, copied as a
     // link, or reached by keyboard — all of which a product page exists to
     // support. next/link also prefetches the route on hover.
-    <Link href={`/product/${encodeURIComponent(product.id)}`} className="group block">
+    <Link
+      href={`/product/${encodeURIComponent(product.id)}`}
+      onMouseEnter={playHoverSound}
+      className="group block"
+    >
       <div className="card-gold product-card relative aspect-[3/4] overflow-hidden">
         <Image
           src={product.image}

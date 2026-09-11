@@ -2,6 +2,7 @@
 
 import { Check, ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
+import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import {
   STYLIST_COLOR_LABELS,
   STYLIST_OCCASION_LABELS,
@@ -58,6 +59,7 @@ export function Consultation({
   onComplete: (brief: StylistBrief) => void
 }) {
   const { t, tf, localize } = useStore()
+  const { playHoverSound, playClickSound } = useAudioFeedback()
   const [index, setIndex] = useState(0)
   const [brief, setBrief] = useState<StylistBrief>(initial ?? {})
 
@@ -90,7 +92,10 @@ export function Consultation({
       <div className="mb-10 flex items-center gap-4">
         <button
           type="button"
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          onClick={() => {
+            playClickSound()
+            setIndex((i) => Math.max(0, i - 1))
+          }}
           disabled={index === 0}
           className="tap-safe flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 transition hover:text-foreground disabled:invisible"
         >
@@ -141,6 +146,7 @@ export function Consultation({
                 key={c}
                 type="button"
                 onClick={() => toggleColor(c)}
+                onMouseEnter={playHoverSound}
                 aria-pressed={on}
                 className={cn(
                   // No `capitalize`: labels arrive correctly cased per
@@ -193,6 +199,7 @@ export function Consultation({
                 key={s}
                 type="button"
                 onClick={() => toggleSize(s)}
+                onMouseEnter={playHoverSound}
                 aria-pressed={on}
                 className={cn(
                   'flex size-14 shrink-0 items-center justify-center border text-[13px] font-medium transition-all duration-300',
@@ -222,7 +229,10 @@ export function Consultation({
       <div className="mt-10 flex flex-wrap items-center gap-4">
         <button
           type="button"
-          onClick={() => advance()}
+          onClick={() => {
+            playClickSound()
+            advance()
+          }}
           className="hero__cta group inline-flex items-center gap-2.5 border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground"
         >
           {last ? t('stylist.finish') : t('stylist.next')}
@@ -230,7 +240,10 @@ export function Consultation({
         {!last && (
           <button
             type="button"
-            onClick={() => advance()}
+            onClick={() => {
+              playClickSound()
+              advance()
+            }}
             className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 transition hover:text-foreground"
           >
             {t('stylist.skip')}
@@ -255,10 +268,17 @@ function Choice({
   onClick: () => void
   children: React.ReactNode
 }) {
+  const { playHoverSound, playClickSound } = useAudioFeedback()
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        // A single-choice card also moves the consultation on, so it is
+        // navigation as much as selection: a click as well as the tick.
+        playClickSound()
+        onClick()
+      }}
+      onMouseEnter={playHoverSound}
       aria-pressed={selected}
       className={cn(
         'flex min-h-[64px] items-center justify-between gap-2 border px-4 text-left text-[13px] leading-tight transition-all duration-300',
