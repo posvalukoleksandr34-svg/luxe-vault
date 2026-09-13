@@ -426,10 +426,10 @@ export const UI = {
   "looks.styleYourOwn": { ru: "Собрать свой образ", en: "Build your own look", it: "Crea il tuo look", fr: "Composez votre look", de: "Eigenen Look erstellen" },
 
   // Curated Vaults — the saved capsules in the account.
-  "vault.title": { ru: "Мои капсулы", en: "Curated Vaults", it: "Le tue capsule", fr: "Vos capsules", de: "Ihre Capsules" },
+  "vault.title": { ru: "Сохранённые образы", en: "Saved Looks", it: "Look salvati", fr: "Looks enregistrés", de: "Gespeicherte Looks" },
   "vault.lead": { ru: "Образы, которые вы сохранили. Откройте капсулу, чтобы добавить вещи в корзину.", en: "The looks you have saved. Open one to put its pieces in your cart.", it: "I look che hai salvato. Aprine uno per aggiungere i capi al carrello.", fr: "Les looks que vous avez enregistrés. Ouvrez-en un pour ajouter ses pièces au panier.", de: "Ihre gespeicherten Looks. Öffnen Sie einen, um die Teile in den Warenkorb zu legen." },
   "vault.styleNew": { ru: "Собрать новую", en: "Style a new one", it: "Creane una nuova", fr: "En composer une", de: "Neue erstellen" },
-  "vault.empty": { ru: "Вы ещё не сохранили ни одной капсулы. Соберите образ со стилистом — и он останется здесь.", en: "You have not saved a capsule yet. Build a look with the stylist and it will be kept here.", it: "Non hai ancora salvato nessuna capsule. Crea un look con lo stylist e resterà qui.", fr: "Vous n'avez pas encore enregistré de capsule. Composez un look avec le styliste et il restera ici.", de: "Sie haben noch keine Capsule gespeichert. Erstellen Sie einen Look mit dem Stylist — er bleibt hier." },
+  "vault.empty": { ru: "Вы ещё не сохранили ни одного образа. Соберите образ со стилистом и нажмите «Сохранить образ» — он появится здесь.", en: "You have not saved a look yet. Build one with the stylist and press Save look — it will appear here.", it: "Non hai ancora salvato nessun look. Creane uno con lo stylist e premi Salva il look: comparirà qui.", fr: "Vous n'avez encore enregistré aucun look. Composez-en un avec le styliste et appuyez sur Enregistrer le look : il apparaîtra ici.", de: "Sie haben noch keinen Look gespeichert. Erstellen Sie einen mit dem Stylist und tippen Sie auf Look speichern — er erscheint dann hier." },
   "vault.emptyCta": { ru: "Собрать образ", en: "Build a look", it: "Crea un look", fr: "Composer un look", de: "Look erstellen" },
   "vault.pieces": { ru: "Вещей: {n}", en: "Pieces: {n}", it: "Capi: {n}", fr: "Pièces : {n}", de: "Teile: {n}" },
   "vault.match": { ru: "{n}% совпадения", en: "{n}% match", it: "{n}% di affinità", fr: "{n} % de correspondance", de: "{n}% Übereinstimmung" },
@@ -439,7 +439,16 @@ export const UI = {
   "vault.confirmDelete": { ru: "Точно?", en: "Sure?", it: "Sicuro?", fr: "Confirmer ?", de: "Sicher?" },
   "vault.deleted": { ru: "Капсула удалена", en: "Capsule deleted", it: "Capsule eliminata", fr: "Capsule supprimée", de: "Capsule gelöscht" },
   "vault.deleteFailed": { ru: "Не удалось удалить капсулу", en: "Could not delete the capsule", it: "Impossibile eliminare la capsule", fr: "Impossible de supprimer la capsule", de: "Capsule konnte nicht gelöscht werden" },
-  "vault.loadFailed": { ru: "Не удалось загрузить сохранённые капсулы", en: "Could not load your saved capsules", it: "Impossibile caricare le capsule salvate", fr: "Impossible de charger vos capsules enregistrées", de: "Gespeicherte Capsules konnten nicht geladen werden" },
+  "vault.loadFailed": { ru: "Не удалось загрузить сохранённые образы", en: "Could not load your saved looks", it: "Impossibile caricare i look salvati", fr: "Impossible de charger vos looks enregistrés", de: "Gespeicherte Looks konnten nicht geladen werden" },
+
+  // "Save look" for a visitor who is not signed in.
+  "looks.authTitle": { ru: "Сохраните образ в своём кабинете", en: "Keep this look in your account", it: "Conserva questo look nel tuo account", fr: "Gardez ce look dans votre compte", de: "Diesen Look im Konto behalten" },
+  "looks.authBody": { ru: "Войдите или создайте аккаунт — образ со всеми вещами и описанием стилиста появится в разделе «Сохранённые образы» и будет доступен с любого устройства.", en: "Sign in or create an account and this look — every piece and the stylist's note — will be waiting in Saved Looks, on any device.", it: "Accedi o crea un account: il look, con tutti i capi e la nota dello stylist, ti aspetterà in Look salvati, su qualsiasi dispositivo.", fr: "Connectez-vous ou créez un compte : ce look, avec chaque pièce et la note du styliste, vous attendra dans Looks enregistrés, sur tous vos appareils.", de: "Melden Sie sich an oder erstellen Sie ein Konto — dieser Look mit allen Teilen und der Notiz des Stylists wartet dann unter Gespeicherte Looks, auf jedem Gerät." },
+  "looks.authRegister": { ru: "Создать аккаунт", en: "Create an account", it: "Crea un account", fr: "Créer un compte", de: "Konto erstellen" },
+  "looks.authLater": { ru: "Не сейчас", en: "Not now", it: "Non ora", fr: "Pas maintenant", de: "Nicht jetzt" },
+  "looks.authNote": { ru: "Образ сохранится сразу после входа.", en: "The look is saved the moment you sign in.", it: "Il look viene salvato appena accedi.", fr: "Le look est enregistré dès votre connexion.", de: "Der Look wird gespeichert, sobald Sie angemeldet sind." },
+  "looks.savedToAccount": { ru: "Он уже в разделе «Сохранённые образы».", en: "It is in Saved Looks now.", it: "Ora è in Look salvati.", fr: "Il est maintenant dans Looks enregistrés.", de: "Er ist jetzt unter Gespeicherte Looks." },
+  "looks.openSaved": { ru: "Открыть", en: "Open", it: "Apri", fr: "Ouvrir", de: "Öffnen" },
 
   // Smart share — the desktop fallback modal. On a phone the OS sheet is used
   // instead and supplies its own copy.

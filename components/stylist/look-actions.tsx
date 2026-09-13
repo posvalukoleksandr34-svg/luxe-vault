@@ -1,7 +1,8 @@
 'use client'
 
 import { Bookmark, Check, Loader2, Share2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { SaveLookAuthDialog } from '@/components/stylist/save-look-dialog'
 import { ShareDialog } from '@/components/stylist/share-dialog'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { capsuleUrl, rememberLook } from '@/lib/saved-looks'
@@ -11,11 +12,29 @@ import { matchScore } from '@/lib/stylist/match'
 import type { Look, StylistBrief } from '@/lib/stylist/types'
 
 /**
+ * A saved_looks row this component knows about, and whose it is:
+ *  - a user id: saved while that customer was signed in — it is in their list;
+ *  - null: created by a guest (a guest's Share still needs a row for its link);
+ *  - undefined: arrived from a share link, so the owner is not ours to know.
+ */
+type SavedRow = { id: string; owner: string | null | undefined }
+
+/**
  * "Save look" and "Share capsule".
  *
- * Both need the same thing — a saved_looks row — so they share one save and
- * the second press reuses the first's id. Pressing Share after Save does not
- * create a second capsule, and neither does pressing Share twice.
+ * SAVE belongs to an account. A signed-out visitor gets an invitation to sign
+ * in rather than a silent anonymous save they could never find again, and the
+ * intent is kept: the look is saved the moment a session appears, so signing
+ * in from that prompt really does finish the job.
+ *
+ * SHARE works for anyone — a link has to open for whoever receives it — and
+ * reuses whatever row already exists, so Share after Save does not mint a
+ * second capsule, nor does pressing Share twice.
+ *
+ * The two meet in one case that matters: a row created by a guest's Share, or
+ * someone else's capsule opened from a link, does not belong to the customer
+ * who then presses Save. Reusing its id would report "saved" for a look that
+ * never appears in their Saved Looks — so Save creates their own row instead.
  */
 export function LookActions({
   look,
@@ -26,23 +45,37 @@ export function LookActions({
   savedId?: string
   /** The consultation's answers, when this look came from one. Only used to
    *  record how much of the brief the look matched — the figure the account's
-   *  vault cards show. A shared capsule has no brief and gets no score. */
+   *  saved-look cards show. A shared capsule has no brief and gets no score. */
   brief?: StylistBrief
 }) {
-  const { t, tf, pushToast } = useStore()
+  const { t, pushToast, currentUser, panel, openAuth } = useStore()
   const { playClickSound } = useAudioFeedback()
-  const [savedId, setSavedId] = useState<string | null>(initialId ?? null)
+  const [saved, setSaved] = useState<SavedRow | null>(
+    initialId ? { id: initialId, owner: undefined } : null,
+  )
   const [busy, setBusy] = useState<'save' | 'share' | null>(null)
   const [justSaved, setJustSaved] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [authPrompt, setAuthPrompt] = useState(false)
+  /** "Save" was pressed while signed out and the visitor chose to sign in. */
+  const [pendingSave, setPendingSave] = useState(false)
 
-  async function ensureSaved(): Promise<string | null> {
-    if (savedId) return savedId
+  /**
+   * A row id to act on.
+   *
+   * `forAccount`: this is a Save, so only a row owned by the signed-in
+   * customer will do. A Share takes any row, because a link is a link.
+   */
+  async function ensureSaved(forAccount: boolean): Promise<string | null> {
+    const me = currentUser?.id ?? null
+    if (saved && (!forAccount || (me !== null && saved.owner === me))) return saved.id
 
     const productIds = look.items.map((i) => i.product.id)
     const res = await fetch('/api/looks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // The stylist's own words, in the customer's language, go with the
+      // pieces — that is what the saved-look card shows under the thumbnails.
       body: JSON.stringify({
         productIds,
         notes: look.rationale,
@@ -61,20 +94,18 @@ export function LookActions({
       return null
     }
 
-    setSavedId(data.id)
+    // user_id is written from the SESSION on the server, never the body; `me`
+    // is the same session as the browser sees it.
+    setSaved({ id: data.id, owner: me })
     return data.id
   }
 
-  async function save() {
-    if (busy) return
-    // Before the await, while still inside the click's gesture.
-    playClickSound()
+  /** The save itself, for a signed-in customer. */
+  async function persist() {
     setBusy('save')
     try {
-      const id = await ensureSaved()
+      const id = await ensureSaved(true)
       if (!id) return
-      // Remembered even when the look arrived already saved (a capsule someone
-      // shared with you): "save" then means "keep it in my list".
       rememberLook({
         id,
         title: '',
@@ -84,7 +115,7 @@ export function LookActions({
       setJustSaved(true)
       pushToast({
         title: t('looks.saved'),
-        description: tf('looks.savedBody', { url: capsuleUrl(id) }),
+        description: t('looks.savedToAccount'),
         variant: 'gold',
       })
     } catch {
@@ -93,6 +124,41 @@ export function LookActions({
       setBusy(null)
     }
   }
+
+  function save() {
+    if (busy) return
+    // Before anything async, while still inside the click's gesture.
+    playClickSound()
+    if (!currentUser) {
+      setAuthPrompt(true)
+      return
+    }
+    void persist()
+  }
+
+  // Read through a ref by the effect below: persist is a new function every
+  // render, and the effect must run on the session arriving, not on renders.
+  const persistRef = useRef(persist)
+  persistRef.current = persist
+
+  /**
+   * Finishes a save that was waiting for a sign-in.
+   *
+   * The account drawer is mounted over this page, so signing in there — or
+   * registering and entering the emailed code — sets the session without this
+   * component unmounting, and the save completes on its own. If the drawer is
+   * closed without signing in, the intent lapses: a save that fires on some
+   * later, unrelated sign-in would be a surprise, not a convenience.
+   */
+  useEffect(() => {
+    if (!pendingSave) return
+    if (currentUser) {
+      setPendingSave(false)
+      void persistRef.current()
+      return
+    }
+    if (panel === null) setPendingSave(false)
+  }, [pendingSave, currentUser, panel])
 
   /**
    * Smart share: the OS sheet on a phone, our own modal on a desktop.
@@ -109,7 +175,7 @@ export function LookActions({
     playClickSound()
     setBusy('share')
     try {
-      const id = await ensureSaved()
+      const id = await ensureSaved(false)
       if (!id) return
       const url = capsuleUrl(id)
 
@@ -156,6 +222,16 @@ export function LookActions({
         )}
         {t('looks.share')}
       </button>
+
+      <SaveLookAuthDialog
+        open={authPrompt}
+        onOpenChange={setAuthPrompt}
+        onChoose={(mode) => {
+          setAuthPrompt(false)
+          setPendingSave(true)
+          openAuth(mode)
+        }}
+      />
 
       {/* Mounted only once there is a link to show, so the dialog cannot
           render an empty field before the capsule has been saved. */}

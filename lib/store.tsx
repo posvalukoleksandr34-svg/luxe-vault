@@ -54,7 +54,7 @@ export type PanelState = 'cart' | 'checkout' | 'user' | null
 /** Which section the account drawer shows. Lifted out of the drawer so a
  *  caller can open it on a specific tab rather than on whatever was open
  *  last. */
-export type AccountTab = 'orders' | 'profile'
+export type AccountTab = 'orders' | 'profile' | 'looks'
 
 export type SortKey =
   | 'default'
@@ -139,6 +139,11 @@ type StoreContextValue = {
   /** Opens the account drawer on a given section in one call, so a caller
    *  cannot set the tab and forget to open the panel. */
   openAccount: (tab?: AccountTab) => void
+  /** Which form the account drawer shows a signed-out visitor. */
+  authMode: 'login' | 'register'
+  /** Opens the account drawer on sign-in or on registration — for a prompt
+   *  that has already told the visitor which of the two they are about to do. */
+  openAuth: (mode?: 'login' | 'register') => void
   toasts: Toast[]
   query: string
   setQuery: (q: string) => void
@@ -496,6 +501,19 @@ function maybeSendWelcome() {
   const [accountTab, setAccountTab] = useState<AccountTab>('orders')
 
   /**
+   * Which form the account drawer shows a signed-out visitor.
+   *
+   * A request, not a preference: it reverts to sign-in whenever the drawer
+   * closes. Otherwise a "Save look" prompt that once asked for registration
+   * would make the header's profile icon reopen on the registration form
+   * forever after.
+   */
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  useEffect(() => {
+    if (panel === null) setAuthMode('login')
+  }, [panel])
+
+  /**
    * Opens the account drawer on a specific section.
    *
    * One call rather than two, because setting the tab and opening the panel
@@ -505,6 +523,12 @@ function maybeSendWelcome() {
    */
   const openAccount = useCallback((tab: AccountTab = 'orders') => {
     setAccountTab(tab)
+    setPanel('user')
+  }, [])
+
+  /** Opens the account drawer on sign-in or on registration, in one call. */
+  const openAuth = useCallback((mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode)
     setPanel('user')
   }, [])
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -1102,6 +1126,8 @@ function maybeSendWelcome() {
     accountTab,
     setAccountTab,
     openAccount,
+    authMode,
+    openAuth,
     toasts,
     query,
     setQuery,

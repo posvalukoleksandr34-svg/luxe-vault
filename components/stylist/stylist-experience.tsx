@@ -18,7 +18,7 @@ import type { Refinement, StylistBrief, StylistResult } from '@/lib/stylist/type
 type Phase = 'consult' | 'loading' | 'result' | 'error'
 
 export function StylistExperience({ anchorProductId }: { anchorProductId?: string }) {
-  const { t } = useStore()
+  const { t, locale } = useStore()
   const [phase, setPhase] = useState<Phase>('consult')
   const [result, setResult] = useState<StylistResult | null>(null)
   const [brief, setBrief] = useState<StylistBrief>({})
@@ -35,7 +35,10 @@ export function StylistExperience({ anchorProductId }: { anchorProductId?: strin
         const res = await fetch('/api/stylist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brief: nextBrief, refinement, seed: nextSeed }),
+          // The page's language travels with the brief: the stylist writes
+          // in the customer's own words' language, and in this one when the
+          // brief has no words of theirs to go by.
+          body: JSON.stringify({ brief: nextBrief, refinement, seed: nextSeed, locale }),
         })
         if (!res.ok) throw new Error(String(res.status))
         const data = (await res.json()) as StylistResult
@@ -50,7 +53,7 @@ export function StylistExperience({ anchorProductId }: { anchorProductId?: strin
         setBusy(false)
       }
     },
-    [result],
+    [result, locale],
   )
 
   function start(b: StylistBrief) {

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Bookmark,
   Loader2,
   LogOut,
   MailCheck,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
+import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
 import { SavedAddresses } from '@/components/saved-addresses'
@@ -38,6 +40,7 @@ export function UserPanel() {
   const {
     panel,
     setPanel,
+    authMode,
     currentUser,
     login,
     register,
@@ -53,6 +56,12 @@ export function UserPanel() {
   } = useStore()
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  // Opens on the form the caller asked for — registration when a "Save look"
+  // prompt's "Create an account" brought the visitor here, sign-in otherwise.
+  // Re-read on every opening, so the drawer never remembers a stale choice.
+  useEffect(() => {
+    if (panel === 'user') setMode(authMode)
+  }, [panel, authMode])
   const [authBusy, setAuthBusy] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   // Set after a successful sign-up that still needs email confirmation. Held
@@ -491,7 +500,7 @@ export function UserPanel() {
               </button>
             </div>
 
-            <div className="flex gap-1 border-b border-border px-6 py-2">
+            <div className="flex gap-1 overflow-x-auto border-b border-border px-6 py-2">
               <TabButton active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Package className="size-4" />}>
                 {t('user.orders')}
                 {unpaidCount > 0 && (
@@ -502,6 +511,9 @@ export function UserPanel() {
               </TabButton>
               <TabButton active={tab === 'profile'} onClick={() => setTab('profile')} icon={<UserIcon className="size-4" />}>
                 {t('user.profile')}
+              </TabButton>
+              <TabButton active={tab === 'looks'} onClick={() => setTab('looks')} icon={<Bookmark className="size-4" />}>
+                {t('vault.title')}
               </TabButton>
             </div>
 
@@ -514,6 +526,11 @@ export function UserPanel() {
                   onReload={() => void loadOrders()}
                 />
               )}
+
+              {/* The same list the /account page shows, in its drawer form —
+                  one implementation, so the two can never disagree about
+                  what has been saved. */}
+              {tab === 'looks' && <CuratedVaults compact />}
 
               {tab === 'profile' && (
                 <div className="space-y-4">
@@ -572,7 +589,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition',
+        'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition',
         active ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
       )}
     >

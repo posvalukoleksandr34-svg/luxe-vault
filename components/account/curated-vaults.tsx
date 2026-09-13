@@ -44,7 +44,9 @@ type State =
   /** 0024 has not been applied — nothing is broken, the feature is not set up. */
   | { kind: 'unconfigured' }
 
-export function CuratedVaults() {
+/** `compact` is the account drawer: a fixed panel, so .panel-gold (no lift)
+ *  and a single column, which is all 448px has room for. */
+export function CuratedVaults({ compact = false }: { compact?: boolean }) {
   const { currentUser, t, pushToast } = useStore()
   const [state, setState] = useState<State>({ kind: 'loading' })
 
@@ -95,7 +97,7 @@ export function CuratedVaults() {
   }
 
   return (
-    <section className="card-gold p-5">
+    <section className={compact ? 'panel-gold p-4' : 'card-gold p-5'}>
       <header className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 font-serif text-lg font-medium text-foreground">
@@ -143,7 +145,7 @@ export function CuratedVaults() {
       {state.kind === 'ready' && state.rows.length === 0 && <EmptyVaults />}
 
       {state.kind === 'ready' && state.rows.length > 0 && (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className={compact ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}>
           {state.rows.map((row) => (
             <VaultCard key={row.id} row={row} onDelete={() => void remove(row.id)} />
           ))}
