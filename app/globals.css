@@ -690,6 +690,52 @@ button:disabled:hover,
 }
 
 /* ---------------------------------------------------------------------------
+   Touch devices: glass cards hold still
+   ---------------------------------------------------------------------------
+   The lift, the deepening blur and the breathing glow above are hover physics
+   — they exist to answer a cursor. A touch screen has no cursor, and there
+   they misfire in the worst possible place: iOS applies :hover on tap and
+   keeps it, and :focus-within fires the instant a field inside the card is
+   tapped.
+
+   Measured at 375px with touch emulation, on the account forms: focusing the
+   password field moved its card 2px, raised the card's backdrop blur from 3px
+   to 7px, and started an INFINITE box-shadow animation — all on the ancestor
+   of the field being typed into, for as long as it was being typed into. A
+   focused input whose container is transformed, re-composited and repainted
+   every frame is exactly the setup iOS Safari handles worst: the caret drawn
+   where the field used to be, taps landing a few pixels short, typed text
+   lagging behind. The drawer's forms did this inside a fixed panel, which the
+   .panel-gold comment above already says a card must never do.
+
+   So without a hovering pointer, cards keep their resting geometry and blur.
+   The border and ground still warm on focus — that is the part that tells the
+   customer which card is active — and the glow is the static halo the
+   reduced-motion block uses, not a pulse.
+--------------------------------------------------------------------------- */
+@media (hover: none), (pointer: coarse) {
+  .card-gold:hover,
+  .card-gold:focus-visible,
+  .card-gold:focus-within {
+    transform: none;
+    animation: none;
+    backdrop-filter: blur(3px) saturate(115%);
+    -webkit-backdrop-filter: blur(3px) saturate(115%);
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.22),
+      0 8px 30px -12px hsl(var(--gold) / 0.34);
+  }
+
+  .panel-gold:hover,
+  .panel-gold:focus-within {
+    animation: none;
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.22),
+      0 8px 30px -12px hsl(var(--gold) / 0.34);
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Stripe developer-tools overlay
    ---------------------------------------------------------------------------
    Stripe.js injects a floating "developer tools" panel (its internal name is

@@ -100,7 +100,9 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <section className={compact ? 'card-gold p-4' : 'card-gold p-5'}>
+    // `compact` is the account drawer, a fixed panel: .panel-gold is the glass
+    // meant for that — no lift, so a field never moves as it takes focus.
+    <section className={compact ? 'panel-gold p-4' : 'card-gold p-5'}>
       <h3
         className={
           compact
