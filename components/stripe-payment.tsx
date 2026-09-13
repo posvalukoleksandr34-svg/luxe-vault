@@ -1,7 +1,7 @@
 'use client'
 
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import type { Appearance, StripeElementsOptions } from '@stripe/stripe-js'
+import type { Appearance, StripeElementsOptions, StripeError } from '@stripe/stripe-js'
 import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isStripeClientConfigured, stripePromise } from '@/lib/stripe-client'
@@ -56,6 +56,40 @@ const appearance: Appearance = {
       color: '#f2ecdc',
     },
   },
+}
+
+/**
+ * What went wrong, as the customer should hear it. Four kinds, each with its
+ * own title: declined (the bank said no), incomplete (interrupted — 3-D
+ * Secure abandoned or failed), network (we could not reach Stripe: try
+ * again), and field (a card field is wrong — Stripe's own message, already in
+ * the page's language, and the field is highlighted in the form).
+ *
+ * Never shows raw card data: Stripe's messages name the problem, not the card.
+ */
+type PaymentProblem = {
+  kind: 'declined' | 'incomplete' | 'network' | 'field'
+  message?: string
+}
+
+const PROBLEM_COPY = {
+  declined: { title: 'pay.declinedTitle', body: 'pay.declinedBody' },
+  incomplete: { title: 'pay.incompleteTitle', body: 'pay.incompleteBody' },
+  network: { title: 'pay.networkTitle', body: 'pay.networkBody' },
+} as const
+
+function problemFrom(error: StripeError): PaymentProblem {
+  if (error.type === 'validation_error') return { kind: 'field', message: error.message }
+  // 3-D Secure failed or was closed: nothing charged, the payment just did
+  // not finish.
+  if (error.code === 'payment_intent_authentication_failure') return { kind: 'incomplete' }
+  // Written for customers ("Your card has insufficient funds") and localised
+  // by Stripe — worth showing as the explanation.
+  if (error.type === 'card_error') return { kind: 'declined', message: error.message }
+  if (error.type === 'api_connection_error' || error.type === 'rate_limit_error') {
+    return { kind: 'network' }
+  }
+  return { kind: 'incomplete' }
 }
 
 export function StripePayment({
@@ -147,7 +181,7 @@ function CheckoutForm({
 
   const [submitting, setSubmitting] = useState(false)
   const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<PaymentProblem | null>(null)
 
   // Re-read the intent after the server re-priced it in another currency.
   // Skipped on mount: the Element has only just fetched it.
@@ -169,9 +203,8 @@ function CheckoutForm({
 
     void stripe.retrievePaymentIntent(secret).then(({ paymentIntent }) => {
       if (paymentIntent?.status === 'succeeded') onPaid()
-      else if (paymentIntent?.status === 'requires_payment_method') {
-        setError(t('checkout.paymentFailed'))
-      }
+      else if (paymentIntent?.status === 'requires_payment_method') setError({ kind: 'declined' })
+      else if (paymentIntent?.status === 'canceled') setError({ kind: 'incomplete' })
     })
   }, [stripe, onPaid, t])
 
@@ -202,11 +235,7 @@ function CheckoutForm({
       // card_error / validation_error are safe to show verbatim — they are
       // written for customers ("Your card was declined"). Anything else is an
       // integration problem and gets a generic message.
-      setError(
-        confirmError.type === 'card_error' || confirmError.type === 'validation_error'
-          ? (confirmError.message ?? t('checkout.paymentFailed'))
-          : t('checkout.paymentFailed'),
-      )
+      setError(problemFrom(confirmError))
       setSubmitting(false)
       return
     }
@@ -226,10 +255,19 @@ function CheckoutForm({
         />
       </div>
 
+      {/* In the shop's own tones — gold rule, quiet text — not a red alarm:
+          a declined card is information, and the order is safe either way. */}
       {error && (
-        <p className="border-l-2 border-destructive bg-destructive/5 py-2 pl-3 text-[12px] font-light text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="border-l-2 border-gold/50 bg-gold/[0.04] py-2.5 pl-3 pr-2">
+          {error.kind !== 'field' && (
+            <p className="text-[11px] uppercase tracking-[0.15em] text-foreground">
+              {t(PROBLEM_COPY[error.kind].title)}
+            </p>
+          )}
+          <p className="mt-1 text-[12px] font-light leading-relaxed text-muted-foreground">
+            {error.message || (error.kind === 'field' ? t('checkout.paymentFailed') : t(PROBLEM_COPY[error.kind].body))}
+          </p>
+        </div>
       )}
 
       <button
@@ -238,7 +276,11 @@ function CheckoutForm({
         className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
       >
         {submitting && <Loader2 className="size-3.5 animate-spin" />}
-        {submitting ? t('checkout.paying') : t('checkout.payNow')}
+        {submitting
+          ? t('checkout.paying')
+          : error && error.kind !== 'field'
+            ? t('pay.tryAgain')
+            : t('checkout.payNow')}
       </button>
 
       <button

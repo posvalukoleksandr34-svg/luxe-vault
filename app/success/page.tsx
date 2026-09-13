@@ -1,6 +1,5 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { PaymentOutcome, type PaymentOutcomeState } from '@/components/payment-outcome'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +13,8 @@ export const dynamic = 'force-dynamic'
  * A successful return is forwarded to /checkout/success so a customer who was
  * bounced through their bank sees the same thank-you page as everyone else,
  * rather than a second, thinner confirmation screen. Only the outcomes that
- * page cannot express — still processing, or declined — are rendered here.
+ * page cannot express — still processing, declined, interrupted — are
+ * rendered here, in the visitor's language (see PaymentOutcome).
  *
  * IMPORTANT: `redirect_status` in this URL is a display hint, nothing more.
  * Anyone can type `?redirect_status=succeeded`, so neither this page nor the
@@ -30,73 +30,20 @@ export default function SuccessPage({
   const orderId = searchParams.order
   const status = searchParams.redirect_status
 
-  const state =
-    status === 'failed'
-      ? ('failed' as const)
+  // Stripe returns `requires_payment_method` when the bank declined or the
+  // 3-D Secure check failed; `failed` is the older spelling of the same thing.
+  const state: PaymentOutcomeState =
+    status === 'failed' || status === 'requires_payment_method'
+      ? 'declined'
       : status === 'processing'
-        ? ('processing' as const)
-        : ('succeeded' as const)
+        ? 'processing'
+        : status === 'canceled'
+          ? 'incomplete'
+          : 'succeeded'
 
   if (state === 'succeeded' && orderId) {
     redirect(`/checkout/success?order=${encodeURIComponent(orderId)}`)
   }
 
-  const copy = {
-    succeeded: {
-      Icon: CheckCircle2,
-      title: 'Оплата принята',
-      body: 'Спасибо! Мы получили платёж и уже готовим заказ к отправке. Подтверждение придёт на вашу почту.',
-    },
-    processing: {
-      Icon: Clock,
-      title: 'Платёж обрабатывается',
-      body: 'Банк ещё подтверждает операцию — это может занять несколько минут. Статус обновится в личном кабинете автоматически.',
-    },
-    failed: {
-      Icon: XCircle,
-      title: 'Платёж не прошёл',
-      body: 'Списание не состоялось. Заказ сохранён — его можно оплатить повторно из личного кабинета.',
-    },
-  }[state]
-
-  const { Icon } = copy
-
-  return (
-    <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center gap-6 px-6 text-center">
-      <Icon
-        className={state === 'failed' ? 'size-10 text-destructive' : 'size-10 text-gold'}
-        strokeWidth={1.25}
-      />
-
-      <div className="space-y-3">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">
-          {copy.title}
-        </h1>
-        <p className="text-[14px] font-light leading-relaxed text-muted-foreground">{copy.body}</p>
-      </div>
-
-      {orderId && (
-        <p className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground/70">
-          Заказ <span className="text-gold">{orderId}</span>
-        </p>
-      )}
-
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        {orderId && (
-          <Link
-            href={`/order/${orderId}`}
-            className="border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
-          >
-            Статус заказа
-          </Link>
-        )}
-        <Link
-          href="/"
-          className="border border-border px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300"
-        >
-          В магазин
-        </Link>
-      </div>
-    </main>
-  )
+  return <PaymentOutcome state={state} orderId={orderId} />
 }

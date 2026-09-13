@@ -130,6 +130,12 @@ function SuccessContent() {
           <p className="mx-auto mt-3 max-w-md text-[14px] font-light leading-relaxed text-muted-foreground">
             {t('success.subtitle')}
           </p>
+          {/* The payment's own state, as the webhook recorded it. A fast
+              customer can land here a second before Stripe's event does, so
+              "processing" is said plainly rather than implying success. */}
+          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-gold/80">
+            {order.paymentStatus === 'paid' ? t('pay.successTitle') : t('pay.processingTitle')}
+          </p>
 
           {/* The id a customer quotes to support. Monospaced and selectable. */}
           <div className="mt-7 inline-flex flex-col items-center gap-1 border border-gold/40 bg-gold/[0.05] px-6 py-4">
