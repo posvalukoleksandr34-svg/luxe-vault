@@ -9,16 +9,11 @@
 import 'server-only'
 
 import { SUPPORT_EMAIL } from '@/lib/data'
-import {
-  orderConfirmationHtml,
-  orderConfirmationSubject,
-  orderConfirmationText,
-} from '@/lib/server/emails/order-confirmation'
-import {
-  paymentReceiptHtml,
-  paymentReceiptSubject,
-  paymentReceiptText,
-} from '@/lib/server/emails/payment-receipt'
+import { emailLang, type EmailLang } from '@/lib/server/emails/copy'
+import { orderConfirmationEmail } from '@/lib/server/emails/order-confirmation'
+import { paymentFailedEmail } from '@/lib/server/emails/payment-failed'
+import { paymentReceiptEmail } from '@/lib/server/emails/payment-receipt'
+import { getOrderLocale } from '@/lib/server/order-locale'
 import {
   escapeHtml,
   isMailConfigured,
@@ -155,31 +150,36 @@ export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolea
   return ok
 }
 
+/** The order's language: the one given, else the one stored with the order
+ *  (orders.locale), else English. */
+async function langFor(order: Order, given?: EmailLang): Promise<EmailLang> {
+  if (given) return given
+  return emailLang(await getOrderLocale(order.id))
+}
+
 /**
- * Order confirmation to the customer.
+ * Order confirmation to the customer, in the language they checked out in.
  *
- * Returns false (never throws) when there is no address to send to, when
- * Resend is unconfigured, or when the send is rejected — the caller decides
- * what that means. For checkout it means nothing: the order is already
- * committed and a failed email must not surface as a failed purchase.
+ * Returns false (never throws) when there is no address to send to, when mail
+ * is unconfigured, or when the send is rejected — the caller decides what that
+ * means. For checkout it means nothing: the order is already committed and a
+ * failed email must not surface as a failed purchase.
  *
  * replyTo is the support inbox rather than the pinned `orders@` sender, so a
  * customer hitting Reply reaches a mailbox someone reads.
  */
-export async function sendOrderConfirmation(order: Order): Promise<boolean> {
+export async function sendOrderConfirmation(order: Order, lang?: EmailLang): Promise<boolean> {
   const to = order.customer.email?.trim()
   if (!to) return false
-
-  const { ok } = await sendEmail({
-    to,
-    replyTo: SUPPORT_INBOX,
-    subject: orderConfirmationSubject(order),
-    html: orderConfirmationHtml(order),
-    text: orderConfirmationText(order),
-  })
-  return ok
+  try {
+    const message = orderConfirmationEmail(order, await langFor(order, lang))
+    const { ok } = await sendEmail({ to, replyTo: SUPPORT_INBOX, ...message })
+    return ok
+  } catch (e) {
+    console.warn(`[emails] confirmation for ${order.id} threw:`, e)
+    return false
+  }
 }
-
 
 /**
  * Payment receipt, sent once Stripe confirms the money moved.
@@ -191,13 +191,30 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
 export async function sendPaymentReceipt(order: Order): Promise<boolean> {
   const to = order.customer.email?.trim()
   if (!to) return false
+  try {
+    const message = paymentReceiptEmail(order, await langFor(order))
+    const { ok } = await sendEmail({ to, replyTo: SUPPORT_INBOX, ...message })
+    return ok
+  } catch (e) {
+    console.warn(`[emails] receipt for ${order.id} threw:`, e)
+    return false
+  }
+}
 
-  const { ok } = await sendEmail({
-    to,
-    replyTo: SUPPORT_INBOX,
-    subject: paymentReceiptSubject(order),
-    html: paymentReceiptHtml(order),
-    text: paymentReceiptText(order),
-  })
-  return ok
+/**
+ * "Payment not completed". The webhook calls this at most once per order (it
+ * claims the send first), so a customer retrying a declined card three times
+ * gets one email, not three.
+ */
+export async function sendPaymentFailedEmail(order: Order): Promise<boolean> {
+  const to = order.customer.email?.trim()
+  if (!to) return false
+  try {
+    const message = paymentFailedEmail(order, await langFor(order))
+    const { ok } = await sendEmail({ to, replyTo: SUPPORT_INBOX, ...message })
+    return ok
+  } catch (e) {
+    console.warn(`[emails] payment-failed notice for ${order.id} threw:`, e)
+    return false
+  }
 }

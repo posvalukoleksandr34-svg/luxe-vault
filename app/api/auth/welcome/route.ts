@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { emailLang } from '@/lib/server/emails/copy'
 import { sendWelcomeEmail } from '@/lib/server/emails/send-lifecycle'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/supabase/server'
@@ -46,9 +47,12 @@ export async function POST() {
   // Already welcomed. The common case on every sign-in after the first.
   if (!data) return NextResponse.json({ sent: false })
 
+  // In the language the account was created in (recorded as user metadata at
+  // sign-up — the same source the password-recovery email uses).
   const sent = await sendWelcomeEmail(
     (data.email as string) || user.email || '',
     (data.name as string) || '',
+    emailLang(user.user_metadata?.language),
   )
 
   return NextResponse.json({ sent })

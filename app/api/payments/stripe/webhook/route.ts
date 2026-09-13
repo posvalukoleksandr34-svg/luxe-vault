@@ -8,7 +8,7 @@ import {
   releaseReceiptClaim,
   setPaymentStatus,
 } from '@/lib/server/orders-store'
-import { isMailConfigured, sendPaymentReceipt } from '@/lib/server/mailer'
+import { isMailConfigured, sendPaymentFailedEmail, sendPaymentReceipt } from '@/lib/server/mailer'
 import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
@@ -132,6 +132,15 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
       orderId: order.id,
       reason: intent.last_payment_error?.message,
     })
+  }
+
+  // "Payment not completed" email — once per ORDER, not once per declined
+  // attempt: a customer trying three cards should get one email, not three.
+  // The claim reuses the event ledger under a synthetic id; without the
+  // ledger (pre-0027) it is skipped rather than risk repeats.
+  if (next === 'failed' && isMailConfigured) {
+    const once = await claimStripeEvent(`email:payment_failed:${order.id}`, 'email.payment_failed')
+    if (once === 'claimed') await sendPaymentFailedEmail(order)
   }
 
   // Transactional receipt, sent only on a real settlement — guarded by an

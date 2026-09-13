@@ -72,6 +72,7 @@ export function CheckoutFlow({
     openAuth,
     currency,
     tf,
+    locale,
     cart,
     cartSubtotal,
     paymentMethods,
@@ -311,6 +312,8 @@ export function CheckoutFlow({
           // when told to, so an expired session cannot silently turn a
           // customer's order into an unattached one.
           guest: !currentUser,
+          // The language the emails about this order will be written in.
+          locale,
         }),
       })
       const data = await res.json().catch(() => ({}))

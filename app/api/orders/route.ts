@@ -7,7 +7,9 @@ import {
   validateOrderDraft,
   type OrderDraftBody,
 } from '@/lib/server/order-drafts'
+import { emailLang } from '@/lib/server/emails/copy'
 import { isMailConfigured, sendOrderConfirmation } from '@/lib/server/mailer'
+import { setOrderLocale } from '@/lib/server/order-locale'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -113,6 +115,12 @@ export async function POST(request: NextRequest) {
     throw e
   }
 
+  // The storefront language at checkout, stored with the order so every
+  // email about it — this confirmation, the receipt, the shipping notice —
+  // arrives in that language. Tolerant of migration 0027 not being applied.
+  const locale = (body as { locale?: unknown }).locale
+  await setOrderLocale(order.id, locale)
+
   // Confirmation is sent only after the order is committed, and its failure is
   // never allowed to fail the request. The purchase is already real at this
   // point — reporting an error here would make the customer think checkout
@@ -120,7 +128,7 @@ export async function POST(request: NextRequest) {
   // order, which is why checkout requires the address.
   let emailed = false
   if (isMailConfigured) {
-    emailed = await sendOrderConfirmation(order)
+    emailed = await sendOrderConfirmation(order, emailLang(locale))
     if (!emailed) {
       console.warn(
         `[orders] ${order.id} created but confirmation email was not sent ` +

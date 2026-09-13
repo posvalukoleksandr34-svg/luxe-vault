@@ -30,8 +30,42 @@ export const SUPPORT_FROM_ADDRESS = 'Luxe Vault <support@luxe-vault.store>'
 const API_KEY = process.env.RESEND_API_KEY
 const ENDPOINT = 'https://api.resend.com/emails'
 
-/** False when RESEND_API_KEY is absent — callers skip sending rather than fail. */
-export const isMailConfigured = Boolean(API_KEY)
+/**
+ * Delivery mode.
+ *
+ *   live — send to the real recipient.
+ *   test — never mail a customer: log a masked line instead or, with
+ *          EMAIL_TEST_RECIPIENT set (and a provider key), redirect every email
+ *          there with the intended recipient in the subject.
+ *
+ * EMAIL_DELIVERY=test|live chooses explicitly. Unset, it is live exactly when a
+ * mail provider is configured — so emails stay in test mode until one is, and
+ * a configured production shop keeps sending as it always has.
+ */
+export type EmailMode = 'live' | 'test'
+
+const MODE_SETTING = process.env.EMAIL_DELIVERY?.trim().toLowerCase()
+const TEST_RECIPIENT = process.env.EMAIL_TEST_RECIPIENT?.trim()
+
+export function emailMode(): EmailMode {
+  if (MODE_SETTING === 'test') return 'test'
+  if (MODE_SETTING === 'live') return 'live'
+  return API_KEY ? 'live' : 'test'
+}
+
+/**
+ * True when sending is worth attempting: a provider is configured, or test
+ * mode was chosen explicitly (then it logs). False otherwise — callers skip
+ * sending rather than fail.
+ */
+export const isMailConfigured = Boolean(API_KEY) || MODE_SETTING === 'test'
+
+/** "a***@example.com" — enough to recognise in a log, not enough to harvest. */
+function maskEmail(address: string): string {
+  const [local, domain] = address.split('@')
+  if (!domain) return '***'
+  return `${local.slice(0, 1)}***@${domain}`
+}
 
 export type SendEmailInput = {
   to: string | string[]
@@ -63,6 +97,17 @@ export type SendEmailResult =
  * server bundle that only ever needs to POST a string of HTML.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  if (emailMode() === 'test') {
+    const intended = (Array.isArray(input.to) ? input.to : [input.to]).map(maskEmail).join(', ')
+    if (!API_KEY || !TEST_RECIPIENT) {
+      // Rendered, not delivered. `ok` so callers treat it like a send and do
+      // not retry it forever.
+      console.info(`[mail:test] not sent — "${input.subject}" → ${intended}`)
+      return { ok: true, id: null }
+    }
+    input = { ...input, to: TEST_RECIPIENT, subject: `[TEST → ${intended}] ${input.subject}` }
+  }
+
   if (!API_KEY) {
     return {
       ok: false,
