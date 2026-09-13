@@ -22,6 +22,18 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
 
+/**
+ * The sign-in and registration fields.
+ *
+ * 44px tall with 16px text below md. The 16px is not taste: Safari on iOS
+ * magnifies the whole page when a focused field's text is smaller, and it does
+ * not zoom out again — which is what made this drawer's labels overlap and its
+ * buttons sit off-screen on a phone. Compact 14px from md up, where the
+ * desktop design is unchanged.
+ */
+const FIELD =
+  'h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm'
+
 export function UserPanel() {
   const {
     panel,
@@ -351,7 +363,8 @@ export function UserPanel() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+                    autoComplete="name"
+                    className={FIELD}
                   />
                 </div>
               )}
@@ -365,7 +378,8 @@ export function UserPanel() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+                  autoComplete="email"
+                  className={FIELD}
                 />
               </div>
 

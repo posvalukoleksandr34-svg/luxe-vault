@@ -4,6 +4,7 @@ import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { AmbientBackground } from '@/components/ambient-background';
+import { AudioFeedback } from '@/components/audio-feedback';
 import { PageTransition } from '@/components/page-transition';
 import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { CookieConsent } from '@/components/cookie-consent';
@@ -188,6 +189,12 @@ export default async function RootLayout({
             under it. Also outside StoreProvider: decorative, stateless, and
             it must never re-render when the cart does. */}
         <PointerAtmosphereLazy />
+
+        {/* UI sound, delegated from the document — one listener set for the
+            whole app rather than handlers on every control. Outside
+            StoreProvider: it reads no store state and must not re-render when
+            the cart does. */}
+        <AudioFeedback />
 
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen

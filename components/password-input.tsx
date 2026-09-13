@@ -80,7 +80,11 @@ export function PasswordInput({
           minLength={minLength}
           placeholder={placeholder}
           className={cn(
-            'w-full rounded-lg border bg-background px-3 py-2.5 pr-11 text-sm text-foreground outline-none transition focus:border-gold',
+            // 44px tall and 16px text on a phone (iOS zooms the page for
+            // anything smaller and never zooms back), stepping down to the
+            // compact desktop field at md. pr-11 keeps the text clear of the
+            // reveal button at both sizes.
+            'h-11 w-full rounded-lg border bg-background px-3.5 py-2.5 pr-11 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm',
             error ? 'border-destructive' : 'border-border',
             inputClassName,
           )}

@@ -177,7 +177,9 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
-        className="w-full border border-border bg-background px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold"
+        // 44px / 16px below md — the iOS zoom threshold; the desktop field is
+        // unchanged.
+        className="h-11 w-full border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]"
       />
     </label>
   )

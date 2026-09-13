@@ -49,6 +49,9 @@ export function OtpCodeInput({
         autoComplete="one-time-code"
         maxLength={OTP_CODE_LENGTH}
         placeholder={'0'.repeat(OTP_CODE_LENGTH)}
+        // Already 18px and deliberately so — opt out of the mobile 16px floor
+        // in globals.css, which would otherwise shrink the code.
+        data-field="lg"
         className={cn(
           'w-full rounded-lg border bg-background px-3 py-2.5 text-center font-mono text-lg tracking-[0.35em] text-foreground outline-none transition focus:border-gold',
           error ? 'border-destructive' : 'border-border',

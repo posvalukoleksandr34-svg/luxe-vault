@@ -262,7 +262,9 @@ export function PasswordResetModal({
                 required
                 autoFocus
                 autoComplete="email"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-gold"
+                // Same field metrics as every other auth input: 44px and 16px
+                // on a phone, compact from md up.
+                className="h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm"
               />
             </div>
 

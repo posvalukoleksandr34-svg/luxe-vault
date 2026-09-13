@@ -214,7 +214,11 @@ let context: AudioContext | null = null
 let resuming: Promise<boolean> | null = null
 let armed = false
 let lastPointerMove = 0
-let lastHover = 0
+/** Where the pointer was last seen. -1 until it has moved at all. */
+let lastX = -1
+let lastY = -1
+let lastTick = 0
+let lastClick = 0
 let hoverQuery: MediaQueryList | null | undefined
 
 function audioContextCtor(): AudioContextCtor | null {
@@ -305,7 +309,10 @@ export function armAudio(): void {
   window.addEventListener(
     'pointermove',
     (e) => {
-      if (e.pointerType === 'mouse') lastPointerMove = performance.now()
+      if (e.pointerType !== 'mouse') return
+      lastPointerMove = performance.now()
+      lastX = e.clientX
+      lastY = e.clientY
     },
     { passive: true },
   )
@@ -315,24 +322,81 @@ function running(): AudioContext | null {
   return context && context.state === 'running' ? context : null
 }
 
-/** Soft tick for hover. Silently does nothing whenever it should not play. */
-export function playHoverSound(): void {
+/** Anything with pointer coordinates: a DOM PointerEvent, React's synthetic
+ *  MouseEvent — so `onMouseEnter={playHoverSound}` needs no wrapper. */
+type PointerPosition = { clientX: number; clientY: number }
+
+/**
+ * Soft tick for hover. Silently does nothing whenever it should not play.
+ *
+ * The hard part is telling a pointer arriving at a card from a card arriving
+ * under a motionless pointer: scrolling a grid past a still mouse fires the
+ * same hover events, and ticking down a column of products as it scrolls past
+ * would be intolerable.
+ *
+ * WHERE the pointer is settles it. This event's coordinates are compared with
+ * where the pointer was last seen: a scroll moves the page, never the pointer,
+ * so they are identical and nothing plays. Any real approach changes them.
+ *
+ * A "was there a pointermove recently" test looks equivalent and is not, in
+ * both directions. Entering an element fires pointerover BEFORE the
+ * pointermove at that position, so a pointer parked and then nudged one pixel
+ * onto a button has no recent move and would be silent exactly when someone
+ * deliberately reached for the control (measured, in this app). And a browser
+ * that does emit a move while scrolling would make the test pass for the very
+ * case it exists to exclude. Time is only consulted for a caller with no event
+ * to hand.
+ */
+export function playHoverSound(event?: PointerPosition): void {
   if (!isSoundEnabled() || !canHover()) return
   const now = performance.now()
-  if (now - lastPointerMove > 120) return // the content moved, the pointer did not
-  if (now - lastHover < 45) return // sweeping across a row of buttons
+  if (event) {
+    if (event.clientX === lastX && event.clientY === lastY) return
+    lastX = event.clientX
+    lastY = event.clientY
+  } else if (now - lastPointerMove > 120) {
+    return
+  }
+  tick(now)
+}
+
+/**
+ * The same tick, for keyboard focus.
+ *
+ * A separate entry point because the two gates are opposites: a hover has to
+ * prove the POINTER moved, while a Tab press proves it did not. Tabbing down a
+ * form should feel like running a finger along it — and that holds on a tablet
+ * with a keyboard attached, so there is no `canHover()` here either.
+ */
+export function playFocusSound(): void {
+  if (!isSoundEnabled()) return
+  tick(performance.now())
+}
+
+function tick(now: number): void {
+  if (now - lastTick < 45) return // sweeping across a row of buttons
   const ctx = running()
   if (!ctx) return // never queue a hover — see note 1 above
-  lastHover = now
+  lastTick = now
   scheduleTone(ctx, ctx.destination, varied(HOVER_TONE))
 }
 
 /**
  * Muffled click for presses. Call it from the click handler itself — that is
  * what makes the very first press of a visit audible too.
+ *
+ * Idempotent within 40 ms, which is what lets one press be reported twice
+ * without being heard twice: a component that wires its own onClick sits
+ * inside the delegated document listener (lib/audio/global-feedback.ts), and
+ * a <label> press arrives a second time as the synthesised click on its
+ * input. The fastest deliberate double-click is ~120 ms apart, so nothing
+ * anyone meant to do is swallowed.
  */
 export function playClickSound(): void {
   if (!isSoundEnabled()) return
+  const now = performance.now()
+  if (now - lastClick < 40) return
+  lastClick = now
   const ctx = running()
   if (ctx) {
     scheduleTone(ctx, ctx.destination, varied(CLICK_TONE))

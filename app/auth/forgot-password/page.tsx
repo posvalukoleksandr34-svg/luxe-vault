@@ -122,7 +122,9 @@ function ForgotPasswordForm() {
             required
             autoFocus
             autoComplete="email"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+            // 44px / 16px on a phone so iOS does not zoom the page on focus
+            // and leave the form scrolled sideways; compact from md up.
+            className="h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none focus:border-gold md:h-10 md:px-3 md:text-sm"
           />
         </div>
 

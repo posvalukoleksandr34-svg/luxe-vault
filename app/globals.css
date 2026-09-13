@@ -1627,3 +1627,59 @@ iframe[src*="elements-inner-easel"] {
     /* Nothing to see — this exists purely to be tapped. */
   }
 }
+
+/* ---------------------------------------------------------------------------
+   FORM FIELDS ON A PHONE
+   ---------------------------------------------------------------------------
+   Three bugs with one cause: this layout's fields are 13-14px, and a phone
+   treats a field under 16px as something to be helped with.
+
+   1. FORCED ZOOM. Safari on iOS magnifies the page when a field with text
+      below 16px takes focus. It does not zoom back out afterwards, so the
+      customer is left on a page wider than the screen, scrolling sideways
+      through the rest of the form — the "text overlaps and the layout breaks"
+      report. Android does the same in some webviews.
+   2. CRAMPED LINES. 13px in a 38px box with a tight line-height clips
+      descenders and, in a wrapping field, laps one line over the next.
+   3. SMALL TARGETS. A 38px field is under the 44px both Apple and Google ask
+      for, and a mis-tap in a password field is invisible.
+
+   Fixed here, once, rather than in the ~30 components that render an input:
+   the rule is a property of the platform, not of any one form. It applies
+   below md (768px) only, so the desktop design is untouched.
+
+   `!important` is load-bearing and not laziness. A Tailwind utility on the
+   element (`text-[13px]`) is a class — specificity 0,1,0 — and beats any
+   element selector written here, whatever the layer order. Overriding it is
+   the entire point.
+
+   Opt out with data-field="lg" where a field is DELIBERATELY larger than
+   16px (the one-time-code input) — there the rule would shrink it.
+--------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([data-field='lg']),
+  select:not([data-field='lg']),
+  textarea:not([data-field='lg']) {
+    /* 16px is the exact threshold; anything at or above it is left alone. */
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Height for the finger, not for the text. Applied as a minimum so a field
+     that is already taller (a textarea, a multi-line address box) keeps its
+     size. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='hidden']),
+  select {
+    min-height: 44px;
+  }
+
+  /* A phone's field is a box the text sits inside, so give it room on both
+     axes — px-3 alone reads as text jammed against the border once the type
+     is 16px. Only where the component has not set its own horizontal padding. */
+  input:not([class*='px-']):not([type='checkbox']):not([type='radio']),
+  select:not([class*='px-']),
+  textarea:not([class*='px-']) {
+    padding-inline: 0.875rem;
+  }
+}

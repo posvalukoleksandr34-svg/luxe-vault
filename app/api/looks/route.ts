@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('looks.save', request)
   if (limited) return limited
 
-  let body: { productIds?: unknown; title?: unknown; notes?: unknown }
+  let body: { productIds?: unknown; title?: unknown; notes?: unknown; matchScore?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -65,13 +65,32 @@ export async function POST(request: NextRequest) {
 
   const title = typeof body.title === 'string' ? body.title.trim().slice(0, 80) : ''
   const notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 500) : ''
-  const user = await getCurrentUser()
+  // How much of the brief the look matched, for the Curated Vaults card.
+  // Clamped and rounded here rather than trusted: it arrives from the browser,
+  // and the column has a 0-100 check constraint that a stray value would trip.
+  const matchScore =
+    typeof body.matchScore === 'number' && Number.isFinite(body.matchScore)
+      ? Math.max(0, Math.min(100, Math.round(body.matchScore)))
+      : null
 
-  const { data, error } = await createAdminClient()
+  const user = await getCurrentUser()
+  const supabase = createAdminClient()
+  const row = { user_id: user?.id ?? null, product_ids: productIds, title, notes }
+
+  let { data, error } = await supabase
     .from('saved_looks')
-    .insert({ user_id: user?.id ?? null, product_ids: productIds, title, notes })
+    .insert({ ...row, match_score: matchScore })
     .select('id')
     .single()
+
+  // 0025 adds match_score. Without it PostgREST rejects the whole insert for
+  // an unknown column, which would break saving entirely on a database that
+  // is one migration behind — so drop the column and save the look anyway.
+  // The card just shows no score until 0025 is applied.
+  if (error && (error.code === 'PGRST204' || error.code === '42703')) {
+    console.warn('[looks] saved_looks.match_score is missing. Apply 0025 to record match scores.')
+    ;({ data, error } = await supabase.from('saved_looks').insert(row).select('id').single())
+  }
 
   if (error || !data) {
     // 42P01 / PGRST205: the table does not exist — 0024 has not been applied.

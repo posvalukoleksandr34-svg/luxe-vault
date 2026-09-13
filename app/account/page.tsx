@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Bookmark,
   Loader2,
   LogIn,
   MapPin,
@@ -12,6 +13,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
+import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -44,14 +46,26 @@ import type { Order } from '@/lib/types'
  * way it looks like it should.
  */
 
-type TabKey = 'profile' | 'orders' | 'addresses' | 'settings'
+type TabKey = 'profile' | 'orders' | 'vaults' | 'addresses' | 'settings'
 
 const TABS: { key: TabKey; icon: typeof UserIcon; labelKey: Parameters<ReturnType<typeof useStore>['t']>[0] }[] = [
   { key: 'profile', icon: UserIcon, labelKey: 'account.profile' },
   { key: 'orders', icon: Package, labelKey: 'user.orders' },
+  // Saved capsules. Between orders and addresses: it is the other list of
+  // things the customer has chosen, and it belongs beside them rather than
+  // buried under settings.
+  { key: 'vaults', icon: Bookmark, labelKey: 'vault.title' },
   { key: 'addresses', icon: MapPin, labelKey: 'address.title' },
   { key: 'settings', icon: Settings, labelKey: 'account.settings' },
 ]
+
+/**
+ * Account fields: 44px tall with 16px text on a phone, compact from md up.
+ * The 16px is what stops Safari on iOS zooming the page when a field takes
+ * focus — it never zooms back, which left the form scrolled sideways.
+ */
+const FIELD =
+  'h-11 w-full border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]'
 
 export default function AccountPage() {
   return (
@@ -178,6 +192,7 @@ function AccountDashboard() {
         <div className="min-w-0">
           {tab === 'profile' && <ProfileTab />}
           {tab === 'orders' && <OrdersTab />}
+          {tab === 'vaults' && <CuratedVaults />}
           {tab === 'addresses' && <SavedAddresses />}
           {tab === 'settings' && <PasswordForm />}
         </div>
@@ -264,7 +279,7 @@ function ProfileTab() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
-              className="w-full border border-border bg-background px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold"
+              className={FIELD}
             />
           </Labelled>
 
@@ -274,7 +289,7 @@ function ProfileTab() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              className="w-full border border-border bg-background px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold"
+              className={FIELD}
             />
           </Labelled>
 

@@ -54,6 +54,16 @@ export function rememberLook(ref: SavedLookRef): void {
   }
 }
 
+/** Drops one look from this browser's list — after it has been deleted from
+ *  the account, so a removed capsule cannot come back as a guest reference. */
+export function forgetLook(id: string): void {
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(readSavedLooks().filter((r) => r.id !== id)))
+  } catch {
+    // Same as remembering: a convenience, never a reason to fail the delete.
+  }
+}
+
 /** The public link for a capsule. */
 export function capsuleUrl(id: string): string {
   return `${window.location.origin}/stylist/share/${encodeURIComponent(id)}`

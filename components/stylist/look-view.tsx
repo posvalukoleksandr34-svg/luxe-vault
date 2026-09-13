@@ -16,7 +16,14 @@ import {
 } from '@/lib/i18n'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import type { Look, LookItem, Reason, Refinement, StylistResult } from '@/lib/stylist/types'
+import type {
+  Look,
+  LookItem,
+  Reason,
+  Refinement,
+  StylistBrief,
+  StylistResult,
+} from '@/lib/stylist/types'
 import type { LocalizedText } from '@/lib/types'
 
 /**
@@ -128,6 +135,7 @@ export function LookView({
           look={look}
           missing={result.missingSlots}
           wantedSizes={result.brief.sizes}
+          brief={result.brief}
         />
       ))}
 
@@ -172,6 +180,7 @@ export function LookBlock({
   wantedSizes,
   heading,
   savedId,
+  brief,
 }: {
   look: Look
   missing: string[]
@@ -180,6 +189,9 @@ export function LookBlock({
   wantedSizes?: string[]
   heading?: string
   savedId?: string
+  /** Passed straight through to Save, which records how much of the brief this
+   *  look matched. Absent for a shared capsule, which has no brief. */
+  brief?: StylistBrief
 }) {
   const { t, localize, addToCart, pushToast } = useStore()
   const { playClickSound } = useAudioFeedback()
@@ -266,7 +278,7 @@ export function LookBlock({
           <ShoppingBag className="size-4" />
           {added ? `${t('stylist.addOutfit')} ✓` : `${t('stylist.addOutfit')} — ${formatPrice(look.total)}`}
         </button>
-        <LookActions look={look} savedId={savedId} />
+        <LookActions look={look} savedId={savedId} brief={brief} />
       </div>
     </section>
   )

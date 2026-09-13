@@ -424,6 +424,32 @@ export const UI = {
   "looks.missingPieces": { ru: "Некоторых вещей из этой капсулы больше нет в каталоге: {n}", en: "Some pieces from this capsule are no longer in the catalogue: {n}", it: "Alcuni capi di questa capsule non sono più in catalogo: {n}", fr: "Certaines pièces de cette capsule ne sont plus au catalogue : {n}", de: "Einige Teile dieser Capsule sind nicht mehr im Katalog: {n}" },
   "looks.allGone": { ru: "Вещей из этой капсулы больше нет в каталоге.", en: "None of the pieces in this capsule are in the catalogue any more.", it: "Nessun capo di questa capsule è più in catalogo.", fr: "Aucune pièce de cette capsule n'est encore au catalogue.", de: "Keines der Teile dieser Capsule ist noch im Katalog." },
   "looks.styleYourOwn": { ru: "Собрать свой образ", en: "Build your own look", it: "Crea il tuo look", fr: "Composez votre look", de: "Eigenen Look erstellen" },
+
+  // Curated Vaults — the saved capsules in the account.
+  "vault.title": { ru: "Мои капсулы", en: "Curated Vaults", it: "Le tue capsule", fr: "Vos capsules", de: "Ihre Capsules" },
+  "vault.lead": { ru: "Образы, которые вы сохранили. Откройте капсулу, чтобы добавить вещи в корзину.", en: "The looks you have saved. Open one to put its pieces in your cart.", it: "I look che hai salvato. Aprine uno per aggiungere i capi al carrello.", fr: "Les looks que vous avez enregistrés. Ouvrez-en un pour ajouter ses pièces au panier.", de: "Ihre gespeicherten Looks. Öffnen Sie einen, um die Teile in den Warenkorb zu legen." },
+  "vault.styleNew": { ru: "Собрать новую", en: "Style a new one", it: "Creane una nuova", fr: "En composer une", de: "Neue erstellen" },
+  "vault.empty": { ru: "Вы ещё не сохранили ни одной капсулы. Соберите образ со стилистом — и он останется здесь.", en: "You have not saved a capsule yet. Build a look with the stylist and it will be kept here.", it: "Non hai ancora salvato nessuna capsule. Crea un look con lo stylist e resterà qui.", fr: "Vous n'avez pas encore enregistré de capsule. Composez un look avec le styliste et il restera ici.", de: "Sie haben noch keine Capsule gespeichert. Erstellen Sie einen Look mit dem Stylist — er bleibt hier." },
+  "vault.emptyCta": { ru: "Собрать образ", en: "Build a look", it: "Crea un look", fr: "Composer un look", de: "Look erstellen" },
+  "vault.pieces": { ru: "Вещей: {n}", en: "Pieces: {n}", it: "Capi: {n}", fr: "Pièces : {n}", de: "Teile: {n}" },
+  "vault.match": { ru: "{n}% совпадения", en: "{n}% match", it: "{n}% di affinità", fr: "{n} % de correspondance", de: "{n}% Übereinstimmung" },
+  "vault.missing": { ru: "Нет в каталоге: {n}", en: "No longer in the catalogue: {n}", it: "Non più in catalogo: {n}", fr: "Plus au catalogue : {n}", de: "Nicht mehr im Katalog: {n}" },
+  "vault.open": { ru: "Открыть", en: "Open", it: "Apri", fr: "Ouvrir", de: "Öffnen" },
+  "vault.delete": { ru: "Удалить капсулу", en: "Delete capsule", it: "Elimina capsule", fr: "Supprimer la capsule", de: "Capsule löschen" },
+  "vault.confirmDelete": { ru: "Точно?", en: "Sure?", it: "Sicuro?", fr: "Confirmer ?", de: "Sicher?" },
+  "vault.deleted": { ru: "Капсула удалена", en: "Capsule deleted", it: "Capsule eliminata", fr: "Capsule supprimée", de: "Capsule gelöscht" },
+  "vault.deleteFailed": { ru: "Не удалось удалить капсулу", en: "Could not delete the capsule", it: "Impossibile eliminare la capsule", fr: "Impossible de supprimer la capsule", de: "Capsule konnte nicht gelöscht werden" },
+  "vault.loadFailed": { ru: "Не удалось загрузить сохранённые капсулы", en: "Could not load your saved capsules", it: "Impossibile caricare le capsule salvate", fr: "Impossible de charger vos capsules enregistrées", de: "Gespeicherte Capsules konnten nicht geladen werden" },
+
+  // Smart share — the desktop fallback modal. On a phone the OS sheet is used
+  // instead and supplies its own copy.
+  "share.title": { ru: "Поделиться капсулой", en: "Share this capsule", it: "Condividi la capsule", fr: "Partager la capsule", de: "Capsule teilen" },
+  "share.lead": { ru: "Ссылка открывается у любого — регистрация не нужна.", en: "The link opens for anyone — no account needed.", it: "Il link si apre per chiunque, senza registrazione.", fr: "Le lien s'ouvre pour tout le monde, sans compte.", de: "Der Link öffnet sich für alle — ohne Konto." },
+  "share.link": { ru: "Ссылка на капсулу", en: "Capsule link", it: "Link della capsule", fr: "Lien de la capsule", de: "Capsule-Link" },
+  "share.copy": { ru: "Копировать", en: "Copy", it: "Copia", fr: "Copier", de: "Kopieren" },
+  "share.copied": { ru: "Скопировано", en: "Copied", it: "Copiato", fr: "Copié", de: "Kopiert" },
+  "share.copyManually": { ru: "Скопируйте ссылку из поля вручную", en: "Copy the link from the field by hand", it: "Copia il link dal campo manualmente", fr: "Copiez le lien depuis le champ manuellement", de: "Kopieren Sie den Link manuell aus dem Feld" },
+  "share.message": { ru: "Моя капсула Luxe Vault", en: "My Luxe Vault capsule", it: "La mia capsule Luxe Vault", fr: "Ma capsule Luxe Vault", de: "Meine Luxe Vault Capsule" },
   "fit.cta": { ru: "Подобрать размер", en: "Find my size", it: "Trova la mia taglia", fr: "Trouver ma taille", de: "Meine Größe finden" },
   "fit.title": { ru: "Подбор размера", en: "Find your size", it: "Trova la tua taglia", fr: "Trouvez votre taille", de: "Ihre Größe finden" },
   "fit.lead": { ru: "Укажите рост и вес — мы подскажем размер для этой модели.", en: "Enter your height and weight and we will suggest a size for this piece.", it: "Inserisci altezza e peso e ti suggeriremo una taglia per questo capo.", fr: "Indiquez votre taille et votre poids, nous vous suggérerons une taille pour cette pièce.", de: "Geben Sie Größe und Gewicht an, wir schlagen eine Größe für dieses Teil vor." },
