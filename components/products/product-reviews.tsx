@@ -2,7 +2,9 @@
 
 import { BadgeCheck, Loader2, MessageSquare, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { LoadError } from '@/components/load-error'
 import { ReviewListSkeleton } from '@/components/skeletons'
+import { EmptyState } from '@/components/state-view'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -45,6 +47,8 @@ export function ProductReviews({ productId }: { productId: string }) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [canReview, setCanReview] = useState(false)
   const [loading, setLoading] = useState(true)
+  // A failed request, which must not read as "this product has no reviews".
+  const [failed, setFailed] = useState(false)
 
   /** null = every rating. Filtering is client-side: the whole set is already
    *  here, and a round trip to hide four rows would be absurd. */
@@ -58,13 +62,16 @@ export function ProductReviews({ productId }: { productId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
+    setFailed(false)
     try {
       const res = await fetch(`/api/products/${encodeURIComponent(productId)}/reviews`)
-      if (!res.ok) return
+      if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
       setReviews(data.reviews ?? [])
       setStats(data.stats ?? null)
       setCanReview(Boolean(data.canReview))
+    } catch {
+      setFailed(true)
     } finally {
       setLoading(false)
     }
@@ -131,11 +138,29 @@ export function ProductReviews({ productId }: { productId: string }) {
         {t('review.title')}
       </h2>
 
-      {total === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <MessageSquare className="size-6 text-muted-foreground/25" strokeWidth={1.25} />
-          <p className="text-[13px] font-light text-muted-foreground">{t('review.empty')}</p>
-        </div>
+      {failed ? (
+        <LoadError
+          compact
+          title={t('state.reviewsFailed')}
+          onRetry={() => {
+            setLoading(true)
+            return load()
+          }}
+        />
+      ) : total === 0 ? (
+        <EmptyState
+          compact
+          icon={MessageSquare}
+          title={t('review.empty')}
+          hint={t('state.productReviewsHint')}
+          action={
+            canReview && !submitted && !writing
+              ? { label: t('review.write'), onClick: () => setWriting(true) }
+              : !canReview && !submitted
+                ? { label: t('state.storeReviews'), href: '/#reviews' }
+                : undefined
+          }
+        />
       ) : (
         <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
           {/* Summary. The breakdown is the useful part — an average of 4.2
@@ -234,7 +259,7 @@ export function ProductReviews({ productId }: { productId: string }) {
         </p>
       )}
 
-      {canReview && !submitted && (
+      {canReview && !submitted && (total > 0 || writing) && (
         <div className="mt-8 border-t border-border/50 pt-6">
           {!writing ? (
             <button

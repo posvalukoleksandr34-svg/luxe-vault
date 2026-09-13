@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { CountrySelect } from '@/components/country-select'
 import { DEFAULT_COUNTRY } from '@/components/phone-input'
 import { AddressListSkeleton } from '@/components/skeletons'
+import { EmptyState } from '@/components/state-view'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -144,12 +145,13 @@ export function SavedAddresses() {
       ) : (
         <>
           {addresses.length === 0 && !adding && (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <MapPin className="size-6 text-muted-foreground/30" strokeWidth={1.25} />
-              <p className="text-[12px] font-light text-muted-foreground">
-                {t('address.empty')}
-              </p>
-            </div>
+            <EmptyState
+              compact
+              icon={MapPin}
+              title={t('address.empty')}
+              hint={t('state.addressesHint')}
+              action={{ label: t('address.add'), onClick: () => setAdding(true), icon: Plus }}
+            />
           )}
 
           <ul className="space-y-2">

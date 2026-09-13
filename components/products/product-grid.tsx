@@ -3,6 +3,8 @@
 import { ChevronDown, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
+import { ProductGridSkeleton } from '@/components/skeletons'
+import { EmptyState } from '@/components/state-view'
 import { EMPTY_FILTER, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -57,8 +59,19 @@ export function ProductGrid({
    */
   wrap?: boolean
 } = {}) {
-  const { products, filter, setFilter, query, t, localize, categoryTree, groupLabels, categoryLabels } =
-    useStore()
+  const {
+    products,
+    filter,
+    setFilter,
+    query,
+    setQuery,
+    catalogLoading,
+    t,
+    localize,
+    categoryTree,
+    groupLabels,
+    categoryLabels,
+  } = useStore()
 
   // When the route pins the taxonomy, the store's own group/category are
   // ignored entirely rather than merged — a filter left over from the homepage
@@ -521,23 +534,33 @@ export function ProductGrid({
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-          <SearchX className="size-8 text-muted-foreground/25" strokeWidth={1.25} />
-          {/* Was a hardcoded Russian string on a site that ships five
-              languages, so four out of five customers met a dead end in a
-              language they had not chosen. */}
-          <p className="text-sm font-light text-muted-foreground">{t('filter.noResults')}</p>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="text-[12px] uppercase tracking-[0.1em] text-gold hover:underline"
-            >
-              {t('filter.clearAll')}
-            </button>
-          )}
-        </div>
+      {filtered.length === 0 && catalogLoading && products.length === 0 ? (
+        // The catalogue has not arrived yet: its shape, not "nothing found".
+        <ProductGridSkeleton count={8} label={t('common.loading')} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={SearchX}
+          className="py-24"
+          title={activeFilterCount > 0 || query.trim() ? t('filter.noResults') : t('state.emptyCollection')}
+          hint={
+            activeFilterCount > 0 || query.trim()
+              ? t('state.noResultsHint')
+              : t('state.emptyCollectionHint')
+          }
+          action={
+            activeFilterCount > 0 || query.trim()
+              ? {
+                  label: t('filter.clearAll'),
+                  onClick: () => {
+                    clearAllFilters()
+                    if (query) setQuery('')
+                  },
+                }
+              : locked
+                ? { label: t('state.goToCatalog'), href: '/#shop' }
+                : undefined
+          }
+        />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-x-5 gap-y-12 transition-all duration-300 sm:gap-x-7 md:grid-cols-3 xl:grid-cols-4">

@@ -23,6 +23,13 @@ import type { ColorFamily, StylistBrief } from '@/lib/stylist/types'
  *
  * The answers are held here and handed up as one brief; nothing is sent until
  * the last step, so going back and changing an answer costs nothing.
+ *
+ * Three ways to move, and they mean different things:
+ *   Next  — keep this answer and go on (needs an answer to keep);
+ *   Skip  — clear this question and go on, so the summary says "skipped"
+ *           rather than quietly reusing an answer given before;
+ *   Back  — return with every answer intact. The progress segments of steps
+ *           already reached are clickable too.
  */
 
 // Option LABELS live in lib/i18n.ts (STYLIST_*_LABELS), keyed by the same
@@ -48,29 +55,96 @@ const COLOR_SWATCHES: Record<ColorFamily, string> = {
 const BUDGETS = [150, 300, 500, 1000] as const
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const
 
-const STEPS = ['occasion', 'style', 'colors', 'budget', 'sizes', 'notes'] as const
-type Step = (typeof STEPS)[number]
+export const STYLIST_STEPS = ['occasion', 'style', 'colors', 'budget', 'sizes', 'notes'] as const
+export type StylistStep = (typeof STYLIST_STEPS)[number]
+/** Which questions the customer chose to skip — for the summary and the
+ *  progress rail, where "skipped" and "not reached" look different. */
+export type SkippedSteps = Partial<Record<StylistStep, boolean>>
+
+const STEPS = STYLIST_STEPS
+
+/** The brief field each step writes. */
+const FIELD: Record<StylistStep, keyof StylistBrief> = {
+  occasion: 'occasion',
+  style: 'style',
+  colors: 'colors',
+  budget: 'budget',
+  sizes: 'sizes',
+  notes: 'notes',
+}
+
+function isAnswered(step: StylistStep, brief: StylistBrief): boolean {
+  switch (step) {
+    case 'occasion':
+      return Boolean(brief.occasion)
+    case 'style':
+      return Boolean(brief.style)
+    case 'colors':
+      return Boolean(brief.colors?.length)
+    case 'budget':
+      // "No limit" is itself an answer — and the one selected by default.
+      return true
+    case 'sizes':
+      return Boolean(brief.sizes?.length)
+    case 'notes':
+      return Boolean(brief.notes?.trim())
+  }
+}
 
 export function Consultation({
   initial,
+  initialSkipped,
+  startAt = 0,
   onComplete,
 }: {
   initial?: StylistBrief
-  onComplete: (brief: StylistBrief) => void
+  initialSkipped?: SkippedSteps
+  /** Opens on this step — "Edit answers" returns to the start with every
+   *  answer still in place. */
+  startAt?: number
+  onComplete: (brief: StylistBrief, skipped: SkippedSteps) => void
 }) {
   const { t, tf, localize } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
-  const [index, setIndex] = useState(0)
+  const first = Math.min(Math.max(0, startAt), STEPS.length - 1)
+  const [index, setIndex] = useState(first)
+  // The furthest step reached, so the rail can jump forward again to steps
+  // already seen — but never ahead of them.
+  const [furthest, setFurthest] = useState(initial && Object.keys(initial).length ? STEPS.length - 1 : first)
   const [brief, setBrief] = useState<StylistBrief>(initial ?? {})
+  const [skipped, setSkipped] = useState<SkippedSteps>(initialSkipped ?? {})
 
-  const step: Step = STEPS[index]
+  const step: StylistStep = STEPS[index]
   const last = index === STEPS.length - 1
+  const answered = isAnswered(step, brief)
 
+  function goTo(i: number) {
+    setIndex(i)
+    setFurthest((f) => Math.max(f, i))
+  }
+
+  function moveOn(next: StylistBrief, nextSkipped: SkippedSteps) {
+    if (last) onComplete(next, nextSkipped)
+    else goTo(index + 1)
+  }
+
+  /** Keep the current answer (optionally setting it) and go on. */
   function advance(patch?: Partial<StylistBrief>) {
     const next = patch ? { ...brief, ...patch } : brief
-    if (patch) setBrief(next)
-    if (last) onComplete(next)
-    else setIndex((i) => i + 1)
+    const nextSkipped = { ...skipped, [step]: false }
+    setBrief(next)
+    setSkipped(nextSkipped)
+    moveOn(next, nextSkipped)
+  }
+
+  /** Clear this question and go on. */
+  function skip() {
+    const next: StylistBrief = { ...brief }
+    delete next[FIELD[step]]
+    const nextSkipped = { ...skipped, [step]: true }
+    setBrief(next)
+    setSkipped(nextSkipped)
+    moveOn(next, nextSkipped)
   }
 
   function toggleColor(c: ColorFamily) {
@@ -85,36 +159,73 @@ export function Consultation({
     setBrief({ ...brief, sizes: next.length ? next : undefined })
   }
 
+  const question = (s: StylistStep) => t(`stylist.q.${s}` as Parameters<typeof t>[0])
+
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Progress. A rule that fills rather than a percentage — this is a
-          consultation, not a form to be endured. */}
-      <div className="mb-10 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => {
-            playClickSound()
-            setIndex((i) => Math.max(0, i - 1))
-          }}
-          disabled={index === 0}
-          className="tap-safe flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 transition hover:text-foreground disabled:invisible"
-        >
-          <ChevronLeft className="size-3.5" />
-          {t('stylist.back')}
-        </button>
-        <div className="h-px flex-1 bg-border/50">
-          <div
-            className="h-px bg-gold transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{ width: `${((index + 1) / STEPS.length) * 100}%` }}
-          />
+      {/* Progress: back, the step count, and one segment per question —
+          answered, skipped, current, still ahead. Segments of steps already
+          reached are buttons. */}
+      <div className="mb-10">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              playClickSound()
+              setIndex((i) => Math.max(0, i - 1))
+            }}
+            disabled={index === 0}
+            className="tap-safe flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 transition hover:text-foreground disabled:invisible"
+          >
+            <ChevronLeft className="size-3.5" />
+            {t('stylist.back')}
+          </button>
+          <span className="shrink-0 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">
+            {t('stylist.step')} {index + 1}/{STEPS.length}
+          </span>
         </div>
-        <span className="shrink-0 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">
-          {t('stylist.step')} {index + 1}/{STEPS.length}
-        </span>
+        <ol className="grid grid-cols-6 gap-1.5" aria-label={t('stylist.progress')}>
+          {STEPS.map((s, i) => {
+            const status =
+              i === index
+                ? 'current'
+                : skipped[s]
+                  ? 'skipped'
+                  : i <= furthest && isAnswered(s, brief)
+                    ? 'done'
+                    : 'ahead'
+            const reachable = i !== index && i <= furthest
+            return (
+              <li key={s}>
+                <button
+                  type="button"
+                  onClick={() => goTo(i)}
+                  disabled={!reachable}
+                  aria-current={i === index ? 'step' : undefined}
+                  aria-label={`${t('stylist.step')} ${i + 1}: ${question(s)}${
+                    status === 'skipped' ? ` — ${t('stylist.skipped')}` : ''
+                  }`}
+                  className="no-juice group block w-full py-2 disabled:cursor-default"
+                >
+                  <span
+                    className={cn(
+                      'block h-[2px] transition-colors duration-500',
+                      status === 'current' && 'bg-gold',
+                      status === 'done' && 'bg-gold/60',
+                      status === 'skipped' && 'bg-muted-foreground/40',
+                      status === 'ahead' && 'bg-border',
+                      reachable && 'group-hover:bg-gold',
+                    )}
+                  />
+                </button>
+              </li>
+            )
+          })}
+        </ol>
       </div>
 
       <h2 className="mb-8 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-        {t(`stylist.q.${step}` as Parameters<typeof t>[0])}
+        {question(step)}
       </h2>
 
       {step === 'occasion' && (
@@ -233,22 +344,23 @@ export function Consultation({
             playClickSound()
             advance()
           }}
-          className="hero__cta group inline-flex items-center gap-2.5 border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground"
+          // Next keeps an answer, so it needs one; the last step's notes are
+          // optional, so "Build my look" is always available.
+          disabled={!last && !answered}
+          className="hero__cta group inline-flex items-center gap-2.5 border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           {last ? t('stylist.finish') : t('stylist.next')}
         </button>
-        {!last && (
-          <button
-            type="button"
-            onClick={() => {
-              playClickSound()
-              advance()
-            }}
-            className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 transition hover:text-foreground"
-          >
-            {t('stylist.skip')}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            playClickSound()
+            skip()
+          }}
+          className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 transition hover:text-foreground"
+        >
+          {t('stylist.skip')}
+        </button>
       </div>
     </div>
   )

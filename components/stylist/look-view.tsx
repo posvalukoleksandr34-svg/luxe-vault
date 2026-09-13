@@ -96,11 +96,14 @@ export function LookView({
   busy,
   onRefine,
   onRestart,
+  showRestart = true,
 }: {
   result: StylistResult
   busy: boolean
   onRefine: (r: Refinement) => void
   onRestart: () => void
+  /** The final screen has its own "Start over" row; this one is then hidden. */
+  showRestart?: boolean
 }) {
   const { t } = useStore()
 
@@ -154,13 +157,15 @@ export function LookView({
               {t(r.label)}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={onRestart}
-            className="tap-safe px-2 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/50 transition hover:text-foreground"
-          >
-            {t('stylist.restart')}
-          </button>
+          {showRestart && (
+            <button
+              type="button"
+              onClick={onRestart}
+              className="tap-safe px-2 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/50 transition hover:text-foreground"
+            >
+              {t('stylist.restart')}
+            </button>
+          )}
         </div>
       </div>
     </div>

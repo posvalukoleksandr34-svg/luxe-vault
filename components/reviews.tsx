@@ -1,8 +1,11 @@
 'use client'
 
-import { Star } from 'lucide-react'
+import { MessageSquare, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { LoadError } from '@/components/load-error'
 import { Reveal } from '@/components/reveal'
+import { ReviewListSkeleton } from '@/components/skeletons'
+import { EmptyState } from '@/components/state-view'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Review } from '@/lib/types'
@@ -13,21 +16,33 @@ export function Reviews() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
 
+  // A failed request is not "no reviews" — see LoadError.
+  const [failed, setFailed] = useState(false)
+  // Bumped by "retry" to run the effect again.
+  const [attempt, setAttempt] = useState(0)
+
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setFailed(false)
     fetch('/api/reviews')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status))
+        return res.json()
+      })
       .then((data) => {
         if (!cancelled) setReviews(Array.isArray(data.reviews) ? data.reviews : [])
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [attempt])
 
   function handleSubmitted(review: Review) {
     // The review is `pending` and not publicly visible yet — no optimistic
@@ -63,8 +78,21 @@ export function Reviews() {
           </Reveal>
         )}
 
-        {!loading && reviews.length === 0 && (
-          <p className="text-[13px] font-light text-muted-foreground">{t('reviews.empty')}</p>
+        {loading && <ReviewListSkeleton rows={3} label={t('common.loading')} />}
+
+        {!loading && failed && (
+          <LoadError title={t('state.reviewsFailed')} onRetry={() => setAttempt((n) => n + 1)} />
+        )}
+
+        {!loading && !failed && reviews.length === 0 && (
+          <EmptyState
+            icon={MessageSquare}
+            title={t('reviews.empty')}
+            hint={t('state.reviewsHint')}
+            action={
+              showForm ? undefined : { label: t('reviews.writeReview'), onClick: () => setShowForm(true) }
+            }
+          />
         )}
 
         {reviews.length > 0 && (

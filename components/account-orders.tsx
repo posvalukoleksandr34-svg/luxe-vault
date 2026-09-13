@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { LoadError } from '@/components/load-error'
+import { EmptyState } from '@/components/state-view'
 import { OrderListSkeleton } from '@/components/skeletons'
 import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
@@ -88,7 +89,7 @@ export function AccountOrders({
   onReload: () => void
   unpaidOnly?: boolean
 }) {
-  const { t, locale, pushToast } = useStore()
+  const { t, locale, pushToast, setPanel } = useStore()
   const [paying, setPaying] = useState<{ order: Order; token: string } | null>(null)
   // Client secret for a card retry. Minted on demand: a PaymentIntent created
   // eagerly for every unpaid order would leave abandoned intents in Stripe.
@@ -283,10 +284,13 @@ export function AccountOrders({
 
   if (orders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <Package className="size-9 text-muted-foreground/30" strokeWidth={1} />
-        <p className="text-sm font-light text-muted-foreground">{t('user.noOrders')}</p>
-      </div>
+      <EmptyState
+        icon={Package}
+        title={t('user.noOrders')}
+        hint={t('state.ordersHint')}
+        // From the account drawer: close it on the way to the catalogue.
+        action={{ label: t('state.goToCatalog'), href: '/#shop', onClick: () => setPanel(null) }}
+      />
     )
   }
 

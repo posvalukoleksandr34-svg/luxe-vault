@@ -1,9 +1,11 @@
 'use client'
 
-import { Bookmark, Loader2, Sparkles, Trash2 } from 'lucide-react'
+import { Bookmark, Sparkles, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { LoadError } from '@/components/load-error'
+import { Skeleton } from '@/components/ui/skeleton'
 import { forgetLook } from '@/lib/saved-looks'
 import { formatPrice, useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
@@ -117,23 +119,28 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
         </Link>
       </header>
 
+      {/* Shaped like the capsule cards: a strip of pieces, a title, a line. */}
       {state.kind === 'loading' && (
-        <div className="flex items-center justify-center py-12" role="status" aria-busy="true">
-          <Loader2 className="size-5 animate-spin text-gold" />
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label={t('common.loading')}
+          className={compact ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}
+        >
+          {[0, 1].map((i) => (
+            <div key={i} className="border border-border/60">
+              <Skeleton className="aspect-[3/1] w-full" />
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-2.5 w-1/3" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {state.kind === 'failed' && (
-        <div className="py-10 text-center">
-          <p className="text-[13px] font-light text-muted-foreground">{t('vault.loadFailed')}</p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-3 border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-foreground transition hover:border-gold/50 hover:text-gold"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
+        <LoadError compact title={t('vault.loadFailed')} onRetry={() => load()} />
       )}
 
       {state.kind === 'unconfigured' && (

@@ -96,6 +96,29 @@ export function AddressListSkeleton({ rows = 2, label }: { rows?: number; label:
 }
 
 /**
+ * The catalogue grid while the catalogue is still arriving: the product card's
+ * image, category, name and price, in the grid's own columns — so the first
+ * paint is the shape of the shop rather than "nothing found".
+ */
+export function ProductGridSkeleton({ count = 8, label }: { count?: number; label: string }) {
+  return (
+    <Region
+      label={label}
+      className="grid grid-cols-2 gap-x-5 gap-y-12 sm:gap-x-7 md:grid-cols-3 xl:grid-cols-4"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i}>
+          <Skeleton className="aspect-[3/4] w-full" />
+          <Skeleton className="mt-4 h-2.5 w-1/3" />
+          <Skeleton className="mt-2.5 h-3 w-3/4" />
+          <Skeleton className="mt-2.5 h-3 w-1/4" />
+        </div>
+      ))}
+    </Region>
+  )
+}
+
+/**
  * The order tracker on /order/[id]: a title, the status rail, and a panel.
  * Wider spacing than the list skeletons because that page is a single record
  * rather than a stack of them.

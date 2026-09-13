@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
 import { GuestCheckoutChoice } from '@/components/guest-checkout-choice'
+import { EmptyState } from '@/components/state-view'
 import { TrustBadges } from '@/components/trust-badges'
 import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
 import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
@@ -135,10 +136,19 @@ export function CartPanel() {
         </div>
 
         {cart.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-            <ShoppingBag className="size-10 text-muted-foreground/20" strokeWidth={1} />
-            <p className="text-sm font-light text-muted-foreground">{t('cart.empty')}</p>
-          </div>
+          <EmptyState
+            icon={ShoppingBag}
+            className="flex-1 px-6"
+            title={t('cart.empty')}
+            hint={t('state.cartHint')}
+            action={{
+              label: t('state.goToCatalog'),
+              onClick: () => {
+                setPanel(null)
+                router.push('/#shop')
+              },
+            }}
+          />
         ) : choosing ? (
           // An intermediate step INSIDE the drawer rather than a dialog over
           // it: the drawer sits at z-[100], above the shared dialog layer, so a

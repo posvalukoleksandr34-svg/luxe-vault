@@ -32,6 +32,9 @@ import { trackViewItem } from '@/lib/analytics'
 import { SHIPPING, deliveryDaysFor, describeDeliveryDays } from '@/lib/fulfilment'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { canShareNatively, copyText, shareNatively } from '@/lib/share'
+import { formatPrice, useStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
+import type { Product } from '@/lib/types'
 
 /**
  * The return window, in days. The same figure the returns policy states
@@ -47,9 +50,6 @@ const RETURN_DAYS = 14
  */
 const GALLERY_ARROW =
   'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
-import { formatPrice, useStore } from '@/lib/store'
-import { cn } from '@/lib/utils'
-import type { Product } from '@/lib/types'
 
 /**
  * Product detail, driven by a `product` prop rather than by store state.
@@ -169,6 +169,12 @@ export function ProductDetail({ product }: { product: Product }) {
       : namesSize
         ? tf(lowCount === 1 ? 'stock.lowInSizeOne' : 'stock.lowInSize', { n: lowCount, size })
         : tf(lowCount === 1 ? 'stock.lowOne' : 'stock.low', { n: lowCount })
+
+  // A colour that can still be bought, to offer when this one has sold out.
+  // Not when the whole product is marked out of stock: then none can.
+  const otherColor = p.statuses.includes('out_of_stock')
+    ? undefined
+    : p.colors.find((c) => c.name !== color && c.stock !== 0)
 
   // Never offer more than exists. 10 stays the ceiling for untracked products
   // and is the previous behaviour.
@@ -678,6 +684,42 @@ export function ProductDetail({ product }: { product: Product }) {
             </button>
           )}
         </div>
+
+        {/* Unavailable — the whole product, or this colour. Never a dead end:
+            another colour when one is in stock (shown beside "notify me", which
+            only covers THIS colour), otherwise the rest of the collection. A
+            single sold-out size needs neither: "notify me" is the answer and
+            the other sizes are right there. */}
+        {outOfStock &&
+          ((colorSoldOut && otherColor) || !(tracked && size && color && selectedStock === 0)) && (
+          <div className="mt-3 border border-border/60 px-4 py-3.5">
+            <p className="text-[11px] uppercase tracking-[0.15em] text-foreground">
+              {t('state.unavailableTitle')}
+            </p>
+            <p className="mt-1 text-[12px] font-light leading-relaxed text-muted-foreground">
+              {otherColor ? t('state.unavailableColorHint') : t('state.unavailableHint')}
+            </p>
+            {otherColor ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setColor(otherColor.name)
+                  setSelectedIndex(0)
+                }}
+                className="tap-safe mt-2 text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold/80"
+              >
+                {t('state.chooseColor')}
+              </button>
+            ) : (
+              <Link
+                href={`/category/${encodeURIComponent(p.group)}`}
+                className="tap-safe mt-2 inline-block text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold/80"
+              >
+                {t('state.viewSimilar')}
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* Delivery, timing, returns — each opens to the shop's own wording.
             Every figure is read from data, never typed in: the fee and the

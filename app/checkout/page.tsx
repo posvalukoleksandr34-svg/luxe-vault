@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { CheckoutFlow } from '@/components/checkout-flow'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Header } from '@/components/header'
+import { EmptyState } from '@/components/state-view'
 import { formatPrice, useStore } from '@/lib/store'
 
 /**
@@ -47,14 +48,12 @@ export default function CheckoutPage() {
       <>
         <Header />
         <main id="main" className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
-          <ShoppingBag className="size-9 text-muted-foreground/30" strokeWidth={1} />
-          <p className="text-sm font-light text-muted-foreground">{t('cart.empty')}</p>
-          <Link
-            href="/#shop"
-            className="border border-gold/40 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
-          >
-            {t('cart.continueShopping')}
-          </Link>
+          <EmptyState
+            icon={ShoppingBag}
+            title={t('cart.empty')}
+            hint={t('state.cartHint')}
+            action={{ label: t('state.goToCatalog'), href: '/#shop' }}
+          />
         </main>
       </>
     )
