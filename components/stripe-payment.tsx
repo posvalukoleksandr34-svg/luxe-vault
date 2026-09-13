@@ -69,19 +69,35 @@ export function StripePayment({
   onPaid: () => void
   onBack: () => void
 }) {
-  // Memoised on clientSecret alone. A fresh options object each render would
-  // remount the Element and clear a half-typed card number.
+  const { locale, t } = useStore()
+
+  /**
+   * `locale` is the SITE's language, passed explicitly.
+   *
+   * Left unset, Stripe uses 'auto' — the BROWSER's language, not the page's.
+   * On an Italian page in a Russian-language browser that drew every Stripe
+   * field (card number, expiry, CVC, country) and its billing labels and
+   * error messages ("Your card was declined") in Russian. All five of the
+   * site's locales are Stripe Elements locales, so the code passes straight
+   * through.
+   *
+   * Memoised on the secret and the locale only. A fresh options object every
+   * render would churn the Element; a locale change is applied in place by
+   * elements.update(), so switching language mid-payment re-labels the form
+   * without clearing a half-typed card number.
+   */
   const options: StripeElementsOptions = useMemo(
-    () => ({ clientSecret, appearance }),
-    [clientSecret],
+    () => ({ clientSecret, appearance, locale }),
+    [clientSecret, locale],
   )
 
   if (!isStripeClientConfigured || !stripePromise) {
+    // A deployment without NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY. The variable
+    // name is for whoever reads the console, not for the customer.
+    console.error('[stripe] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set.')
     return (
       <div className="border border-destructive/40 bg-destructive/5 p-4">
-        <p className="text-[12px] font-light text-destructive">
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set.
-        </p>
+        <p className="text-[12px] font-light text-destructive">{t('checkout.paymentUnavailable')}</p>
       </div>
     )
   }

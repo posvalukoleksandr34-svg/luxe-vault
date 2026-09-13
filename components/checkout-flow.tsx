@@ -297,7 +297,22 @@ export function CheckoutFlow({
         }
         // Otherwise surface the server's own wording — it is written for
         // customers and says what to actually do about it.
-        setSubmitError(data.error || t('checkout.orderFailed'))
+        // The server's own wording is NOT shown. It is Russian for some
+        // statuses and English for others (and a bare RATE_LIMITED for one),
+        // whatever language the page is in. The status says what happened;
+        // the words come from the dictionary, in the customer's language.
+        if (data.error) console.warn('[checkout] order refused:', res.status, data.error)
+        setSubmitError(
+          res.status === 401
+            ? t('checkout.errSessionExpired')
+            : res.status === 503
+              ? t('checkout.errSessionCheck')
+              : res.status === 429
+                ? t('checkout.errRateLimited')
+                : res.status === 400
+                  ? t('checkout.errOrderRejected')
+                  : t('checkout.orderFailed'),
+        )
         return
       }
 
@@ -646,7 +661,14 @@ export function CheckoutFlow({
                           : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
                       )}
                     >
-                      {method}
+                      {/* The value is a Russian string the server validates
+                          and orders store, so it stays the value; only the
+                          label follows the site's language. */}
+                      {method === CARD_PAYMENT_METHOD
+                        ? t('checkout.methodCard')
+                        : method === CRYPTO_PAYMENT_METHOD
+                          ? t('checkout.methodCrypto')
+                          : method}
                       {form.payment === method && <Check className="size-4" />}
                     </button>
                   ))}

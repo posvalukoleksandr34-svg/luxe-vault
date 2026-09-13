@@ -8,6 +8,7 @@ import { LoadError } from '@/components/load-error'
 import { OrderListSkeleton } from '@/components/skeletons'
 import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
+import { paymentMethodLabel } from '@/lib/payment-labels'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
@@ -169,7 +170,12 @@ export function AccountOrders({
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || !data.clientSecret) {
-          setRetryError(data.error ?? t('checkout.paymentUnavailable'))
+          // The route's wording is Russian whatever the page's language, so
+          // it goes to the console and the customer gets their own language.
+          if (data.error) console.warn('[pay-now] intent refused:', res.status, data.error)
+          setRetryError(
+            res.status === 409 ? t('checkout.errAlreadyPaid') : t('checkout.paymentUnavailable'),
+          )
           return
         }
         setRetrySecret(data.clientSecret)
@@ -222,7 +228,7 @@ export function AccountOrders({
         </button>
         <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
           {t('orders.payingFor')} <span className="text-foreground">{paying.order.id}</span>
-          <span className="ml-2 text-muted-foreground/50">· {paying.order.payment}</span>
+          <span className="ml-2 text-muted-foreground/50">· {paymentMethodLabel(paying.order.payment, t)}</span>
         </p>
 
         {/* Branches on the method stored with the order, so a card order
@@ -578,7 +584,7 @@ function OrderCard({
         <div>
           <p className="font-mono text-[13px] font-medium text-foreground">{order.id}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {new Date(order.createdAt).toLocaleDateString(locale)} · {order.payment}
+            {new Date(order.createdAt).toLocaleDateString(locale)} · {paymentMethodLabel(order.payment, t)}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">

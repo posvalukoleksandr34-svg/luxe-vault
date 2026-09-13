@@ -88,9 +88,26 @@ export function CryptoPayment({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, token, optionId: option.id, ticker: option.ticker }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setErrorMessage(data?.error || 'Не удалось создать платёж')
+        // The server's wording is not shown: it is Russian or English
+        // whatever the page's language, and for a provider failure it is the
+        // gateway's raw error. The route's `code` says what happened; the
+        // message is the customer's own language.
+        if (data?.error) console.warn('[crypto] payment not created:', res.status, data.error)
+        setErrorMessage(
+          t(
+            data?.code === 'ALREADY_PAID'
+              ? 'checkout.errAlreadyPaid'
+              : data?.code === 'CANCELLED'
+                ? 'checkout.errOrderCancelled'
+                : data?.code === 'CRYPTO_UNAVAILABLE'
+                  ? 'checkout.errCryptoUnavailable'
+                  : data?.code === 'NETWORK_UNAVAILABLE'
+                    ? 'checkout.errCryptoNetwork'
+                    : 'checkout.errCryptoCreate',
+          ),
+        )
         setStage('error')
         return
       }
@@ -128,7 +145,8 @@ export function CryptoPayment({
         }
       }, POLL_INTERVAL_MS)
     } catch {
-      setErrorMessage('Сеть недоступна')
+      // The request itself failed — no connection — not a server refusal.
+      setErrorMessage(t('checkout.errConnection'))
       setStage('error')
     }
   }

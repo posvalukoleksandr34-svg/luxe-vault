@@ -1,5 +1,6 @@
 'use client'
 
+import { paymentMethodLabel } from '@/lib/payment-labels'
 import Image from 'next/image'
 import {
   Check,
@@ -330,7 +331,7 @@ export function OrderTracker({ order }: { order: Order }) {
           </div>
           <div className="flex justify-between pt-1">
             <dt className="text-[11px] text-muted-foreground/60">{t('track.paymentMethod')}</dt>
-            <dd className="text-[11px] text-muted-foreground">{order.payment}</dd>
+            <dd className="text-[11px] text-muted-foreground">{paymentMethodLabel(order.payment, t)}</dd>
           </div>
         </dl>
       </section>

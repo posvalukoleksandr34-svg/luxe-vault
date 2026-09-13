@@ -13,11 +13,16 @@ export const dynamic = 'force-dynamic'
  *
  * Access is gated on the order's lookup token, the same secret the customer's
  * own browser stored when the order was placed.
+ *
+ * Every refusal carries a stable `code`. The browser shows its OWN message for
+ * each, in the customer's language; `error` is for logs only. It used to be
+ * shown verbatim — Russian on an Italian page, and for a provider failure the
+ * gateway's raw English error text.
  */
 export async function POST(request: NextRequest) {
   if (!isConfigured()) {
     return NextResponse.json(
-      { error: 'Оплата криптовалютой временно недоступна' },
+      { error: 'Оплата криптовалютой временно недоступна', code: 'CRYPTO_UNAVAILABLE' },
       { status: 503 },
     )
   }
@@ -26,31 +31,34 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request body', code: 'BAD_REQUEST' }, { status: 400 })
   }
 
   const { orderId, token, optionId, ticker } = body
   if (!orderId || !token || !optionId || !ticker) {
-    return NextResponse.json({ error: 'Malformed request' }, { status: 400 })
+    return NextResponse.json({ error: 'Malformed request', code: 'BAD_REQUEST' }, { status: 400 })
   }
 
   const order = await getOrderById(orderId)
   if (!order || !order.lookupToken || order.lookupToken !== token) {
     // Same response for "no such order" and "wrong token" so the endpoint
     // can't be used to probe which order ids exist.
-    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })
   }
   if (order.paymentStatus === 'paid') {
-    return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
+    return NextResponse.json({ error: 'Заказ уже оплачен', code: 'ALREADY_PAID' }, { status: 409 })
   }
   if (order.status === 'cancelled') {
-    return NextResponse.json({ error: 'Заказ отменён' }, { status: 409 })
+    return NextResponse.json({ error: 'Заказ отменён', code: 'CANCELLED' }, { status: 409 })
   }
 
   const tickers = await fetchAvailableTickers()
   const option = findResolvedOption(resolveAvailableOptions(tickers), optionId, ticker)
   if (!option) {
-    return NextResponse.json({ error: 'Выбранная сеть недоступна' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Выбранная сеть недоступна', code: 'NETWORK_UNAVAILABLE' },
+      { status: 400 },
+    )
   }
 
   const callbackUrl =
@@ -66,10 +74,13 @@ export async function POST(request: NextRequest) {
   })
 
   if (!payment.ok) {
-    return NextResponse.json({ error: payment.error.message }, { status: 502 })
+    return NextResponse.json({ error: payment.error.message, code: 'PROVIDER_ERROR' }, { status: 502 })
   }
   if (!payment.data.pay_address || !payment.data.pay_amount) {
-    return NextResponse.json({ error: 'Платёжный провайдер вернул неполные данные' }, { status: 502 })
+    return NextResponse.json(
+      { error: 'Платёжный провайдер вернул неполные данные', code: 'PROVIDER_ERROR' },
+      { status: 502 },
+    )
   }
 
   const updated = await setOrderPaymentSession(order.id, {
@@ -83,7 +94,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!updated) {
-    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })
   }
 
   return NextResponse.json({
