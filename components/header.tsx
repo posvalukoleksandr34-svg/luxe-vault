@@ -6,7 +6,7 @@ import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
-import { LOCALES } from '@/lib/i18n'
+import { LocaleCurrencyMenu } from '@/components/locale-currency-menu'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -23,8 +23,6 @@ export function Header() {
     cartCount,
     setPanel,
     t,
-    locale,
-    setLocale,
     query,
     setQuery,
     currentUser,
@@ -59,10 +57,8 @@ export function Header() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-  const [langOpen, setLangOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
-  const currentLang = LOCALES.find((l) => l.code === locale)
 
   /**
    * These target sections of the homepage. Now that the catalogue has its own
@@ -167,39 +163,8 @@ export function Header() {
             <SearchBox variant="desktop" />
           </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setLangOpen((v) => !v)}
-              className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground transition hover:text-foreground"
-            >
-              {currentLang?.flag}
-            </button>
-            {langOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-                <div className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-36 border border-border bg-popover py-1.5 shadow-2xl">
-                  {LOCALES.map((l) => (
-                    <button
-                      key={l.code}
-                      type="button"
-                      onClick={() => {
-                        setLocale(l.code)
-                        setLangOpen(false)
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition hover:bg-accent',
-                        l.code === locale ? 'text-gold' : 'text-foreground',
-                      )}
-                    >
-                      <span className="text-[10px] tracking-wider">{l.flag}</span>
-                      {l.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Language and currency — "IT · CHF". */}
+          <LocaleCurrencyMenu />
 
           {/* Renders nothing for signed-out visitors, so the header keeps its
               shape rather than showing a bell that could only ever be empty. */}

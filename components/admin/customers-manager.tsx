@@ -2,7 +2,7 @@
 
 import { Loader2, Search, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { formatPrice } from '@/lib/store'
+import { formatChf } from '@/lib/store'
 
 /**
  * The customer list.
@@ -71,7 +71,7 @@ export function CustomersManager() {
         <div className="flex gap-6">
           <Stat label="Клиентов" value={String(customers.length)} />
           <Stat label="Покупали" value={String(totals.buyers)} />
-          <Stat label="Выручка" value={formatPrice(totals.revenue)} accent />
+          <Stat label="Выручка" value={formatChf(totals.revenue)} accent />
         </div>
 
         <div className="relative">
@@ -116,7 +116,7 @@ export function CustomersManager() {
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.orders}</td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.paidOrders}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-gold">
-                    {formatPrice(c.spent)}
+                    {formatChf(c.spent)}
                   </td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground/70">
                     {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('ru-RU') : '—'}

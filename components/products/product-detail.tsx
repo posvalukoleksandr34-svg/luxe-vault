@@ -1,14 +1,43 @@
 'use client'
 
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, Ruler, ShieldCheck, X } from 'lucide-react'
+import {
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Package,
+  Plus,
+  RotateCcw,
+  Ruler,
+  Share2,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
+import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { trackViewItem } from '@/lib/analytics'
+import { SHIPPING, TOTAL_WINDOW } from '@/lib/fulfilment'
 import { STATUS_LABELS } from '@/lib/i18n'
+import { canShareNatively, copyText, shareNatively } from '@/lib/share'
+
+/**
+ * The return window, in days. The same figure the returns policy states
+ * ("help.returns.content": 14 days from receipt) — keep the two in step.
+ */
+const RETURN_DAYS = 14
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -28,7 +57,7 @@ import type { Product } from '@/lib/types'
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, localize, categoryLabels } = useStore()
+  const { addToCart, setPanel, t, tf, localize, categoryLabels, pushToast } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -224,6 +253,26 @@ export function ProductDetail({ product }: { product: Product }) {
     touchStartX.current = null
   }
 
+  /**
+   * Share: the native share sheet where the browser has one, otherwise the
+   * link on the clipboard. A dismissed sheet is the customer's answer, so it
+   * falls back to nothing; a refused one falls back to copying.
+   */
+  async function share() {
+    const url = window.location.href
+    // The OS sheet on touch devices only — on a Windows desktop navigator.share
+    // opens the system share panel, which nobody expects; copying is better.
+    if (canShareNatively()) {
+      const outcome = await shareNatively({ title: productName, url })
+      if (outcome === 'shared' || outcome === 'dismissed') return
+    }
+    if (await copyText(url)) {
+      pushToast({ title: t('looks.linkCopied'), variant: 'gold' })
+    } else {
+      pushToast({ title: t('share.copyManually'), description: url, variant: 'default' })
+    }
+  }
+
   function handleAdd() {
     if (!size || outOfStock) return
     // After the guard: the click confirms an item went in, so a press that
@@ -321,8 +370,12 @@ export function ProductDetail({ product }: { product: Product }) {
         )}
       </div>
 
-      {/* Details */}
-      <div className="flex flex-col">
+      {/* Details. Sticky from lg up, so the panel stays beside a long gallery
+          as it scrolls. self-start is what lets it stick inside the grid; when
+          the panel is taller than the gallery the row takes its height and
+          it simply scrolls with the page, so nothing can end up hidden. The
+          phone layout is a single column and never sticky. */}
+      <div className="flex flex-col lg:sticky lg:top-24 lg:self-start">
         <p className="text-[10px] uppercase tracking-[0.25em] text-gold/70">
           {localize(categoryLabels[p.category] ?? {})}
         </p>
@@ -333,33 +386,28 @@ export function ProductDetail({ product }: { product: Product }) {
           {productName}
         </h1>
 
-        <div className="mt-4 flex items-baseline gap-3">
+        {/* The price, then — only for a real discount — the struck-through
+            compare-at price and the percentage. No discount, nothing after the
+            price: no empty gap, no badge. flex-wrap so a long converted figure
+            never pushes the badge off a phone screen. */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span className="text-xl font-light text-foreground">{formatPrice(p.price)}</span>
-          {p.oldPrice && (
-            <span className="text-base font-light text-muted-foreground/50 line-through">
-              {formatPrice(p.oldPrice)}
-            </span>
+          {discountPercent(p.price, p.oldPrice) > 0 && (
+            <>
+              <span className="text-base font-light text-muted-foreground/50 line-through">
+                {formatPrice(p.oldPrice as number)}
+              </span>
+              <DiscountBadge price={p.price} oldPrice={p.oldPrice} className="px-2 py-1 text-[11px]" />
+            </>
           )}
         </div>
 
-        {/* Brand and SKU, both optional. The brand is whatever the admin
-            entered for this product — it was a hardcoded "Luxe Vault" on every
-            item, which told a customer nothing. With no brand set, the line is
-            omitted rather than rendered as a label with nothing after it; with
-            neither brand nor SKU the whole row goes. */}
-        {(p.brand || sku) && (
-          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
-            {p.brand && (
-              <span>
-                {t('product.brand')}: <span className="text-foreground/80">{p.brand}</span>
-              </span>
-            )}
-            {p.brand && sku && (
-              <span aria-hidden className="text-muted-foreground/30">
-                ·
-              </span>
-            )}
-            {sku && <span className="font-mono normal-case tracking-normal">SKU {sku}</span>}
+        {/* The brand, when the admin set one — omitted rather than rendered
+            as a label with nothing after it. The SKU moved to the foot of the
+            panel, beside Share, as the article number. */}
+        {p.brand && (
+          <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+            {t('product.brand')}: <span className="text-foreground/80">{p.brand}</span>
           </p>
         )}
 
@@ -574,6 +622,90 @@ export function ProductDetail({ product }: { product: Product }) {
               {outOfStock ? t('sold.out') : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
             </button>
           )}
+        </div>
+
+        {/* Delivery, timing, returns — each opens to the shop's own wording.
+            Every figure is read from config, never typed in: free shipping
+            from SHIPPING.standard.freeAbove, the window from TOTAL_WINDOW, the
+            return period from the returns policy. A promise here that the
+            checkout or the policy contradicts is worse than no promise. */}
+        <Accordion type="single" collapsible className="mt-7 border-t border-border/40">
+          <AccordionItem value="shipping" className="border-border/40">
+            <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
+              <span className="flex items-center gap-3">
+                <Package className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                {tf('product.freeShippingFrom', { amount: formatPrice(SHIPPING.standard.freeAbove) })}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
+              {tf('product.shippingDetails', {
+                price: formatPrice(SHIPPING.standard.price),
+                amount: formatPrice(SHIPPING.standard.freeAbove),
+                express: formatPrice(SHIPPING.express.price),
+              })}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="delivery" className="border-border/40">
+            <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
+              <span className="flex items-center gap-3">
+                <CalendarDays className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                {tf('product.deliveryEstimate', TOTAL_WINDOW)}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
+              {tf('help.delivery.content', TOTAL_WINDOW)}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="returns" className="border-border/40">
+            <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
+              <span className="flex items-center gap-3">
+                <RotateCcw className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                {tf('product.returnsWithin', { n: RETURN_DAYS })}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
+              {t('help.returns.content')}{' '}
+              <Link href="/legal/refunds" className="text-gold/80 underline-offset-4 hover:text-gold hover:underline">
+                {t('product.returnsPolicy')} →
+              </Link>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Trust, in one quiet line — no payment logos. */}
+        <div className="mt-5 flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-foreground/85">
+              {t('product.securePurchase')}
+            </p>
+            <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
+              {t('product.securePurchaseBody')}
+            </p>
+          </div>
+        </div>
+
+        {/* The article number of the exact variant chosen (a support query
+            quoting it is far easier to answer), and Share. */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/40 pt-4">
+          {sku ? (
+            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+              {t('product.article')}:{' '}
+              <span className="font-mono normal-case tracking-normal text-foreground/80">{sku}</span>
+            </p>
+          ) : (
+            <span aria-hidden />
+          )}
+          <button
+            type="button"
+            onClick={() => void share()}
+            className="tap-safe inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition-colors duration-300 hover:text-gold"
+          >
+            <Share2 className="size-3.5" strokeWidth={1.5} />
+            {t('product.share')}
+          </button>
         </div>
       </div>
 

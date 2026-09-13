@@ -11,7 +11,7 @@ import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { paymentMethodLabel } from '@/lib/payment-labels'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus, PaymentStatus } from '@/lib/types'
 
@@ -589,7 +589,7 @@ function OrderCard({
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <span className={cn('font-serif text-lg', muted ? 'text-muted-foreground/60 line-through' : 'text-gold')}>
-            {formatPrice(order.total)}
+            {formatChf(order.total)}
           </span>
           <div className="flex flex-wrap justify-end gap-1.5">
             <span
@@ -607,7 +607,7 @@ function OrderCard({
           </div>
           {order.refundedAmount != null && order.refundedAmount > 0 && (
             <span className="text-[10px] uppercase tracking-[0.1em] text-violet-300/80">
-              {t('orders.refundedAmount')} {formatPrice(order.refundedAmount)}
+              {t('orders.refundedAmount')} {formatChf(order.refundedAmount)}
             </span>
           )}
         </div>
@@ -640,7 +640,7 @@ function OrderCard({
               </p>
             </div>
             <span className="shrink-0 text-[12px] font-light text-foreground">
-              {formatPrice(item.price * item.qty)}
+              {formatChf(item.price * item.qty)}
             </span>
           </div>
         ))}

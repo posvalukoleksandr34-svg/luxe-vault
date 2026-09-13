@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -11,9 +12,9 @@ export function ProductCard({ product }: { product: Product }) {
   const { localize, t, categoryLabels } = useStore()
   const { playHoverSound } = useAudioFeedback()
   const outOfStock = product.statuses.includes('out_of_stock')
-  const discount = product.oldPrice
-    ? Math.round((1 - product.price / product.oldPrice) * 100)
-    : 0
+  // Only a real discount — a compare-at price above the price. See
+  // discountPercent: an old price at or below the price shows nothing.
+  const discount = discountPercent(product.price, product.oldPrice)
   // A second image (when present) is cross-faded in on hover to suggest a
   // change of angle, rather than a plain zoom — the "dressed for the camera"
   // hover moment editorial lookbooks use.
@@ -69,12 +70,15 @@ export function ProductCard({ product }: { product: Product }) {
               {t('filter.new')}
             </span>
           )}
-          {discount > 0 && (
-            <span className="text-[10px] uppercase tracking-[0.15em] text-destructive">
-              −{discount}%
-            </span>
-          )}
         </div>
+
+        {/* The discount, in the top-right corner — gold on the dark ground,
+            never red: here red means an error, and a discount is not one. */}
+        <DiscountBadge
+          price={product.price}
+          oldPrice={product.oldPrice}
+          className="absolute right-3 top-3"
+        />
 
         {product.limited && !outOfStock && (
           <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.15em] text-gold/90">
@@ -110,9 +114,9 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="text-[13px] font-light text-foreground">
             {formatPrice(product.price)}
           </span>
-          {product.oldPrice && (
+          {discount > 0 && (
             <span className="text-[11px] font-light text-muted-foreground/50 line-through">
-              {formatPrice(product.oldPrice)}
+              {formatPrice(product.oldPrice as number)}
             </span>
           )}
         </div>

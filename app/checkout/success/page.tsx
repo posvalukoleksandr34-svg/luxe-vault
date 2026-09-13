@@ -9,7 +9,7 @@ import { Header } from '@/components/header'
 import { trackPurchase } from '@/lib/analytics'
 import { estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { fetchMyOrders } from '@/lib/order-registry'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatChf, useStore } from '@/lib/store'
 import type { Order } from '@/lib/types'
 
 /**
@@ -175,7 +175,7 @@ function SuccessContent() {
                   </p>
                 </div>
                 <span className="shrink-0 text-[13px] font-light tabular-nums text-foreground">
-                  {formatPrice(item.price * item.qty)}
+                  {formatChf(item.price * item.qty)}
                 </span>
               </li>
             ))}
@@ -184,7 +184,7 @@ function SuccessContent() {
           <dl className="mt-4 space-y-2 border-t border-border/50 pt-4 text-[13px] font-light">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('track.subtotal')}</dt>
-              <dd className="tabular-nums text-foreground">{formatPrice(order.subtotal)}</dd>
+              <dd className="tabular-nums text-foreground">{formatChf(order.subtotal)}</dd>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between">
@@ -194,28 +194,28 @@ function SuccessContent() {
                     <span className="ml-1.5 font-mono text-[11px] text-gold/70">{order.promo}</span>
                   )}
                 </dt>
-                <dd className="tabular-nums text-destructive">−{formatPrice(order.discount)}</dd>
+                <dd className="tabular-nums text-destructive">−{formatChf(order.discount)}</dd>
               </div>
             )}
             {/* Always shown on a real order: "Free" is a result, not an absence. */}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t('cart.shipping')}</dt>
               <dd className={order.shippingCost ? 'tabular-nums text-foreground' : 'tabular-nums text-gold'}>
-                {order.shippingCost ? formatPrice(order.shippingCost) : t('cart.free')}
+                {order.shippingCost ? formatChf(order.shippingCost) : t('cart.free')}
               </dd>
             </div>
             {/* Only when actually charged — see TAX_RATE in lib/fulfilment.ts. */}
             {(order.tax ?? 0) > 0 && (
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">{t('order.tax')}</dt>
-                <dd className="tabular-nums text-foreground">{formatPrice(order.tax ?? 0)}</dd>
+                <dd className="tabular-nums text-foreground">{formatChf(order.tax ?? 0)}</dd>
               </div>
             )}
             <div className="flex justify-between border-t border-border/50 pt-3">
               <dt className="text-[11px] uppercase tracking-[0.15em] text-foreground">
                 {t('success.totalPaid')}
               </dt>
-              <dd className="font-serif text-xl text-gold">{formatPrice(order.total)}</dd>
+              <dd className="font-serif text-xl text-gold">{formatChf(order.total)}</dd>
             </div>
           </dl>
         </section>

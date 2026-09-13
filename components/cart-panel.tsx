@@ -23,7 +23,9 @@ export function CartPanel() {
     cartSubtotal,
     currentUser,
     openAuth,
+    currency,
     t,
+    tf,
   } = useStore()
 
   /** The guest's "how would you like to check out?" step is showing. */
@@ -251,6 +253,12 @@ export function CartPanel() {
                   {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping)}
                 </span>
               </div>
+              {/* Prices converted for display are estimates; the charge is CHF. */}
+              {currency !== 'CHF' && (
+                <p className="-mt-2 mb-4 text-[10px] font-light leading-relaxed text-muted-foreground/60">
+                  {tf('cart.indicativeCurrency', { currency })}
+                </p>
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"

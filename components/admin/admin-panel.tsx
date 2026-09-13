@@ -21,7 +21,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { COURIER_NAMES } from '@/lib/fulfilment'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
 import { CustomersManager } from './customers-manager'
@@ -195,7 +195,7 @@ export function AdminPanel() {
       }
       pushToast({
         title: data.fullyRefunded ? 'Возврат оформлен полностью' : 'Частичный возврат оформлен',
-        description: `${formatPrice(data.refunded)} · ${data.refundId}`,
+        description: `${formatChf(data.refunded)} · ${data.refundId}`,
         variant: 'success',
       })
       setRefundOpenId(null)
@@ -369,7 +369,7 @@ export function AdminPanel() {
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <StatCard
                   label={t('admin.revenue')}
-                  value={formatPrice(stats.revenue)}
+                  value={formatChf(stats.revenue)}
                   icon={<TrendingUp className="size-5 text-gold" />}
                 />
                 <StatCard
@@ -384,7 +384,7 @@ export function AdminPanel() {
                 />
                 <StatCard
                   label={t('admin.avgCheck')}
-                  value={formatPrice(stats.avgCheck)}
+                  value={formatChf(stats.avgCheck)}
                   icon={<TrendingUp className="size-5 text-gold" />}
                 />
               </div>
@@ -403,7 +403,7 @@ export function AdminPanel() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-semibold text-foreground">
-                            {formatPrice(order.total)}
+                            {formatChf(order.total)}
                           </span>
                           <span className={cn('rounded-full border px-2 py-0.5 text-[10px]', STATUS_COLORS[order.status])}>
                             {STATUS_LABELS_RU[order.status]}
@@ -430,7 +430,7 @@ export function AdminPanel() {
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-foreground">
-                          {formatPrice(p.price)}
+                          {formatChf(p.price)}
                         </span>
                       </div>
                     ))}
@@ -499,11 +499,11 @@ export function AdminPanel() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col">
                             <span className="text-sm font-semibold text-foreground">
-                              {formatPrice(p.price)}
+                              {formatChf(p.price)}
                             </span>
                             {p.oldPrice && (
                               <span className="text-xs text-muted-foreground line-through">
-                                {formatPrice(p.oldPrice)}
+                                {formatChf(p.oldPrice)}
                               </span>
                             )}
                           </div>
@@ -584,7 +584,7 @@ export function AdminPanel() {
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="text-right">
-                          <p className="text-lg font-semibold text-gold">{formatPrice(order.total)}</p>
+                          <p className="text-lg font-semibold text-gold">{formatChf(order.total)}</p>
                           <p className="text-xs text-muted-foreground">{order.payment}</p>
                           {order.paymentAddress && (
                             <p className="mt-0.5 max-w-[160px] truncate font-mono text-[10px] text-muted-foreground/60" title={order.paymentAddress}>
@@ -622,7 +622,7 @@ export function AdminPanel() {
                             </p>
                           </div>
                           <span className="text-sm font-medium text-foreground">
-                            {formatPrice(item.price * item.qty)}
+                            {formatChf(item.price * item.qty)}
                           </span>
                         </div>
                       ))}
@@ -880,7 +880,7 @@ function RefundControl({
     // does not look identical to one that was never paid.
     return refunded > 0 ? (
       <p className="mt-3 text-xs text-violet-300/80">
-        Возвращено: {formatPrice(refunded)}
+        Возвращено: {formatChf(refunded)}
         {order.stripeRefundId && (
           <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
             {order.stripeRefundId}
@@ -901,13 +901,13 @@ function RefundControl({
         className="text-xs text-muted-foreground transition hover:text-destructive"
       >
         {open ? 'Скрыть возврат' : 'Оформить возврат'}
-        {refunded > 0 && ` · уже возвращено ${formatPrice(refunded)}`}
+        {refunded > 0 && ` · уже возвращено ${formatChf(refunded)}`}
       </button>
 
       {open && (
         <div className="mt-3 space-y-2 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-3">
           <p className="text-xs text-muted-foreground">
-            Доступно к возврату: <span className="text-foreground">{formatPrice(remaining)}</span>
+            Доступно к возврату: <span className="text-foreground">{formatChf(remaining)}</span>
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -915,7 +915,7 @@ function RefundControl({
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={`Сумма (пусто = ${formatPrice(remaining)})`}
+              placeholder={`Сумма (пусто = ${formatChf(remaining)})`}
               className="w-48 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
             />
             <button
@@ -929,7 +929,7 @@ function RefundControl({
           </div>
           {amountInvalid && (
             <p className="text-[11px] text-destructive">
-              Введите сумму от 0 до {formatPrice(remaining)}
+              Введите сумму от 0 до {formatChf(remaining)}
             </p>
           )}
         </div>

@@ -15,6 +15,15 @@ import type { Session } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
+import {
+  BASE_CURRENCY,
+  CURRENCY_STORAGE_KEY,
+  formatMoney,
+  getActiveCurrency,
+  isCurrencyCode,
+  setActiveCurrency,
+  type CurrencyCode,
+} from './currency'
 import { createClient } from './supabase/client'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
@@ -125,6 +134,10 @@ type StoreContextValue = {
 
   locale: Locale
   setLocale: (l: Locale) => void
+  /** The DISPLAY currency. Prices are stored and charged in CHF; this only
+   *  changes how formatPrice() shows them. See lib/currency.ts. */
+  currency: CurrencyCode
+  setCurrency: (c: CurrencyCode) => void
   t: (key: UIKey) => string
   /** Localized string with {placeholder} substitution, e.g.
    *  tf('otp.step2.resendIn', { n: 42 }). Values are inserted verbatim, so
@@ -212,12 +225,26 @@ export function useStore() {
   return ctx
 }
 
+/**
+ * A CHF amount, shown in the visitor's chosen display currency.
+ *
+ * For what is being SHOPPED: the catalogue, the cart, the checkout summary.
+ * In CHF it prints exactly what it always did ("CHF 1’000").
+ */
 export function formatPrice(value: number) {
-  return new Intl.NumberFormat('de-CH', {
-    style: 'currency',
-    currency: 'CHF',
-    maximumFractionDigits: 0,
-  }).format(value)
+  return formatMoney(value, getActiveCurrency())
+}
+
+/**
+ * A CHF amount, always shown in CHF.
+ *
+ * For RECORDS of what was charged — order history, the order page, the
+ * payment confirmation, the admin console. A past order paid in francs must
+ * never be re-labelled in euros because the visitor later changed a display
+ * setting.
+ */
+export function formatChf(value: number, exact = false) {
+  return formatMoney(value, BASE_CURRENCY, exact)
 }
 
 let toastSeq = 0
@@ -392,6 +419,37 @@ function maybeSendWelcome() {
       }
     } catch {
       // localStorage unavailable
+    }
+  }, [])
+
+  /**
+   * The display currency — restored after mount, exactly like the language,
+   * so the server HTML (always CHF) and the first client render agree and
+   * nothing mismatches on hydration.
+   */
+  const [currency, setCurrencyState] = useState<CurrencyCode>(BASE_CURRENCY)
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CURRENCY_STORAGE_KEY)
+      if (isCurrencyCode(saved) && saved !== BASE_CURRENCY) {
+        setActiveCurrency(saved)
+        setCurrencyState(saved)
+      }
+    } catch {
+      // localStorage unavailable — stay in CHF.
+    }
+  }, [])
+
+  const setCurrency = useCallback((next: CurrencyCode) => {
+    // The module value first, so every formatPrice() in the re-render this
+    // state change triggers already reads the new currency.
+    setActiveCurrency(next)
+    setCurrencyState(next)
+    try {
+      window.localStorage.setItem(CURRENCY_STORAGE_KEY, next)
+    } catch {
+      // Not persisting is acceptable; the choice holds for this visit.
     }
   }, [])
 
@@ -1118,6 +1176,8 @@ function maybeSendWelcome() {
     authLoading,
     locale,
     setLocale,
+    currency,
+    setCurrency,
     t,
     tf,
     localize,

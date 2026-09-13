@@ -33,7 +33,7 @@ const StripePayment = dynamic(
 )
 import { rememberOrder } from '@/lib/order-registry'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
-import { useStore, formatPrice } from '@/lib/store'
+import { useStore, formatChf, formatPrice } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import {
   formatPhone,
@@ -63,6 +63,8 @@ export function CheckoutFlow({
   const {
     setPanel,
     openAuth,
+    currency,
+    tf,
     cart,
     cartSubtotal,
     paymentMethods,
@@ -748,6 +750,15 @@ export function CheckoutFlow({
                 <span className="text-[12px] uppercase tracking-[0.15em] text-foreground">{t('checkout.total')}</span>
                 <span className="font-serif text-xl font-light text-gold">{formatPrice(total)}</span>
               </div>
+              {/* The charge is in CHF — the Stripe integration creates CHF
+                  payments only. With another display currency chosen, the
+                  franc amount is stated here, before anything is paid, so a
+                  euro figure can never be read as a euro charge. */}
+              {currency !== 'CHF' && (
+                <p className="-mt-2 mb-5 border-l-2 border-gold/40 bg-gold/[0.04] py-2 pl-3 text-[11px] font-light leading-relaxed text-muted-foreground">
+                  {tf('checkout.chargedInChf', { amount: formatChf(total, true), currency })}
+                </p>
+              )}
               {hasErrors && (
                 <p className="mb-3 text-[11px] text-destructive">{t('checkout.fillRequired')}</p>
               )}
