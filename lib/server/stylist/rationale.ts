@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { FinishReason, GoogleGenAI, ThinkingLevel } from '@google/genai'
 import { resolveTags } from '@/lib/stylist/tagging'
 import type { Look, StylistBrief } from '@/lib/stylist/types'
 
@@ -68,18 +69,51 @@ function compose(look: Look, brief: StylistBrief): string {
   return `${lead}${balance}${occasionNote}`.trim()
 }
 
+// ------------------------------------------------------------------- model --
+
+/** The stylist's brief to the model. Unchanged across the provider switch. */
+const SYSTEM_PROMPT =
+  'You are a fashion stylist writing one or two sentences about an outfit that has ALREADY been chosen. ' +
+  'Describe only the pieces given. Never mention a garment that is not in the list, never invent prices, ' +
+  'sizes or brands, and never use bullet points. Write plainly, no marketing adjectives.'
+
 /**
- * Optional model pass.
+ * gemini-3.6-flash — NOT gemini-2.0-flash.
  *
- * Enabled only when STYLIST_LLM_API_KEY is set. Deliberately fails soft: any
- * error, timeout or unexpected shape falls back to the composed line, because
- * a look with slightly plainer copy is a working feature and a 500 is not.
+ * 2.0 Flash is retired for generation. Its metadata endpoint still answers
+ * 200, which makes it look alive, but generateContent returns 404 "This model
+ * models/gemini-2.0-flash is no longer available" (measured 2026-09-13 with
+ * this project's key). Because the pass below fails soft by design, pinning
+ * it would have silently disabled the model on every single request while
+ * appearing to work. GEMINI_MODEL overrides this without a code change.
+ */
+const DEFAULT_MODEL = 'gemini-3.6-flash'
+
+/** Enough for two sentences; the copy is a caption, not an essay. */
+const MAX_OUTPUT_TOKENS = 160
+/** The whole stylist response waits on this, so it is capped hard. */
+const TIMEOUT_MS = 4000
+
+/** One client per key, created on first use — not per request. */
+let client: { key: string; ai: GoogleGenAI } | null = null
+
+function gemini(key: string): GoogleGenAI {
+  if (!client || client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) }
+  return client.ai
+}
+
+/**
+ * Optional model pass, via Google Gemini.
+ *
+ * Enabled only when GEMINI_API_KEY is set. Deliberately fails soft: any error,
+ * timeout or unexpected shape falls back to the composed line, because a look
+ * with slightly plainer copy is a working feature and a 500 is not.
  *
  * The model receives ONLY the names, categories, colours and fits already
  * chosen. It is never asked what to recommend.
  */
 async function embellish(base: string, look: Look): Promise<string> {
-  const key = process.env.STYLIST_LLM_API_KEY
+  const key = process.env.GEMINI_API_KEY
   if (!key) return base
 
   const pieces = look.items.map((i) => ({
@@ -89,39 +123,42 @@ async function embellish(base: string, look: Look): Promise<string> {
     fit: resolveTags(i.product).fit,
   }))
 
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 4000)
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
+    const res = await gemini(key).models.generateContent({
+      model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+      contents: `Pieces: ${JSON.stringify(pieces)}\n\nA baseline description is: "${base}"\n\nRewrite it as one or two sentences.`,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        // 3.x Flash models reason before answering, and those tokens count
+        // against maxOutputTokens. Measured with this exact prompt: default
+        // thinking spent 149 of the 160 tokens reasoning and stopped mid-
+        // sentence ("An onyx oversized hoodie pairs with sand"). MINIMAL spent
+        // none and finished in 1.3s. Describing three chosen garments needs no
+        // reasoning, only the cap.
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        abortSignal: controller.signal,
       },
-      body: JSON.stringify({
-        model: process.env.STYLIST_LLM_MODEL || 'claude-sonnet-5',
-        max_tokens: 160,
-        system:
-          'You are a fashion stylist writing one or two sentences about an outfit that has ALREADY been chosen. ' +
-          'Describe only the pieces given. Never mention a garment that is not in the list, never invent prices, ' +
-          'sizes or brands, and never use bullet points. Write plainly, no marketing adjectives.',
-        messages: [
-          {
-            role: 'user',
-            content: `Pieces: ${JSON.stringify(pieces)}\n\nA baseline description is: "${base}"\n\nRewrite it as one or two sentences.`,
-          },
-        ],
-      }),
     })
-    clearTimeout(timeout)
-    if (!res.ok) return base
-    const data = await res.json()
-    const text = data?.content?.[0]?.text
-    return typeof text === 'string' && text.trim() ? text.trim() : base
-  } catch {
+
+    // How the model STOPPED, not just whether it said something: a truncated
+    // answer is still non-empty text, and half a sentence under a look is
+    // worse than the plain composed one.
+    if (res.candidates?.[0]?.finishReason !== FinishReason.STOP) return base
+    const text = res.text?.trim()
+    return text ? text : base
+  } catch (error) {
+    // Still soft — but said once in the log. A silent fallback is exactly how
+    // a retired model would go unnoticed for months.
+    console.warn(
+      '[stylist] Gemini copy failed, using composed copy:',
+      error instanceof Error ? error.message.slice(0, 200) : error,
+    )
     return base
+  } finally {
+    clearTimeout(timeout)
   }
 }
 

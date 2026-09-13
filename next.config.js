@@ -12,6 +12,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  experimental: {
+    // Loaded by Node at runtime instead of bundled by webpack. @google/genai
+    // (the AI stylist's copy) pulls in `ws` for its Live API, and `ws` probes
+    // for two OPTIONAL native add-ons — bufferutil and utf-8-validate — inside
+    // a try/catch. Node handles that; webpack cannot, and printed a pair of
+    // "Module not found" warnings on every compile of /api/stylist. Harmless,
+    // but noise like that is how a real build warning gets scrolled past.
+    serverComponentsExternalPackages: ['@google/genai'],
+  },
   images: {
     // Product and collection imagery lives in Supabase Storage, so the
     // optimiser has to be allowed to fetch from the project's public bucket.
