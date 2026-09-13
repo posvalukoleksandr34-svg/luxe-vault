@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { orderChargeRate } from '@/lib/currency'
 import { getOrderById, recordRefund } from '@/lib/server/orders-store'
 import { isStripeConfigured, refundPayment } from '@/lib/server/stripe'
 
@@ -17,8 +18,12 @@ export const dynamic = 'force-dynamic'
  * may *request*, and approving or refunding stays with the service role.
  *
  * Body:
- *   amount?: number   Major units (same as order.total). Omit for a full
- *                     refund of whatever remains unrefunded.
+ *   amount?: number   Major units IN CHF (same as order.total). Omit for a
+ *                     full refund of whatever remains unrefunded.
+ *
+ * A card payment taken in EUR or USD is refunded in that currency, at the
+ * rate it was CHARGED at — recorded on the order — never today's, so a
+ * refund always returns exactly its share of what the customer paid.
  *
  * Stripe is the source of truth for how much is left to refund — the
  * remaining balance is read from its ledger, not from our row, so two
@@ -64,14 +69,18 @@ export async function POST(
     )
   }
 
-  const result = await refundPayment(order.paymentId, amount)
+  const result = await refundPayment(order.paymentId, amount, orderChargeRate(order))
   if (!result.ok) {
     return NextResponse.json({ error: result.message }, { status: 400 })
   }
 
   // Cumulative, not incremental: adding to the stored value would double count
   // if this route were retried after Stripe succeeded but before we wrote.
-  const cumulative = Number(((order.refundedAmount ?? 0) + result.amountRefunded).toFixed(2))
+  // A full refund records the whole total, so converting back from another
+  // currency can never leave a stray cent looking unrefunded.
+  const cumulative = result.fullyRefunded
+    ? order.total
+    : Math.min(order.total, Number(((order.refundedAmount ?? 0) + result.amountRefunded).toFixed(2)))
 
   const updated = await recordRefund(params.id, {
     refundedAmount: cumulative,

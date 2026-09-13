@@ -134,8 +134,9 @@ type StoreContextValue = {
 
   locale: Locale
   setLocale: (l: Locale) => void
-  /** The DISPLAY currency. Prices are stored and charged in CHF; this only
-   *  changes how formatPrice() shows them. See lib/currency.ts. */
+  /** The chosen currency. Prices are stored in CHF; this changes how
+   *  formatPrice() shows them and what a card is charged in. See
+   *  lib/currency.ts. */
   currency: CurrencyCode
   setCurrency: (c: CurrencyCode) => void
   t: (key: UIKey) => string

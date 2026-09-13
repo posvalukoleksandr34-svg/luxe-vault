@@ -2,6 +2,7 @@ import 'server-only'
 
 import { escapeHtml } from '@/lib/server/resend'
 import type { Order } from '@/lib/types'
+import { orderCharge, orderChargeRate } from '@/lib/currency'
 import { C, SANS, SERIF, itemRows, money, totalRow } from './order-confirmation'
 
 /**
@@ -28,7 +29,20 @@ function paidLine(order: Order): string {
     month: 'long',
     day: 'numeric',
   })
-  return `Paid ${money(order.total, order.paymentCurrency || 'CHF')} on ${when}`
+  // What the card was actually charged, in the currency it was charged in.
+  // (Pairing the CHF total with paymentCurrency, as before, would have read
+  // "EUR 200.00" for a CHF 200 order paid as EUR 214.00.)
+  const charge = orderCharge(order)
+  return `Paid ${money(charge.amount, charge.currency)} on ${when}`
+}
+
+/** For a payment in another currency: what it was converted from. The item
+ *  lines and totals below stay in CHF — the currency the order is priced in. */
+function conversionNote(order: Order): string | null {
+  const charge = orderCharge(order)
+  if (!charge.converted) return null
+  const rate = Number(orderChargeRate(order).toFixed(4))
+  return `Converted from ${money(order.total)} at 1 CHF = ${rate} ${charge.currency}`
 }
 
 /** Plain-text alternative. HTML-only mail scores worse with spam filters and
@@ -45,6 +59,7 @@ export function paymentReceiptText(order: Order): string {
     ``,
     `Order:   ${order.id}`,
     paidLine(order),
+    conversionNote(order),
     order.paymentId ? `Payment: ${order.paymentId}` : null,
     ``,
     ...order.items.map(
@@ -121,8 +136,15 @@ export function paymentReceiptHtml(order: Order): string {
                         Amount paid
                       </p>
                       <div style="font-family:${SERIF}; font-size:30px; line-height:36px; color:${C.gold};">
-                        ${escapeHtml(money(order.total, order.paymentCurrency || 'CHF'))}
-                      </div>
+                        ${escapeHtml(money(orderCharge(order).amount, orderCharge(order).currency))}
+                      </div>${
+                        conversionNote(order)
+                          ? `
+                      <p style="margin:6px 0 0 0; font-family:${SANS}; font-size:11px; color:${C.faint};">
+                        ${escapeHtml(conversionNote(order) as string)}
+                      </p>`
+                          : ''
+                      }
                       <p style="margin:8px 0 0 0; font-family:${SANS}; font-size:12px; color:${C.muted};">
                         Order ${escapeHtml(order.id)}
                       </p>

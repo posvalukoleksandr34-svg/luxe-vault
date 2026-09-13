@@ -3,7 +3,7 @@
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import type { Appearance, StripeElementsOptions } from '@stripe/stripe-js'
 import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { isStripeClientConfigured, stripePromise } from '@/lib/stripe-client'
 import { useStore } from '@/lib/store'
 import type { Order } from '@/lib/types'
@@ -61,11 +61,19 @@ const appearance: Appearance = {
 export function StripePayment({
   order,
   clientSecret,
+  chargeKey,
+  disabled = false,
   onPaid,
   onBack,
 }: {
   order: Order
   clientSecret: string
+  /** Changes when the server re-prices the intent (another currency): the
+   *  Element must then re-read it, or wallets would show the old amount. */
+  chargeKey?: string
+  /** True while the intent is being re-priced — nothing may be confirmed
+   *  against an amount that is about to change. */
+  disabled?: boolean
   onPaid: () => void
   onBack: () => void
 }) {
@@ -104,7 +112,13 @@ export function StripePayment({
 
   return (
     <Elements stripe={stripePromise} options={options}>
-      <CheckoutForm order={order} onPaid={onPaid} onBack={onBack} />
+      <CheckoutForm
+        order={order}
+        chargeKey={chargeKey}
+        disabled={disabled}
+        onPaid={onPaid}
+        onBack={onBack}
+      />
     </Elements>
   )
 }
@@ -116,10 +130,14 @@ export function StripePayment({
  */
 function CheckoutForm({
   order,
+  chargeKey,
+  disabled,
   onPaid,
   onBack,
 }: {
   order: Order
+  chargeKey?: string
+  disabled: boolean
   onPaid: () => void
   onBack: () => void
 }) {
@@ -130,6 +148,15 @@ function CheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Re-read the intent after the server re-priced it in another currency.
+  // Skipped on mount: the Element has only just fetched it.
+  const lastChargeKey = useRef(chargeKey)
+  useEffect(() => {
+    if (!elements || chargeKey === lastChargeKey.current) return
+    lastChargeKey.current = chargeKey
+    void elements.fetchUpdates()
+  }, [elements, chargeKey])
 
   // Returning from a redirect-based method (3-D Secure, iDEAL, some wallets)
   // lands back here with the intent in the URL. Surface the outcome instead of
@@ -151,7 +178,7 @@ function CheckoutForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     // Guard against a double submit creating two charge attempts.
-    if (!stripe || !elements || submitting) return
+    if (!stripe || !elements || submitting || disabled) return
 
     setSubmitting(true)
     setError(null)
@@ -207,7 +234,7 @@ function CheckoutForm({
 
       <button
         type="submit"
-        disabled={!stripe || !elements || !ready || submitting}
+        disabled={!stripe || !elements || !ready || submitting || disabled}
         className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
       >
         {submitting && <Loader2 className="size-3.5 animate-spin" />}

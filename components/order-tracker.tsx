@@ -23,6 +23,7 @@ import {
   formatDeliveryWindow,
 } from '@/lib/fulfilment'
 import { TrackingDetails } from '@/components/tracking-details'
+import { formatCharged, orderCharge } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -327,7 +328,17 @@ export function OrderTracker({ order }: { order: Order }) {
             <dt className="text-[11px] uppercase tracking-[0.15em] text-foreground">
               {t('track.total')}
             </dt>
-            <dd className="font-serif text-xl text-gold">{formatChf(order.total)}</dd>
+            <dd className="text-right">
+              <span className="block font-serif text-xl text-gold">{formatChf(order.total)}</span>
+              {/* Paid by card in another currency: what the card was charged. */}
+              {orderCharge(order).converted && (
+                <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/70">
+                  {tf('orders.chargedAs', {
+                    amount: formatCharged(orderCharge(order).amount, orderCharge(order).currency),
+                  })}
+                </span>
+              )}
+            </dd>
           </div>
           <div className="flex justify-between pt-1">
             <dt className="text-[11px] text-muted-foreground/60">{t('track.paymentMethod')}</dt>

@@ -9,6 +9,7 @@ import { Header } from '@/components/header'
 import { trackPurchase } from '@/lib/analytics'
 import { estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { fetchMyOrders } from '@/lib/order-registry'
+import { formatCharged, orderCharge } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
 import type { Order } from '@/lib/types'
 
@@ -52,7 +53,7 @@ function SuccessSkeleton() {
 function SuccessContent() {
   const params = useSearchParams()
   const orderId = params.get('order')?.trim().toUpperCase() ?? ''
-  const { t, locale } = useStore()
+  const { t, tf, locale } = useStore()
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -109,6 +110,10 @@ function SuccessContent() {
       </>
     )
   }
+
+  // What was actually paid, in the currency it was paid in. The lines above
+  // it stay in CHF, the currency the order is priced in.
+  const charge = orderCharge(order)
 
   return (
     <>
@@ -215,7 +220,16 @@ function SuccessContent() {
               <dt className="text-[11px] uppercase tracking-[0.15em] text-foreground">
                 {t('success.totalPaid')}
               </dt>
-              <dd className="font-serif text-xl text-gold">{formatChf(order.total)}</dd>
+              <dd className="text-right">
+                <span className="block font-serif text-xl text-gold">
+                  {formatCharged(charge.amount, charge.currency)}
+                </span>
+                {charge.converted && (
+                  <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/70">
+                    {tf('success.convertedFrom', { amount: formatChf(order.total, true) })}
+                  </span>
+                )}
+              </dd>
             </div>
           </dl>
         </section>

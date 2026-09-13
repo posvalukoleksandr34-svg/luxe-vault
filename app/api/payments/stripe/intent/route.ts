@@ -1,14 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
-import { createPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
+import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Creates a PaymentIntent for an existing order and returns its client secret,
- * so the browser can render an embedded PaymentElement.
+ * Prices an existing order's PaymentIntent in the customer's currency and
+ * returns its client secret, so the browser can render an embedded
+ * PaymentElement.
  *
  * Replaces the previous /checkout route, which minted a hosted Checkout
  * Session and returned a redirect URL.
@@ -23,6 +24,17 @@ export const dynamic = 'force-dynamic'
  *  - "Order not found" covers both a missing order and a bad token, so the
  *    endpoint cannot be used to enumerate order ids.
  *
+ * And two that multi-currency adds:
+ *
+ *  - The CURRENCY is the one thing the browser chooses — a code, never a
+ *    figure. The amount in it is the server's own conversion of the stored
+ *    CHF total. A code the account does not take is charged in CHF, and the
+ *    response says so (`fellBack`) for the payment step to tell the customer.
+ *  - One intent per order. Asking again — after switching currency, or on
+ *    coming back to pay — re-prices the order's existing intent rather than
+ *    minting another, so an earlier, differently priced one cannot be paid on
+ *    the side and then fail to match the order. See preparePaymentIntent.
+ *
  * A client secret authorises confirming this one payment and reading its
  * status. It is not a credential for the Stripe account, and it is useless
  * without the publishable key it was minted against — but it is still
@@ -33,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Оплата картой временно недоступна' }, { status: 503 })
   }
 
-  let body: { orderId?: string; token?: string; saveCard?: boolean }
+  let body: { orderId?: string; token?: string; saveCard?: boolean; currency?: string }
   try {
     body = await request.json()
   } catch {
@@ -72,11 +84,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const intent = await createPaymentIntent(order, {
+    const prepared = await preparePaymentIntent(order, {
       customerId,
       saveCard: Boolean(body.saveCard) && Boolean(customerId),
+      currency: body.currency,
     })
 
+    if (!prepared.ok) {
+      // Stripe already holds, or is settling, money for this order.
+      return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
+    }
+
+    const { intent } = prepared
     if (!intent.client_secret) {
       return NextResponse.json({ error: 'Stripe returned no client secret' }, { status: 502 })
     }
@@ -89,12 +108,22 @@ export async function POST(request: NextRequest) {
       paymentStatus: 'pending_payment',
       paymentProvider: 'stripe',
       paymentId: intent.id,
-      paymentCurrency: intent.currency.toUpperCase(),
-      paymentAmount: order.total,
+      // What the card will be charged: the currency and the converted amount,
+      // in major units. orders.total stays the CHF price, so the rate a
+      // refund must use is recoverable as payment_amount / total.
+      paymentCurrency: prepared.currency,
+      paymentAmount: prepared.amount,
       paymentAddress: undefined,
     })
 
-    return NextResponse.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id })
+    return NextResponse.json({
+      clientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      currency: prepared.currency,
+      amount: prepared.amount,
+      rate: prepared.rate,
+      fellBack: prepared.fellBack,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Stripe error'
     return NextResponse.json({ error: message }, { status: 502 })

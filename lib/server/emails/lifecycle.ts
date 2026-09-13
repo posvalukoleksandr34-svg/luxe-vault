@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { orderCharge, orderChargeRate, roundMinor } from '@/lib/currency'
 import { C, SANS, SERIF, money } from '@/lib/server/emails/order-confirmation'
 import { escapeHtml } from '@/lib/server/resend'
 import { getSiteUrl } from '@/lib/site-url'
@@ -192,19 +193,31 @@ function copyFor(order: Order, status: Lifecycle): Copy | null {
       }
 
     case 'refunded': {
-      const amount = order.refundedAmount ?? order.total
       return {
         subject: `Your refund for order ${order.id}`,
         heading: 'Your refund is on its way',
         body: `${greeting}we have issued your refund. Banks typically take 5–10 working days to show it, and it returns to the card you paid with.`,
         detail: `<span style="font-family:${SANS}; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:${C.muted};">Refunded</span><br />
-                 <span style="font-family:${SANS}; font-size:18px; color:${C.gold};">${escapeHtml(money(amount))}</span>`,
+                 <span style="font-family:${SANS}; font-size:18px; color:${C.gold};">${escapeHtml(refundedLabel(order))}</span>`,
       }
     }
 
     default:
       return null
   }
+}
+
+/**
+ * The refund as the customer's card will show it. refundedAmount is kept in
+ * CHF, like the order; a card charged in EUR or USD gets its refund back in
+ * that currency, at the rate it was charged at (see refundPayment) — so that
+ * is the figure to quote, with the franc amount beside it.
+ */
+function refundedLabel(order: Order): string {
+  const chf = order.refundedAmount ?? order.total
+  const charge = orderCharge(order)
+  if (!charge.converted) return money(chf)
+  return `${money(roundMinor(chf * orderChargeRate(order)), charge.currency)} (${money(chf)})`
 }
 
 export type LifecycleEmail = { subject: string; html: string; text: string }

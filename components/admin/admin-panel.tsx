@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { COURIER_NAMES } from '@/lib/fulfilment'
+import { formatCharged, orderCharge, orderChargeRate } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
@@ -585,6 +586,11 @@ export function AdminPanel() {
                       <div className="flex items-start gap-3">
                         <div className="text-right">
                           <p className="text-lg font-semibold text-gold">{formatChf(order.total)}</p>
+                          {orderCharge(order).converted && (
+                            <p className="text-[11px] text-muted-foreground">
+                              оплачено {formatCharged(orderCharge(order).amount, orderCharge(order).currency)}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">{order.payment}</p>
                           {order.paymentAddress && (
                             <p className="mt-0.5 max-w-[160px] truncate font-mono text-[10px] text-muted-foreground/60" title={order.paymentAddress}>
@@ -868,6 +874,7 @@ function RefundControl({
   const [amount, setAmount] = useState('')
 
   const refunded = order.refundedAmount ?? 0
+  const charge = orderCharge(order)
   const remaining = Number((order.total - refunded).toFixed(2))
   const refundable =
     order.paymentProvider === 'stripe' &&
@@ -906,6 +913,16 @@ function RefundControl({
 
       {open && (
         <div className="mt-3 space-y-2 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-3">
+          {/* A card charged in EUR or USD is refunded in that currency, at
+              the rate it was charged at — see refundPayment. */}
+          {charge.converted && (
+            <p className="text-xs text-muted-foreground">
+              Клиент оплатил{' '}
+              <span className="text-foreground">{formatCharged(charge.amount, charge.currency)}</span>{' '}
+              по курсу {Number(orderChargeRate(order).toFixed(4))}. Сумма возврата вводится в CHF и
+              пересчитывается в {charge.currency} по этому курсу.
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             Доступно к возврату: <span className="text-foreground">{formatChf(remaining)}</span>
           </p>

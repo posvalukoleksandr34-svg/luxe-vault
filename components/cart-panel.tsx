@@ -253,7 +253,7 @@ export function CartPanel() {
                   {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping)}
                 </span>
               </div>
-              {/* Prices converted for display are estimates; the charge is CHF. */}
+              {/* How converted prices are paid: by card in this currency, crypto in CHF. */}
               {currency !== 'CHF' && (
                 <p className="-mt-2 mb-4 text-[10px] font-light leading-relaxed text-muted-foreground/60">
                   {tf('cart.indicativeCurrency', { currency })}

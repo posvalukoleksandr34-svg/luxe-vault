@@ -94,8 +94,8 @@ export function LocaleCurrencyMenu() {
               </Option>
             ))}
 
-            {/* Said here, where the choice is made, not only at checkout: a
-                euro figure must never read as a euro charge. */}
+            {/* Said here, where the choice is made, not only at checkout:
+                what the currency means for each way of paying. */}
             <p className="px-4 pt-2.5 text-[10px] font-light leading-relaxed text-muted-foreground/60">
               {t('header.currencyNote')}
             </p>

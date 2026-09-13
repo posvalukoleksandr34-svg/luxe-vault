@@ -33,7 +33,14 @@ const StripePayment = dynamic(
 )
 import { rememberOrder } from '@/lib/order-registry'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
-import { useStore, formatChf, formatPrice } from '@/lib/store'
+import { useStore, formatChf } from '@/lib/store'
+import {
+  EXCHANGE_RATES,
+  formatCharged,
+  formatMoney,
+  isCurrencyCode,
+  type CurrencyCode,
+} from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import {
   formatPhone,
@@ -98,6 +105,20 @@ export function CheckoutFlow({
   // instead of redirecting to checkout.stripe.com.
   const [cardOrder, setCardOrder] = useState<Order | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  /**
+   * What the card will actually be charged — returned by the server with the
+   * client secret, never computed here, and shown on the payment step so the
+   * figure above the Pay button is the one on the bank statement.
+   */
+  const [charge, setCharge] = useState<{
+    amount: number
+    currency: CurrencyCode
+    rate: number
+    requested: CurrencyCode
+    fellBack: boolean
+  } | null>(null)
+  /** The intent is being re-priced after a currency switch; Pay waits. */
+  const [repricing, setRepricing] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [submitting, setSubmitting] = useState(false)
   /**
@@ -191,6 +212,11 @@ export function CheckoutFlow({
   const discountedSubtotal = cartSubtotal - discount
   const shippingCost = quoteShipping(discountedSubtotal)
   const total = discountedSubtotal + shippingCost
+  // The summary in the chosen currency, to the cent — converted with the same
+  // table and rounding the server charges with, so the total shown is the
+  // total the card is debited. (formatPrice rounds to whole units, which suits
+  // the catalogue and would misstate a checkout total.)
+  const summaryPrice = (chf: number) => formatMoney(chf, currency, true)
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -359,22 +385,12 @@ export function CheckoutFlow({
         // Hand off to Stripe's hosted page. The order already exists and is
         // `pending_payment`, so abandoning the Stripe page leaves something
         // the customer can settle later rather than losing the basket.
-        const pay = await fetch('/api/payments/stripe/intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: order.id,
-            token: order.lookupToken,
-            saveCard: saveCard && Boolean(currentUser),
-          }),
-        })
-        const payData = await pay.json().catch(() => ({}))
-
-        if (pay.ok && payData.clientSecret) {
+        // Priced in the currency the customer is looking at. Only the code
+        // goes up; the server converts the stored CHF total itself.
+        if (await requestCardIntent(order, currency)) {
           // Swap the form for the embedded PaymentElement. No navigation —
           // the customer never leaves the site.
           setCardOrder(order)
-          setClientSecret(payData.clientSecret)
           return
         }
 
@@ -404,6 +420,57 @@ export function CheckoutFlow({
       setSubmitting(false)
     }
   }
+
+  /**
+   * Asks the server to price the order's PaymentIntent in `code` — creating
+   * it, or re-pricing the one the order already has. Returns false when
+   * Stripe is unavailable.
+   */
+  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean> {
+    if (!order.lookupToken) return false
+    const pay = await fetch('/api/payments/stripe/intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: order.id,
+        token: order.lookupToken,
+        saveCard: saveCard && Boolean(currentUser),
+        currency: code,
+      }),
+    })
+    const payData = await pay.json().catch(() => ({}))
+    if (!pay.ok || !payData.clientSecret) return false
+
+    setCharge({
+      amount: Number(payData.amount),
+      currency: isCurrencyCode(payData.currency) ? payData.currency : 'CHF',
+      rate: Number(payData.rate) || 1,
+      requested: code,
+      fellBack: Boolean(payData.fellBack),
+    })
+    setClientSecret(payData.clientSecret)
+    return true
+  }
+
+  /**
+   * The currency switched while on the payment step. The server re-prices the
+   * SAME PaymentIntent and StripePayment re-reads it — otherwise the header
+   * would say EUR while the card was about to be charged francs. Self-healing:
+   * should responses arrive out of order, the mismatch re-triggers this.
+   */
+  useEffect(() => {
+    if (!cardOrder || !charge || currency === charge.requested) return
+    setRepricing(true)
+    requestCardIntent(cardOrder, currency)
+      .then((ok) => {
+        if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
+      })
+      .catch(() => {})
+      .finally(() => setRepricing(false))
+    // requestCardIntent, pushToast and t are recreated every render; the only
+    // triggers are the currency and the card step itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency, cardOrder, charge])
 
   /** Fills the form from the remembered record. Deliberately manual rather
    *  than automatic on open: silently repopulating a form is disorienting,
@@ -452,6 +519,7 @@ export function CheckoutFlow({
     const left = cardOrder
     setCardOrder(null)
     setClientSecret(null)
+    setCharge(null)
     router.push('/')
     if (left) {
       pushToast({
@@ -511,9 +579,45 @@ export function CheckoutFlow({
             <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               {t('orders.payingFor')} <span className="text-foreground">{cardOrder.id}</span>
             </p>
+            {/* The figure the card will be debited, as the server priced it —
+                currency and cents exactly as they reach Stripe. */}
+            {charge && (
+              <div className="mb-5 border-y border-border/40 py-3.5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+                    {t('checkout.amountToPay')}
+                  </span>
+                  <span className="font-serif text-xl font-light tabular-nums text-gold">
+                    {formatCharged(charge.amount, charge.currency)}
+                  </span>
+                </div>
+                {charge.currency !== 'CHF' && (
+                  <p className="mt-1.5 text-right text-[11px] font-light text-muted-foreground/70">
+                    {tf('checkout.convertedAt', {
+                      amount: formatChf(cardOrder.total, true),
+                      rate: String(charge.rate),
+                      currency: charge.currency,
+                    })}
+                  </p>
+                )}
+                {charge.fellBack && (
+                  <p className="mt-3 border-l-2 border-gold/40 bg-gold/[0.04] py-2 pl-3 text-[11px] font-light leading-relaxed text-muted-foreground">
+                    {tf('checkout.chargeFallback', {
+                      requested: charge.requested,
+                      amount: formatCharged(charge.amount, charge.currency),
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
+            {/* Keyed on the secret: Elements cannot swap intents in place, so a
+                new intent (rare — see preparePaymentIntent) remounts it. */}
             <StripePayment
+              key={clientSecret}
               order={cardOrder}
               clientSecret={clientSecret}
+              chargeKey={charge ? `${charge.currency}:${charge.amount}` : undefined}
+              disabled={repricing}
               onPaid={handleCardPaid}
               onBack={handleCardBack}
             />
@@ -711,18 +815,18 @@ export function CheckoutFlow({
             <div className="border-t border-border/40 px-6 py-5">
               <div className="mb-2 flex justify-between text-[13px]">
                 <span className="font-light text-muted-foreground">{t('cart.subtotal')}</span>
-                <span className="font-light text-foreground">{formatPrice(cartSubtotal)}</span>
+                <span className="font-light text-foreground">{summaryPrice(cartSubtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="mb-2 flex justify-between text-[13px]">
                   <span className="font-light text-muted-foreground">{t('checkout.discount')}</span>
-                  <span className="font-light text-destructive">−{formatPrice(discount)}</span>
+                  <span className="font-light text-destructive">−{summaryPrice(discount)}</span>
                 </div>
               )}
               <div className="mb-2 flex justify-between text-[13px]">
                 <span className="font-light text-muted-foreground">{t('cart.shipping')}</span>
                 <span className={shippingCost === 0 ? 'font-light text-gold' : 'font-light text-foreground'}>
-                  {shippingCost === 0 ? t('cart.free') : formatPrice(shippingCost)}
+                  {shippingCost === 0 ? t('cart.free') : summaryPrice(shippingCost)}
                 </span>
               </div>
               {/* Save toggles. Two separate switches on purpose: agreeing to
@@ -748,15 +852,19 @@ export function CheckoutFlow({
 
               <div className="mb-5 flex justify-between border-t border-border/40 pt-3">
                 <span className="text-[12px] uppercase tracking-[0.15em] text-foreground">{t('checkout.total')}</span>
-                <span className="font-serif text-xl font-light text-gold">{formatPrice(total)}</span>
+                <span className="font-serif text-xl font-light text-gold">{summaryPrice(total)}</span>
               </div>
-              {/* The charge is in CHF — the Stripe integration creates CHF
-                  payments only. With another display currency chosen, the
-                  franc amount is stated here, before anything is paid, so a
-                  euro figure can never be read as a euro charge. */}
+              {/* What a non-franc total means, said before anything is paid:
+                  by card it is charged in that currency, converted from the
+                  CHF prices at the rate shown; crypto is priced in CHF. */}
               {currency !== 'CHF' && (
                 <p className="-mt-2 mb-5 border-l-2 border-gold/40 bg-gold/[0.04] py-2 pl-3 text-[11px] font-light leading-relaxed text-muted-foreground">
-                  {tf('checkout.chargedInChf', { amount: formatChf(total, true), currency })}
+                  {form.payment === CRYPTO_PAYMENT_METHOD
+                    ? tf('checkout.cryptoInChf', { amount: formatChf(total, true) })
+                    : tf('checkout.chargeInCurrency', {
+                        currency,
+                        rate: String(EXCHANGE_RATES[currency]),
+                      })}
                 </p>
               )}
               {hasErrors && (

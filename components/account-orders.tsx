@@ -11,6 +11,7 @@ import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { paymentMethodLabel } from '@/lib/payment-labels'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
+import { formatCharged, orderCharge } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus, PaymentStatus } from '@/lib/types'
@@ -591,6 +592,12 @@ function OrderCard({
           <span className={cn('font-serif text-lg', muted ? 'text-muted-foreground/60 line-through' : 'text-gold')}>
             {formatChf(order.total)}
           </span>
+          {/* Paid by card in another currency: what the card was charged. */}
+          {orderCharge(order).converted && (
+            <span className="-mt-1 text-[10px] font-light tabular-nums text-muted-foreground/70">
+              {formatCharged(orderCharge(order).amount, orderCharge(order).currency)}
+            </span>
+          )}
           <div className="flex flex-wrap justify-end gap-1.5">
             <span
               className={cn(
