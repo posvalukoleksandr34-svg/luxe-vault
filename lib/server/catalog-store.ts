@@ -562,6 +562,27 @@ export async function updateProduct(product: Product): Promise<Product | null> {
   return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }
 
+/**
+ * Writes only a product's name and description. The translation backfill uses
+ * it so it can never touch a price, stock or anything else an admin may be
+ * editing at the same moment.
+ */
+export async function updateProductText(
+  slug: string,
+  name: LocalizedText,
+  description: LocalizedText,
+): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from('products')
+    .update({ name, description })
+    .eq('slug', slug)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to update product text: ${error.message}`)
+  return Boolean(data)
+}
+
 export async function deleteProduct(slug: string): Promise<boolean> {
   const { data, error } = await createAdminClient()
     .from('products')

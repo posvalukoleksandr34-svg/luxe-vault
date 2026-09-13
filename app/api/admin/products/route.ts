@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import { DELIVERY_DAYS_LIMITS, isDeliveryDays } from '@/lib/fulfilment'
 import { createProduct, deleteProduct, updateProduct } from '@/lib/server/catalog-store'
+import { completeProductCopy, sourceLocale } from '@/lib/server/translate'
 import type { Product } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -28,12 +29,24 @@ function validate(p: Partial<Product>): string | null {
     if (p.oldPrice <= p.price) return 'Old price must be higher than the current price'
   }
   if (!p.name || typeof p.name !== 'object') return 'Missing product name'
+  // At least one language; the rest are completed before saving.
+  if (!sourceLocale(p.name)) return 'Missing product name'
   // Optional; absent or null means the store default. Anything else must be a
   // window the database's check constraint (0026) would accept.
   if (p.deliveryDays !== undefined && p.deliveryDays !== null && !isDeliveryDays(p.deliveryDays)) {
     return `Delivery estimate must be whole days from ${DELIVERY_DAYS_LIMITS.min} to ${DELIVERY_DAYS_LIMITS.max}, with "to" not below "from"`
   }
   return null
+}
+
+/**
+ * The product with its name and description in every storefront language:
+ * empty languages translated (or, without Gemini, copied from the source) so
+ * a visitor in any language reads real text. See completeProductCopy.
+ */
+async function withCompleteCopy(product: Product): Promise<Product> {
+  const { name, description } = await completeProductCopy(product.name, product.description)
+  return { ...product, name, description }
 }
 
 export async function POST(request: NextRequest) {
@@ -48,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (problem) return NextResponse.json({ error: problem }, { status: 400 })
 
   try {
-    const created = await createProduct(product)
+    const created = await createProduct(await withCompleteCopy(product))
     revalidateStorefront()
     return NextResponse.json({ product: created }, { status: 201 })
   } catch (e) {
@@ -74,7 +87,7 @@ export async function PATCH(request: NextRequest) {
   if (problem) return NextResponse.json({ error: problem }, { status: 400 })
 
   try {
-    const updated = await updateProduct(product)
+    const updated = await updateProduct(await withCompleteCopy(product))
     if (!updated) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     revalidateStorefront()
     return NextResponse.json({ product: updated })

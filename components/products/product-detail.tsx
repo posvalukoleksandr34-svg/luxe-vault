@@ -38,6 +38,15 @@ import { canShareNatively, copyText, shareNatively } from '@/lib/share'
  * ("help.returns.content": 14 days from receipt) — keep the two in step.
  */
 const RETURN_DAYS = 14
+
+/**
+ * The gallery arrows. z-20 puts them ABOVE the full-photo click-to-zoom
+ * button (z-10): without it that button covered them, so every arrow click
+ * opened the lightbox instead of changing the photo. Always visible where
+ * there is no hover (touch screens) and on keyboard focus.
+ */
+const GALLERY_ARROW =
+  'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -131,6 +140,35 @@ export function ProductDetail({ product }: { product: Product }) {
 
   const outOfStock =
     p.statuses.includes('out_of_stock') || colorSoldOut || selectedStock === 0
+
+  /**
+   * Availability in the SELECTED size, in words: "Disponibile nella taglia L",
+   * "Solo 2 pezzi disponibili nella taglia L", "Esaurito nella taglia L".
+   * Null until a size is chosen — the general status shows until then. A
+   * one-size product has no size worth naming, so its wording leaves it out.
+   */
+  const namesSize = p.sizes.length > 1
+  const lowCount =
+    selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= selectedVariant.lowStockAt
+      ? selectedVariant.stock
+      : null
+  const sizeSoldOut = Boolean(size) && selectedStock === 0
+  const sizeStatus: string | null =
+    !size || p.statuses.includes('out_of_stock') || colorSoldOut
+      ? null
+      : sizeSoldOut
+        ? namesSize
+          ? tf('stock.soldOutInSize', { size })
+          : t('sold.out')
+        : namesSize
+          ? tf('stock.availableInSize', { size })
+          : null
+  const lowStockText =
+    lowCount === null || !size
+      ? null
+      : namesSize
+        ? tf(lowCount === 1 ? 'stock.lowInSizeOne' : 'stock.lowInSize', { n: lowCount, size })
+        : tf(lowCount === 1 ? 'stock.lowOne' : 'stock.low', { n: lowCount })
 
   // Never offer more than exists. 10 stays the ceiling for untracked products
   // and is the previous behaviour.
@@ -329,17 +367,29 @@ export function ProductDetail({ product }: { product: Product }) {
             <>
               <button
                 type="button"
-                onClick={goPrev}
+                onClick={(e) => {
+                  // The whole photo is the zoom button underneath: this click
+                  // must change the photo and nothing else.
+                  e.preventDefault()
+                  e.stopPropagation()
+                  goPrev()
+                }}
                 aria-label={t('product.prevImage')}
-                className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 group-hover:opacity-100"
+                className={cn(GALLERY_ARROW, 'left-3')}
               >
                 <ChevronLeft className="size-4" />
               </button>
               <button
                 type="button"
-                onClick={goNext}
+                onClick={(e) => {
+                  // The whole photo is the zoom button underneath: this click
+                  // must change the photo and nothing else.
+                  e.preventDefault()
+                  e.stopPropagation()
+                  goNext()
+                }}
                 aria-label={t('product.nextImage')}
-                className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 group-hover:opacity-100"
+                className={cn(GALLERY_ARROW, 'right-3')}
               >
                 <ChevronRight className="size-4" />
               </button>
@@ -418,20 +468,27 @@ export function ProductDetail({ product }: { product: Product }) {
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5">
           {outOfStock && (
             <span className="inline-flex items-center gap-1.5 border border-border/60 px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-              {t('sold.out')}
+              {sizeSoldOut && sizeStatus ? sizeStatus : t('sold.out')}
             </span>
           )}
           {p.statuses
-            .filter((s) => s !== 'out_of_stock')
+            // "In stock" beside a sold-out size or colour would contradict it.
+            .filter((s) => s !== 'out_of_stock' && !(s === 'in_stock' && outOfStock))
             .map((s) => (
               <span key={s} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
                 <ShieldCheck className="size-3 text-gold/60" />
-                {localize(STATUS_LABELS[s])}
+                {/* "In stock", said of the chosen size once there is one. */}
+                {s === 'in_stock' && sizeStatus ? sizeStatus : localize(STATUS_LABELS[s])}
               </span>
             ))}
         </div>
 
-        <p className="mt-6 text-[14px] font-light leading-relaxed text-muted-foreground">
+        {/* A warm light grey rather than the muted one: body copy someone reads
+            before buying needs real contrast on this ground. An explicit value
+            because the theme colours are hsl(var(--x)) with no alpha slot, so
+            an opacity modifier like text-foreground/85 has no effect. pre-line
+            keeps the paragraphs the admin typed. */}
+        <p className="mt-6 whitespace-pre-line text-[14px] font-light leading-[1.75] text-[#D9D4CA]">
           {localize(p.description)}
         </p>
 
@@ -544,13 +601,7 @@ export function ProductDetail({ product }: { product: Product }) {
           {!size && <p className="mt-2 text-[11px] text-destructive/80">{t('product.selectSize')}</p>}
           {/* Only when tracked AND actually low — a permanent counter on a
               well-stocked item is noise and manufactured urgency. */}
-          {selectedVariant &&
-            selectedVariant.stock > 0 &&
-            selectedVariant.stock <= selectedVariant.lowStockAt && (
-              <p className="mt-2 text-[11px] text-gold/80">
-                {t('product.lowStock')} {selectedVariant.stock}
-              </p>
-            )}
+          {lowStockText && <p className="mt-2 text-[11px] text-gold/80">{lowStockText}</p>}
         </div>
 
         {showGuide && (

@@ -24,6 +24,8 @@ export function CartPanel() {
     currentUser,
     openAuth,
     currency,
+    products,
+    localize,
     t,
     tf,
   } = useStore()
@@ -37,6 +39,13 @@ export function CartPanel() {
   // code. repriceItems() computes the figure that is actually charged.
   const estimatedShipping = quoteShipping(cartSubtotal)
   const shippingGap = freeShippingGap(cartSubtotal)
+
+  // Line names in the visitor's language, from the catalogue: the name saved
+  // with a line is whatever language the page was in when it was added.
+  const lineName = (item: { productId: string; name: string }) => {
+    const product = products.find((p) => p.id === item.productId)
+    return (product && localize(product.name)) || item.name
+  }
 
   // Fired when the drawer opens, before the early return below — a hook after
   // it would run conditionally and break the rules of hooks.
@@ -151,7 +160,7 @@ export function CartPanel() {
                   <div key={item.key} className="flex gap-4">
                     <Image
                       src={item.image}
-                      alt={item.name}
+                      alt={lineName(item)}
                       width={96}
                       height={96}
                       className="size-24 shrink-0 object-cover"
@@ -159,7 +168,7 @@ export function CartPanel() {
                     <div className="flex flex-1 flex-col">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-[13px] font-light leading-snug text-foreground">
-                          {item.name}
+                          {lineName(item)}
                         </h3>
                         <button
                           type="button"

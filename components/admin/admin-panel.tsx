@@ -28,6 +28,7 @@ import { CollectionsManager } from './collections-manager'
 import { CustomersManager } from './customers-manager'
 import { InventoryManager } from './inventory-manager'
 import { ProductForm } from './product-form'
+import { TranslateCatalogButton } from './translate-catalog-button'
 import { ReviewsManager } from './reviews-manager'
 import { SupportManager } from './support-manager'
 import { ORDER_STATUSES, type Order, type OrderStatus, PaymentStatus, Product } from '@/lib/types'
@@ -455,6 +456,7 @@ export function AdminPanel() {
                     placeholder="Поиск..."
                     className="w-40 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold sm:w-56"
                   />
+                  <TranslateCatalogButton />
                   <button
                     type="button"
                     onClick={handleAddProduct}

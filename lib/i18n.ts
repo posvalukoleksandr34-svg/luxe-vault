@@ -12,8 +12,21 @@ export const LOCALES: { code: Locale; label: string; flag: string }[] = [
 export const DEFAULT_LOCALE: Locale = 'ru'
 export const LOCALE_STORAGE_KEY = 'luxe-vault-locale'
 
-export function translate(text: LocalizedText, locale: Locale): string {
-  return text[locale] ?? text.ru ?? text.en ?? ''
+/**
+ * Text in `locale`, or the best fallback: English for a non-Russian visitor
+ * (more readable than Russian for most of them), then Russian, then whatever
+ * exists. An EMPTY string counts as missing — `??` alone let a blank
+ * translation through and printed nothing.
+ */
+export function translate(
+  text: LocalizedText | Partial<LocalizedText> | null | undefined,
+  locale: Locale,
+): string {
+  if (!text) return ''
+  const has = (l: Locale) => typeof text[l] === 'string' && (text[l] as string).trim() !== ''
+  const order: Locale[] = locale === 'ru' ? ['ru', 'en', 'it', 'fr', 'de'] : [locale, 'en', 'ru', 'it', 'fr', 'de']
+  for (const l of order) if (has(l)) return text[l] as string
+  return ''
 }
 
 export const CATEGORY_LABELS: Record<CategoryKey, LocalizedText> = {
@@ -123,6 +136,13 @@ export const UI = {
   'product.addToCart': { ru: 'В корзину', en: 'Add to Cart', it: 'Aggiungi', fr: 'Ajouter', de: 'In den Warenkorb' },
   'product.close': { ru: 'Закрыть', en: 'Close', it: 'Chiudi', fr: 'Fermer', de: 'Schließen' },
   'product.lowStock': { ru: 'осталось', en: 'left', it: 'rimasti', fr: 'restants', de: 'übrig' },
+  // Availability of the selected size (product page).
+  'stock.availableInSize': { ru: 'В наличии в размере {size}', en: 'Available in size {size}', it: 'Disponibile nella taglia {size}', fr: 'Disponible en taille {size}', de: 'Verfügbar in Größe {size}' },
+  'stock.soldOutInSize': { ru: 'Нет в наличии в размере {size}', en: 'Sold out in size {size}', it: 'Esaurito nella taglia {size}', fr: 'Épuisé en taille {size}', de: 'In Größe {size} ausverkauft' },
+  'stock.lowInSizeOne': { ru: 'Осталась 1 шт. в размере {size}', en: 'Only 1 item left in size {size}', it: 'Solo 1 pezzo disponibile nella taglia {size}', fr: 'Plus qu’une pièce en taille {size}', de: 'Nur noch 1 Stück in Größe {size}' },
+  'stock.lowInSize': { ru: 'Осталось {n} шт. в размере {size}', en: 'Only {n} items left in size {size}', it: 'Solo {n} pezzi disponibili nella taglia {size}', fr: 'Plus que {n} pièces en taille {size}', de: 'Nur noch {n} Stück in Größe {size}' },
+  'stock.lowOne': { ru: 'Осталась 1 шт.', en: 'Only 1 item left', it: 'Solo 1 pezzo disponibile', fr: 'Plus qu’une pièce', de: 'Nur noch 1 Stück' },
+  'stock.low': { ru: 'Осталось {n} шт.', en: 'Only {n} items left', it: 'Solo {n} pezzi disponibili', fr: 'Plus que {n} pièces', de: 'Nur noch {n} Stück' },
   'product.color': { ru: 'Цвет', en: 'Color', it: 'Colore', fr: 'Couleur', de: 'Farbe' },
   'product.size': { ru: 'Размер', en: 'Size', it: 'Taglia', fr: 'Taille', de: 'Größe' },
   'product.sizeGuide': { ru: 'Таблица размеров', en: 'Size Guide', it: 'Guida taglie', fr: 'Guide des tailles', de: 'Größentabelle' },
