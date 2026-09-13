@@ -8,6 +8,7 @@ import { CheckoutFlow } from '@/components/checkout-flow'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Header } from '@/components/header'
 import { EmptyState } from '@/components/state-view'
+import { productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 
 /**
@@ -108,7 +109,7 @@ export default function CheckoutPage() {
                 {cart.map((item) => (
                   <li key={item.key} className="flex items-center gap-3 py-3 first:pt-0">
                     <Image
-                      src={item.image}
+                      src={productImage(item.image)}
                       alt={lineName(item)}
                       width={48}
                       height={48}

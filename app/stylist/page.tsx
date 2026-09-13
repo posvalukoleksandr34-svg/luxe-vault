@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Breadcrumbs } from '@/components/breadcrumbs'
+import { LocalizedBreadcrumbs } from '@/components/localized-breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { StylistExperience } from '@/components/stylist/stylist-experience'
@@ -39,10 +39,10 @@ export default function StylistPage({
       <Header />
 
       <main id="main" className="mx-auto w-full max-w-[1200px] px-4 py-10 sm:px-6 lg:px-10 lg:py-16">
-        <Breadcrumbs
-          trail={[
-            { name: 'Shop', url: '/#shop' },
-            { name: 'Stylist', url: '/stylist' },
+        <LocalizedBreadcrumbs
+          items={[
+            { key: 'nav.shop', url: '/#shop' },
+            { key: 'stylist.title', url: '/stylist' },
           ]}
         />
 

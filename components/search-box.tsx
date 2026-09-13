@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { trackSearch } from '@/lib/analytics'
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches'
+import { productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -251,7 +252,7 @@ export function SearchBox({
                     >
                       <span className="relative size-11 shrink-0 overflow-hidden border border-border/60">
                         <Image
-                          src={p.image}
+                          src={productImage(p.image)}
                           alt=""
                           fill
                           sizes="44px"

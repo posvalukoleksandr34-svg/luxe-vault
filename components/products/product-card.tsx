@@ -2,8 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
+import { PRODUCT_PLACEHOLDER, productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -19,6 +21,9 @@ export function ProductCard({ product }: { product: Product }) {
   // change of angle, rather than a plain zoom — the "dressed for the camera"
   // hover moment editorial lookbooks use.
   const secondaryImage = product.images?.[1]
+  // A missing or broken photo shows the placeholder, never an error or a
+  // broken-image icon in the grid.
+  const [imageFailed, setImageFailed] = useState(false)
 
   return (
     // A real <a href>, not an onClick. A div with a click handler is invisible
@@ -32,7 +37,8 @@ export function ProductCard({ product }: { product: Product }) {
     >
       <div className="card-gold product-card relative aspect-[3/4] overflow-hidden">
         <Image
-          src={product.image}
+          src={imageFailed ? PRODUCT_PLACEHOLDER : productImage(product.image)}
+          onError={() => setImageFailed(true)}
           alt={localize(product.name)}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"

@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/state-view'
 import { TrustBadges } from '@/components/trust-badges'
 import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
 import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
+import { productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 
 export function CartPanel() {
@@ -169,7 +170,7 @@ export function CartPanel() {
                 {cart.map((item) => (
                   <div key={item.key} className="flex gap-4">
                     <Image
-                      src={item.image}
+                      src={productImage(item.image)}
                       alt={lineName(item)}
                       width={96}
                       height={96}

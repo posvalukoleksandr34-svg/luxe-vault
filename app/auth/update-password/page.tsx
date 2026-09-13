@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { createClient } from '@/lib/supabase/client'
+import { useStore } from '@/lib/store'
 
 const MIN_PASSWORD_LENGTH = 8
 
 export default function UpdatePasswordPage() {
+  const { t, tf } = useStore()
   const router = useRouter()
   const [checking, setChecking] = useState(true)
   const [authorized, setAuthorized] = useState(false)
@@ -45,13 +47,13 @@ export default function UpdatePasswordPage() {
     if (busy) return
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов`)
+      setError(tf('pw.tooShort', { n: MIN_PASSWORD_LENGTH }))
       return
     }
     // Checked here rather than only on the server: a typo'd new password would
     // otherwise lock the customer out of the account they are trying to recover.
     if (password !== confirm) {
-      setError('Пароли не совпадают')
+      setError(t('account.passwordMismatch'))
       return
     }
 
@@ -82,17 +84,17 @@ export default function UpdatePasswordPage() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="font-serif text-2xl font-bold text-foreground">
-          Ссылка недействительна
+          {t('pw.linkInvalid')}
         </h1>
         <p className="max-w-sm text-sm font-light leading-relaxed text-muted-foreground">
-          Срок действия ссылки истёк или она уже была использована.
-          Запросите новую ссылку для смены пароля.
+          {t('pw.linkExpiredHint')}
+          
         </p>
         <Link
           href="/auth/forgot-password"
           className="mt-2 border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
         >
-          Запросить ссылку
+          {t('pw.requestLink')}
         </Link>
       </main>
     )
@@ -102,9 +104,9 @@ export default function UpdatePasswordPage() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <CheckCircle2 className="h-8 w-8 text-emerald-400" strokeWidth={1.25} />
-        <h1 className="font-serif text-2xl font-bold text-foreground">Пароль обновлён</h1>
+        <h1 className="font-serif text-2xl font-bold text-foreground">{t('account.passwordChanged')}</h1>
         <p className="text-sm font-light text-muted-foreground">
-          Сейчас вы вернётесь в магазин.
+          {t('pw.returningToShop')}
         </p>
       </main>
     )
@@ -117,15 +119,15 @@ export default function UpdatePasswordPage() {
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-          Новый пароль
+          {t('pw.newPassword')}
         </h1>
         <p className="mt-2 text-sm font-light leading-relaxed text-muted-foreground">
-          Придумайте новый пароль — не короче {MIN_PASSWORD_LENGTH} символов.
+          {tf('pw.newPasswordHint', { n: MIN_PASSWORD_LENGTH })}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <PasswordInput
-            label="Новый пароль"
+            label={t('pw.newPassword')}
             value={password}
             onChange={setPassword}
             required
@@ -136,7 +138,7 @@ export default function UpdatePasswordPage() {
           />
 
           <PasswordInput
-            label="Повторите пароль"
+            label={t('pw.repeat')}
             value={confirm}
             onChange={setConfirm}
             required
@@ -148,11 +150,11 @@ export default function UpdatePasswordPage() {
 
           {tooShort && !error && (
             <p className="text-[12px] text-destructive">
-              Минимум {MIN_PASSWORD_LENGTH} символов
+              {tf('pw.minChars', { n: MIN_PASSWORD_LENGTH })}
             </p>
           )}
           {mismatch && !tooShort && !error && (
-            <p className="text-[12px] text-destructive">Пароли не совпадают</p>
+            <p className="text-[12px] text-destructive">{t('account.passwordMismatch')}</p>
           )}
           {error && <p className="text-[12px] text-destructive">{error}</p>}
 
@@ -162,7 +164,7 @@ export default function UpdatePasswordPage() {
             className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Сохранить пароль
+            {t('pw.save')}
           </button>
         </form>
       </div>

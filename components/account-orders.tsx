@@ -13,6 +13,7 @@ import { paymentMethodLabel } from '@/lib/payment-labels'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
 import { formatCharged, orderCharge } from '@/lib/currency'
+import { productImage } from '@/lib/product-image'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus, PaymentStatus } from '@/lib/types'
@@ -638,7 +639,7 @@ function OrderCard({
         {order.items.map((item) => (
           <div key={item.key} className="flex items-center gap-3">
             <Image
-              src={item.image}
+              src={productImage(item.image)}
               alt={item.name}
               width={40}
               height={40}

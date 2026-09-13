@@ -11,6 +11,7 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
+import { SkipLink } from '@/components/skip-link';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
@@ -216,14 +217,11 @@ export default async function RootLayout({
             costs sighted visitors nothing and appears the moment it is
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
-        <a
-          href="#main"
-          className="sr-only left-4 top-4 z-[200] border border-gold bg-background px-4 py-2 text-[12px] uppercase tracking-[0.12em] text-gold focus:not-sr-only focus:absolute"
-        >
-          Skip to content
-        </a>
 
         <StoreProvider initialCatalog={initialCatalog}>
+          {/* The skip link (see the note above), in the visitor's language —
+              still first in the tab order: nothing before it is focusable. */}
+          <SkipLink />
           <PageTransition>{children}</PageTransition>
           {/* Cart / checkout / account drawers. Mounted here, not per page: a
               page that renders a trigger but not its panel is a dead end. */}

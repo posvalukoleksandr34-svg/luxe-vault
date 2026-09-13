@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { LoadError } from '@/components/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { forgetLook } from '@/lib/saved-looks'
+import { productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -227,7 +228,7 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
         {found.slice(0, 4).map((p) => (
           <span key={p.id} className="relative block aspect-[3/4] overflow-hidden bg-background">
             <Image
-              src={p.image}
+              src={productImage(p.image)}
               alt={localize(p.name)}
               fill
               sizes="120px"

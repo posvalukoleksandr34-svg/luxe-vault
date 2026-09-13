@@ -34,6 +34,7 @@ import { STATUS_LABELS } from '@/lib/i18n'
 import { canShareNatively, copyText, shareNatively } from '@/lib/share'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { PRODUCT_PLACEHOLDER } from '@/lib/product-image'
 import type { Product } from '@/lib/types'
 
 /**
@@ -81,7 +82,10 @@ export function ProductDetail({ product }: { product: Product }) {
   // A colour with its own photo puts it first, so selecting "Charcoal" shows
   // the charcoal one rather than leaving the customer to hunt the carousel.
   const allImages = (() => {
-    const base = p.images && p.images.length > 0 ? p.images : [p.image]
+    // Empty entries dropped, and the placeholder when nothing is left: a
+    // product saved without photos must not break the page.
+    const listed = (p.images && p.images.length > 0 ? p.images : [p.image]).filter((src) => Boolean(src && src.trim()))
+    const base = listed.length > 0 ? listed : [PRODUCT_PLACEHOLDER]
     const variant = activeColor?.image?.trim()
     if (!variant) return base
     return [variant, ...base.filter((img) => img !== variant)]
@@ -494,9 +498,13 @@ export function ProductDetail({ product }: { product: Product }) {
             because the theme colours are hsl(var(--x)) with no alpha slot, so
             an opacity modifier like text-foreground/85 has no effect. pre-line
             keeps the paragraphs the admin typed. */}
-        <p className="mt-6 whitespace-pre-line text-[14px] font-light leading-[1.75] text-[#D9D4CA]">
-          {localize(p.description)}
-        </p>
+        {/* Omitted when the product has no description yet, rather than
+            leaving an empty gap in the panel. */}
+        {localize(p.description).trim() && (
+          <p className="mt-6 whitespace-pre-line text-[14px] font-light leading-[1.75] text-[#D9D4CA]">
+            {localize(p.description)}
+          </p>
+        )}
 
         {p.colors.length > 0 && (
           <div className="mt-8">

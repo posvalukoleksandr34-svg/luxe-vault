@@ -4,7 +4,6 @@ import type {
   Order,
   Product,
   Promo,
-  Review,
   SizeMeasurement,
 } from './types'
 
@@ -311,30 +310,3 @@ export const TELEGRAM_ADMIN = '@luxevault_orders'
  * на это письмо" and pointed that reply somewhere unowned.
  */
 export const SUPPORT_EMAIL = 'support@luxe-vault.store'
-
-export const SEED_REVIEWS: Review[] = [
-  {
-    id: 'rev-1001',
-    name: 'Алексей М.',
-    rating: 5,
-    message: 'Худи пришло раньше срока, качество пошива и вышивки — отличное для реплики. Уже заказал второй раз.',
-    createdAt: now - 1000 * 60 * 60 * 24 * 9,
-    status: 'approved',
-  },
-  {
-    id: 'rev-1002',
-    name: 'Дарья С.',
-    rating: 5,
-    message: 'Бомбер сидит идеально, кожа мягкая и приятная. Упаковка и подача — как в бутике.',
-    createdAt: now - 1000 * 60 * 60 * 24 * 21,
-    status: 'approved',
-  },
-  {
-    id: 'rev-1003',
-    name: 'Marco T.',
-    rating: 4,
-    message: 'Ottima qualità delle sneaker, consegna leggermente più lenta del previsto ma ne è valsa la pena.',
-    createdAt: now - 1000 * 60 * 60 * 24 * 34,
-    status: 'approved',
-  },
-]

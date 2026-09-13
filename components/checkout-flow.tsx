@@ -793,7 +793,7 @@ export function CheckoutFlow({
                     type="text"
                     value={form.promo}
                     onChange={(e) => update('promo', e.target.value)}
-                    placeholder="LUXE10"
+                    placeholder={t('checkout.promoPlaceholder')}
                     className={cn(
                       'flex-1 border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40',
                       promoError ? 'border-destructive' : 'border-border',

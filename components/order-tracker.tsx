@@ -26,6 +26,7 @@ import {
 import { TrackingDetails } from '@/components/tracking-details'
 import { formatCharged, orderCharge, orderChargeRate, roundMinor } from '@/lib/currency'
 import { EmptyState } from '@/components/state-view'
+import { productImage } from '@/lib/product-image'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -303,7 +304,7 @@ export function OrderTracker({ order }: { order: Order }) {
           {order.items.map((item) => (
             <li key={item.key} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
               <Image
-                src={item.image}
+                src={productImage(item.image)}
                 alt={item.name}
                 width={64}
                 height={64}

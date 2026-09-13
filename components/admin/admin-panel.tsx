@@ -29,6 +29,7 @@ import { CustomersManager } from './customers-manager'
 import { InventoryManager } from './inventory-manager'
 import { ProductForm } from './product-form'
 import { TranslateCatalogButton } from './translate-catalog-button'
+import { GAP_LABELS, productGaps } from '@/lib/product-gaps'
 import { ReviewsManager } from './reviews-manager'
 import { SupportManager } from './support-manager'
 import { ORDER_STATUSES, type Order, type OrderStatus, PaymentStatus, Product } from '@/lib/types'
@@ -103,6 +104,8 @@ export function AdminPanel() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
+  // Only the products an admin still needs to fill in — see lib/product-gaps.
+  const [gapsOnly, setGapsOnly] = useState(false)
   const [newPromo, setNewPromo] = useState({ code: '', percent: '' })
 
   // Orders are the durable, server-side record (see /api/admin/orders) —
@@ -242,8 +245,11 @@ export function AdminPanel() {
     }
   }, [orders, products])
 
-  const filteredProducts = products.filter((p) =>
-    localize(p.name).toLowerCase().includes(search.toLowerCase()),
+  const needsAttention = products.filter((p) => productGaps(p).length > 0).length
+  const filteredProducts = products.filter(
+    (p) =>
+      localize(p.name).toLowerCase().includes(search.toLowerCase()) &&
+      (!gapsOnly || productGaps(p).length > 0),
   )
 
   function handleAddProduct() {
@@ -456,6 +462,21 @@ export function AdminPanel() {
                     placeholder="Поиск..."
                     className="w-40 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold sm:w-56"
                   />
+                  {/* Products still missing something a customer needs — a
+                      photo, a description, a translation, a size chart,
+                      specs, their own delivery time, a plausible price. */}
+                  <button
+                    type="button"
+                    onClick={() => setGapsOnly((v) => !v)}
+                    aria-pressed={gapsOnly}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
+                      gapsOnly
+                        ? 'border-amber-400/60 bg-amber-400/10 text-amber-300'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Требуют заполнения · {needsAttention}
+                  </button>
                   <TranslateCatalogButton />
                   <button
                     type="button"
@@ -488,6 +509,18 @@ export function AdminPanel() {
                             <img src={p.image} alt={localize(p.name)} className="size-10 rounded-lg object-cover" />
                             <div>
                               <p className="text-sm font-medium text-foreground">{localize(p.name)}</p>
+                              {productGaps(p).length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {productGaps(p).map((g) => (
+                                    <span
+                                      key={g}
+                                      className="rounded border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] text-amber-300"
+                                    >
+                                      {GAP_LABELS[g]}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               {p.images && p.images.length > 1 && (
                                 <p className="text-xs text-muted-foreground">{p.images.length} фото</p>
                               )}

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
 import { createClient } from '@/lib/supabase/client'
+import { useStore } from '@/lib/store'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -28,6 +29,7 @@ const MIN_PASSWORD_LENGTH = 8
  * works regardless of how the project's URLs are configured.
  */
 export function PasswordRecoveryModal() {
+  const { t, tf } = useStore()
   const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -69,13 +71,13 @@ export function PasswordRecoveryModal() {
     if (busy) return
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов`)
+      setError(tf('pw.tooShort', { n: MIN_PASSWORD_LENGTH }))
       return
     }
     // Checked before submitting: a typo'd new password would otherwise lock
     // the customer out of the very account they are recovering.
     if (password !== confirm) {
-      setError('Пароли не совпадают')
+      setError(t('account.passwordMismatch'))
       return
     }
 
@@ -120,17 +122,17 @@ export function PasswordRecoveryModal() {
           <div className="flex flex-col items-center gap-4 py-4 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-400" strokeWidth={1.25} />
             <h2 id="recovery-title" className="font-serif text-xl font-bold text-foreground">
-              Пароль обновлён
+              {t('account.passwordChanged')}
             </h2>
             <p className="text-sm font-light text-muted-foreground">
-              Теперь вы можете пользоваться аккаунтом с новым паролем.
+              {t('pw.doneBody')}
             </p>
             <button
               type="button"
               onClick={close}
               className="mt-2 border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
             >
-              Продолжить
+              {t('pw.continue')}
             </button>
           </div>
         ) : (
@@ -143,10 +145,10 @@ export function PasswordRecoveryModal() {
                     id="recovery-title"
                     className="font-serif text-lg font-bold tracking-tight text-foreground"
                   >
-                    Новый пароль
+                    {t('pw.newPassword')}
                   </h2>
                   <p className="mt-1 text-[12px] font-light leading-relaxed text-muted-foreground">
-                    Придумайте новый пароль — не короче {MIN_PASSWORD_LENGTH} символов.
+                    {tf('pw.newPasswordHint', { n: MIN_PASSWORD_LENGTH })}
                   </p>
                 </div>
               </div>
@@ -154,7 +156,7 @@ export function PasswordRecoveryModal() {
                 type="button"
                 onClick={close}
                 className="shrink-0 text-muted-foreground transition hover:text-foreground"
-                aria-label="Закрыть"
+                aria-label={t('product.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -162,7 +164,7 @@ export function PasswordRecoveryModal() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <PasswordInput
-                label="Новый пароль"
+                label={t('pw.newPassword')}
                 value={password}
                 onChange={setPassword}
                 required
@@ -173,7 +175,7 @@ export function PasswordRecoveryModal() {
               />
 
               <PasswordInput
-                label="Повторите пароль"
+                label={t('pw.repeat')}
                 value={confirm}
                 onChange={setConfirm}
                 required
@@ -183,11 +185,11 @@ export function PasswordRecoveryModal() {
 
               {tooShort && !error && (
                 <p className="text-[12px] text-destructive">
-                  Минимум {MIN_PASSWORD_LENGTH} символов
+                  {tf('pw.minChars', { n: MIN_PASSWORD_LENGTH })}
                 </p>
               )}
               {mismatch && !tooShort && !error && (
-                <p className="text-[12px] text-destructive">Пароли не совпадают</p>
+                <p className="text-[12px] text-destructive">{t('account.passwordMismatch')}</p>
               )}
               {error && <p className="text-[12px] text-destructive">{error}</p>}
 
@@ -197,7 +199,7 @@ export function PasswordRecoveryModal() {
                 className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
               >
                 {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Сохранить пароль
+                {t('pw.save')}
               </button>
             </form>
           </>

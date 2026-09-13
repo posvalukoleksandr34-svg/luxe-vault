@@ -14,6 +14,7 @@ import {
   STYLIST_OCCASION_LABELS,
   STYLIST_STYLE_LABELS,
 } from '@/lib/i18n'
+import { productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type {
@@ -312,7 +313,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
         className="card-gold product-card relative block aspect-[3/4] overflow-hidden"
       >
         <Image
-          src={item.product.image}
+          src={productImage(item.product.image)}
           alt={name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"

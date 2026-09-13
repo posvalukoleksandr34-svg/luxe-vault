@@ -10,6 +10,7 @@ import { trackPurchase } from '@/lib/analytics'
 import { estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { fetchMyOrders } from '@/lib/order-registry'
 import { formatCharged, orderCharge } from '@/lib/currency'
+import { productImage } from '@/lib/product-image'
 import { formatChf, useStore } from '@/lib/store'
 import type { Order } from '@/lib/types'
 
@@ -173,7 +174,7 @@ function SuccessContent() {
             {order.items.map((item) => (
               <li key={item.key} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
                 <Image
-                  src={item.image}
+                  src={productImage(item.image)}
                   alt={item.name}
                   width={56}
                   height={56}
