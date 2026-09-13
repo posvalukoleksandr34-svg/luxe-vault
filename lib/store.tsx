@@ -232,8 +232,9 @@ export function useStore() {
  * For what is being SHOPPED: the catalogue, the cart, the checkout summary.
  * In CHF it prints exactly what it always did ("CHF 1’000").
  */
-export function formatPrice(value: number) {
-  return formatMoney(value, getActiveCurrency())
+export function formatPrice(value: number, exact = false) {
+  // `exact` keeps the cents, for fees ("CHF 14.90", not "CHF 15").
+  return formatMoney(value, getActiveCurrency(), exact)
 }
 
 /**

@@ -82,7 +82,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         {product.limited && !outOfStock && (
           <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.15em] text-gold/90">
-            Limited
+            {t('card.limited')}
           </span>
         )}
 

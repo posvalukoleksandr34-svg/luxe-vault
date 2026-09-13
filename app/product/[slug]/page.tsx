@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Sparkles } from 'lucide-react'
-import { Breadcrumbs, breadcrumbJsonLd } from '@/components/breadcrumbs'
+import { breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductDetail } from '@/components/products/product-detail'
 import { RecentlyViewed, RelatedProducts } from '@/components/products/product-rail'
 import { ProductReviews } from '@/components/products/product-reviews'
-import { SHIPPING, TOTAL_WINDOW } from '@/lib/fulfilment'
+import { ProductTrail } from '@/components/products/product-trail'
+import { StyleThisPiece } from '@/components/products/style-this-piece'
+import { deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import type { Product } from '@/lib/types'
@@ -151,18 +151,20 @@ function productJsonLd(product: Product) {
         '@type': 'OfferShippingDetails',
         shippingRate: {
           '@type': 'MonetaryAmount',
-          value: SHIPPING.standard.price.toFixed(2),
+          // What delivery costs for this piece on its own — free when its
+          // price alone clears the threshold.
+          value: quoteShipping(product.price).toFixed(2),
           currency: 'CHF',
         },
         deliveryTime: {
           '@type': 'ShippingDeliveryTime',
-          // The same window the customer is quoted at checkout, from the one
-          // place that owns it — a schema that disagrees with the storefront
-          // is worse than none.
+          // This product's own window — the one its page shows and its
+          // order is stamped with. A schema that disagrees with the
+          // storefront is worse than none.
           transitTime: {
             '@type': 'QuantitativeValue',
-            minValue: TOTAL_WINDOW.min,
-            maxValue: TOTAL_WINDOW.max,
+            minValue: deliveryDaysFor(product).min,
+            maxValue: deliveryDaysFor(product).max,
             unitCode: 'DAY',
           },
         },
@@ -205,26 +207,13 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <Header />
 
       <main id="main" className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-        <Breadcrumbs trail={trail} />
+        {/* Visible trail in the visitor's language; `trail` above stays the
+            server's default-locale source for the BreadcrumbList JSON-LD. */}
+        <ProductTrail product={product} />
 
         <ProductDetail product={product} />
 
-        {/* "Style this piece" — the stylist opens with this product pinned
-            into its slot and builds the rest of the look around it. A quiet
-            row rather than a banner: someone on a product page is already
-            close to buying, and this is an aid, not an interruption. */}
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-y border-border/40 py-5">
-          <p className="text-[12px] font-light text-muted-foreground">
-            {pick(product.name)} — {pick(CATEGORY_LABELS[product.category]) || product.category}
-          </p>
-          <Link
-            href={`/stylist?product=${encodeURIComponent(product.id)}`}
-            className="inline-flex items-center gap-2 border border-gold/30 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
-          >
-            <Sparkles className="size-3.5" />
-            Style this piece
-          </Link>
-        </div>
+        <StyleThisPiece product={product} />
 
         {/* Everything below the fold. Client components reading the catalogue
             already in the store, so none of them costs a request. */}

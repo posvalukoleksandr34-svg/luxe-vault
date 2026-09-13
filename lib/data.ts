@@ -9,9 +9,12 @@ import type {
 } from './types'
 
 export const CATEGORY_TREE: { group: CategoryGroupKey; items: CategoryKey[] }[] = [
-  { group: 'clothing', items: ['hoodies', 'tshirts', 'jackets'] },
-  { group: 'shoes', items: ['sneakers', 'sneakers_low'] },
-  { group: 'accessories', items: ['bags', 'caps'] },
+  { group: 'clothing', items: ['hoodies', 'tshirts', 'jackets', 'pants'] },
+  { group: 'shoes', items: ['sneakers', 'sneakers_low', 'boots', 'loafers', 'sandals'] },
+  {
+    group: 'accessories',
+    items: ['bags', 'caps', 'hats', 'watches', 'sunglasses', 'gloves'],
+  },
 ]
 
 /** Out-of-the-box preview image for each Collections (Collezioni) card,

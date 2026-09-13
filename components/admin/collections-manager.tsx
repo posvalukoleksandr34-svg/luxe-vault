@@ -1,6 +1,6 @@
 'use client'
 
-import { ImagePlus, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { useStore } from '@/lib/store'
@@ -98,6 +98,8 @@ export function CollectionsManager() {
           />
         ))}
       </div>
+
+      <CategoriesPanel onChanged={reloadCatalog} />
     </div>
   )
 }
@@ -220,6 +222,222 @@ function CategorySlot({
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The categories inside each collection — what the storefront filters, the
+ * category pages and the product form's picker are built from. All of them
+ * read the database, so a category added here appears everywhere without a
+ * deploy. Only an empty category can be removed (products.category_id is ON
+ * DELETE RESTRICT).
+ */
+function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void }) {
+  const { categoryTree, groupLabels, categoryLabels, localize, products, collections, categories, pushToast } =
+    useStore()
+  const [addingTo, setAddingTo] = useState<string | null>(null)
+
+  async function remove(slug: string, label: string) {
+    if (!confirm(`Удалить категорию «${label}»?`)) return
+    const res = await fetch(`/api/admin/categories?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      pushToast({ title: data?.error ?? 'Не удалось удалить категорию', variant: 'default' })
+      return
+    }
+    pushToast({ title: 'Категория удалена', variant: 'default' })
+    await onChanged()
+  }
+
+  return (
+    <section className="mt-10">
+      <h2 className="mb-2 font-serif text-xl font-semibold text-foreground">Категории</h2>
+      <p className="mb-5 text-sm text-muted-foreground">
+        По категориям работают фильтры магазина и выбор категории в карточке товара. Названия — на
+        всех языках сайта; пустой язык показывает русское название.
+      </p>
+
+      <div className="space-y-4">
+        {categoryTree.map(({ group, items }) => {
+          // Categories live in the database; a collection only in the code
+          // fallback has no row to attach one to.
+          const inDatabase = collections.some((c) => c.slug === group)
+          return (
+            <div key={group} className="rounded-xl border border-border bg-card/40 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-foreground">
+                  {localize(groupLabels[group] ?? {}) || group}
+                </h3>
+                {inDatabase && (
+                  <button
+                    type="button"
+                    onClick={() => setAddingTo(addingTo === group ? null : group)}
+                    className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-gold/50 hover:text-gold"
+                  >
+                    <Plus className="size-3" />
+                    Категория
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {items.length === 0 && (
+                  <span className="text-xs text-muted-foreground/60">Категорий пока нет</span>
+                )}
+                {items.map((slug) => {
+                  const label = localize(categoryLabels[slug] ?? {}) || slug
+                  const count = products.filter((p) => p.group === group && p.category === slug).length
+                  const deletable = count === 0 && categories.some((c) => c.slug === slug)
+                  return (
+                    <span
+                      key={slug}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground"
+                    >
+                      {label}
+                      <span className="font-mono text-[10px] text-muted-foreground/60">
+                        {slug} · {count}
+                      </span>
+                      {deletable && (
+                        <button
+                          type="button"
+                          onClick={() => void remove(slug, label)}
+                          className="text-muted-foreground/60 transition hover:text-destructive"
+                          aria-label={`Удалить категорию ${label}`}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+
+              {addingTo === group && (
+                <NewCategoryForm
+                  collection={group}
+                  onDone={async () => {
+                    setAddingTo(null)
+                    await onChanged()
+                  }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+const CATEGORY_NAME_FIELDS = [
+  { locale: 'ru', label: 'RU', required: true },
+  { locale: 'en', label: 'EN', required: false },
+  { locale: 'it', label: 'IT', required: false },
+  { locale: 'fr', label: 'FR', required: false },
+  { locale: 'de', label: 'DE', required: false },
+] as const
+
+/**
+ * A new category, named in all five storefront languages. The slug is what
+ * products and URLs reference, so, like a collection's, it is set once.
+ */
+function NewCategoryForm({
+  collection,
+  onDone,
+}: {
+  collection: string
+  onDone: () => Promise<void> | void
+}) {
+  const { pushToast } = useStore()
+  const [names, setNames] = useState<Record<string, string>>({})
+  const [slug, setSlug] = useState('')
+  const [slugEdited, setSlugEdited] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  // Suggested from the English name — Cyrillic has no useful ASCII slug.
+  function suggestSlug(value: string) {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection, slug: slug.trim().toLowerCase(), name: names }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? 'Не удалось создать категорию')
+      pushToast({ title: 'Категория создана', variant: 'success' })
+      await onDone()
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'default' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 border-t border-border pt-4">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {CATEGORY_NAME_FIELDS.map((field) => (
+          <label key={field.locale} className="block">
+            <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Название {field.label}
+              {field.required && <span className="text-destructive"> *</span>}
+            </span>
+            <input
+              type="text"
+              value={names[field.locale] ?? ''}
+              onChange={(e) => {
+                const value = e.target.value
+                setNames((prev) => ({ ...prev, [field.locale]: value }))
+                if (field.locale === 'en' && !slugEdited) setSlug(suggestSlug(value))
+              }}
+              required={field.required}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
+            />
+          </label>
+        ))}
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Slug <span className="text-destructive">*</span>
+          </span>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => {
+              setSlug(e.target.value)
+              setSlugEdited(true)
+            }}
+            required
+            pattern="[a-z0-9]+(_[a-z0-9]+)*"
+            title="Строчные латинские буквы и цифры, через подчёркивание"
+            placeholder="sunglasses"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-gold"
+          />
+        </label>
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground/60">
+        Slug нельзя изменить после создания — на него ссылаются товары и адреса страниц.
+      </p>
+      <div className="mt-3 flex gap-3">
+        <button
+          type="submit"
+          disabled={busy || !slug.trim() || !(names.ru ?? '').trim()}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy && <Loader2 className="size-3.5 animate-spin" />}
+          Создать категорию
+        </button>
+      </div>
+    </form>
   )
 }
 

@@ -1,4 +1,4 @@
-import type { Order } from '@/lib/types'
+import type { Locale, Order, Product } from '@/lib/types'
 
 /**
  * Every delivery, processing and returns window in one place.
@@ -15,9 +15,6 @@ import type { Order } from '@/lib/types'
 export const FULFILMENT = {
   /** Supplier lead time — ordering the item and quality-checking it. */
   supply: { min: 20, max: 35 },
-
-  /** Express skips the supplier queue for stock already on hand. */
-  expressSupply: { min: 2, max: 5 },
 
   /** Packing and handing the parcel to Swiss Post, after payment clears. */
   dispatch: { min: 2, max: 4 },
@@ -45,6 +42,115 @@ export type Range = { min: number; max: number }
 export const TOTAL_WINDOW: Range = {
   min: FULFILMENT.supply.min + FULFILMENT.dispatch.min + FULFILMENT.transit.min,
   max: FULFILMENT.supply.max + FULFILMENT.dispatch.max + FULFILMENT.transit.max,
+}
+
+// ---------------------------------------------------- per-product estimates
+
+/**
+ * The delivery estimate a product shows when it has none of its own.
+ *
+ * Each product can carry its own window — Product.deliveryDays, set in the
+ * admin panel — because dropshipped lines ship on their supplier's schedule,
+ * and one store-wide figure over-promises some pieces and under-sells others.
+ * This is the fallback for every product the admin has not set: the
+ * end-to-end TOTAL_WINDOW, the same figure the FAQ and the Terms quote.
+ */
+export const DEFAULT_DELIVERY_DAYS: Range = TOTAL_WINDOW
+
+/** What a per-product estimate may be, in whole days. Mirrors the check
+ *  constraint in migration 0026. */
+export const DELIVERY_DAYS_LIMITS = { min: 1, max: 120 } as const
+
+export function isDeliveryDays(value: unknown): value is Range {
+  const v = value as Range | null | undefined
+  return Boolean(
+    v &&
+      Number.isInteger(v.min) &&
+      Number.isInteger(v.max) &&
+      v.min >= DELIVERY_DAYS_LIMITS.min &&
+      v.max <= DELIVERY_DAYS_LIMITS.max &&
+      v.max >= v.min,
+  )
+}
+
+/** A product's own window, or the store default. */
+export function deliveryDaysFor(product: Pick<Product, 'deliveryDays'> | null | undefined): Range {
+  return product && isDeliveryDays(product.deliveryDays) ? product.deliveryDays : DEFAULT_DELIVERY_DAYS
+}
+
+/**
+ * The window for a whole basket. An order is complete when its slowest piece
+ * arrives, so both ends come from the slowest product: promising the fastest
+ * item's date for a parcel that is waiting on a slower one would be wrong for
+ * the customer who reads it.
+ */
+export function basketDeliveryDays(products: Pick<Product, 'deliveryDays'>[]): Range {
+  if (products.length === 0) return DEFAULT_DELIVERY_DAYS
+  let min = 0
+  let max = 0
+  for (const p of products) {
+    const d = deliveryDaysFor(p)
+    if (d.min > min) min = d.min
+    if (d.max > max) max = d.max
+  }
+  return { min, max }
+}
+
+const ABOUT: Record<Locale, string> = {
+  ru: 'около',
+  en: 'about',
+  it: 'circa',
+  fr: 'environ',
+  de: 'etwa',
+}
+
+const UNIT_WORDS: Record<Exclude<Locale, 'ru'>, { day: [string, string]; week: [string, string] }> = {
+  en: { day: ['day', 'days'], week: ['week', 'weeks'] },
+  it: { day: ['giorno', 'giorni'], week: ['settimana', 'settimane'] },
+  fr: { day: ['jour', 'jours'], week: ['semaine', 'semaines'] },
+  de: { day: ['Tag', 'Tage'], week: ['Woche', 'Wochen'] },
+}
+
+/**
+ * Russian needs three counting forms (1 день, 2 дня, 5 дней) and, after
+ * "около", the genitive (около 1 дня, около 14 дней) — a single "{n} дней"
+ * string reads wrong for half of all numbers.
+ */
+function russianUnit(unit: 'day' | 'week', n: number, afterAbout: boolean): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  const one = mod10 === 1 && mod100 !== 11
+  const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+  if (unit === 'day') {
+    if (afterAbout) return one ? 'дня' : 'дней'
+    return one ? 'день' : few ? 'дня' : 'дней'
+  }
+  if (afterAbout) return one ? 'недели' : 'недель'
+  return one ? 'неделя' : few ? 'недели' : 'недель'
+}
+
+function unitWord(locale: Locale, unit: 'day' | 'week', n: number, afterAbout: boolean): string {
+  if (locale === 'ru') return russianUnit(unit, n, afterAbout)
+  const [singular, plural] = UNIT_WORDS[locale][unit]
+  return n === 1 ? singular : plural
+}
+
+/**
+ * A delivery window as words in the visitor's language: "10–14 дней",
+ * "circa 2 settimane", "3–4 Wochen".
+ *
+ * Whole weeks are said as weeks — "about 2 weeks" is how a two-week
+ * dropshipping lead time is actually spoken — and a single figure as "about
+ * N", because a delivery date is never exact. The numbers are the admin's;
+ * only the wording is generated.
+ */
+export function describeDeliveryDays(range: Range, locale: Locale): string {
+  const weeks = range.min >= 7 && range.min % 7 === 0 && range.max % 7 === 0
+  const unit = weeks ? 'week' : 'day'
+  const a = weeks ? range.min / 7 : range.min
+  const b = weeks ? range.max / 7 : range.max
+  if (a === b) return `${ABOUT[locale]} ${a} ${unitWord(locale, unit, a, true)}`
+  return `${a}–${b} ${unitWord(locale, unit, b, false)}`
 }
 
 function addDays(from: number, days: number): Date {
@@ -108,26 +214,29 @@ export function formatDeliveryWindow(
 }
 
 
-export type ShippingType = 'standard' | 'express'
+/**
+ * The one delivery option: standard. Express was removed — it promised a
+ * shorter supplier leg the shop cannot guarantee on dropshipped lines.
+ * (`orders.shipping_type` keeps its enum for old rows; new orders are always
+ * 'standard'.)
+ */
+export type ShippingType = 'standard'
 
 /**
  * What delivery costs.
  *
- * PLACEHOLDER RATES. These are in the right shape and the right ballpark for
- * Swiss Post parcels, but they are a business decision, not a technical one —
- * set them to what shipping actually costs you. Everything that displays or
- * charges for delivery reads this object, so changing a number here is the
- * whole change.
+ * CHF 14.90 on orders under CHF 150, free from CHF 150. Only orders UNDER the
+ * threshold pay, so a basket of exactly CHF 150 ships free. Everything that
+ * displays or charges for delivery reads this object — the product page, the
+ * cart, the checkout and the server's own pricing in order-drafts.ts — so
+ * changing a number here is the whole change.
  *
  * `freeAbove` is a threshold on the discounted subtotal, not the total: free
  * shipping earned by a large order should not evaporate because the order also
  * qualified for a discount code.
  */
 export const SHIPPING = {
-  standard: { price: 9.9, freeAbove: 200 },
-  /** Express skips the supplier queue, and is never free — the cost is real
-   *  and a "free express" offer would be paid for out of margin. */
-  express: { price: 24.9, freeAbove: null },
+  standard: { price: 14.9, freeAbove: 150 },
 } as const
 
 /**
@@ -148,27 +257,21 @@ export const TAX_RATE = 0
  * Takes the already-discounted subtotal so the free-shipping threshold is
  * applied to what the customer is actually spending.
  */
-export function quoteShipping(
-  discountedSubtotal: number,
-  shipping: ShippingType = 'standard',
-): number {
-  const rule = SHIPPING[shipping]
-  if (rule.freeAbove !== null && discountedSubtotal >= rule.freeAbove) return 0
-  return rule.price
+export function quoteShipping(discountedSubtotal: number): number {
+  const rule = SHIPPING.standard
+  return discountedSubtotal >= rule.freeAbove ? 0 : rule.price
 }
 
 /**
  * How much more the customer needs to spend to earn free shipping.
  *
- * Returns null when the threshold is already met or does not exist, so the
- * caller renders nothing rather than "0 CHF to go".
+ * Returns null when the threshold is already met, so the caller renders
+ * nothing rather than "0 CHF to go".
  */
 export function freeShippingGap(
   discountedSubtotal: number,
-  shipping: ShippingType = 'standard',
 ): { remaining: number; threshold: number } | null {
-  const rule = SHIPPING[shipping]
-  if (rule.freeAbove === null) return null
+  const rule = SHIPPING.standard
   if (discountedSubtotal >= rule.freeAbove) return null
   return {
     remaining: Math.round((rule.freeAbove - discountedSubtotal) * 100) / 100,
@@ -176,34 +279,19 @@ export function freeShippingGap(
   }
 }
 
-/** End-to-end window per shipping type. Express shortens the supplier leg
- *  only — dispatch and postal transit are the same parcel either way. */
-export function windowFor(shipping: ShippingType): Range {
-  const supply = shipping === 'express' ? FULFILMENT.expressSupply : FULFILMENT.supply
-  return {
-    min: supply.min + FULFILMENT.dispatch.min + FULFILMENT.transit.min,
-    max: supply.max + FULFILMENT.dispatch.max + FULFILMENT.transit.max,
-  }
-}
-
 /**
  * The window to STAMP on a new order.
  *
- * Called once, server-side, at creation. Everything afterwards reads the
- * stored dates — see migration 0011 for why the promise is frozen rather than
- * recomputed on every render.
+ * Called once, server-side, at creation, with the basket's own window (see
+ * basketDeliveryDays). Everything afterwards reads the stored dates — see
+ * migration 0011 for why the promise is frozen rather than recomputed on
+ * every render.
  */
 export function quoteDeliveryWindow(
   createdAt: number,
-  shipping: ShippingType = 'standard',
+  days: Range = DEFAULT_DELIVERY_DAYS,
 ): { min: Date; max: Date } {
-  const w = windowFor(shipping)
-  const d = (days: number) => {
-    const x = new Date(createdAt)
-    x.setDate(x.getDate() + days)
-    return x
-  }
-  return { min: d(w.min), max: d(w.max) }
+  return { min: addDays(createdAt, days.min), max: addDays(createdAt, days.max) }
 }
 
 // ------------------------------------------------------------------ couriers

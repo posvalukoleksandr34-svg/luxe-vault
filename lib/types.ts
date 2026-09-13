@@ -121,6 +121,14 @@ export type Product = {
   brand?: string
 
   /**
+   * This product's own delivery estimate, in whole days from payment
+   * confirmation to delivery, set in the admin panel. Undefined means the
+   * store default — see deliveryDaysFor() and DEFAULT_DELIVERY_DAYS in
+   * lib/fulfilment.ts.
+   */
+  deliveryDays?: { min: number; max: number }
+
+  /**
    * AI Stylist metadata: style register, fit, occasion, season.
    *
    * Undefined means "not tagged", which is NOT the same as "no style" — the

@@ -4,15 +4,16 @@
 // browser.
 import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
 import {
+  basketDeliveryDays,
   quoteDeliveryWindow,
   quoteShipping,
   TAX_RATE,
-  type ShippingType,
+  type Range,
 } from '@/lib/fulfilment'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { applyCoupon } from '@/lib/server/coupons'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
-import type { CartItem, Order } from '@/lib/types'
+import type { CartItem, Order, Product } from '@/lib/types'
 
 export type OrderDraftBody = {
   customer?: {
@@ -51,8 +52,9 @@ export type ValidatedDraft = {
   /** auth.users.id of the buyer, when signed in. Scopes user-specific codes. */
   userId?: string
   payment: string
-  /** Chosen at checkout; drives both the delivery window and the charge. */
-  shippingType?: ShippingType
+  /** The basket's delivery window in days, from its products' own estimates.
+   *  Set by repriceItems(); stamped on the order by buildOrder(). */
+  deliveryDays?: Range
 }
 
 function isValidItem(item: unknown): item is CartItem {
@@ -172,20 +174,18 @@ export function generateLookupToken(): string {
  * checkout becomes an unpaid order the customer can settle later rather than
  * vanishing.
  */
-export function buildOrder(
-  draft: ValidatedDraft,
-  userId?: string,
-  shippingType: ShippingType = 'standard',
-): Order {
+export function buildOrder(draft: ValidatedDraft, userId?: string): Order {
   const createdAt = Date.now()
-  // Stamped here, once. Everything downstream reads the stored dates.
-  const quote = quoteDeliveryWindow(createdAt, shippingType)
+  // Stamped here, once, from the basket's own products (see repriceItems).
+  // Everything downstream reads the stored dates.
+  const quote = quoteDeliveryWindow(createdAt, draft.deliveryDays)
 
   return {
     id: generateOrderId(),
     userId,
     createdAt,
-    shippingType,
+    // Standard is the only delivery option.
+    shippingType: 'standard',
     deliveryEstimateMin: quote.min.getTime(),
     deliveryEstimateMax: quote.max.getTime(),
     customer: draft.customer,
@@ -225,11 +225,14 @@ export async function repriceItems(
   const byId = new Map(products.map((p) => [p.id, p]))
 
   const priced: CartItem[] = []
+  // The catalogue rows behind the basket, for its delivery window.
+  const basket: Product[] = []
   for (const item of draft.items) {
     const product = byId.get(item.productId)
     // Unknown product: refuse. Accepting it would let anyone invent a line.
     if (!product) return { ok: false, error: `Unknown product: ${item.productId}` }
 
+    basket.push(product)
     const qty = Math.max(1, Math.min(Math.trunc(item.qty), 20))
     priced.push({
       ...item,
@@ -272,7 +275,7 @@ export async function repriceItems(
   // browser showing "free delivery" must not be what decides whether delivery
   // is free. The threshold is applied to the discounted subtotal.
   const discounted = round2(subtotal - discount)
-  const shippingCost = round2(quoteShipping(discounted, draft.shippingType ?? 'standard'))
+  const shippingCost = round2(quoteShipping(discounted))
 
   // Zero while the seller is an unregistered private individual — see
   // TAX_RATE in lib/fulfilment.ts and migration 0014.
@@ -305,6 +308,8 @@ export async function repriceItems(
       total,
       promo: appliedCode,
       couponId,
+      // From the catalogue, like the prices: the slowest piece sets the window.
+      deliveryDays: basketDeliveryDays(basket),
     },
   }
 }

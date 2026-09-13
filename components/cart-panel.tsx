@@ -211,7 +211,7 @@ export function CartPanel() {
                 <div className="mb-4">
                   <p className="mb-2 text-[11px] font-light text-muted-foreground">
                     {t('cart.freeShippingGap')}{' '}
-                    <span className="text-gold">{formatPrice(shippingGap.remaining)}</span>
+                    <span className="text-gold">{formatPrice(shippingGap.remaining, true)}</span>
                   </p>
                   <div
                     className="h-px w-full bg-border"
@@ -250,7 +250,7 @@ export function CartPanel() {
               <div className="mb-4 flex items-center justify-between text-[12px] font-light">
                 <span className="text-muted-foreground">{t('cart.shipping')}</span>
                 <span className={estimatedShipping === 0 ? 'text-gold' : 'text-muted-foreground'}>
-                  {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping)}
+                  {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping, true)}
                 </span>
               </div>
               {/* How converted prices are paid: by card in this currency, crypto in CHF. */}

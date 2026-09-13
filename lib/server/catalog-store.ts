@@ -12,6 +12,7 @@
 // refers to by slug throughout.
 import 'server-only'
 
+import { isDeliveryDays } from '@/lib/fulfilment'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   Category,
@@ -28,7 +29,7 @@ const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
 const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
-  colors, statuses, is_new, limited, size_chart, specs, brand, style_tags,
+  colors, statuses, is_new, limited, size_chart, specs, brand, style_tags, delivery_days_min, delivery_days_max,
   collection:collections ( slug ),
   category:categories ( slug )
 `
@@ -47,6 +48,14 @@ const KNOWN_STATUSES: StatusKey[] = [
 
 const num = (v: string | number | null | undefined): number =>
   v === null || v === undefined ? 0 : typeof v === 'number' ? v : parseFloat(v)
+
+/** A stored delivery window, or undefined for "use the store default" —
+ *  absent (pre-0026), null, or a pair the check constraint would refuse. */
+function toDeliveryDays(min: unknown, max: unknown): { min: number; max: number } | undefined {
+  if (min == null || max == null) return undefined
+  const range = { min: Number(min), max: Number(max) }
+  return isDeliveryDays(range) ? range : undefined
+}
 
 type Ref = { slug: string } | { slug: string }[] | null
 
@@ -133,6 +142,8 @@ function rowToProduct(row: Record<string, unknown>): Product {
     // fallback rather than dropping the product.
     styleTags:
       (row.style_tags as import('@/lib/stylist/types').StyleTags | null | undefined) ?? undefined,
+    // See deliveryDaysFor(): undefined falls back to the store default.
+    deliveryDays: toDeliveryDays(row.delivery_days_min, row.delivery_days_max),
     isNew: Boolean(row.is_new),
     limited: Boolean(row.limited),
     sizeChart: (row.size_chart as SizeMeasurement[] | null) ?? undefined,
@@ -179,11 +190,12 @@ async function resolveProductSelect(): Promise<string> {
 
   const supabase = createAdminClient()
 
-  const [variants, specs, brand, styleTags] = await Promise.all([
+  const [variants, specs, brand, styleTags, deliveryDays] = await Promise.all([
     supabase.from('product_variants').select('id').limit(1),
     supabase.from('products').select('specs').limit(1),
     supabase.from('products').select('brand').limit(1),
     supabase.from('products').select('style_tags').limit(1),
+    supabase.from('products').select('delivery_days_min').limit(1),
   ])
 
   let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
@@ -205,6 +217,10 @@ async function resolveProductSelect(): Promise<string> {
   if (styleTags.error) {
     console.error('[catalog] products.style_tags is missing. Apply 0023_stylist_metadata.sql.')
     select = select.replace(' style_tags,', '')
+  }
+  if (deliveryDays.error) {
+    console.error('[catalog] products.delivery_days_* is missing. Apply 0026_delivery_days_and_categories.sql.')
+    select = select.replace(' delivery_days_min, delivery_days_max,', '')
   }
 
   productSelectCache = select
@@ -313,6 +329,79 @@ export async function deleteCollection(slug: string): Promise<boolean> {
   return Boolean(data)
 }
 
+// ------------------------------------------------------------- categories ----
+
+/**
+ * Creates a category under an existing collection, appended after the
+ * collection's current categories unless a sort order is given.
+ */
+export async function createCategory(input: {
+  collectionSlug: string
+  slug: string
+  name: Partial<LocalizedText>
+  sortOrder?: number
+}): Promise<Category> {
+  const supabase = createAdminClient()
+
+  const { data: collection, error: collectionError } = await supabase
+    .from('collections')
+    .select('id, slug')
+    .eq('slug', input.collectionSlug)
+    .maybeSingle()
+  if (collectionError) throw new Error(`Failed to read collection: ${collectionError.message}`)
+  if (!collection) throw new Error(`Unknown collection "${input.collectionSlug}"`)
+
+  let sortOrder = input.sortOrder
+  if (sortOrder === undefined) {
+    const { data: last } = await supabase
+      .from('categories')
+      .select('sort_order')
+      .eq('collection_id', collection.id)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    sortOrder = ((last?.sort_order as number | undefined) ?? -1) + 1
+  }
+
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      collection_id: collection.id,
+      slug: input.slug,
+      name: input.name,
+      sort_order: sortOrder,
+    })
+    .select(CATEGORY_SELECT)
+    .single()
+
+  if (error) throw new Error(`Failed to create category: ${error.message}`)
+  return {
+    id: data.id as string,
+    collectionId: data.collection_id as string,
+    collectionSlug: collection.slug as string,
+    slug: data.slug as string,
+    name: (data.name ?? {}) as LocalizedText,
+    sortOrder: (data.sort_order as number) ?? 0,
+  }
+}
+
+/**
+ * Deletes a category. products.category_id is ON DELETE RESTRICT, so one that
+ * still holds products fails here rather than taking them with it — surfaced
+ * to the admin as a 409.
+ */
+export async function deleteCategory(slug: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from('categories')
+    .delete()
+    .eq('slug', slug)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to delete category: ${error.message}`)
+  return Boolean(data)
+}
+
 /** Resolves the uuids a product row needs from the slugs the app speaks. */
 async function resolveRefs(groupSlug: string, categorySlug: string) {
   const supabase = createAdminClient()
@@ -368,11 +457,19 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
     // in the column instead of two the reads would have to keep untangling.
     brand: product.brand?.trim() || null,
     style_tags: product.styleTags ?? null,
+    // Both null = the store default. Always written as a pair, matching the
+    // check constraint in 0026.
+    delivery_days_min: product.deliveryDays?.min ?? null,
+    delivery_days_max: product.deliveryDays?.max ?? null,
   }
 
   if (!select.includes(' specs,')) delete row.specs
   if (!select.includes(' brand,')) delete row.brand
   if (!select.includes(' style_tags,')) delete row.style_tags
+  if (!select.includes(' delivery_days_min,')) {
+    delete row.delivery_days_min
+    delete row.delivery_days_max
+  }
 
   return row
 }

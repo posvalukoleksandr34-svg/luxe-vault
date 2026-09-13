@@ -85,6 +85,18 @@ export function OrderTracker({ order }: { order: Order }) {
   const eta =
     order.status === 'delivered' || !stamped ? computed : stamped
 
+  // The day count in the timeline line, from the same stamped promise: with
+  // per-product estimates, the store-wide TOTAL_WINDOW is not this order's
+  // number. Orders stamped before 0011 fall back to it.
+  const DAY_MS = 86_400_000
+  const promisedDays =
+    order.deliveryEstimateMin && order.deliveryEstimateMax
+      ? {
+          min: Math.max(1, Math.round((order.deliveryEstimateMin - order.createdAt) / DAY_MS)),
+          max: Math.max(1, Math.round((order.deliveryEstimateMax - order.createdAt) / DAY_MS)),
+        }
+      : TOTAL_WINDOW
+
   const courier = courierTrackingUrl(order.courierName, order.trackingNumber)
   const currentIndex = terminal ? -1 : STEPS.findIndex((s) => s.status === order.status)
 
@@ -136,7 +148,7 @@ export function OrderTracker({ order }: { order: Order }) {
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
             <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
               <MapPin className="size-3 text-gold/60" strokeWidth={1.5} />
-              {tf('track.timeline', TOTAL_WINDOW)}
+              {tf('track.timeline', promisedDays)}
             </p>
             {/* The projected date, computed from this order's own timestamps.
                 A range of days is abstract; "12 — 27 October" is the answer

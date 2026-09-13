@@ -17,13 +17,24 @@ export function translate(text: LocalizedText, locale: Locale): string {
 }
 
 export const CATEGORY_LABELS: Record<CategoryKey, LocalizedText> = {
+  // Clothing
   hoodies: { ru: 'Худи', en: 'Hoodies', it: 'Felpe', fr: 'Sweats', de: 'Hoodies' },
   tshirts: { ru: 'Футболки', en: 'T-Shirts', it: 'T-Shirt', fr: 'T-Shirts', de: 'T-Shirts' },
   jackets: { ru: 'Куртки', en: 'Jackets', it: 'Giacche', fr: 'Vestes', de: 'Jacken' },
+  pants: { ru: 'Брюки', en: 'Pants', it: 'Pantaloni', fr: 'Pantalons', de: 'Hosen' },
+  // Shoes
   sneakers: { ru: 'Кроссовки', en: 'Sneakers', it: 'Sneakers', fr: 'Baskets', de: 'Sneaker' },
   sneakers_low: { ru: 'Кеды', en: 'Low-Top', it: 'Basse', fr: 'Basses', de: 'Low-Top' },
+  boots: { ru: 'Ботинки', en: 'Boots', it: 'Stivali', fr: 'Bottes', de: 'Stiefel' },
+  loafers: { ru: 'Лоферы', en: 'Loafers', it: 'Mocassini', fr: 'Mocassins', de: 'Loafer' },
+  sandals: { ru: 'Сандалии и слайды', en: 'Sandals & Slides', it: 'Sandali e slides', fr: 'Sandales et claquettes', de: 'Sandalen & Slides' },
+  // Accessories. Caps are "Cappellini" in Italian now that "Cappelli" names hats.
   bags: { ru: 'Сумки', en: 'Bags', it: 'Borse', fr: 'Sacs', de: 'Taschen' },
-  caps: { ru: 'Кепки', en: 'Caps', it: 'Cappelli', fr: 'Casquettes', de: 'Kappen' },
+  caps: { ru: 'Кепки', en: 'Caps', it: 'Cappellini', fr: 'Casquettes', de: 'Kappen' },
+  hats: { ru: 'Шляпы', en: 'Hats', it: 'Cappelli', fr: 'Chapeaux', de: 'Hüte' },
+  watches: { ru: 'Часы', en: 'Watches', it: 'Orologi', fr: 'Montres', de: 'Uhren' },
+  sunglasses: { ru: 'Солнцезащитные очки', en: 'Sunglasses', it: 'Occhiali', fr: 'Lunettes de soleil', de: 'Sonnenbrillen' },
+  gloves: { ru: 'Перчатки', en: 'Gloves', it: 'Guanti', fr: 'Gants', de: 'Handschuhe' },
 }
 
 export const STATUS_LABELS: Record<StatusKey, LocalizedText> = {
@@ -351,8 +362,11 @@ export const UI = {
 
   // Product page: service lines, trust line, article number, share.
   "product.freeShippingFrom": { ru: "Бесплатная доставка от {amount}", en: "Free shipping from {amount}", it: "Spedizione gratuita da {amount}", fr: "Livraison offerte dès {amount}", de: "Kostenloser Versand ab {amount}" },
-  "product.shippingDetails": { ru: "Стандартная доставка — {price}, бесплатно для заказов от {amount}. Экспресс-доставка — {express}.", en: "Standard shipping {price}, free on orders from {amount}. Express shipping {express}.", it: "Spedizione standard {price}, gratuita per ordini da {amount}. Spedizione express {express}.", fr: "Livraison standard {price}, offerte dès {amount}. Livraison express {express}.", de: "Standardversand {price}, kostenlos ab {amount}. Expressversand {express}." },
-  "product.deliveryEstimate": { ru: "Ориентировочная доставка: {min}–{max} дней", en: "Estimated delivery: {min}–{max} days", it: "Consegna stimata: {min}–{max} giorni", fr: "Livraison estimée : {min} à {max} jours", de: "Voraussichtliche Lieferung: {min}–{max} Tage" },
+  "product.shippingDetails": { ru: "Стандартная доставка — {price}, бесплатно для заказов от {amount}.", en: "Standard shipping {price}; free on orders from {amount}.", it: "Spedizione standard {price}, gratuita per ordini da {amount}.", fr: "Livraison standard {price}, offerte dès {amount}.", de: "Standardversand {price}, kostenlos ab {amount}." },
+  // {span} is this product's own window in words — see describeDeliveryDays().
+  "product.deliveryEstimate": { ru: "Ориентировочная доставка: {span}", en: "Estimated delivery: {span}", it: "Consegna stimata: {span}", fr: "Livraison estimée : {span}", de: "Voraussichtliche Lieferung: {span}" },
+  "product.deliveryDetails": { ru: "Каждая вещь заказывается у нашего партнёра-поставщика и проходит проверку перед отправкой. От подтверждения оплаты до доставки — {span}. Трек-номер придёт на почту, как только посылка будет отправлена.", en: "Each piece is ordered from our partner supplier and checked before it ships. Allow {span} from payment confirmation to delivery; the tracking number is emailed as soon as your parcel is on its way.", it: "Ogni capo viene ordinato presso il nostro fornitore partner e controllato prima della spedizione. Calcola {span} dalla conferma del pagamento alla consegna; il numero di tracciamento ti arriva via email appena il pacco parte.", fr: "Chaque pièce est commandée auprès de notre fournisseur partenaire et contrôlée avant l'expédition. Comptez {span} entre la confirmation du paiement et la livraison ; le numéro de suivi vous est envoyé par e-mail dès l'envoi du colis.", de: "Jedes Stück wird bei unserem Partnerlieferanten bestellt und vor dem Versand geprüft. Von der Zahlungsbestätigung bis zur Zustellung dauert es {span}; die Sendungsnummer erhalten Sie per E-Mail, sobald Ihr Paket unterwegs ist." },
+  "card.limited": { ru: "Лимит", en: "Limited", it: "Limitato", fr: "Limité", de: "Limitiert" },
   "product.returnsWithin": { ru: "Возврат в течение {n} дней", en: "Returns within {n} days", it: "Reso entro {n} giorni", fr: "Retour sous {n} jours", de: "Rückgabe innerhalb von {n} Tagen" },
   "product.returnsPolicy": { ru: "Правила возврата", en: "Returns policy", it: "Politica di reso", fr: "Politique de retour", de: "Rückgaberichtlinie" },
   "product.securePurchase": { ru: "Безопасная покупка", en: "Secure purchase", it: "Acquisto sicuro", fr: "Achat sécurisé", de: "Sicherer Kauf" },
@@ -450,7 +464,7 @@ export const UI = {
   "stylist.missing": { ru: "В каталоге пока нет подходящих позиций для этих слотов:", en: "The catalogue has nothing suitable for these pieces yet:", it: "Il catalogo non ha ancora nulla di adatto per questi capi:", fr: "Le catalogue n'a encore rien d'adapté pour ces pièces :", de: "Der Katalog hat dafür noch nichts Passendes:" },
   "stylist.empty": { ru: "Пока нечего собрать — в каталоге слишком мало товаров.", en: "There is not enough in the catalogue to build a look yet.", it: "Non c'è abbastanza in catalogo per creare un look.", fr: "Le catalogue ne contient pas encore assez d'articles pour composer un look.", de: "Im Katalog ist noch zu wenig, um einen Look zu bauen." },
   "stylist.failed": { ru: "Не удалось собрать образ", en: "Could not build a look", it: "Impossibile creare il look", fr: "Impossible de composer un look", de: "Look konnte nicht erstellt werden" },
-  "stylist.stylePiece": { ru: "Собрать образ с этим", en: "Style this piece", it: "Abbina questo capo", fr: "Composer autour", de: "Dazu stylen" },
+  "stylist.stylePiece": { ru: "Собрать образ с этой вещью", en: "Style this piece", it: "Abbina questo capo", fr: "Styler cette pièce", de: "Dieses Teil stylen" },
   "stylist.unavailable": { ru: "Нет в наличии", en: "Unavailable", it: "Non disponibile", fr: "Indisponible", de: "Nicht verfügbar" },
   "stylist.partialAdd": { ru: "Добавлены доступные позиции", en: "Added the available pieces", it: "Aggiunti i capi disponibili", fr: "Pièces disponibles ajoutées", de: "Verfügbare Teile hinzugefügt" },
   "stylist.slot.top": { ru: "Верх", en: "Top", it: "Sopra", fr: "Haut", de: "Oberteil" },

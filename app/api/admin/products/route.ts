@@ -1,5 +1,6 @@
 import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
+import { DELIVERY_DAYS_LIMITS, isDeliveryDays } from '@/lib/fulfilment'
 import { createProduct, deleteProduct, updateProduct } from '@/lib/server/catalog-store'
 import type { Product } from '@/lib/types'
 
@@ -27,6 +28,11 @@ function validate(p: Partial<Product>): string | null {
     if (p.oldPrice <= p.price) return 'Old price must be higher than the current price'
   }
   if (!p.name || typeof p.name !== 'object') return 'Missing product name'
+  // Optional; absent or null means the store default. Anything else must be a
+  // window the database's check constraint (0026) would accept.
+  if (p.deliveryDays !== undefined && p.deliveryDays !== null && !isDeliveryDays(p.deliveryDays)) {
+    return `Delivery estimate must be whole days from ${DELIVERY_DAYS_LIMITS.min} to ${DELIVERY_DAYS_LIMITS.max}, with "to" not below "from"`
+  }
   return null
 }
 

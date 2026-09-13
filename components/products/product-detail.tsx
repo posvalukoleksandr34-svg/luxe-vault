@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/accordion'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { trackViewItem } from '@/lib/analytics'
-import { SHIPPING, TOTAL_WINDOW } from '@/lib/fulfilment'
+import { SHIPPING, deliveryDaysFor, describeDeliveryDays } from '@/lib/fulfilment'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { canShareNatively, copyText, shareNatively } from '@/lib/share'
 
@@ -57,7 +57,7 @@ import type { Product } from '@/lib/types'
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, tf, localize, categoryLabels, pushToast } = useStore()
+  const { addToCart, setPanel, t, tf, locale, localize, categoryLabels, pushToast } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -258,6 +258,10 @@ export function ProductDetail({ product }: { product: Product }) {
    * link on the clipboard. A dismissed sheet is the customer's answer, so it
    * falls back to nothing; a refused one falls back to copying.
    */
+  // This product's own delivery window, in words, in the visitor's language.
+  // The store default when the admin set none — see deliveryDaysFor().
+  const deliverySpan = describeDeliveryDays(deliveryDaysFor(product), locale)
+
   async function share() {
     const url = window.location.href
     // The OS sheet on touch devices only — on a Windows desktop navigator.share
@@ -625,10 +629,10 @@ export function ProductDetail({ product }: { product: Product }) {
         </div>
 
         {/* Delivery, timing, returns — each opens to the shop's own wording.
-            Every figure is read from config, never typed in: free shipping
-            from SHIPPING.standard.freeAbove, the window from TOTAL_WINDOW, the
-            return period from the returns policy. A promise here that the
-            checkout or the policy contradicts is worse than no promise. */}
+            Every figure is read from data, never typed in: the fee and the
+            free-shipping threshold from SHIPPING, this product's delivery
+            window from its own estimate (the store default when the admin set
+            none), the return period from the returns policy. */}
         <Accordion type="single" collapsible className="mt-7 border-t border-border/40">
           <AccordionItem value="shipping" className="border-border/40">
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
@@ -639,9 +643,9 @@ export function ProductDetail({ product }: { product: Product }) {
             </AccordionTrigger>
             <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
               {tf('product.shippingDetails', {
-                price: formatPrice(SHIPPING.standard.price),
+                // To the cent: a fee is quoted exactly (CHF 14.90, not CHF 15).
+                price: formatPrice(SHIPPING.standard.price, true),
                 amount: formatPrice(SHIPPING.standard.freeAbove),
-                express: formatPrice(SHIPPING.express.price),
               })}
             </AccordionContent>
           </AccordionItem>
@@ -650,11 +654,11 @@ export function ProductDetail({ product }: { product: Product }) {
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
               <span className="flex items-center gap-3">
                 <CalendarDays className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
-                {tf('product.deliveryEstimate', TOTAL_WINDOW)}
+                {tf('product.deliveryEstimate', { span: deliverySpan })}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
-              {tf('help.delivery.content', TOTAL_WINDOW)}
+              {tf('product.deliveryDetails', { span: deliverySpan })}
             </AccordionContent>
           </AccordionItem>
 
