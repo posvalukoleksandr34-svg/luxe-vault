@@ -11,6 +11,7 @@ import {
   PackageSearch,
   Receipt,
   Truck,
+  RotateCcw,
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -23,7 +24,8 @@ import {
   formatDeliveryWindow,
 } from '@/lib/fulfilment'
 import { TrackingDetails } from '@/components/tracking-details'
-import { formatCharged, orderCharge } from '@/lib/currency'
+import { formatCharged, orderCharge, orderChargeRate, roundMinor } from '@/lib/currency'
+import { EmptyState } from '@/components/state-view'
 import { formatChf, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/lib/types'
@@ -97,6 +99,14 @@ export function OrderTracker({ order }: { order: Order }) {
         }
       : TOTAL_WINDOW
 
+  // A refund, as the card will show it: in the currency charged, at the rate
+  // it was charged at (orderChargeRate). The order itself keeps CHF.
+  const charged = orderCharge(order)
+  const refundAmount = formatCharged(
+    roundMinor((order.refundedAmount ?? order.total) * orderChargeRate(order)),
+    charged.currency,
+  )
+
   const courier = courierTrackingUrl(order.courierName, order.trackingNumber)
   const currentIndex = terminal ? -1 : STEPS.findIndex((s) => s.status === order.status)
 
@@ -126,8 +136,10 @@ export function OrderTracker({ order }: { order: Order }) {
             <span
               className={cn(
                 'border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]',
+                // Cancelled and refunded are outcomes, not alarms: a quiet
+                // neutral badge rather than the old red one.
                 terminal
-                  ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                  ? 'border-border text-muted-foreground'
                   : 'border-gold/40 bg-gold/10 text-gold',
               )}
             >
@@ -139,10 +151,24 @@ export function OrderTracker({ order }: { order: Order }) {
 
       {/* ----------------------------------------------------------- tracker */}
       {terminal ? (
-        <div className="flex items-center gap-3 border border-destructive/40 bg-destructive/5 px-5 py-4">
-          <XCircle className="size-4 shrink-0 text-destructive" strokeWidth={1.5} />
-          <p className="text-[13px] font-light text-destructive">{t('track.cancelled')}</p>
-        </div>
+        // Refunded and cancelled are different news: a refund says how much
+        // is coming back and when; a cancellation says nothing is owed.
+        <EmptyState
+          compact
+          className="card-gold px-6"
+          icon={order.status === 'refunded' ? RotateCcw : XCircle}
+          title={order.status === 'refunded' ? t('state.refundedTitle') : t('track.cancelled')}
+          hint={
+            order.status === 'refunded'
+              ? tf('state.refundedHint', {
+                  amount: refundAmount,
+                  min: FULFILMENT.refund.min,
+                  max: FULFILMENT.refund.max,
+                })
+              : t('state.cancelledHint')
+          }
+          action={{ label: t('state.goToCatalog'), href: '/#shop' }}
+        />
       ) : (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">

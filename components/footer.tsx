@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/accordion'
 import { openCookieSettings } from '@/components/cookie-consent'
 import { SoundToggle } from '@/components/sound-toggle'
+import { MotionToggle } from '@/components/motion-toggle'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { TOTAL_WINDOW } from '@/lib/fulfilment'
 import { useStore } from '@/lib/store'
@@ -79,7 +80,7 @@ export function Footer() {
             </h3>
             <Accordion type="single" collapsible className="-mt-1 w-full">
               <AccordionItem value="delivery" className="border-border/40">
-                <AccordionTrigger className="py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
                   {t('footer.delivery')}
                 </AccordionTrigger>
                 <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
@@ -88,7 +89,7 @@ export function Footer() {
               </AccordionItem>
 
               <AccordionItem value="returns" className="border-border/40">
-                <AccordionTrigger className="py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
                   {t('footer.returns')}
                 </AccordionTrigger>
                 <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
@@ -97,7 +98,7 @@ export function Footer() {
               </AccordionItem>
 
               <AccordionItem value="reviews" className="border-border/40 last:border-0">
-                <AccordionTrigger className="py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
                   {t('footer.reviews')}
                 </AccordionTrigger>
                 <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
@@ -169,6 +170,7 @@ export function Footer() {
               {t('cookies.settings')}
             </button>
             <SoundToggle />
+            <MotionToggle />
           </nav>
           <p className="text-[11px] font-light text-muted-foreground/40">
             {t('footer.rights')}

@@ -1729,3 +1729,73 @@ iframe[src*="elements-inner-easel"] {
     padding-inline: 0.875rem;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   No sideways scrolling, anywhere
+   ---------------------------------------------------------------------------
+   One element a few pixels too wide — a long unbroken word, an off-canvas
+   animation start position — lets a phone pan the whole page sideways.
+
+   `clip`, not `hidden`: `overflow-x: hidden` on <body> turns it into a scroll
+   container, and the header's `position: sticky` would then stick to the body
+   instead of the viewport. `clip` cuts the overflow without that side effect.
+--------------------------------------------------------------------------- */
+body {
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   "Reduce animations"
+   ---------------------------------------------------------------------------
+   <html data-motion="reduce"> is set by the footer switch or by the system
+   setting (lib/motion-preference.ts, and the boot script in the layout). The
+   brand's glows, reveals and sounds stay exactly as they are for everyone
+   else; here movement is collapsed to an instant change of state.
+--------------------------------------------------------------------------- */
+html[data-motion='reduce'] {
+  scroll-behavior: auto;
+}
+
+html[data-motion='reduce'] *,
+html[data-motion='reduce'] *::before,
+html[data-motion='reduce'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* The cursor light is motion by definition. */
+html[data-motion='reduce'] .pa {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+   On-screen keyboard
+   ---------------------------------------------------------------------------
+   While a field has focus on a touch device (components/ui-environment.tsx),
+   bottom-fixed bars step aside — otherwise they ride up with the shrinking
+   viewport and cover the field being typed into.
+--------------------------------------------------------------------------- */
+html[data-keyboard='open'] .hide-with-keyboard {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  /* Instantly — these bars carry their own transitions, which would
+     otherwise hold them on screen for the first keystrokes. */
+  transition: none !important;
+}
+
+/* Keyboard focus on form fields: a gold ring, only for keyboard navigation
+   (focus-visible), matching the ring buttons and links already have. */
+:where(input, select, textarea):focus-visible {
+  outline: 1px solid hsl(var(--gold) / 0.7);
+  outline-offset: 1px;
+}

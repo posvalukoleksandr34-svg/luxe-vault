@@ -113,7 +113,7 @@ export function Header() {
         <Link
           href="/"
           aria-label="LUXE VAULT — home"
-          className="flex select-none items-baseline gap-0.5"
+          className="tap-safe flex select-none items-baseline gap-0.5"
         >
           {/* Tighter below sm. The action bar gained a sixth control and the
               row overflowed by ~35px on a 375px screen, which scrolled the
@@ -153,7 +153,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            className="flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:hidden"
+            className="tap-safe flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:hidden"
             aria-label="Search"
           >
             <Search className="size-[18px]" />
@@ -173,7 +173,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => openAccount('orders')}
-            className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+            className="tap-safe relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
             aria-label={t('nav.profile')}
           >
             <User className="size-[18px]" />
@@ -185,7 +185,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setPanel('cart')}
-            className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+            className="tap-safe relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
             aria-label={t('cart.title')}
           >
             <ShoppingBag className="size-[18px]" />

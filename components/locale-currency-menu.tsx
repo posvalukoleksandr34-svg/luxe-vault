@@ -50,7 +50,7 @@ export function LocaleCurrencyMenu() {
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={t('header.langCurrency')}
-        className="flex items-center gap-1 whitespace-nowrap px-1.5 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground transition hover:text-foreground sm:px-2"
+        className="tap-safe flex items-center gap-1 whitespace-nowrap px-1.5 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground transition hover:text-foreground sm:px-2"
       >
         <span>{current?.flag ?? locale.toUpperCase()}</span>
         <span aria-hidden className="text-muted-foreground/40">

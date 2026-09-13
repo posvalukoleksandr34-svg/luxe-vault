@@ -77,7 +77,7 @@ export function CookieConsent() {
         role="dialog"
         aria-live="polite"
         aria-label={t('cookies.title')}
-        className="animate-fade-up fixed inset-x-0 bottom-0 z-[30] border-t border-gold/25 bg-popover/95 backdrop-blur-md"
+        className="hide-with-keyboard animate-fade-up fixed inset-x-0 bottom-0 z-[30] border-t border-gold/25 bg-popover/95 backdrop-blur-md"
       >
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10">
           <div className="flex items-start gap-3">
@@ -86,7 +86,7 @@ export function CookieConsent() {
               <p className="text-[13px] font-medium text-foreground">{t('cookies.title')}</p>
               <p className="mt-1.5 max-w-3xl text-[12px] font-light leading-relaxed text-muted-foreground">
                 {t('cookies.body')}{' '}
-                <a href="/legal/privacy" className="text-gold underline-offset-2 hover:underline">
+                <a href="/legal/privacy" className="tap-safe text-gold underline-offset-2 hover:underline">
                   {t('cookies.privacyLink')}
                 </a>
               </p>
@@ -120,14 +120,14 @@ export function CookieConsent() {
                 <button
                   type="button"
                   onClick={() => save({ analytics: true, marketing: true })}
-                  className="border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                  className="tap-safe border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
                 >
                   {t('cookies.acceptAll')}
                 </button>
                 <button
                   type="button"
                   onClick={() => save({ analytics: false, marketing: false })}
-                  className="border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                  className="tap-safe border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
                 >
                   {t('cookies.rejectAll')}
                 </button>
@@ -136,7 +136,7 @@ export function CookieConsent() {
                   <button
                     type="button"
                     onClick={() => save(draft)}
-                    className="border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+                    className="tap-safe border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
                   >
                     {t('cookies.savePreferences')}
                   </button>
@@ -144,7 +144,7 @@ export function CookieConsent() {
                   <button
                     type="button"
                     onClick={() => setCustomising(true)}
-                    className="border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+                    className="tap-safe border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
                   >
                     {t('cookies.customise')}
                   </button>
@@ -158,7 +158,7 @@ export function CookieConsent() {
               type="button"
               onClick={() => save({ analytics: false, marketing: false })}
               aria-label={t('cookies.rejectAll')}
-              className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-foreground"
+              className="tap-safe flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-foreground"
             >
               <X className="size-4" />
             </button>

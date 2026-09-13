@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +47,26 @@ export function LoadError({
     }
   }
 
+  // Offline is its own message — "you're offline", not "could not load" —
+  // and the moment the connection comes back the load is retried by itself.
+  const [offline, setOffline] = useState(false)
+  const retryRef = useRef(retry)
+  retryRef.current = retry
+  useEffect(() => {
+    const sync = () => setOffline(navigator.onLine === false)
+    const onOnline = () => {
+      setOffline(false)
+      void retryRef.current()
+    }
+    sync()
+    window.addEventListener('offline', sync)
+    window.addEventListener('online', onOnline)
+    return () => {
+      window.removeEventListener('offline', sync)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [])
+
   return (
     <div
       // Announced, because this replaces content the reader was waiting for.
@@ -59,12 +79,12 @@ export function LoadError({
     >
       <AlertTriangle className="size-8 text-gold/40" strokeWidth={1.25} />
 
-      <p className="text-sm font-light text-foreground">{title || t('error.loadFailed')}</p>
+      <p className="text-sm font-light text-foreground">{offline ? t('state.offlineTitle') : title || t('error.loadFailed')}</p>
 
       {/* The reassurance is the point: the most common worry when an order
           list fails to load is that the orders are gone. */}
       <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/70">
-        {t('error.loadFailedHint')}
+        {offline ? t('state.offlineHint') : t('error.loadFailedHint')}
       </p>
 
       <button

@@ -120,6 +120,13 @@ export function StylistExperience({ anchorProductId }: { anchorProductId?: strin
 
   return (
     <div>
+      {/* The final screen's title — once there is a look to show. */}
+      {phase === 'result' && result && result.looks.length > 0 && (
+        <h2 className="mb-8 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          {t('stylist.lookReady')}
+        </h2>
+      )}
+
       <StylistSummary brief={brief} skipped={skipped} onEdit={phase === 'loading' ? undefined : editAnswers} />
 
       {phase === 'loading' && <LookSkeleton />}

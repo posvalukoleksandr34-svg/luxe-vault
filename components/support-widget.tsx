@@ -20,7 +20,7 @@ export function SupportWidget() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t('support.title')}
         aria-expanded={open}
-        className="group fixed bottom-5 left-5 z-[40] flex items-center gap-2.5 border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+        className="hide-with-keyboard group fixed bottom-5 left-5 z-[40] flex items-center gap-2.5 border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
       >
         {open ? <X className="size-[18px]" /> : <LifeBuoy className="size-[18px]" />}
         <span className="hidden text-[11px] uppercase tracking-[0.2em] sm:inline">

@@ -28,9 +28,9 @@ export type StateAction = {
 
 const ACTION_STYLES = {
   primary:
-    'inline-flex items-center justify-center gap-2 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50',
+    'tap-safe inline-flex items-center justify-center gap-2 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50',
   outline:
-    'inline-flex items-center justify-center gap-2 border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-foreground transition-colors duration-300 hover:border-gold/50 hover:text-gold',
+    'tap-safe inline-flex items-center justify-center gap-2 border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-foreground transition-colors duration-300 hover:border-gold/50 hover:text-gold',
   secondary:
     'tap-safe inline-flex items-center gap-1.5 px-2 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition hover:text-foreground',
 } as const

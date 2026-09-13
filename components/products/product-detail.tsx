@@ -49,7 +49,7 @@ const RETURN_DAYS = 14
  * there is no hover (touch screens) and on keyboard focus.
  */
 const GALLERY_ARROW =
-  'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
+  'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:size-11 [@media(hover:none)]:opacity-100'
 
 /**
  * Product detail, driven by a `product` prop rather than by store state.
@@ -519,7 +519,7 @@ export function ProductDetail({ product }: { product: Product }) {
                     setSelectedIndex(0)
                   }}
                   className={cn(
-                    'no-juice relative flex size-9 items-center justify-center rounded-full border transition-all duration-200',
+                    'tap-safe no-juice relative flex size-9 items-center justify-center rounded-full border transition-all duration-200',
                     color === c.name
                       ? 'border-gold ring-1 ring-gold/30 ring-offset-2 ring-offset-background'
                       : 'border-border hover:border-foreground/30',
@@ -566,7 +566,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 <button
                   type="button"
                   onClick={() => setShowGuide((v) => !v)}
-                  className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
                 >
                   <Ruler className="size-3" />
                   {t('product.sizeGuide')}
@@ -591,7 +591,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   aria-label={soldOut ? `${s} — ${t('sold.out')}` : s}
                   title={soldOut ? `${s} — ${t('sold.out')}` : undefined}
                   className={cn(
-                    'min-w-11 border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
+                    'tap-safe min-w-11 border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
                     size === s
                       ? 'border-gold bg-gold/5 text-gold'
                       : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -863,7 +863,7 @@ export function ProductDetail({ product }: { product: Product }) {
           away and a permanent bar would just eat viewport. */}
       <div
         className={cn(
-          'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-popover/95 px-4 py-3 backdrop-blur-md transition-transform duration-300 sm:hidden',
+          'hide-with-keyboard fixed inset-x-0 bottom-0 z-40 border-t border-border bg-popover/95 px-4 py-3 backdrop-blur-md transition-transform duration-300 sm:hidden',
           showStickyBuy ? 'translate-y-0' : 'translate-y-full',
         )}
         // Hidden from assistive technology while off-screen: the real button

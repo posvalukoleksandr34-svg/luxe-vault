@@ -205,7 +205,7 @@ export function Consultation({
                   aria-label={`${t('stylist.step')} ${i + 1}: ${question(s)}${
                     status === 'skipped' ? ` — ${t('stylist.skipped')}` : ''
                   }`}
-                  className="no-juice group block w-full py-2 disabled:cursor-default"
+                  className="tap-safe no-juice group block w-full py-2 disabled:cursor-default"
                 >
                   <span
                     className={cn(

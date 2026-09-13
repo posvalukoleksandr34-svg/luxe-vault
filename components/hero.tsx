@@ -35,7 +35,12 @@ export function Hero() {
   useEffect(() => {
     const el = contentRef.current
     if (!el) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    // The system setting, or the site's own "reduce animations" switch.
+    if (
+      document.documentElement.dataset.motion === 'reduce' ||
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    )
+      return
 
     let frame = 0
     let queued = false

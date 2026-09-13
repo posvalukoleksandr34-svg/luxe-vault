@@ -29,7 +29,7 @@ export function Breadcrumbs({ trail, className }: { trail: Crumb[]; className?: 
                 {crumb.name}
               </span>
             ) : (
-              <Link href={crumb.url} className="transition hover:text-gold">
+              <Link href={crumb.url} className="tap-safe transition hover:text-gold">
                 {crumb.name}
               </Link>
             )}

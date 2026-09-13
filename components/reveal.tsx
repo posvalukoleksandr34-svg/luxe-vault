@@ -59,7 +59,11 @@ export function Reveal({
 
     // Respect the OS setting rather than animating anyway: the reveal is
     // decoration, and this is the same rule globals.css applies elsewhere.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    // The system setting, or the site's own "reduce animations" switch.
+    if (
+      document.documentElement.dataset.motion === 'reduce' ||
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
       setState('shown')
       return
     }

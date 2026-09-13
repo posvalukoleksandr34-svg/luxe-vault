@@ -10,6 +10,8 @@ import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
+import { UiEnvironment } from '@/components/ui-environment';
+import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
 // Moda is the heavy, high-contrast display serif used for every headline —
@@ -178,7 +180,16 @@ export default async function RootLayout({
   }
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Before first paint: a visitor who chose "reduce animations" must
+            not see a single frame of the entrance animations. See
+            lib/motion-boot.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
+      </head>
       <body className={`${inter.variable} ${bodoni.variable} font-sans`}>
+        {/* The motion preference and the on-screen-keyboard flag, mirrored
+            onto <html> for the CSS. Stateless, renders nothing. */}
+        <UiEnvironment />
         {/* Outside StoreProvider on purpose: it is decorative, has no state,
             and sits at z-index -1 so it never participates in the app's own
             stacking or event handling. */}

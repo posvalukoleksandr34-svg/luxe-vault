@@ -414,7 +414,7 @@ export function ProductGrid({
                   // shrink-0 is load-bearing: `size-7` sets the width, but a flex item
                   // still shrinks, and in this wrapped row on a 375px screen these
                   // measured 8-9px wide — a size filter nobody could reliably hit.
-                  'flex size-7 shrink-0 items-center justify-center border text-[11px] font-medium transition-colors duration-200',
+                  'tap-safe flex size-7 shrink-0 items-center justify-center border text-[11px] font-medium transition-colors duration-200',
                   active
                     ? 'border-gold bg-gold text-gold-foreground'
                     : 'border-border/60 text-muted-foreground/70 hover:border-foreground/40 hover:text-foreground',
