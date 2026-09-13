@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
  * re-runs every checkout validation rule before writing anything.
  *
  * Orders that still need paying are stored as `pending_payment` rather than
- * being thrown away, so the customer can pay them later from their account.
+ * being thrown away, so the customer can pay them later.
  */
 export async function POST(request: NextRequest) {
   const limited = await enforceLimit('order.create', request)
@@ -36,32 +36,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
 
-  // Every order must belong to an account.
-  //
-  // Read from the verified cookie via getUser(), never from a user id in the
-  // request body — a client-supplied id would let anyone file orders against
-  // another account.
-  //
-  // This used to fall back to a guest order when the lookup failed, which is
-  // how LV-JX59CL ended up unattached: a real, paid order that never appeared
-  // in its owner's dashboard and that support had no way to link back. A
-  // transient Supabase blip must not silently orphan an order, so a failure
-  // here is now a hard 503 the customer can retry, not a quiet downgrade.
+  /**
+   * Account or guest — and guest only when the customer SAID so.
+   *
+   * Guest checkout is supported end to end by the schema (orders.user_id is
+   * nullable by design, 0002) and by every step after this one: the order's
+   * lookup_token, which the browser keeps, is what the Stripe intent route,
+   * /api/orders/lookup, the success page and /order/[id] all authorise with.
+   *
+   * What must never come back is the silent downgrade behind LV-JX59CL: a
+   * session lookup blipped, the order quietly became a guest order, and a
+   * real, paid order never appeared in its owner's account. So the guest
+   * path is opt-in, never inferred:
+   *
+   *  - `guest: true` — chosen at "Продолжить без регистрации". If the
+   *    customer turns out to be signed in after all (another tab), the order
+   *    goes to their account; that is theirs, not a downgrade.
+   *  - anything else — the browser expected an account. No session, or a
+   *    session that cannot be checked, is a hard error the customer can act
+   *    on, exactly as before.
+   *
+   * Read from the verified cookie via getUser(), never from a user id in the
+   * body — a client-supplied id would let anyone file orders against another
+   * account.
+   */
+  const declaredGuest = (body as { guest?: unknown }).guest === true
+
   let userId: string | undefined
   try {
     userId = (await getCurrentUser())?.id
   } catch {
-    return NextResponse.json(
-      { error: 'Не удалось подтвердить сессию. Повторите попытку.' },
-      { status: 503 },
-    )
+    if (!declaredGuest) {
+      return NextResponse.json(
+        { error: 'Не удалось подтвердить сессию. Повторите попытку.' },
+        { status: 503 },
+      )
+    }
+    // A declared guest has no session to lose, so an auth hiccup must not
+    // cost the sale: the order proceeds as the guest order they asked for.
+    userId = undefined
   }
 
-  if (!userId) {
-    // Mirrors the sign-in gate in the checkout drawer. Enforced here too
-    // because the UI gate is not a security boundary — anyone can POST here.
+  if (!userId && !declaredGuest) {
+    // The browser believed it was signed in and the server sees no session —
+    // typically one that expired mid-checkout. Say so; never file it as a
+    // guest order behind the customer's back.
     return NextResponse.json(
-      { error: 'Для оформления заказа необходимо войти в аккаунт.' },
+      { error: 'Сессия истекла. Войдите снова или оформите заказ без регистрации.' },
       { status: 401 },
     )
   }
@@ -69,7 +90,7 @@ export async function POST(request: NextRequest) {
   // Reprice from the catalogue before anything is persisted. The body's
   // prices and totals are advisory only — see repriceItems().
   // userId scopes coupons issued to one customer; the draft carries it so
-  // repriceItems can validate a personal code.
+  // repriceItems can validate a personal code. A guest simply has none.
   const priced = await repriceItems({ ...result.draft, userId })
   if (!priced.ok) {
     return NextResponse.json({ error: priced.error }, { status: 400 })
@@ -95,7 +116,8 @@ export async function POST(request: NextRequest) {
   // Confirmation is sent only after the order is committed, and its failure is
   // never allowed to fail the request. The purchase is already real at this
   // point — reporting an error here would make the customer think checkout
-  // failed and order again.
+  // failed and order again. For a guest this email is their record of the
+  // order, which is why checkout requires the address.
   let emailed = false
   if (isMailConfigured) {
     emailed = await sendOrderConfirmation(order)

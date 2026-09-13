@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useId, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
+import { GuestCheckoutChoice } from '@/components/guest-checkout-choice'
 import { CountrySelect } from '@/components/country-select'
 import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
@@ -61,6 +62,7 @@ export function CheckoutFlow({
 } = {}) {
   const {
     setPanel,
+    openAuth,
     cart,
     cartSubtotal,
     paymentMethods,
@@ -113,6 +115,18 @@ export function CheckoutFlow({
   const [saveDetails, setSaveDetails] = useState(false)
   const [saveCard, setSaveCard] = useState(false)
   const [hasSaved, setHasSaved] = useState(false)
+
+  /**
+   * Checking out without an account, chosen explicitly — at the cart's
+   * "Продолжить без регистрации" (which arrives as ?guest=1) or at the same
+   * choice on this page. Read from the URL once, on mount, rather than with
+   * useSearchParams: /checkout is a static route, and that hook would opt the
+   * whole page out of static rendering for one flag.
+   */
+  const [guestMode, setGuestMode] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('guest') === '1') setGuestMode(true)
+  }, [])
 
   // Entering the checkout panel fresh (e.g. after a previous crypto flow
   // completed or was abandoned) should never resume mid-payment.
@@ -265,6 +279,10 @@ export function CheckoutFlow({
           total,
           promo: appliedPromo?.code,
           payment: form.payment,
+          // Explicit, never inferred — /api/orders files a guest order only
+          // when told to, so an expired session cannot silently turn a
+          // customer's order into an unattached one.
+          guest: !currentUser,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -330,7 +348,7 @@ export function CheckoutFlow({
           body: JSON.stringify({
             orderId: order.id,
             token: order.lookupToken,
-            saveCard,
+            saveCard: saveCard && Boolean(currentUser),
           }),
         })
         const payData = await pay.json().catch(() => ({}))
@@ -457,41 +475,20 @@ export function CheckoutFlow({
   return (
     <>
       <div className="flex w-full flex-col">
-        {!currentUser ? (
-          /* Checkout requires an account. An order is the anchor for its own
-             history, returns and "pay later" — all of which need something
-             more durable than a token in one browser's local storage, which is
-             lost on a cache clear or a different device. Gating here rather
-             than at submit means the customer finds out before typing an
-             address, not after. */
-          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
-            <LogIn className="size-8 text-gold/70" strokeWidth={1.25} />
-            <div className="space-y-2">
-              <h3 className="font-serif text-lg font-semibold text-foreground">
-                {t('checkout.signInRequired')}
-              </h3>
-              <p className="text-[13px] font-light leading-relaxed text-muted-foreground">
-                {t('checkout.signInRequiredBody')}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPanel('user')}
-              className="w-full max-w-xs border border-gold/40 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
-            >
-              {t('checkout.signInCta')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+        {!currentUser && !guestMode ? (
+          /* An account is offered here, never required. Guest orders are
+             supported end to end — the order's lookup token authorises
+             payment, the success page and /order/[id] — and a sign-in wall at
+             the moment of paying is where baskets are abandoned. The same
+             choice the cart drawer shows, for anyone who lands here directly. */
+          <GuestCheckoutChoice
+            onGuest={() => setGuestMode(true)}
+            onSignIn={() => openAuth('login')}
+            onBack={() => {
               router.push('/')
               setPanel('cart')
             }}
-              className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60"
-            >
-              {t('checkout.backToCart')}
-            </button>
-          </div>
+          />
         ) : cardOrder && clientSecret ? (
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -519,6 +516,24 @@ export function CheckoutFlow({
         ) : (
           <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col">
             <div className="flex-1 space-y-5">
+              {/* Said once, at the top, so a guest knows where their order
+                  record will be — and can still sign in without losing what
+                  they have typed. */}
+              {!currentUser && (
+                <div className="flex items-start gap-3 border border-border/60 bg-card/40 px-3.5 py-3">
+                  <p className="flex-1 text-[12px] font-light leading-relaxed text-muted-foreground">
+                    {t('checkout.guestNote')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openAuth('login')}
+                    className="tap-safe flex shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold"
+                  >
+                    <LogIn className="size-3.5" strokeWidth={1.5} />
+                    {t('user.login')}
+                  </button>
+                </div>
+              )}
               {/* Offered, never applied automatically — a silently repopulated
                   form is disorienting, and someone shipping a gift elsewhere
                   would have to clear it field by field. */}
@@ -697,7 +712,7 @@ export function CheckoutFlow({
                   label={t('checkout.saveDetails')}
                   hint={t('checkout.saveDetailsHint')}
                 />
-                {form.payment === CARD_PAYMENT_METHOD && (
+                {form.payment === CARD_PAYMENT_METHOD && currentUser && (
                   <SaveToggle
                     checked={saveCard}
                     onChange={setSaveCard}

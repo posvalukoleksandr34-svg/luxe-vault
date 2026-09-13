@@ -2,9 +2,10 @@
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
+import { GuestCheckoutChoice } from '@/components/guest-checkout-choice'
 import { TrustBadges } from '@/components/trust-badges'
 import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
 import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
@@ -20,8 +21,15 @@ export function CartPanel() {
     removeFromCart,
     clearCart,
     cartSubtotal,
+    currentUser,
+    openAuth,
     t,
   } = useStore()
+
+  /** The guest's "how would you like to check out?" step is showing. */
+  const [choosing, setChoosing] = useState(false)
+  /** They picked "Войти / Зарегистрироваться" and are in the account drawer. */
+  const [pendingCheckout, setPendingCheckout] = useState(false)
 
   // An estimate against the undiscounted subtotal — the drawer has no promo
   // code. repriceItems() computes the figure that is actually charged.
@@ -36,6 +44,33 @@ export function CartPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartOpen])
 
+  // The choice is a step within one visit to the basket; reopening the cart
+  // starts at the basket again, not at a question asked last time.
+  useEffect(() => {
+    if (!cartOpen) setChoosing(false)
+  }, [cartOpen])
+
+  /**
+   * Finishes the checkout that was waiting for a sign-in.
+   *
+   * This component stays mounted while the account drawer is open (it only
+   * renders nothing), so when the session arrives — sign-in, or registration
+   * and its emailed code — the customer is taken straight on to checkout
+   * rather than left in their account wondering where the basket went. If
+   * they close the drawer without signing in, the intent lapses.
+   */
+  useEffect(() => {
+    if (!pendingCheckout) return
+    if (currentUser) {
+      setPendingCheckout(false)
+      trackBeginCheckout(cart, cartSubtotal)
+      setPanel(null)
+      router.push('/checkout')
+      return
+    }
+    if (panel === null) setPendingCheckout(false)
+  }, [pendingCheckout, currentUser, panel, cart, cartSubtotal, router, setPanel])
+
   // Escape closes the drawer. The backdrop already did, but a keyboard user
   // could not reach the backdrop — so without this the only way out was to
   // tab to the close button.
@@ -49,6 +84,20 @@ export function CartPanel() {
   }, [panel, setPanel])
 
   if (panel !== 'cart') return null
+
+  /**
+   * Close the drawer and navigate in the same tick. The panel state is what
+   * renders the backdrop, so clearing it releases the overlay as the route
+   * changes rather than leaving a dimmed layer over the new page.
+   *
+   * `asGuest` tells /checkout the customer already chose — without it the
+   * page would ask the same question a second time.
+   */
+  function goToCheckout(asGuest: boolean) {
+    trackBeginCheckout(cart, cartSubtotal)
+    setPanel(null)
+    router.push(asGuest ? '/checkout?guest=1' : '/checkout')
+  }
 
   return (
     <>
@@ -79,6 +128,19 @@ export function CartPanel() {
             <ShoppingBag className="size-10 text-muted-foreground/20" strokeWidth={1} />
             <p className="text-sm font-light text-muted-foreground">{t('cart.empty')}</p>
           </div>
+        ) : choosing ? (
+          // An intermediate step INSIDE the drawer rather than a dialog over
+          // it: the drawer sits at z-[100], above the shared dialog layer, so a
+          // dialog opened from here would render underneath the basket.
+          <GuestCheckoutChoice
+            onGuest={() => goToCheckout(true)}
+            onSignIn={() => {
+              setChoosing(false)
+              setPendingCheckout(true)
+              openAuth('login')
+            }}
+            onBack={() => setChoosing(false)}
+          />
         ) : (
           <>
             <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -200,13 +262,10 @@ export function CartPanel() {
                 <button
                   type="button"
                   onClick={() => {
-                    // Close the drawer and navigate in the same tick. The
-                    // panel state is what renders the backdrop, so clearing it
-                    // releases the overlay as the route changes rather than
-                    // leaving a dimmed layer over the new page.
-                    trackBeginCheckout(cart, cartSubtotal)
-                    setPanel(null)
-                    router.push('/checkout')
+                    // Signed in: straight to checkout. Otherwise the choice —
+                    // never a wall.
+                    if (currentUser) goToCheckout(false)
+                    else setChoosing(true)
                   }}
                   className="flex-1 border border-gold/30 bg-gold/5 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
                 >
