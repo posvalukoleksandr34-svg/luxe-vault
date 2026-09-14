@@ -40,6 +40,10 @@ const CSP_DIRECTIVES = {
     ...(isDev ? ["'unsafe-eval'"] : []),
     'https://js.stripe.com',
     'https://*.js.stripe.com',
+    // GA4 and the Meta Pixel, injected only after consent
+    // (lib/analytics-vendors.ts).
+    'https://www.googletagmanager.com',
+    'https://connect.facebook.net',
   ],
   'style-src': ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
   'img-src': [
@@ -49,6 +53,11 @@ const CSP_DIRECTIVES = {
     'https://*.supabase.co',
     'https://*.stripe.com',
     'https://images.unsplash.com',
+    // Measurement beacons sent as images by GA4 and the Meta Pixel.
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://www.googletagmanager.com',
+    'https://www.facebook.com',
   ],
   // Both font families are self-hosted under /fonts (see app/globals.css).
   'font-src': ["'self'", 'data:'],
@@ -57,6 +66,13 @@ const CSP_DIRECTIVES = {
     'https://*.supabase.co',
     'wss://*.supabase.co',
     'https://api.stripe.com',
+    // GA4 collection endpoints and the Meta Pixel's.
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://*.analytics.google.com',
+    'https://www.googletagmanager.com',
+    'https://www.facebook.com',
+    'https://connect.facebook.net',
     ...(isDev ? ['ws:'] : []),
   ],
   'frame-src': ['https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com'],

@@ -51,6 +51,11 @@ const LIMITS = {
    *  version is a queue anyone can fill. */
   'stock.alert': { max: 10, windowSeconds: 900 },
 
+  /** Abandoned-cart capture from the checkout's email field. Debounced on the
+   *  client, so a real customer sends a handful; it can lead to one reminder
+   *  email, so an unbounded version would be a way to mail strangers. */
+  'cart.capture': { max: 20, windowSeconds: 600 },
+
   /** Catalogue search. Generous — typing is iterative — but bounded, because
    *  an unthrottled search endpoint is a cheap way to make the database work. */
   'search': { max: 60, windowSeconds: 300 },

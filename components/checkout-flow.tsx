@@ -3,7 +3,7 @@
 import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { GuestCheckoutChoice } from '@/components/guest-checkout-choice'
@@ -107,6 +107,33 @@ export function CheckoutFlow({
   // instead of redirecting to checkout.stripe.com.
   const [cardOrder, setCardOrder] = useState<Order | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+
+  /**
+   * Abandoned-cart capture. Once the email field holds a valid address — typed
+   * or prefilled — and the cart has something in it, the server keeps a copy
+   * (app/api/abandoned-carts), so a checkout left unfinished can get its one
+   * reminder. Debounced, and re-sent only when the address, the cart or the
+   * language actually changed. Stops as soon as an order exists: the server
+   * marks the cart recovered then, and a late capture must not revive it.
+   * Disclosed under the field (checkout.cartReminderNote).
+   */
+  const lastCapture = useRef('')
+  useEffect(() => {
+    const email = form.email.trim()
+    if (cardOrder || cryptoOrder || cart.length === 0 || !isValidEmail(email)) return
+    const signature = `${email.toLowerCase()}|${locale}|${cart.map((i) => `${i.key}:${i.qty}`).join(',')}`
+    if (signature === lastCapture.current) return
+    const timer = setTimeout(() => {
+      lastCapture.current = signature
+      void fetch('/api/abandoned-carts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, items: cart, locale }),
+        keepalive: true,
+      }).catch(() => {})
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [form.email, cart, locale, cardOrder, cryptoOrder])
   /**
    * What the card will actually be charged — returned by the server with the
    * client secret, never computed here, and shown on the payment step so the
@@ -712,6 +739,10 @@ export function CheckoutFlow({
                 error={errors.email}
                 autoComplete="email"
               />
+              {/* Says what the address is used for beyond this order. */}
+              <p className="text-[11px] font-light leading-relaxed text-muted-foreground/70">
+                {t('checkout.cartReminderNote')}
+              </p>
 
               {/* Live suggestions. Picking one fills the postcode and city
                   below; typing an address the geocoder has never heard of is

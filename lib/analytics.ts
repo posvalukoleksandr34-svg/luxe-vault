@@ -1,5 +1,6 @@
 'use client'
 
+import { dispatch } from '@/lib/analytics-vendors'
 import { CONSENT_EVENT, hasConsent } from '@/lib/cookie-consent'
 import type { CartItem, Order, Product } from '@/lib/types'
 
@@ -19,14 +20,15 @@ import type { CartItem, Order, Product } from '@/lib/types'
  * pre-consent session the moment someone clicks "accept" is exactly the
  * tracking they had not yet agreed to.
  *
- * NO VENDOR IS BUNDLED
+ * VENDORS
  *
- * This file deliberately loads nothing. It normalises events into the GA4
- * ecommerce shape — the vocabulary every analytics product understands — and
- * pushes them to `window.dataLayer`, which is what a tag manager reads. Adding
- * GA4, Plausible or PostHog later is a script tag in the layout plus a consent
- * entry; none of the call sites change. Shipping a vendor SDK on a hunch would
- * cost every visitor the download whether or not you ever look at the data.
+ * This file normalises events into the GA4 ecommerce shape — the vocabulary
+ * every analytics product understands — and hands them to dispatch() in
+ * lib/analytics-vendors.ts, which sends each to what the visitor consented to:
+ * GA4 (analytics) and the Meta Pixel (marketing) when their IDs are set, or
+ * the plain `window.dataLayer` a tag manager reads when GA4 is not. Neither
+ * vendor's script loads before consent, and none of the call sites know which
+ * vendors exist.
  *
  * Currency is hardcoded CHF to match formatPrice() and the orders table.
  */
@@ -89,12 +91,32 @@ function itemFromProduct(product: Product, name: string): Payload {
  */
 export function track(event: AnalyticsEvent, params: Payload = {}): void {
   if (typeof window === 'undefined') return
-  // Checked per call, not cached: consent can be withdrawn from the footer at
-  // any moment and the next event must respect that immediately.
-  if (!hasConsent('analytics')) return
+  // Consent is checked per call inside dispatch(), not cached: it can be
+  // withdrawn from the footer at any moment and the next event must respect
+  // that immediately. Analytics and marketing are gated separately.
+  dispatch(event, params)
+}
 
-  window.dataLayer = window.dataLayer ?? []
-  window.dataLayer.push({ event, ...params })
+/** Order ids already reported as purchases in this browser. */
+const REPORTED_PURCHASES_KEY = 'lv.analytics.purchases'
+
+/**
+ * True the first time an order id is seen, false after — so the thank-you
+ * page reloaded, or reopened from the email, never reports the sale again.
+ * GA4 would de-duplicate on transaction_id anyway; the Pixel is less reliable
+ * about it.
+ */
+function firstReport(orderId: string): boolean {
+  try {
+    const seen: unknown = JSON.parse(window.localStorage.getItem(REPORTED_PURCHASES_KEY) ?? '[]')
+    const list = Array.isArray(seen) ? seen.filter((x): x is string => typeof x === 'string') : []
+    if (list.indexOf(orderId) !== -1) return false
+    window.localStorage.setItem(REPORTED_PURCHASES_KEY, JSON.stringify(list.concat(orderId).slice(-25)))
+    return true
+  } catch {
+    // Storage blocked: report, and rely on the vendors' own de-duplication.
+    return true
+  }
 }
 
 // ------------------------------------------------------------------ helpers
@@ -156,6 +178,11 @@ export function trackAddPaymentInfo(value: number, paymentType: string): void {
  * double-counted by exactly the people most likely to refresh.
  */
 export function trackPurchase(order: Order): void {
+  // Only a consented visit marks the order as reported: an event dropped for
+  // lack of consent was not a report.
+  if (typeof window === 'undefined') return
+  if (!hasConsent('analytics') && !hasConsent('marketing')) return
+  if (!firstReport(order.id)) return
   track('purchase', {
     transaction_id: order.id,
     currency: CURRENCY,

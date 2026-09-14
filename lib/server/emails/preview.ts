@@ -4,6 +4,7 @@ import { DEFAULT_SHIPPING_SETTINGS } from '@/config/shipping'
 import { businessToCalendarDays } from '@/lib/fulfilment'
 import type { Order } from '@/lib/types'
 import { EMAIL_LANGS, emailLang, type EmailLang } from './copy'
+import { abandonedCartEmail } from './abandoned-cart'
 import { lifecycleEmail, welcomeEmail } from './lifecycle'
 import { orderConfirmationEmail } from './order-confirmation'
 import { passwordRecoveryHtml, passwordRecoverySubject } from './password-recovery'
@@ -27,6 +28,7 @@ export const PREVIEW_TEMPLATES = [
   'status_delivered',
   'status_cancelled',
   'refund',
+  'abandoned_cart',
 ] as const
 
 export type PreviewTemplate = (typeof PREVIEW_TEMPLATES)[number]
@@ -97,6 +99,8 @@ export function renderPreview(template: PreviewTemplate, rawLang: unknown): { su
       return lifecycleEmail(order, 'cancelled', lang)!
     case 'refund':
       return lifecycleEmail(order, 'refunded', lang)!
+    case 'abandoned_cart':
+      return abandonedCartEmail({ token: '00000000-0000-4000-8000-000000000000', items: order.items }, lang)
   }
 }
 

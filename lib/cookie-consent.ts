@@ -21,8 +21,9 @@
 
 const STORAGE_KEY = 'lv.cookie-consent.v1'
 
-/** Bump when categories or the vendors inside them change. Re-prompts everyone. */
-export const CONSENT_VERSION = 1
+/** Bump when categories or the vendors inside them change. Re-prompts everyone.
+ *  2: Google Analytics 4 (analytics) and the Meta Pixel (marketing) added. */
+export const CONSENT_VERSION = 2
 
 export type ConsentCategory = 'necessary' | 'analytics' | 'marketing'
 

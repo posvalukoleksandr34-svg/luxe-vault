@@ -25,6 +25,17 @@ const CookieConsent = dynamic(
   { ssr: false },
 )
 
+// GA4 and the Meta Pixel. Nothing to render, and nothing to do before consent
+// and an idle browser — see components/analytics/analytics-manager.tsx.
+const AnalyticsManager = dynamic(
+  () => import('@/components/analytics/analytics-manager').then((m) => m.AnalyticsManager),
+  { ssr: false },
+)
+
+export function AnalyticsManagerLazy() {
+  return <AnalyticsManager />
+}
+
 export function AudioFeedbackLazy() {
   return <AudioFeedback />
 }

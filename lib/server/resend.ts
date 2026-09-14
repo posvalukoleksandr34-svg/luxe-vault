@@ -78,6 +78,8 @@ export type SendEmailInput = {
   /** Overrides FROM_ADDRESS. Must still be on the verified domain — Resend
    *  rejects anything else outright. */
   from?: string
+  /** Extra message headers — e.g. List-Unsubscribe on prompted mail. */
+  headers?: Record<string, string>
 }
 
 export type SendEmailResult =
@@ -130,6 +132,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         html: input.html,
         ...(input.text ? { text: input.text } : {}),
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+        ...(input.headers ? { headers: input.headers } : {}),
       }),
     })
 

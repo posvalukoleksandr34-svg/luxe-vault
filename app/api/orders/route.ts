@@ -10,6 +10,7 @@ import {
 import { emailLang } from '@/lib/server/emails/copy'
 import { isMailConfigured, sendOrderConfirmation } from '@/lib/server/mailer'
 import { setOrderLocale } from '@/lib/server/order-locale'
+import { markCartRecovered } from '@/lib/server/abandoned-carts'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -120,6 +121,10 @@ export async function POST(request: NextRequest) {
   // arrives in that language. Tolerant of migration 0027 not being applied.
   const locale = (body as { locale?: unknown }).locale
   await setOrderLocale(order.id, locale)
+
+  // Their cart became an order: no abandoned-cart reminder for it. Never
+  // throws, and tolerant of migration 0029 not being applied.
+  await markCartRecovered(order.customer.email)
 
   // Confirmation is sent only after the order is committed, and its failure is
   // never allowed to fail the request. The purchase is already real at this

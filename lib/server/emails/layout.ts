@@ -112,7 +112,7 @@ export function highlightSection(label: string, valueHtml: string, note?: string
     </tr>`
 }
 
-export function itemsSection(order: Order, c: EmailCopy): string {
+export function itemsSection(order: Pick<Order, 'items'>, c: EmailCopy): string {
   const rows = order.items
     .map(
       (item) => `
@@ -220,6 +220,10 @@ export function renderEmail(o: {
   intro?: string
   sections?: string[]
   cta?: { label: string; href: string } | null
+  /** A line in the footer saying why this email was sent (prompted mail). */
+  footerNote?: string
+  /** An opt-out link in the footer (prompted mail; order emails have none). */
+  unsubscribe?: { label: string; href: string }
 }): string {
   const c = copyFor(o.lang)
   const site = getSiteUrl()
@@ -292,6 +296,8 @@ export function renderEmail(o: {
                 <p style="margin:0; padding-top:16px; border-top:1px solid ${L.border}; font-family:${SANS}; font-size:11px; line-height:18px; color:${L.muted};">
                   Luxe Vault &middot; Zurich, Switzerland &middot; <a href="${esc(site)}" style="color:${L.muted};">${esc(site.replace(/^https?:\/\//, ''))}</a><br />
                   ${esc(c.automatic)}
+                  ${o.footerNote ? `<br />${esc(o.footerNote)}` : ''}
+                  ${o.unsubscribe ? `<br /><a href="${esc(o.unsubscribe.href)}" style="color:${L.muted}; text-decoration:underline;">${esc(o.unsubscribe.label)}</a>` : ''}
                 </p>
               </td>
             </tr>

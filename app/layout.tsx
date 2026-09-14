@@ -4,7 +4,7 @@ import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
-import { AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
+import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
 import { PageTransition } from '@/components/page-transition';
 import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { GlobalPanels } from '@/components/global-panels';
@@ -242,6 +242,10 @@ export default async function RootLayout({
             StoreProvider: it reads no store state and must not re-render when
             the cart does. Loaded after hydration (components/deferred-ui.tsx). */}
         <AudioFeedbackLazy />
+
+        {/* GA4 and the Meta Pixel, each only with its consent category and
+            only once the browser is idle. Stateless; outside StoreProvider. */}
+        <AnalyticsManagerLazy />
 
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen
