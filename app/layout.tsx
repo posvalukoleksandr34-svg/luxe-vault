@@ -12,6 +12,7 @@ import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
+import { SUPPORT_EMAIL } from '@/lib/data';
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
 // Moda is the heavy, high-contrast display serif used for every headline —
@@ -62,6 +63,38 @@ const SITE_DESCRIPTION_SHORT =
   'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
 
 /**
+ * Who publishes the site, as structured data: the seller (with a support
+ * contact) and the WebSite. Once, in the root layout, so every page carries
+ * it; product pages add their own Product graph on top.
+ */
+const SITE_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer service',
+        email: SUPPORT_EMAIL,
+        availableLanguage: ['Russian', 'English', 'Italian', 'French', 'German'],
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: SITE_DESCRIPTION,
+      publisher: { '@id': `${SITE_URL}/#organization` },
+      inLanguage: 'ru',
+    },
+  ],
+};
+
+/**
  * Without this the layout's catalogue read makes every page fully static and
  * bakes the product list into the build — an admin adding a product would not
  * see it until the next deploy, which is exactly what moving the catalogue
@@ -101,9 +134,10 @@ export const metadata: Metadata = {
   creator: SITE_NAME,
   publisher: SITE_NAME,
 
-  alternates: {
-    canonical: '/',
-  },
+  // No canonical here. Set in the root layout it was inherited by every page
+  // that did not set its own — checkout, the account, shared capsules — so
+  // those declared themselves duplicates of the homepage. Each indexable page
+  // now declares its own; the homepage's is in app/page.tsx.
 
   // Открытая разметка (OpenGraph) — именно она формирует красивую
   // превью-карточку со ссылкой в Telegram, WhatsApp, iMessage и других
@@ -144,6 +178,12 @@ export const metadata: Metadata = {
   },
 
   category: 'shopping',
+
+  // The browser chrome on mobile in the storefront's black.
+  themeColor: '#000000',
+  // iOS otherwise turns sizes, prices and article numbers that look like
+  // phone numbers into tel: links.
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export default async function RootLayout({
@@ -174,6 +214,10 @@ export default async function RootLayout({
             not see a single frame of the entrance animations. See
             lib/motion-boot.ts. */}
         <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD) }}
+        />
         {FONT_PRELOADS.map((href) => (
           <link key={href} rel="preload" href={href} as="font" type="font/woff2" crossOrigin="" />
         ))}

@@ -228,6 +228,8 @@ export const UI = {
   "pay.networkTitle": { ru: "Попробуйте ещё раз", en: "Try again", it: "Riprova", fr: "Réessayez", de: "Bitte erneut versuchen" },
   "pay.networkBody": { ru: "Не удалось связаться с платёжной системой. Проверьте соединение — с карты ничего не списано.", en: "We could not reach the payment provider. Check your connection — nothing was charged.", it: "Non è stato possibile contattare il sistema di pagamento. Controlla la connessione: non è stato addebitato nulla.", fr: "Impossible de joindre le prestataire de paiement. Vérifiez votre connexion : rien n'a été débité.", de: "Der Zahlungsanbieter war nicht erreichbar. Prüfen Sie Ihre Verbindung – es wurde nichts belastet." },
   "pay.tryAgain": { ru: "Попробовать снова", en: "Try again", it: "Riprova", fr: "Réessayer", de: "Erneut versuchen" },
+  // Between the Apple Pay / Google Pay buttons and the card form.
+  "pay.orCard": { ru: "или картой", en: "or pay by card", it: "oppure con carta", fr: "ou par carte", de: "oder mit Karte" },
   "pay.viewOrder": { ru: "Статус заказа", en: "View order", it: "Vedi ordine", fr: "Voir la commande", de: "Bestellung ansehen" },
   "pay.orderLabel": { ru: "Заказ", en: "Order", it: "Ordine", fr: "Commande", de: "Bestellung" },
   'checkout.paymentFailed': { ru: 'Платёж не прошёл. Проверьте данные карты или попробуйте другую.', en: 'The payment did not go through. Check the card details or try another card.', it: 'Il pagamento non è andato a buon fine. Controlla i dati della carta o usane un’altra.', fr: 'Le paiement n’a pas abouti. Vérifiez les informations de la carte ou essayez-en une autre.', de: 'Die Zahlung ist fehlgeschlagen. Prüfen Sie die Kartendaten oder verwenden Sie eine andere Karte.' },

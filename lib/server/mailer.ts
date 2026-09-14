@@ -14,6 +14,7 @@ import { orderConfirmationEmail } from '@/lib/server/emails/order-confirmation'
 import { paymentFailedEmail } from '@/lib/server/emails/payment-failed'
 import { paymentReceiptEmail } from '@/lib/server/emails/payment-receipt'
 import { getOrderLocale } from '@/lib/server/order-locale'
+import { getShippingSettings } from '@/lib/server/store-settings'
 import {
   escapeHtml,
   isMailConfigured,
@@ -172,7 +173,10 @@ export async function sendOrderConfirmation(order: Order, lang?: EmailLang): Pro
   const to = order.customer.email?.trim()
   if (!to) return false
   try {
-    const message = orderConfirmationEmail(order, await langFor(order, lang))
+    // The admin's delivery timeframe, for the estimate's wording. Never
+    // throws: it falls back to config/shipping.ts.
+    const { deliveryTimeframe } = await getShippingSettings()
+    const message = orderConfirmationEmail(order, await langFor(order, lang), deliveryTimeframe)
     const { ok } = await sendEmail({ to, replyTo: SUPPORT_INBOX, ...message })
     return ok
   } catch (e) {

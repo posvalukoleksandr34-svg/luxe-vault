@@ -37,6 +37,8 @@ export type EmailCopy = {
   status: string
   trackOrder: string
   viewOrder: string
+  /** The delivery estimate's label, and "{span} from payment confirmation". */
+  delivery: { label: string; note: (span: string) => string }
   shopNow: string
   help: string
   automatic: string
@@ -75,6 +77,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     status: 'Статус',
     trackOrder: 'Отследить заказ',
     viewOrder: 'Открыть заказ',
+    delivery: { label: 'Ориентировочная доставка', note: (span) => `${span} с момента подтверждения оплаты` },
     shopNow: 'Перейти в магазин',
     help: 'Вопросы? Ответьте на это письмо или напишите на',
     automatic: 'Это письмо отправлено автоматически.',
@@ -145,6 +148,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     status: 'Status',
     trackOrder: 'Track order',
     viewOrder: 'View order',
+    delivery: { label: 'Estimated delivery', note: (span) => `${span} from payment confirmation` },
     shopNow: 'Visit the shop',
     help: 'Questions? Reply to this email or write to',
     automatic: 'This email was sent automatically.',
@@ -215,6 +219,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     status: 'Stato',
     trackOrder: 'Segui l’ordine',
     viewOrder: 'Vedi l’ordine',
+    delivery: { label: 'Consegna stimata', note: (span) => `${span} dalla conferma del pagamento` },
     shopNow: 'Vai al negozio',
     help: 'Domande? Rispondi a questa email o scrivi a',
     automatic: 'Questa email è stata inviata automaticamente.',
@@ -285,6 +290,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     status: 'Statut',
     trackOrder: 'Suivre la commande',
     viewOrder: 'Voir la commande',
+    delivery: { label: 'Livraison estimée', note: (span) => `${span} à compter de la confirmation du paiement` },
     shopNow: 'Visiter la boutique',
     help: 'Des questions ? Répondez à cet e-mail ou écrivez à',
     automatic: 'Cet e-mail a été envoyé automatiquement.',
@@ -355,6 +361,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     status: 'Status',
     trackOrder: 'Bestellung verfolgen',
     viewOrder: 'Bestellung ansehen',
+    delivery: { label: 'Voraussichtliche Lieferung', note: (span) => `${span} ab Zahlungsbestätigung` },
     shopNow: 'Zum Shop',
     help: 'Fragen? Antworten Sie auf diese E-Mail oder schreiben Sie an',
     automatic: 'Diese E-Mail wurde automatisch versendet.',

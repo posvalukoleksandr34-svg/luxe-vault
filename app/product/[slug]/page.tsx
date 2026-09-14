@@ -97,15 +97,15 @@ export async function generateMetadata({
       siteName: 'LUXE VAULT',
       title: `${name} — LUXE VAULT`,
       description,
-      // Absolute, because Telegram/WhatsApp/Discord will not resolve a relative
-      // og:image. metadataBase in the root layout handles the rest.
-      images: product.image ? [{ url: product.image, alt: name }] : undefined,
+      // og:image is the generated preview card in ./opengraph-image.tsx — the
+      // photo, name and price on the brand's black — not the bare photo.
     },
     twitter: {
       card: 'summary_large_image',
       title: `${name} — LUXE VAULT`,
       description,
-      images: product.image ? [product.image] : undefined,
+      // No image of its own: X uses og:image (the generated card) for a
+      // summary_large_image card.
     },
   }
 }

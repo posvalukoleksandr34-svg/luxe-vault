@@ -1,7 +1,19 @@
 'use client'
 
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import type { Appearance, StripeElementsOptions, StripeError } from '@stripe/stripe-js'
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js'
+import type {
+  Appearance,
+  StripeElementsOptions,
+  StripeError,
+  StripeExpressCheckoutElementConfirmEvent,
+  StripeExpressCheckoutElementOptions,
+} from '@stripe/stripe-js'
 import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isStripeClientConfigured, stripePromise } from '@/lib/stripe-client'
@@ -56,6 +68,37 @@ const appearance: Appearance = {
       color: '#f2ecdc',
     },
   },
+}
+
+/**
+ * Apple Pay and Google Pay as their own buttons, above the card form.
+ *
+ * Explicitly enabled rather than left to the Payment Element's defaults:
+ * 'always' shows each button wherever the browser supports the wallet — Apple
+ * Pay in Safari, Google Pay in Chrome — even before a card is saved in it.
+ * The intent already allows them (automatic_payment_methods in
+ * lib/server/stripe.ts); the domain must also be registered in the Stripe
+ * Dashboard (Settings → Payment method domains) for them to appear on it.
+ *
+ * Styled to each brand's rules for a dark page: WHITE buttons — Apple and
+ * Google both ask for the white style on dark backgrounds, where a black
+ * button disappears — at 48px, the plain variant (the wallet mark alone), and
+ * square corners from the Elements appearance above (borderRadius 0).
+ * Link, PayPal and Amazon Pay stay off: the card form below covers them.
+ */
+const EXPRESS_OPTIONS: StripeExpressCheckoutElementOptions = {
+  paymentMethods: {
+    applePay: 'always',
+    googlePay: 'always',
+    link: 'never',
+    paypal: 'never',
+    amazonPay: 'never',
+  },
+  paymentMethodOrder: ['apple_pay', 'google_pay'],
+  buttonType: { applePay: 'plain', googlePay: 'plain' },
+  buttonTheme: { applePay: 'white', googlePay: 'white' },
+  buttonHeight: 48,
+  layout: { maxColumns: 2, maxRows: 1, overflow: 'never' },
 }
 
 /**
@@ -182,6 +225,38 @@ function CheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<PaymentProblem | null>(null)
+  /** At least one wallet button is showing — decides whether the "or pay by
+   *  card" divider has anything to divide. */
+  const [expressShown, setExpressShown] = useState(false)
+
+  /** Only used by methods that must leave the page (3-D Secure step-up, bank
+   *  redirects); everything else resolves in place — see redirect below. */
+  const returnUrl = () =>
+    `${window.location.origin}/success?order=${encodeURIComponent(order.id)}`
+
+  /**
+   * A wallet sheet was approved. Confirmed exactly like the card form, against
+   * the same intent — the webhook still decides that the order is paid. On a
+   * failure the sheet is told so (it shows its own error), and the page shows
+   * the same notice as a failed card.
+   */
+  async function handleExpressConfirm(event: StripeExpressCheckoutElementConfirmEvent) {
+    if (!stripe || !elements) return
+    setSubmitting(true)
+    setError(null)
+    const { error: confirmError } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: returnUrl() },
+      redirect: 'if_required',
+    })
+    if (confirmError) {
+      event.paymentFailed({ reason: 'fail' })
+      setError(problemFrom(confirmError))
+      setSubmitting(false)
+      return
+    }
+    onPaid()
+  }
 
   // Re-read the intent after the server re-priced it in another currency.
   // Skipped on mount: the Element has only just fetched it.
@@ -223,7 +298,7 @@ function CheckoutForm({
         // bank redirects). Card payments that need no challenge resolve right
         // here and never navigate — which is why the success path below is
         // handled in code as well as by this URL.
-        return_url: `${window.location.origin}/success?order=${encodeURIComponent(order.id)}`,
+        return_url: returnUrl(),
       },
       // Keeps the customer on the page whenever Stripe does not strictly need
       // a redirect. Without this, every payment would bounce through a
@@ -249,9 +324,34 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="card-gold p-4">
+        {/* Renders nothing where no wallet is available, so it needs no
+            wrapper of its own. A click while the intent is being re-priced
+            is not resolved, so no sheet opens against a stale amount. */}
+        <ExpressCheckoutElement
+          options={EXPRESS_OPTIONS}
+          onReady={({ availablePaymentMethods }) =>
+            setExpressShown(Boolean(availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean)))
+          }
+          onClick={(event) => {
+            if (disabled || submitting) return
+            event.resolve()
+          }}
+          onConfirm={handleExpressConfirm}
+        />
+        {expressShown && (
+          <div className="my-4 flex items-center gap-3" aria-hidden>
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              {t('pay.orCard')}
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        )}
         <PaymentElement
           onReady={() => setReady(true)}
-          options={{ layout: 'tabs' }}
+          // Wallets live in the Express Checkout buttons above; left on here
+          // they would appear a second time as tabs.
+          options={{ layout: 'tabs', wallets: { applePay: 'never', googlePay: 'never' } }}
         />
       </div>
 

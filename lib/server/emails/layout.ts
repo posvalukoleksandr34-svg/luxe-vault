@@ -9,12 +9,13 @@ import { EMAIL_COPY, type EmailCopy, type EmailLang } from './copy'
 /**
  * The transactional emails' one layout.
  *
- * LIGHT, on purpose. The storefront is dark, but an email is read in someone
- * else's client: many force their own dark mode onto a dark design, invert it
- * badly, or print it. A warm off-white ground with a white card, serif
- * headings, a black button and a restrained gold rule carries the brand and
- * survives every client. Gold text uses a darker shade than the site's
- * #D4AF37, which is unreadable on white.
+ * DARK LUXURY, like the storefront: a #000000 ground, #D4AF37 gold for the
+ * rules, links and button, #CCCCCC body text and #E5E5E5 headings. (It was
+ * light for a while; the brand direction is now dark everywhere.) Built so
+ * mail clients keep it dark instead of inverting it: color-scheme is declared
+ * `dark`, and every background is set twice — as a bgcolor attribute, which
+ * Outlook's Word engine reads, and as inline CSS for everyone else. All text
+ * clears WCAG AA contrast on the black ground.
  *
  * Table layout with inline styles only — Outlook renders with Word's engine
  * and supports neither flexbox nor external stylesheets.
@@ -24,18 +25,20 @@ import { EMAIL_COPY, type EmailCopy, type EmailLang } from './copy'
  * needs — no phone number.
  */
 
+/** The email palette — Dark Luxury, the storefront's own values. */
 export const L = {
-  ground: '#f6f4ef',
-  card: '#ffffff',
-  inset: '#faf8f3',
-  border: '#e7e2d8',
-  heading: '#1c1a17',
-  body: '#4a463f',
-  muted: '#8a847a',
-  rule: '#c9a227',
-  goldText: '#8c6d12',
-  button: '#141414',
-  buttonText: '#f5f0e1',
+  ground: '#000000',
+  card: '#0a0a0a',
+  inset: '#121212',
+  border: '#262626',
+  heading: '#E5E5E5',
+  body: '#CCCCCC',
+  // 6:1 on the card — quiet, still readable.
+  muted: '#8c8c8c',
+  rule: '#D4AF37',
+  goldText: '#D4AF37',
+  button: '#D4AF37',
+  buttonText: '#000000',
 }
 
 export const SANS = 'Helvetica,Arial,sans-serif'
@@ -84,7 +87,7 @@ export function metaSection(pairs: [string, string][]): string {
   return `
     <tr>
       <td class="lv-pad" style="padding:24px 36px 0 36px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${L.inset}; border:1px solid ${L.border};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.inset}" style="background:${L.inset}; border:1px solid ${L.border};">
           <tr>${cells}</tr>
         </table>
       </td>
@@ -96,7 +99,7 @@ export function highlightSection(label: string, valueHtml: string, note?: string
   return `
     <tr>
       <td class="lv-pad" style="padding:24px 36px 0 36px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid ${L.rule}; background:${L.inset};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.inset}" style="border-top:2px solid ${L.rule}; background:${L.inset};">
           <tr>
             <td align="center" style="padding:20px 16px;">
               <span style="${LABEL}">${esc(label)}</span>
@@ -175,6 +178,37 @@ export function paragraphSection(text: string, muted = false): string {
     </tr>`
 }
 
+/** "28 September – 4 October" in the reader's language; one date when both ends match. */
+export function formatDateRange(fromMs: number, toMs: number, lang: EmailLang): string {
+  try {
+    const fmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' })
+    const a = fmt.format(new Date(fromMs))
+    const b = fmt.format(new Date(toMs))
+    return a === b ? a : `${a} – ${b}`
+  } catch {
+    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+    return `${iso(fromMs)} – ${iso(toMs)}`
+  }
+}
+
+/** The delivery estimate, set off by a gold rule: a date window and how it was reached. */
+export function deliverySection(label: string, value: string, note?: string): string {
+  return `
+    <tr>
+      <td class="lv-pad" style="padding:24px 36px 0 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.inset}" style="background:${L.inset}; border-left:2px solid ${L.rule};">
+          <tr>
+            <td style="padding:14px 18px;">
+              <span style="${LABEL}">${esc(label)}</span><br />
+              <span style="font-family:${SERIF}; font-size:17px; line-height:26px; color:${L.heading};">${esc(value)}</span>
+              ${note ? `<br /><span style="font-family:${SANS}; font-size:12px; line-height:18px; color:${L.muted};">${esc(note)}</span>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`
+}
+
 // ------------------------------------------------------------------ layout --
 
 export function renderEmail(o: {
@@ -193,9 +227,15 @@ export function renderEmail(o: {
     ? `
       <tr>
         <td class="lv-pad" align="left" style="padding:30px 36px 0 36px;">
-          <a href="${esc(o.cta.href)}" style="display:inline-block; padding:14px 30px; background:${L.button}; font-family:${SANS}; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:${L.buttonText}; text-decoration:none;">
-            ${esc(o.cta.label)}
-          </a>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td bgcolor="${L.button}" style="background:${L.button};">
+                <a href="${esc(o.cta.href)}" style="display:inline-block; padding:14px 30px; font-family:${SANS}; font-size:12px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:${L.buttonText}; text-decoration:none;">
+                  ${esc(o.cta.label)}
+                </a>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>`
     : ''
@@ -206,8 +246,8 @@ export function renderEmail(o: {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="x-apple-disable-message-reformatting" />
-    <meta name="color-scheme" content="light" />
-    <meta name="supported-color-schemes" content="light" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
     <title>${esc(o.subject)}</title>
     <style>
       @media only screen and (max-width: 600px) {
@@ -221,10 +261,10 @@ export function renderEmail(o: {
       ${esc(o.preheader)}
       &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${L.ground};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.ground}" style="background:${L.ground};">
       <tr>
         <td align="center" class="lv-shell" style="padding:36px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px; width:100%; background:${L.card}; border:1px solid ${L.border};">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.card}" style="max-width:580px; width:100%; background:${L.card}; border:1px solid ${L.border};">
             <tr>
               <td class="lv-pad" style="padding:26px 36px 22px 36px; border-bottom:1px solid ${L.border};">
                 <a href="${esc(site)}" style="text-decoration:none;">

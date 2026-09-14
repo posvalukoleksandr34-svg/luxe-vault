@@ -45,6 +45,8 @@ const SECTIONS_ARE_ANCHORS = true
  *   /auth/*                     transactional, no standalone value
  *   /order/[id]                 private order data behind a per-order token
  *   /success                    post-payment landing, nothing to index
+ *   /checkout, /account         noindex (their segment layouts): a basket and
+ *                               a personal account are not landing pages
  */
 
 /** The legal documents' stated effective date, which is their real lastModified. */
@@ -109,6 +111,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Category pages sit between the homepage and the products: broader than a
     // single item, narrower than the shop.
     ...categoryUrls,
+    // The AI stylist: a standing landing page with its own canonical.
+    {
+      url: `${BASE}/stylist`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    },
     // Product pages rank for the queries that actually convert, so they carry
     // the highest priority after the homepage.
     ...products.map((p) => ({

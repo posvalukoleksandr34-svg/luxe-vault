@@ -1,12 +1,16 @@
 import 'server-only'
 
+import type { DeliveryTimeframe } from '@/config/shipping'
+import { businessToCalendarDays, describeBusinessDays, describeDeliveryDays } from '@/lib/fulfilment'
 import { escapeHtml } from '@/lib/server/resend'
 import type { Order } from '@/lib/types'
-import type { EmailLang } from './copy'
+import type { EmailCopy, EmailLang } from './copy'
 import {
   addressSection,
   copyFor,
+  deliverySection,
   formatDate,
+  formatDateRange,
   itemsSection,
   metaSection,
   money as textMoney,
@@ -17,15 +21,60 @@ import {
   type RenderedEmail,
 } from './layout'
 
+const DAY_MS = 86_400_000
+
+/**
+ * The delivery line: this order's own date window — stamped at creation from
+ * its slowest piece — and the timeframe in words.
+ *
+ * The words are the admin's business-day timeframe ("10–14 business days")
+ * when the order's window was stamped from it, otherwise the order's own span
+ * in days (a piece with its own, longer window). So the email never quotes a
+ * timeframe its own dates contradict. An order without stamped dates (none
+ * are created that way now) falls back to the timeframe alone.
+ */
+function deliveryEstimate(
+  order: Order,
+  c: EmailCopy,
+  lang: EmailLang,
+  timeframe?: DeliveryTimeframe,
+): { value: string; note?: string } | null {
+  if (order.deliveryEstimateMin && order.deliveryEstimateMax) {
+    const days = {
+      min: Math.max(1, Math.round((order.deliveryEstimateMin - order.createdAt) / DAY_MS)),
+      max: Math.max(1, Math.round((order.deliveryEstimateMax - order.createdAt) / DAY_MS)),
+    }
+    const store = timeframe && businessToCalendarDays(timeframe)
+    const span =
+      timeframe && store && store.min === days.min && store.max === days.max
+        ? describeBusinessDays(timeframe, lang)
+        : describeDeliveryDays(days, lang)
+    return {
+      value: formatDateRange(order.deliveryEstimateMin, order.deliveryEstimateMax, lang),
+      note: c.delivery.note(span),
+    }
+  }
+  if (timeframe) return { value: c.delivery.note(describeBusinessDays(timeframe, lang)) }
+  return null
+}
+
 /**
  * Order confirmation email — sent the moment an order is placed, before it is
  * paid, in the language the customer checked out in.
+ *
+ * `timeframe` is the admin's current delivery timeframe (getShippingSettings),
+ * passed in by the mailer so this stays a pure function of its inputs.
  */
-export function orderConfirmationEmail(order: Order, lang: EmailLang): RenderedEmail {
+export function orderConfirmationEmail(
+  order: Order,
+  lang: EmailLang,
+  timeframe?: DeliveryTimeframe,
+): RenderedEmail {
   const c = copyFor(lang)
   const firstName = order.customer.name.split(' ')[0] || ''
   const subject = c.confirm.subject(order.id)
   const date = formatDate(order.createdAt, lang)
+  const delivery = deliveryEstimate(order, c, lang, timeframe)
 
   const html = renderEmail({
     lang,
@@ -38,6 +87,7 @@ export function orderConfirmationEmail(order: Order, lang: EmailLang): RenderedE
         [c.orderNumber, order.id],
         [c.orderDate, date],
       ]),
+      delivery ? deliverySection(c.delivery.label, delivery.value, delivery.note) : '',
       itemsSection(order, c),
       totalsSection(order, c),
       addressSection(order, c),
@@ -53,6 +103,7 @@ export function orderConfirmationEmail(order: Order, lang: EmailLang): RenderedE
     '',
     `${c.orderNumber}: ${order.id}`,
     `${c.orderDate}: ${date}`,
+    delivery ? `${c.delivery.label}: ${delivery.value}${delivery.note ? ` (${delivery.note})` : ''}` : null,
     '',
     ...order.items.map((i) => `- ${i.name} (${i.size}, ${i.color}) x${i.qty}  ${textMoney(i.price * i.qty)}`),
     '',
@@ -71,9 +122,10 @@ export function orderConfirmationEmail(order: Order, lang: EmailLang): RenderedE
 }
 
 // ---------------------------------------------------------------------------
-// The dark palette and helpers below are still used by the marketing emails
-// in campaigns.ts (unpaid-order reminder, back-in-stock). The transactional
-// emails moved to the light layout in ./layout.ts.
+// The palette and helpers below are used by the marketing emails in
+// campaigns.ts (unpaid-order reminder, back-in-stock). The transactional
+// emails use the shared layout in ./layout.ts — dark too, in the brand's
+// exact values.
 // ---------------------------------------------------------------------------
 
 export const C = {
