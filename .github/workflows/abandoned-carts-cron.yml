@@ -1,0 +1,60 @@
+# Hourly trigger for the abandoned-cart reminders.
+#
+# The Vercel Hobby plan allows only daily cron jobs (an hourly one fails the
+# deployment), so the schedule lives here instead of in vercel.json. This job
+# only calls the endpoint; /api/cron/abandoned-carts does the work and its own
+# bookkeeping — each cart is claimed before its one reminder goes out, so a
+# late, repeated or overlapping run can never send an email twice.
+#
+# Setup (once): add the repository secret CRON_SECRET — Settings → Secrets and
+# variables → Actions → New repository secret — with exactly the value of
+# CRON_SECRET in Vercel. Optional: a repository variable SITE_URL if the shop
+# moves off https://www.luxe-vault.store.
+#
+# The www host, not the bare domain: luxe-vault.store answers with a 308
+# redirect to www, and curl drops the Authorization header when a redirect
+# changes host — the call would arrive without its secret and fail with 401.
+#
+# Run it by hand from the Actions tab ("Run workflow") to test the setup.
+
+name: Abandoned-cart reminders
+
+on:
+  schedule:
+    # Hourly, at :17 — GitHub's scheduler is busiest at the top of the hour
+    # and delays or drops those runs first.
+    - cron: '17 * * * *'
+  workflow_dispatch: {}
+
+# The job needs no access to the repository at all.
+permissions: {}
+
+concurrency:
+  group: abandoned-cart-reminders
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/cron/abandoned-carts
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::The repository secret CRON_SECRET is not set (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          status=$(curl --silent --show-error --max-time 60 --retry 2 --retry-delay 15 \
+            --output response.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/abandoned-carts")
+          echo "HTTP $status"
+          # Counts only ({claimed, sent, skipped}) — no addresses or cart contents.
+          cat response.json; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::/api/cron/abandoned-carts answered HTTP $status (401: the secret does not match Vercel's; 503: CRON_SECRET unset on Vercel or migration 0029 not applied)."
+            exit 1
+          fi
