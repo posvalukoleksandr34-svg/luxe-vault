@@ -1,0 +1,36 @@
+# Luxe Vault — Launch Operations Dossier
+
+Everything needed to take the store from "code is ready" to "money is moving".
+Four documents, in the order you should act on them:
+
+| # | Document | Answers |
+|---|---|---|
+| 1 | [01-sourcing.md](./01-sourcing.md) | Where to buy the product, how to verify it, how to ship it in 10–14 business days |
+| 2 | [02-launch-checklist.md](./02-launch-checklist.md) | Exactly what to pay for and configure, prioritised |
+| 3 | [03-unit-economics.md](./03-unit-economics.md) | The per-order maths, target COGS, target CAC, the daily formula |
+| 4 | [04-seven-day-plan.md](./04-seven-day-plan.md) | Day-by-day operations for the first week |
+| — | **[Margin Desk](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)** | Live calculator — every figure in #3, recomputed from your own inputs |
+
+## Working assumptions
+
+The brief left three figures as placeholders. These are the values used
+throughout; every number below is recomputed if you change them, and the
+calculator linked in `03-unit-economics.md` lets you do that live.
+
+| Input | Value used | Where it lives in the code |
+|---|---|---|
+| Retail price | **109 CHF** | catalogue, per product (admin panel) |
+| Shipping charged | **25 CHF** | `config/shipping.ts` → `shippingPrice` (admin-editable) |
+| Free shipping over | **200 CHF** | `config/shipping.ts` → `freeShippingThreshold` |
+| Delivery window | **10–14 business days** (= 14–20 calendar) | `config/shipping.ts` → `deliveryTimeframe` |
+| Launch budget | **500 CHF** | — |
+
+Two findings up front, before the detail:
+
+1. **109 CHF is under-priced for the positioning.** At a realistic landed cost
+   of ~38 CHF it is a 2.9× multiple. Premium DTC needs 4×. See
+   `03-unit-economics.md` § "The price problem".
+2. **500 CHF is a validation budget, not a launch budget.** It buys samples and
+   one ad test — realistically 3–5 paid sales. The 10-sale target in week one
+   is reachable only by pairing it with unpaid channels. See
+   `04-seven-day-plan.md`.
