@@ -50,7 +50,7 @@ const CSP_DIRECTIVES = {
     'https://*.stripe.com',
     'https://images.unsplash.com',
   ],
-  // next/font self-hosts both families under /_next/static.
+  // Both font families are self-hosted under /fonts (see app/globals.css).
   'font-src': ["'self'", 'data:'],
   'connect-src': [
     "'self'",
@@ -131,6 +131,13 @@ const nextConfig = {
    */
   async headers() {
     return [
+      {
+        // Self-hosted fonts (public/fonts): cached for a year, like the hashed
+        // files under /_next/static. A font is never edited in place — a
+        // changed file gets a new name.
+        source: '/fonts/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
       {
         source: '/:path*',
         headers: [

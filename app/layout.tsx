@@ -1,6 +1,5 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Bodoni_Moda } from 'next/font/google';
 import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { AmbientBackground } from '@/components/ambient-background';
@@ -18,33 +17,18 @@ import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 // Moda is the heavy, high-contrast display serif used for every headline —
 // the same family of cut that gives fashion-house wordmarks (Vogue, YSL,
 // Gucci editorial spreads) their commanding weight.
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-  fallback: ['system-ui', 'Segoe UI', 'Helvetica Neue', 'Arial', 'sans-serif'],
-});
-/**
- * The display serif. Measured, not guessed: with 400-900 declared, the browser
- * only ever downloaded 500, 600 and 700 — every 800 and 900 face reported
- * `unloaded`, because nothing in the app asks for them. Declaring them cost
- * extra @font-face rules and preload candidates for faces nobody renders.
- *
- * `fallback` matters more than it looks. next/font could not compute metric
- * overrides for Bodoni Moda (it says so at build time), so there is no
- * generated `Bodoni_Moda_Fallback` face — unlike Inter, which gets one. The
- * hero wordmark is this page's LCP element, so without a named serif here the
- * pre-swap frame renders in the browser's default and visibly reflows when
- * the real face arrives. Georgia is the closest high-contrast serif that is
- * on effectively every machine.
- */
-const bodoni = Bodoni_Moda({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-display',
-  display: 'swap',
-  fallback: ['Georgia', 'Times New Roman', 'serif'],
-});
+//
+// Both are self-hosted: the files live in public/fonts and are declared in
+// app/globals.css, which also sets the --font-inter / --font-display
+// variables Tailwind reads. They used to come from next/font/google, which
+// downloads them from Google during `next build` — on Vercel that request
+// timed out (ETIMEDOUT) and failed the deploy. They are the same files
+// next/font was serving, so nothing renders differently.
+//
+// Preloaded, as next/font did: the latin file of each family. The hero
+// wordmark (Bodoni) is the LCP element and Inter sets the body copy; every
+// other subset downloads only when a page uses its characters.
+const FONT_PRELOADS = ['/fonts/bodoni-moda-latin.woff2', '/fonts/inter-latin.woff2'];
 
 // The canonical production origin. Used to build absolute URLs for canonical
 // links and Open Graph / Twitter preview images (og:image must be absolute
@@ -186,8 +170,11 @@ export default async function RootLayout({
             not see a single frame of the entrance animations. See
             lib/motion-boot.ts. */}
         <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
+        {FONT_PRELOADS.map((href) => (
+          <link key={href} rel="preload" href={href} as="font" type="font/woff2" crossOrigin="" />
+        ))}
       </head>
-      <body className={`${inter.variable} ${bodoni.variable} font-sans`}>
+      <body className="font-sans">
         {/* The motion preference and the on-screen-keyboard flag, mirrored
             onto <html> for the CSS. Stateless, renders nothing. */}
         <UiEnvironment />
