@@ -18,6 +18,7 @@ import {
   Truck,
   Users,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { COURIER_NAMES } from '@/lib/fulfilment'
@@ -316,6 +317,15 @@ export function AdminPanel() {
               <NavButton active={tab === 'promos'} onClick={() => setTab('promos')} icon={<Tag className="size-4" />}>
                 {t('admin.promos')}
               </NavButton>
+              {/* Its own page (app/admin/settings), not a tab: the values are
+                  read fresh from the database on every visit. */}
+              <Link
+                href="/admin/settings"
+                className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <Truck className="size-4" />
+                Доставка
+              </Link>
             </nav>
 
             <button
@@ -360,6 +370,13 @@ export function AdminPanel() {
             <NavButton active={tab === 'promos'} onClick={() => setTab('promos')} icon={<Tag className="size-4" />}>
               {t('admin.promos')}
             </NavButton>
+            <Link
+              href="/admin/settings"
+              className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <Truck className="size-4" />
+              Доставка
+            </Link>
             <button
               type="button"
               onClick={handleLogout}

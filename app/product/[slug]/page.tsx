@@ -8,9 +8,11 @@ import { RecentlyViewed, RelatedProducts } from '@/components/products/product-r
 import { ProductReviews } from '@/components/products/product-reviews'
 import { ProductTrail } from '@/components/products/product-trail'
 import { StyleThisPiece } from '@/components/products/style-this-piece'
-import { deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
+import type { ShippingSettings } from '@/config/shipping'
+import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { getProductBySlug } from '@/lib/server/catalog-store'
+import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 
 /**
@@ -119,7 +121,10 @@ export async function generateMetadata({
  * Displaying a name on the page is description; asserting it in structured
  * data is provenance.
  */
-function productJsonLd(product: Product) {
+function productJsonLd(product: Product, shipping: ShippingSettings) {
+  // Calendar days, like every per-product window: the admin's business-day
+  // timeframe converted when the product has no window of its own.
+  const days = deliveryDaysFor(product, businessToCalendarDays(shipping.deliveryTimeframe))
   const name = pick(product.name)
   const slug = product.id
   const outOfStock = product.statuses.includes('out_of_stock')
@@ -153,7 +158,7 @@ function productJsonLd(product: Product) {
           '@type': 'MonetaryAmount',
           // What delivery costs for this piece on its own — free when its
           // price alone clears the threshold.
-          value: quoteShipping(product.price).toFixed(2),
+          value: quoteShipping(product.price, shipping).toFixed(2),
           currency: 'CHF',
         },
         deliveryTime: {
@@ -163,8 +168,8 @@ function productJsonLd(product: Product) {
           // storefront is worse than none.
           transitTime: {
             '@type': 'QuantitativeValue',
-            minValue: deliveryDaysFor(product).min,
-            maxValue: deliveryDaysFor(product).max,
+            minValue: days.min,
+            maxValue: days.max,
             unitCode: 'DAY',
           },
         },
@@ -176,6 +181,7 @@ function productJsonLd(product: Product) {
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductBySlug(params.slug)
   if (!product) notFound()
+  const shipping = await getShippingSettings()
 
   // Shop → collection → category → product. The collection and category
   // crumbs point at their own routes now; they used to point back at the
@@ -230,7 +236,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
         type="application/ld+json"
         // The payload is built from our own database rows, not user input, and
         // JSON.stringify escapes the values.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, shipping)) }}
       />
       <script
         type="application/ld+json"

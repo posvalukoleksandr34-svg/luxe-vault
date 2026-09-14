@@ -648,11 +648,13 @@ export const UI = {
   // Help / FAQ accordion (footer)
   'help.title': { ru: 'Помощь', en: 'Help', it: 'Assistenza', fr: 'Aide', de: 'Hilfe' },
   'help.delivery.content': {
-    ru: 'Доставка осуществляется по всей Евразии. Ориентировочный срок доставки составляет {min}–{max} дней в зависимости от региона. После оформления заказа мы отправим трек-номер для отслеживания посылки в личном кабинете.',
-    en: 'We deliver across all of Eurasia. The estimated delivery time is {min}–{max} days depending on the region. Once your order is placed, you will receive a tracking number in your account.',
-    it: 'Consegniamo in tutta l\'Eurasia. Il tempo di consegna stimato è di {min}–{max} giorni a seconda della regione. Dopo l\'ordine riceverai un numero di tracciamento nel tuo account.',
-    fr: 'Nous livrons dans toute l\'Eurasie. Le délai de livraison estimé est de {min} à {max} jours selon la région. Après votre commande, un numéro de suivi sera disponible dans votre compte.',
-    de: 'Wir liefern in ganz Eurasien. Die geschätzte Lieferzeit beträgt je nach Region {min}–{max} Tage. Nach der Bestellung erhalten Sie eine Sendungsverfolgungsnummer in Ihrem Konto.',
+    // {span} "10–14 business days", {price} the fee, {amount} the free-shipping
+    // threshold — all the admin's (store_settings), worded per language.
+    ru: 'Доставка осуществляется по всей Евразии. Ориентировочный срок доставки — {span} в зависимости от региона. Стандартная доставка — {price}, бесплатно для заказов от {amount}. После оформления заказа мы отправим трек-номер для отслеживания посылки в личном кабинете.',
+    en: 'We deliver across all of Eurasia. The estimated delivery time is {span}, depending on the region. Standard shipping is {price}, free on orders from {amount}. Once your order is placed, you will receive a tracking number in your account.',
+    it: 'Consegniamo in tutta l\'Eurasia. Il tempo di consegna stimato è di {span} a seconda della regione. Spedizione standard {price}, gratuita per ordini da {amount}. Dopo l\'ordine riceverai un numero di tracciamento nel tuo account.',
+    fr: 'Nous livrons dans toute l\'Eurasie. Le délai de livraison estimé est de {span} selon la région. Livraison standard {price}, offerte dès {amount}. Après votre commande, un numéro de suivi sera disponible dans votre compte.',
+    de: 'Wir liefern in ganz Eurasien. Die geschätzte Lieferzeit beträgt je nach Region {span}. Standardversand {price}, kostenlos ab {amount}. Nach der Bestellung erhalten Sie eine Sendungsverfolgungsnummer in Ihrem Konto.',
   },
   'help.returns.content': {
     ru: 'Вы можете оформить возврат в течение 14 дней с момента получения заказа. Товар должен быть в неношеном состоянии, с сохранёнными фабричными бирками и оригинальной упаковкой. Возврат средств производится на исходный способ оплаты в течение 5 рабочих дней после проверки товара на складе.',
@@ -826,7 +828,10 @@ export const UI = {
   'track.notFound': { ru: 'Заказ не найден', en: 'Order not found', it: 'Ordine non trovato', fr: 'Commande introuvable', de: 'Bestellung nicht gefunden' },
   'track.cancelled': { ru: 'Этот заказ отменён', en: 'This order was cancelled', it: 'Questo ordine è stato annullato', fr: 'Cette commande a été annulée', de: 'Diese Bestellung wurde storniert' },
   'track.step.pending.sub': { ru: 'Заказ принят и ожидает оплаты или подтверждения.', en: 'Order received, awaiting payment or confirmation.', it: 'Ordine ricevuto, in attesa di pagamento o conferma.', fr: 'Commande reçue, en attente de paiement ou de confirmation.', de: 'Bestellung eingegangen, wartet auf Zahlung oder Bestätigung.' },
-  'track.step.processing.sub': { ru: 'Позиция заказана у поставщика и проходит проверку качества. Обычно {min}–{max} дней.', en: 'Ordered from the supplier and undergoing quality checks. Typically {min}–{max} days.', it: 'Ordinato dal fornitore e in controllo qualità. Di norma {min}–{max} giorni.', fr: 'Commandé auprès du fournisseur et en contrôle qualité. Généralement {min} à {max} jours.', de: 'Beim Lieferanten bestellt und in der Qualitätsprüfung. Üblicherweise {min}–{max} Tage.' },
+  // No day count: it quoted the fixed 20–35-day supplier lead time, which
+  // contradicted the admin's delivery timeframe shown everywhere else. The
+  // tracker's headline already gives this order's own delivery window.
+  'track.step.processing.sub': { ru: 'Позиция заказана у поставщика и проходит проверку качества.', en: 'Ordered from the supplier and undergoing quality checks.', it: 'Ordinato dal fornitore e in controllo qualità.', fr: 'Commandé auprès du fournisseur et en contrôle qualité.', de: 'Beim Lieferanten bestellt und in der Qualitätsprüfung.' },
   // Carrier-NEUTRAL on purpose. This used to say "Dispatched via Swiss Post"
   // in all five languages, from back when there was one carrier. Orders now
   // carry their own `courier_name`, so on a Meest or Nova Poshta parcel the

@@ -28,6 +28,11 @@ import { createClient } from './supabase/client'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
 import {
+  DEFAULT_SHIPPING_SETTINGS,
+  validateShippingSettings,
+  type ShippingSettings,
+} from '@/config/shipping'
+import {
   CATEGORY_LABELS,
   GROUP_LABELS,
   DEFAULT_LOCALE,
@@ -122,6 +127,9 @@ type StoreContextValue = {
   categoryLabels: Record<string, LocalizedText>
   catalogLoading: boolean
   reloadCatalog: () => Promise<void>
+  /** The admin's shipping fee, free-shipping threshold and delivery window
+   *  (store_settings) — seeded by the layout, refreshed with the catalogue. */
+  shipping: ShippingSettings
   categoryImages: Partial<Record<CategoryGroupKey, string>>
   setCategoryImage: (group: CategoryGroupKey, image: string) => Promise<void>
   resetCategoryImage: (group: CategoryGroupKey) => Promise<void>
@@ -254,6 +262,7 @@ let toastSeq = 0
 export function StoreProvider({
   children,
   initialCatalog,
+  initialShipping,
 }: {
   children: ReactNode
   /**
@@ -269,6 +278,11 @@ export function StoreProvider({
    * visible at all.
    */
   initialCatalog?: { products: Product[]; collections: Collection[]; categories: Category[] }
+  /**
+   * Shipping settings read on the server (getShippingSettings), so the first
+   * painted cart, product page and footer already show the admin's figures.
+   */
+  initialShipping?: ShippingSettings
 }) {
   const [products, setProducts] = useState<Product[]>(initialCatalog?.products ?? [])
   // Already hydrated when the server supplied the catalogue — otherwise the
@@ -276,6 +290,9 @@ export function StoreProvider({
   const [productsHydrated, setProductsHydrated] = useState(Boolean(initialCatalog))
   const [collections, setCollections] = useState<Collection[]>(initialCatalog?.collections ?? [])
   const [categories, setCategories] = useState<Category[]>(initialCatalog?.categories ?? [])
+  const [shipping, setShipping] = useState<ShippingSettings>(
+    initialShipping ?? DEFAULT_SHIPPING_SETTINGS,
+  )
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [cart, setCart] = useState<CartItem[]>([])
   const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
@@ -469,6 +486,10 @@ function maybeSendWelcome() {
       if (Array.isArray(data.products)) setProducts(data.products)
       if (Array.isArray(data.collections)) setCollections(data.collections)
       if (Array.isArray(data.categories)) setCategories(data.categories)
+      // Re-validated rather than trusted: a malformed payload keeps the last
+      // good figures instead of pricing the cart from NaN.
+      const nextShipping = validateShippingSettings(data.shipping)
+      if (nextShipping.ok) setShipping(nextShipping.settings)
     } catch {
       // Catalogue unreachable (offline, or migrations not run yet). Leave the
       // last known list in place rather than blanking the shop.
@@ -1169,6 +1190,7 @@ function maybeSendWelcome() {
     categoryLabels,
     catalogLoading,
     reloadCatalog: loadCatalog,
+    shipping,
     categoryImages,
     setCategoryImage,
     resetCategoryImage,

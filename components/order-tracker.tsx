@@ -18,7 +18,7 @@ import { useState } from 'react'
 import { ORDER_STATUS_KEYS, type UIKey } from '@/lib/i18n'
 import {
   FULFILMENT,
-  TOTAL_WINDOW,
+  businessToCalendarDays,
   courierTrackingUrl,
   estimateDelivery,
   formatDeliveryWindow,
@@ -64,7 +64,7 @@ function stepTimestamp(order: Order, status: OrderStatus): number | undefined {
 }
 
 export function OrderTracker({ order }: { order: Order }) {
-  const { t, tf, locale } = useStore()
+  const { t, tf, locale, shipping } = useStore()
 
   const terminal = order.status === 'cancelled' || order.status === 'refunded'
   // Driven by status + timestamps, so the estimate narrows as the parcel
@@ -84,12 +84,15 @@ export function OrderTracker({ order }: { order: Order }) {
           latest: new Date(order.deliveryEstimateMax),
         }
       : null
-  const computed = estimateDelivery(order)
+  // The admin's delivery timeframe in calendar days: the fallback for orders
+  // stamped before per-order windows existed (migration 0011).
+  const storeDefaultDays = businessToCalendarDays(shipping.deliveryTimeframe)
+  const computed = estimateDelivery(order, storeDefaultDays)
   const eta =
     order.status === 'delivered' || !stamped ? computed : stamped
 
   // The day count in the timeline line, from the same stamped promise: with
-  // per-product estimates, the store-wide TOTAL_WINDOW is not this order's
+  // per-product estimates, the store-wide timeframe is not this order's
   // number. Orders stamped before 0011 fall back to it.
   const DAY_MS = 86_400_000
   const promisedDays =
@@ -98,7 +101,7 @@ export function OrderTracker({ order }: { order: Order }) {
           min: Math.max(1, Math.round((order.deliveryEstimateMin - order.createdAt) / DAY_MS)),
           max: Math.max(1, Math.round((order.deliveryEstimateMax - order.createdAt) / DAY_MS)),
         }
-      : TOTAL_WINDOW
+      : storeDefaultDays
 
   // A refund, as the card will show it: in the currency charged, at the rate
   // it was charged at (orderChargeRate). The order itself keeps CHF.
@@ -271,11 +274,9 @@ export function OrderTracker({ order }: { order: Order }) {
                           reached ? 'text-muted-foreground' : 'text-muted-foreground/45',
                         )}
                       >
-                        {subtitle === 'track.step.processing.sub'
-                          ? tf(subtitle, FULFILMENT.supply)
-                          : subtitle === 'track.step.delivered.sub'
-                            ? tf(subtitle, { days: FULFILMENT.returnWindowDays })
-                            : t(subtitle)}
+                        {subtitle === 'track.step.delivered.sub'
+                          ? tf(subtitle, { days: FULFILMENT.returnWindowDays })
+                          : t(subtitle)}
                       </p>
                     </div>
                   </div>

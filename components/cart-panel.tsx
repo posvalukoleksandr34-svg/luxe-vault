@@ -23,6 +23,7 @@ export function CartPanel() {
     removeFromCart,
     clearCart,
     cartSubtotal,
+    shipping,
     currentUser,
     openAuth,
     currency,
@@ -39,8 +40,8 @@ export function CartPanel() {
 
   // An estimate against the undiscounted subtotal — the drawer has no promo
   // code. repriceItems() computes the figure that is actually charged.
-  const estimatedShipping = quoteShipping(cartSubtotal)
-  const shippingGap = freeShippingGap(cartSubtotal)
+  const estimatedShipping = quoteShipping(cartSubtotal, shipping)
+  const shippingGap = freeShippingGap(cartSubtotal, shipping)
 
   // Line names in the visitor's language, from the catalogue: the name saved
   // with a line is whatever language the page was in when it was added.

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { readCatalog } from '@/lib/server/catalog-store'
+import { getShippingSettings } from '@/lib/server/store-settings'
 
 // The catalogue changes whenever an admin edits it, and the storefront reads
 // this on mount. Serving a build-time snapshot would reintroduce exactly the
@@ -25,11 +26,15 @@ export const dynamic = 'force-dynamic'
  */
 const CACHE_CONTROL = 'public, s-maxage=60, stale-while-revalidate=300'
 
-/** Public catalogue: collections, categories and products in one payload. */
+/**
+ * Public catalogue: collections, categories and products in one payload,
+ * plus the admin's shipping settings — so a fee or delivery-time change
+ * reaches an already-open storefront the same way a catalogue edit does.
+ */
 export async function GET() {
   try {
-    const catalog = await readCatalog()
-    return NextResponse.json(catalog, {
+    const [catalog, shipping] = await Promise.all([readCatalog(), getShippingSettings()])
+    return NextResponse.json({ ...catalog, shipping }, {
       headers: { 'Cache-Control': CACHE_CONTROL },
     })
   } catch (e) {

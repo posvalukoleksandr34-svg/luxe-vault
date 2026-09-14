@@ -75,6 +75,7 @@ export function CheckoutFlow({
     locale,
     cart,
     cartSubtotal,
+    shipping,
     paymentMethods,
     applyPromo,
     clearCart,
@@ -211,7 +212,7 @@ export function CheckoutFlow({
   // will charge. The server's version is authoritative; this one exists so the
   // summary is not a lie while they are deciding.
   const discountedSubtotal = cartSubtotal - discount
-  const shippingCost = quoteShipping(discountedSubtotal)
+  const shippingCost = quoteShipping(discountedSubtotal, shipping)
   const total = discountedSubtotal + shippingCost
   // The summary in the chosen currency, to the cent — converted with the same
   // table and rounding the server charges with, so the total shown is the

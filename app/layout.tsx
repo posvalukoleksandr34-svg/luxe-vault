@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
+import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
 import { AudioFeedback } from '@/components/audio-feedback';
 import { PageTransition } from '@/components/page-transition';
@@ -163,6 +164,10 @@ export default async function RootLayout({
   } catch (error) {
     console.error('[layout] catalogue unavailable for SSR:', error)
   }
+  // The admin's shipping fee, threshold and delivery window, for the cart,
+  // checkout, product pages and footer. Never throws: it falls back to
+  // config/shipping.ts when the database cannot be read.
+  const shipping = await getShippingSettings()
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
       <head>
@@ -205,7 +210,7 @@ export default async function RootLayout({
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
 
-        <StoreProvider initialCatalog={initialCatalog}>
+        <StoreProvider initialCatalog={initialCatalog} initialShipping={shipping}>
           {/* The skip link (see the note above), in the visitor's language —
               still first in the tab order: nothing before it is focusable. */}
           <SkipLink />

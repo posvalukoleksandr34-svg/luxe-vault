@@ -1,6 +1,7 @@
 import 'server-only'
 
-import { FULFILMENT, TOTAL_WINDOW } from '@/lib/fulfilment'
+import { FULFILMENT, describeBusinessDays } from '@/lib/fulfilment'
+import { getShippingSettings } from '@/lib/server/store-settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Notification, NotificationType } from '@/lib/types'
 
@@ -89,7 +90,8 @@ const STATUS_TITLES: Record<string, string> = {
 }
 
 const STATUS_BODIES: Record<string, string> = {
-  processing: `Позиция заказана у поставщика и проходит проверку качества. Обычно ${TOTAL_WINDOW.min}–${TOTAL_WINDOW.max} дней.`,
+  // {span}: the admin's delivery timeframe, filled in at send time.
+  processing: 'Позиция заказана у поставщика и проходит проверку качества. Обычно доставка занимает {span}.',
   shipped: 'Посылка передана Швейцарской почте. Трек-номер доступен на странице заказа.',
   delivered: `Посылка вручена. С этого момента у вас есть ${FULFILMENT.returnWindowDays} дней на возврат.`,
   cancelled: 'Заказ отменён. Если списание было — средства вернутся автоматически.',
@@ -112,10 +114,14 @@ export async function notifyStatusUpdate(params: {
   const template = STATUS_TITLES[params.status]
   if (!template) return false
 
-  const body =
+  let body =
     params.status === 'shipped' && params.trackingNumber
       ? `Трек-номер: ${params.trackingNumber}. ${STATUS_BODIES.shipped}`
       : STATUS_BODIES[params.status]
+  if (body.includes('{span}')) {
+    const { deliveryTimeframe } = await getShippingSettings()
+    body = body.replace('{span}', describeBusinessDays(deliveryTimeframe, 'ru'))
+  }
 
   return insert({
     userId: params.userId,

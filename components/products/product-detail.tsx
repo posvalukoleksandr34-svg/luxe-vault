@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/accordion'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { trackViewItem } from '@/lib/analytics'
-import { SHIPPING, deliveryDaysFor, describeDeliveryDays } from '@/lib/fulfilment'
+import { describeProductDelivery } from '@/lib/fulfilment'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { canShareNatively, copyText, shareNatively } from '@/lib/share'
 import { formatPrice, useStore } from '@/lib/store'
@@ -67,7 +67,7 @@ const GALLERY_ARROW =
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, tf, locale, localize, categoryLabels, pushToast } = useStore()
+  const { addToCart, setPanel, t, tf, locale, localize, categoryLabels, pushToast, shipping } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -307,8 +307,8 @@ export function ProductDetail({ product }: { product: Product }) {
    * falls back to nothing; a refused one falls back to copying.
    */
   // This product's own delivery window, in words, in the visitor's language.
-  // The store default when the admin set none — see deliveryDaysFor().
-  const deliverySpan = describeDeliveryDays(deliveryDaysFor(product), locale)
+  // The admin's store-wide timeframe ("10–14 business days") when it has none.
+  const deliverySpan = describeProductDelivery(product, shipping.deliveryTimeframe, locale)
 
   async function share() {
     const url = window.location.href
@@ -731,7 +731,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* Delivery, timing, returns — each opens to the shop's own wording.
             Every figure is read from data, never typed in: the fee and the
-            free-shipping threshold from SHIPPING, this product's delivery
+            free-shipping threshold from the admin's settings, this product's delivery
             window from its own estimate (the store default when the admin set
             none), the return period from the returns policy. */}
         <Accordion type="single" collapsible className="mt-7 border-t border-border/40">
@@ -739,14 +739,14 @@ export function ProductDetail({ product }: { product: Product }) {
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
               <span className="flex items-center gap-3">
                 <Package className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
-                {tf('product.freeShippingFrom', { amount: formatPrice(SHIPPING.standard.freeAbove) })}
+                {tf('product.freeShippingFrom', { amount: formatPrice(shipping.freeShippingThreshold) })}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
               {tf('product.shippingDetails', {
                 // To the cent: a fee is quoted exactly (CHF 14.90, not CHF 15).
-                price: formatPrice(SHIPPING.standard.price, true),
-                amount: formatPrice(SHIPPING.standard.freeAbove),
+                price: formatPrice(shipping.shippingPrice, true),
+                amount: formatPrice(shipping.freeShippingThreshold),
               })}
             </AccordionContent>
           </AccordionItem>

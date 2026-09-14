@@ -5,12 +5,14 @@
 import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
 import {
   basketDeliveryDays,
+  businessToCalendarDays,
   quoteDeliveryWindow,
   quoteShipping,
   TAX_RATE,
   type Range,
 } from '@/lib/fulfilment'
 import { readCatalog } from '@/lib/server/catalog-store'
+import { getShippingSettings } from '@/lib/server/store-settings'
 import { applyCoupon } from '@/lib/server/coupons'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order, Product } from '@/lib/types'
@@ -275,7 +277,9 @@ export async function repriceItems(
   // browser showing "free delivery" must not be what decides whether delivery
   // is free. The threshold is applied to the discounted subtotal.
   const discounted = round2(subtotal - discount)
-  const shippingCost = round2(quoteShipping(discounted))
+  // The admin's current fee and threshold (store_settings), not a constant.
+  const shipping = await getShippingSettings()
+  const shippingCost = round2(quoteShipping(discounted, shipping))
 
   // Zero while the seller is an unregistered private individual — see
   // TAX_RATE in lib/fulfilment.ts and migration 0014.
@@ -309,7 +313,8 @@ export async function repriceItems(
       promo: appliedCode,
       couponId,
       // From the catalogue, like the prices: the slowest piece sets the window.
-      deliveryDays: basketDeliveryDays(basket),
+      // Pieces without their own use the admin's timeframe, in calendar days.
+      deliveryDays: basketDeliveryDays(basket, businessToCalendarDays(shipping.deliveryTimeframe)),
     },
   }
 }

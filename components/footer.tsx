@@ -11,8 +11,8 @@ import { openCookieSettings } from '@/components/cookie-consent'
 import { SoundToggle } from '@/components/sound-toggle'
 import { MotionToggle } from '@/components/motion-toggle'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
-import { TOTAL_WINDOW } from '@/lib/fulfilment'
-import { useStore } from '@/lib/store'
+import { describeBusinessDays } from '@/lib/fulfilment'
+import { formatPrice, useStore } from '@/lib/store'
 
 function scrollTo(id: string) {
   const el = document.getElementById(id)
@@ -30,7 +30,7 @@ function scrollTo(id: string) {
  * appear open at the same time and clicking one never toggles another.
  */
 export function Footer() {
-  const { t, tf } = useStore()
+  const { t, tf, locale, shipping } = useStore()
 
   return (
     <footer className="border-t border-border bg-card/20">
@@ -84,7 +84,12 @@ export function Footer() {
                   {t('footer.delivery')}
                 </AccordionTrigger>
                 <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
-                  {tf('help.delivery.content', TOTAL_WINDOW)}
+                  {tf('help.delivery.content', {
+                    // The admin's figures (store_settings, /admin/settings).
+                    span: describeBusinessDays(shipping.deliveryTimeframe, locale),
+                    price: formatPrice(shipping.shippingPrice, true),
+                    amount: formatPrice(shipping.freeShippingThreshold),
+                  })}
                 </AccordionContent>
               </AccordionItem>
 

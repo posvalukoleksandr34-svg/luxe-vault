@@ -1,3 +1,8 @@
+import {
+  DEFAULT_SHIPPING_SETTINGS,
+  type DeliveryTimeframe,
+  type ShippingSettings,
+} from '@/config/shipping'
 import type { Locale, Order, Product } from '@/lib/types'
 
 /**
@@ -35,13 +40,19 @@ export const FULFILMENT = {
 export type Range = { min: number; max: number }
 
 /**
- * Total customer-visible window: supplier lead time plus dispatch plus
- * transit. This is the honest end-to-end figure, and is what the tracker's
- * headline shows.
+ * Business days → calendar days.
+ *
+ * The store's default window is set by the admin in business days (Mon–Fri —
+ * store_settings.delivery_timeframe), while per-product windows, order stamps
+ * and the product schema are calendar days. Every five working days span a
+ * weekend: the near end counts whole weekends only and the far end rounds them
+ * up, so the latest date is never promised early. 10–14 business days → 14–20.
  */
-export const TOTAL_WINDOW: Range = {
-  min: FULFILMENT.supply.min + FULFILMENT.dispatch.min + FULFILMENT.transit.min,
-  max: FULFILMENT.supply.max + FULFILMENT.dispatch.max + FULFILMENT.transit.max,
+export function businessToCalendarDays(range: DeliveryTimeframe): Range {
+  return {
+    min: range.min + 2 * Math.floor(range.min / 5),
+    max: range.max + 2 * Math.ceil(range.max / 5),
+  }
 }
 
 // ---------------------------------------------------- per-product estimates
@@ -52,10 +63,13 @@ export const TOTAL_WINDOW: Range = {
  * Each product can carry its own window — Product.deliveryDays, set in the
  * admin panel — because dropshipped lines ship on their supplier's schedule,
  * and one store-wide figure over-promises some pieces and under-sells others.
- * This is the fallback for every product the admin has not set: the
- * end-to-end TOTAL_WINDOW, the same figure the FAQ and the Terms quote.
+ * The store-wide figure is the admin's delivery timeframe (store_settings);
+ * this is its config/shipping.ts fallback in calendar days. Callers holding
+ * the live settings pass businessToCalendarDays(settings.deliveryTimeframe).
  */
-export const DEFAULT_DELIVERY_DAYS: Range = TOTAL_WINDOW
+export const DEFAULT_DELIVERY_DAYS: Range = businessToCalendarDays(
+  DEFAULT_SHIPPING_SETTINGS.deliveryTimeframe,
+)
 
 /** What a per-product estimate may be, in whole days. Mirrors the check
  *  constraint in migration 0026. */
@@ -74,8 +88,11 @@ export function isDeliveryDays(value: unknown): value is Range {
 }
 
 /** A product's own window, or the store default. */
-export function deliveryDaysFor(product: Pick<Product, 'deliveryDays'> | null | undefined): Range {
-  return product && isDeliveryDays(product.deliveryDays) ? product.deliveryDays : DEFAULT_DELIVERY_DAYS
+export function deliveryDaysFor(
+  product: Pick<Product, 'deliveryDays'> | null | undefined,
+  storeDefault: Range = DEFAULT_DELIVERY_DAYS,
+): Range {
+  return product && isDeliveryDays(product.deliveryDays) ? product.deliveryDays : storeDefault
 }
 
 /**
@@ -84,12 +101,15 @@ export function deliveryDaysFor(product: Pick<Product, 'deliveryDays'> | null | 
  * item's date for a parcel that is waiting on a slower one would be wrong for
  * the customer who reads it.
  */
-export function basketDeliveryDays(products: Pick<Product, 'deliveryDays'>[]): Range {
-  if (products.length === 0) return DEFAULT_DELIVERY_DAYS
+export function basketDeliveryDays(
+  products: Pick<Product, 'deliveryDays'>[],
+  storeDefault: Range = DEFAULT_DELIVERY_DAYS,
+): Range {
+  if (products.length === 0) return storeDefault
   let min = 0
   let max = 0
   for (const p of products) {
-    const d = deliveryDaysFor(p)
+    const d = deliveryDaysFor(p, storeDefault)
     if (d.min > min) min = d.min
     if (d.max > max) max = d.max
   }
@@ -153,6 +173,54 @@ export function describeDeliveryDays(range: Range, locale: Locale): string {
   return `${a}–${b} ${unitWord(locale, unit, b, false)}`
 }
 
+const BUSINESS_DAY_WORDS: Record<Exclude<Locale, 'ru'>, [string, string]> = {
+  en: ['business day', 'business days'],
+  it: ['giorno lavorativo', 'giorni lavorativi'],
+  fr: ['jour ouvré', 'jours ouvrés'],
+  de: ['Werktag', 'Werktage'],
+}
+
+/** 1 рабочий день, 2 рабочих дня, 5 рабочих дней; after «около» the genitive. */
+function russianBusinessDays(n: number, afterAbout: boolean): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  const one = mod10 === 1 && mod100 !== 11
+  const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+  if (afterAbout) return one ? 'рабочего дня' : 'рабочих дней'
+  return one ? 'рабочий день' : few ? 'рабочих дня' : 'рабочих дней'
+}
+
+/**
+ * The store's delivery timeframe as words in the visitor's language:
+ * "10–14 business days", "10–14 рабочих дней", "10–14 giorni lavorativi".
+ * The numbers are the admin's (store_settings); only the wording is generated,
+ * so one saved value reads correctly in all five languages.
+ */
+export function describeBusinessDays(range: DeliveryTimeframe, locale: Locale): string {
+  const { min: a, max: b } = range
+  const word = (n: number, afterAbout: boolean) => {
+    if (locale === 'ru') return russianBusinessDays(n, afterAbout)
+    const [singular, plural] = BUSINESS_DAY_WORDS[locale]
+    return n === 1 ? singular : plural
+  }
+  if (a === b) return `${ABOUT[locale]} ${a} ${word(a, true)}`
+  return `${a}–${b} ${word(b, false)}`
+}
+
+/**
+ * A product's delivery window in words: its own (calendar days) when the
+ * admin set one, otherwise the store's business-day timeframe.
+ */
+export function describeProductDelivery(
+  product: Pick<Product, 'deliveryDays'>,
+  timeframe: DeliveryTimeframe,
+  locale: Locale,
+): string {
+  return isDeliveryDays(product.deliveryDays)
+    ? describeDeliveryDays(product.deliveryDays, locale)
+    : describeBusinessDays(timeframe, locale)
+}
+
 function addDays(from: number, days: number): Date {
   const d = new Date(from)
   d.setDate(d.getDate() + days)
@@ -173,6 +241,7 @@ function addDays(from: number, days: number): Date {
  */
 export function estimateDelivery(
   order: Pick<Order, 'status' | 'createdAt' | 'shippedAt' | 'deliveredAt'>,
+  storeDefault: Range = DEFAULT_DELIVERY_DAYS,
 ): { earliest: Date; latest: Date; exact?: Date } | null {
   if (order.status === 'cancelled' || order.status === 'refunded') return null
 
@@ -189,8 +258,8 @@ export function estimateDelivery(
   }
 
   return {
-    earliest: addDays(order.createdAt, TOTAL_WINDOW.min),
-    latest: addDays(order.createdAt, TOTAL_WINDOW.max),
+    earliest: addDays(order.createdAt, storeDefault.min),
+    latest: addDays(order.createdAt, storeDefault.max),
   }
 }
 
@@ -223,21 +292,20 @@ export function formatDeliveryWindow(
 export type ShippingType = 'standard'
 
 /**
- * What delivery costs.
+ * What delivery costs: the admin's fee and free-shipping threshold
+ * (store_settings, edited at /admin/settings; config/shipping.ts until one is
+ * saved). Only orders UNDER the threshold pay, so a basket of exactly the
+ * threshold ships free.
  *
- * CHF 14.90 on orders under CHF 150, free from CHF 150. Only orders UNDER the
- * threshold pay, so a basket of exactly CHF 150 ships free. Everything that
- * displays or charges for delivery reads this object — the product page, the
- * cart, the checkout and the server's own pricing in order-drafts.ts — so
- * changing a number here is the whole change.
- *
- * `freeAbove` is a threshold on the discounted subtotal, not the total: free
+ * The threshold applies to the discounted subtotal, not the total: free
  * shipping earned by a large order should not evaporate because the order also
  * qualified for a discount code.
+ *
+ * The rule is a required argument, not a module constant, so no caller can
+ * price delivery from a stale hardcoded figure: the client passes the store's
+ * `shipping`, the server passes getShippingSettings().
  */
-export const SHIPPING = {
-  standard: { price: 14.9, freeAbove: 150 },
-} as const
+export type ShippingRule = Pick<ShippingSettings, 'shippingPrice' | 'freeShippingThreshold'>
 
 /**
  * Tax rate applied to an order.
@@ -257,9 +325,8 @@ export const TAX_RATE = 0
  * Takes the already-discounted subtotal so the free-shipping threshold is
  * applied to what the customer is actually spending.
  */
-export function quoteShipping(discountedSubtotal: number): number {
-  const rule = SHIPPING.standard
-  return discountedSubtotal >= rule.freeAbove ? 0 : rule.price
+export function quoteShipping(discountedSubtotal: number, rule: ShippingRule): number {
+  return discountedSubtotal >= rule.freeShippingThreshold ? 0 : rule.shippingPrice
 }
 
 /**
@@ -270,12 +337,12 @@ export function quoteShipping(discountedSubtotal: number): number {
  */
 export function freeShippingGap(
   discountedSubtotal: number,
+  rule: ShippingRule,
 ): { remaining: number; threshold: number } | null {
-  const rule = SHIPPING.standard
-  if (discountedSubtotal >= rule.freeAbove) return null
+  if (discountedSubtotal >= rule.freeShippingThreshold) return null
   return {
-    remaining: Math.round((rule.freeAbove - discountedSubtotal) * 100) / 100,
-    threshold: rule.freeAbove,
+    remaining: Math.round((rule.freeShippingThreshold - discountedSubtotal) * 100) / 100,
+    threshold: rule.freeShippingThreshold,
   }
 }
 
