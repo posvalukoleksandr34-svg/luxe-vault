@@ -10,11 +10,11 @@ import 'server-only'
 
 import { SUPPORT_EMAIL } from '@/lib/data'
 import { emailLang, type EmailLang } from '@/lib/server/emails/copy'
+import { L } from '@/lib/server/emails/layout'
 import { orderConfirmationEmail } from '@/lib/server/emails/order-confirmation'
 import { paymentFailedEmail } from '@/lib/server/emails/payment-failed'
 import { paymentReceiptEmail } from '@/lib/server/emails/payment-receipt'
 import { getOrderLocale } from '@/lib/server/order-locale'
-import { getShippingSettings } from '@/lib/server/store-settings'
 import {
   escapeHtml,
   isMailConfigured,
@@ -38,27 +38,38 @@ function escMultiline(value: string): string {
 
 const esc = escapeHtml
 
+/**
+ * The support emails' frame, in the shared Dark Luxury palette (./emails/
+ * layout.ts): black ground, #0D0D0D card with a #222222 border and a gold
+ * line across its top, a gold heading, #CCCCCC text.
+ */
 const SHELL = (title: string, body: string) => `
 <!doctype html>
 <html lang="ru">
-  <body style="margin:0;padding:0;background:#0b0b0b;font-family:Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0b0b;padding:32px 16px;">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+  </head>
+  <body style="margin:0;padding:0;background:${L.ground};font-family:Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${L.ground}" style="background:${L.ground};padding:32px 16px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#131313;border:1px solid #262626;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${L.card}" style="max-width:560px;background:${L.card};border:1px solid ${L.border};">
+            <tr><td height="3" bgcolor="${L.rule}" style="height:3px;line-height:3px;font-size:0;background:${L.rule};">&nbsp;</td></tr>
             <tr>
-              <td style="padding:28px 32px 20px;border-bottom:1px solid #262626;">
-                <span style="font-size:15px;letter-spacing:.22em;color:#f5f3ef;font-weight:700;">LUXE</span><span style="font-size:15px;letter-spacing:.22em;color:#c9a227;font-weight:700;">VAULT</span>
+              <td style="padding:26px 32px 20px;border-bottom:1px solid ${L.border};">
+                <span style="font-size:15px;letter-spacing:.22em;color:${L.strong};font-weight:700;">LUXE</span><span style="font-size:15px;letter-spacing:.22em;color:${L.rule};font-weight:700;">VAULT</span>
               </td>
             </tr>
             <tr>
-              <td style="padding:28px 32px 32px;color:#d6d3cd;font-size:14px;line-height:1.7;">
-                <h1 style="margin:0 0 16px;font-size:18px;color:#f5f3ef;font-weight:600;">${esc(title)}</h1>
+              <td style="padding:28px 32px 32px;color:${L.body};font-size:14px;line-height:1.7;">
+                <h1 style="margin:0 0 16px;font-size:18px;color:${L.heading};font-weight:600;">${esc(title)}</h1>
                 ${body}
               </td>
             </tr>
             <tr>
-              <td style="padding:18px 32px;border-top:1px solid #262626;color:#6d6d6d;font-size:11px;">
+              <td style="padding:18px 32px;border-top:1px solid ${L.border};color:${L.muted};font-size:11px;">
                 LUXE VAULT · Это письмо отправлено автоматически
               </td>
             </tr>
@@ -85,12 +96,12 @@ export async function sendSupportNotification(t: SupportEnquiry): Promise<boolea
     subject: `Новое обращение — ${t.name}`,
     html: SHELL(
         'Новое обращение в поддержку',
-        `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13px;color:#d6d3cd;">
-           <tr><td style="padding:4px 0;color:#6d6d6d;width:90px;">Имя</td><td style="padding:4px 0;color:#f5f3ef;">${esc(t.name)}</td></tr>
-           <tr><td style="padding:4px 0;color:#6d6d6d;">Email</td><td style="padding:4px 0;"><a href="mailto:${esc(t.email)}" style="color:#c9a227;">${esc(t.email)}</a></td></tr>
-           <tr><td style="padding:4px 0;color:#6d6d6d;">Тикет</td><td style="padding:4px 0;color:#6d6d6d;font-family:monospace;">${esc(t.id)}</td></tr>
+        `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13px;color:${L.body};">
+           <tr><td style="padding:4px 0;color:${L.muted};width:90px;">Имя</td><td style="padding:4px 0;color:${L.strong};">${esc(t.name)}</td></tr>
+           <tr><td style="padding:4px 0;color:${L.muted};">Email</td><td style="padding:4px 0;"><a href="mailto:${esc(t.email)}" style="color:${L.rule};">${esc(t.email)}</a></td></tr>
+           <tr><td style="padding:4px 0;color:${L.muted};">Тикет</td><td style="padding:4px 0;color:${L.muted};font-family:monospace;">${esc(t.id)}</td></tr>
          </table>
-         <div style="margin-top:20px;padding:16px;background:#0b0b0b;border-left:2px solid #c9a227;color:#d6d3cd;font-size:14px;line-height:1.7;">
+         <div style="margin-top:20px;padding:16px;background:${L.inset};border-left:2px solid ${L.rule};color:${L.body};font-size:14px;line-height:1.7;">
            ${escMultiline(t.message)}
          </div>`,
     ),
@@ -123,14 +134,14 @@ export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolea
            в течение 24 часов. Если у вас появились срочные дополнения, просто
            ответьте на это письмо.
          </p>
-         <p style="margin:0 0 8px;color:#6d6d6d;font-size:12px;text-transform:uppercase;letter-spacing:.12em;">
+         <p style="margin:0 0 8px;color:${L.heading};font-size:12px;text-transform:uppercase;letter-spacing:.12em;">
            Копия вашего обращения
          </p>
-         <div style="padding:16px;background:#0b0b0b;border-left:2px solid #c9a227;color:#d6d3cd;font-size:14px;line-height:1.7;">
+         <div style="padding:16px;background:${L.inset};border-left:2px solid ${L.rule};color:${L.body};font-size:14px;line-height:1.7;">
            ${escMultiline(t.message)}
          </div>
-         <p style="margin:20px 0 0;color:#6d6d6d;font-size:12px;">
-           Номер обращения: <span style="font-family:monospace;color:#d6d3cd;">${esc(t.id)}</span>
+         <p style="margin:20px 0 0;color:${L.muted};font-size:12px;">
+           Номер обращения: <span style="font-family:monospace;color:${L.strong};">${esc(t.id)}</span>
          </p>`,
     ),
     text: [
@@ -173,10 +184,7 @@ export async function sendOrderConfirmation(order: Order, lang?: EmailLang): Pro
   const to = order.customer.email?.trim()
   if (!to) return false
   try {
-    // The admin's delivery timeframe, for the estimate's wording. Never
-    // throws: it falls back to config/shipping.ts.
-    const { deliveryTimeframe } = await getShippingSettings()
-    const message = orderConfirmationEmail(order, await langFor(order, lang), deliveryTimeframe)
+    const message = orderConfirmationEmail(order, await langFor(order, lang))
     const { ok } = await sendEmail({ to, replyTo: SUPPORT_INBOX, ...message })
     return ok
   } catch (e) {

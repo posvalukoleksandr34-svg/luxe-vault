@@ -1,7 +1,5 @@
 import 'server-only'
 
-import { DEFAULT_SHIPPING_SETTINGS } from '@/config/shipping'
-import { businessToCalendarDays } from '@/lib/fulfilment'
 import type { Order } from '@/lib/types'
 import { EMAIL_LANGS, emailLang, type EmailLang } from './copy'
 import { abandonedCartEmail } from './abandoned-cart'
@@ -33,18 +31,13 @@ export const PREVIEW_TEMPLATES = [
 
 export type PreviewTemplate = (typeof PREVIEW_TEMPLATES)[number]
 
-const SAMPLE_TIMEFRAME = DEFAULT_SHIPPING_SETTINGS.deliveryTimeframe
-
 function sampleOrder(): Order {
   const createdAt = Date.now()
-  // Stamped the way order-drafts.ts stamps a real order: the store timeframe
-  // in calendar days from creation.
-  const window = businessToCalendarDays(SAMPLE_TIMEFRAME)
   return {
     id: 'LV-SAMPLE',
     createdAt,
-    deliveryEstimateMin: createdAt + window.min * 86_400_000,
-    deliveryEstimateMax: createdAt + window.max * 86_400_000,
+    // Shipped today, so the shipping email shows its arrival window.
+    shippedAt: createdAt,
     customer: {
       name: 'Alex Sample',
       phone: '',
@@ -81,9 +74,8 @@ export function renderPreview(template: PreviewTemplate, rawLang: unknown): { su
       return { subject: passwordRecoverySubject(lang), html: passwordRecoveryHtml('482913', lang) }
     case 'order_confirmation':
       return orderConfirmationEmail(
-        { ...order, status: 'pending', paymentCurrency: undefined, paymentAmount: undefined },
+        { ...order, status: 'pending', shippedAt: undefined, paymentCurrency: undefined, paymentAmount: undefined },
         lang,
-        SAMPLE_TIMEFRAME,
       )
     case 'payment_success':
       return paymentReceiptEmail(order, lang)

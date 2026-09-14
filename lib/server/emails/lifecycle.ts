@@ -1,19 +1,22 @@
 import 'server-only'
 
 import { orderCharge, orderChargeRate, roundMinor } from '@/lib/currency'
-import { FULFILMENT, courierTrackingUrl } from '@/lib/fulfilment'
+import { FULFILMENT, courierTrackingUrl, estimateDelivery } from '@/lib/fulfilment'
 import { ORDER_STATUS_KEYS, UI, translate } from '@/lib/i18n'
 import { getSiteUrl } from '@/lib/site-url'
 import type { Order, OrderStatus } from '@/lib/types'
 import type { EmailLang } from './copy'
 import {
   copyFor,
+  deliverySection,
   esc,
+  formatDateRange,
   highlightSection,
   L,
   metaSection,
   money,
   orderHref,
+  paragraphSection,
   renderEmail,
   SANS,
   textEmail,
@@ -53,18 +56,44 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
     ]),
   ]
   const textExtra: (string | null)[] = []
+  let cta: { label: string; href: string } =
+    key === 'cancelled' || key === 'refunded'
+      ? { label: c.shopNow, href: `${getSiteUrl()}/#shop` }
+      : { label: c.trackOrder, href: orderHref(order) }
+  let secondaryLink: { label: string; href: string } | undefined
 
-  // The tracking number is the reason the shipping email gets opened — with a
-  // link straight to the carrier when the carrier is one we know. Omitted when
-  // the admin has not entered one yet: "Tracking: —" reads as a mistake.
-  if (key === 'shipped' && order.trackingNumber) {
-    const carrier = courierTrackingUrl(order.courierName, order.trackingNumber)
-    const value = carrier
-      ? `<a href="${esc(carrier.url)}" style="color:${L.heading}; text-decoration:underline;">${esc(order.trackingNumber)}</a>`
-      : esc(order.trackingNumber)
-    sections.push(highlightSection(c.shipped.tracking, value, order.courierName || undefined))
-    textExtra.push(`${c.shipped.tracking}: ${order.trackingNumber}${order.courierName ? ` (${order.courierName})` : ''}`)
-    if (carrier) textExtra.push(carrier.url)
+  // "Order dispatched": the tracking number, the carrier's own tracking page
+  // as the button, and when to expect it. Sent again if the admin adds or
+  // changes the tracking number later (setOrderStatus in orders-store.ts), so
+  // a parcel marked shipped before its label was printed still gets tracked.
+  if (key === 'shipped') {
+    if (order.trackingNumber) {
+      const carrier = courierTrackingUrl(order.courierName, order.trackingNumber)
+      const value = carrier
+        ? `<a href="${esc(carrier.url)}" style="color:${L.heading}; text-decoration:underline;">${esc(order.trackingNumber)}</a>`
+        : esc(order.trackingNumber)
+      sections.push(highlightSection(c.shipped.tracking, value, order.courierName || undefined))
+      textExtra.push(`${c.shipped.tracking}: ${order.trackingNumber}${order.courierName ? ` (${order.courierName})` : ''}`)
+      if (carrier) {
+        // The carrier's page is where the live scans are; the order page stays
+        // one click away underneath.
+        cta = { label: c.shipped.trackWith(carrier.label), href: carrier.url }
+        secondaryLink = { label: c.viewOrder, href: orderHref(order) }
+        textExtra.push(`${cta.label}: ${carrier.url}`)
+      }
+    }
+
+    // Counted from the day it left (carrier transit, FULFILMENT.transit) —
+    // the honest window now that the supplier leg is behind it.
+    const eta = order.shippedAt ? estimateDelivery(order) : null
+    if (eta) {
+      const window = formatDateRange(eta.earliest.getTime(), eta.latest.getTime(), lang)
+      sections.push(deliverySection(c.shipped.arrival, window, c.shipped.updates))
+      textExtra.push(`${c.shipped.arrival}: ${window}`, c.shipped.updates)
+    } else {
+      sections.push(paragraphSection(c.shipped.updates, true))
+      textExtra.push(c.shipped.updates)
+    }
   }
 
   // The refund as the card will show it: in the currency charged, at the
@@ -83,9 +112,6 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
 
   const firstName = order.customer.name.split(' ')[0] || ''
   const intro = firstName ? `${firstName}, ${body.charAt(0).toLowerCase()}${body.slice(1)}` : body
-  const cta = key === 'cancelled' || key === 'refunded'
-    ? { label: c.shopNow, href: `${getSiteUrl()}/#shop` }
-    : { label: c.trackOrder, href: orderHref(order) }
 
   const html = renderEmail({
     lang,
@@ -95,6 +121,7 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
     intro,
     sections,
     cta,
+    secondaryLink,
   })
 
   const text = textEmail([
@@ -107,7 +134,7 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
     `${c.status}: ${statusLabel(status, lang)}`,
     ...textExtra,
     '',
-    `${cta.label}: ${cta.href}`,
+    secondaryLink ? `${secondaryLink.label}: ${secondaryLink.href}` : `${cta.label}: ${cta.href}`,
   ])
 
   return { subject, html, text }

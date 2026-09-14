@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { ACCENT_LINE, buttonHtml } from '@/lib/server/emails/layout'
 import { C, SANS, SERIF, money } from '@/lib/server/emails/order-confirmation'
 import { escapeHtml, FROM_ADDRESS, isMailConfigured, sendEmail } from '@/lib/server/resend'
 import { getSiteUrl } from '@/lib/site-url'
@@ -32,19 +33,20 @@ function shell(opts: {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
     <title>${escapeHtml(opts.subject)}</title>
   </head>
   <body style="margin:0; padding:0; background:${C.bg};">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.bg};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.bg}" style="background:${C.bg};">
       <tr>
         <td align="center" style="padding:32px 12px;">
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}"
                  style="width:600px; max-width:100%; background:${C.card}; border:1px solid ${C.border};">
+            ${ACCENT_LINE}
             <tr>
-              <td align="center" style="padding:32px 32px 0 32px;">
-                <span style="font-family:${SERIF}; font-size:20px; letter-spacing:3px; color:${C.heading};">
-                  LUXE VAULT
-                </span>
+              <td align="center" style="padding:30px 32px 0 32px;">
+                <span style="font-family:${SERIF}; font-size:20px; letter-spacing:3px; color:${C.strong};">LUXE</span><span style="font-family:${SERIF}; font-size:20px; letter-spacing:3px; color:${C.gold};">&nbsp;VAULT</span>
               </td>
             </tr>
             <tr>
@@ -75,10 +77,7 @@ function shell(opts: {
             }
             <tr>
               <td align="center" style="padding:28px 32px 8px 32px;">
-                <a href="${escapeHtml(opts.cta.href)}"
-                   style="display:inline-block; padding:14px 30px; font-family:${SANS}; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:${C.gold}; text-decoration:none; border:1px solid ${C.gold};">
-                  ${escapeHtml(opts.cta.label)}
-                </a>
+                ${buttonHtml(opts.cta.label, opts.cta.href)}
               </td>
             </tr>
             <tr>

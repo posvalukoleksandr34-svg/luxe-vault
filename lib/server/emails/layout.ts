@@ -7,31 +7,35 @@ import type { Order } from '@/lib/types'
 import { EMAIL_COPY, type EmailCopy, type EmailLang } from './copy'
 
 /**
- * The transactional emails' one layout.
+ * The emails' one layout — every transactional message, and the palette the
+ * prompted and support emails share (campaigns.ts, mailer.ts).
  *
- * DARK LUXURY, like the storefront: a #000000 ground, #D4AF37 gold for the
- * rules, links and button, #CCCCCC body text and #E5E5E5 headings. (It was
- * light for a while; the brand direction is now dark everywhere.) Built so
- * mail clients keep it dark instead of inverting it: color-scheme is declared
- * `dark`, and every background is set twice — as a bgcolor attribute, which
- * Outlook's Word engine reads, and as inline CSS for everyone else. All text
- * clears WCAG AA contrast on the black ground.
+ * DARK LUXURY: a pure #000000 ground; a #0D0D0D card with a #222222 border
+ * and a gold #D4AF37 accent line across its top; headings, section labels and
+ * accents in gold; body text #CCCCCC; the primary button solid gold with bold
+ * black text. Built so mail clients keep it dark instead of inverting it:
+ * color-scheme is declared `dark`, and every background is set twice — as a
+ * bgcolor attribute, which Outlook's Word engine reads, and as inline CSS for
+ * everyone else. All text clears WCAG AA contrast on the card.
  *
  * Table layout with inline styles only — Outlook renders with Word's engine
  * and supports neither flexbox nor external stylesheets.
  *
  * Nothing sensitive goes in: no card data (this server never has any), no
- * passwords, and only the name and delivery address an order confirmation
- * needs — no phone number.
+ * passwords, and only the name and delivery address an order needs — no
+ * phone number.
  */
 
-/** The email palette — Dark Luxury, the storefront's own values. */
+/** The email palette. */
 export const L = {
   ground: '#000000',
-  card: '#0a0a0a',
-  inset: '#121212',
-  border: '#262626',
-  heading: '#E5E5E5',
+  card: '#0D0D0D',
+  inset: '#141414',
+  border: '#222222',
+  /** Headings and accents — the brand gold. */
+  heading: '#D4AF37',
+  /** Values that should stand out of the body text: names, amounts, numbers. */
+  strong: '#E5E5E5',
   body: '#CCCCCC',
   // 6:1 on the card — quiet, still readable.
   muted: '#8c8c8c',
@@ -61,6 +65,19 @@ export function formatDate(ms: number, lang: EmailLang): string {
   }
 }
 
+/** "18 – 19 September" in the reader's language; one date when both ends match. */
+export function formatDateRange(fromMs: number, toMs: number, lang: EmailLang): string {
+  try {
+    const fmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' })
+    const a = fmt.format(new Date(fromMs))
+    const b = fmt.format(new Date(toMs))
+    return a === b ? a : `${a} – ${b}`
+  } catch {
+    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+    return `${iso(fromMs)} – ${iso(toMs)}`
+  }
+}
+
 export function orderHref(order: Pick<Order, 'id'>): string {
   return `${getSiteUrl()}/order/${encodeURIComponent(order.id)}`
 }
@@ -71,16 +88,17 @@ export function copyFor(lang: EmailLang): EmailCopy {
 
 // ---------------------------------------------------------------- sections --
 
-const LABEL = `font-family:${SANS}; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:${L.muted};`
+/** Section labels: small gold capitals — the layout's accents. */
+const LABEL = `font-family:${SANS}; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:${L.heading};`
 
-/** Label/value pairs in a quiet box — order number, date, status. */
+/** Label/value pairs in a quiet box — order number, status. */
 export function metaSection(pairs: [string, string][]): string {
   const cells = pairs
     .map(
       ([label, value]) => `
         <td valign="top" style="padding:14px 18px;">
           <span style="${LABEL}">${esc(label)}</span><br />
-          <span style="font-family:${SANS}; font-size:15px; line-height:22px; color:${L.heading};">${esc(value)}</span>
+          <span style="font-family:${SANS}; font-size:15px; line-height:22px; color:${L.strong};">${esc(value)}</span>
         </td>`,
     )
     .join('')
@@ -94,7 +112,7 @@ export function metaSection(pairs: [string, string][]): string {
     </tr>`
 }
 
-/** A highlighted figure — the amount paid or refunded, a tracking number. */
+/** A highlighted figure in gold — the amount paid or refunded, a tracking number. */
 export function highlightSection(label: string, valueHtml: string, note?: string): string {
   return `
     <tr>
@@ -118,10 +136,10 @@ export function itemsSection(order: Pick<Order, 'items'>, c: EmailCopy): string 
       (item) => `
         <tr>
           <td style="padding:12px 0; border-bottom:1px solid ${L.border}; font-family:${SANS}; font-size:14px; line-height:20px; color:${L.body};">
-            <span style="color:${L.heading};">${esc(item.name)}</span><br />
+            <span style="color:${L.strong};">${esc(item.name)}</span><br />
             <span style="font-size:12px; color:${L.muted};">${esc(item.size)} &middot; ${esc(item.color)} &middot; &times;${item.qty}</span>
           </td>
-          <td align="right" valign="top" style="padding:12px 0; border-bottom:1px solid ${L.border}; font-family:${SANS}; font-size:14px; color:${L.heading}; white-space:nowrap;">
+          <td align="right" valign="top" style="padding:12px 0; border-bottom:1px solid ${L.border}; font-family:${SANS}; font-size:14px; color:${L.strong}; white-space:nowrap;">
             ${esc(money(item.price * item.qty))}
           </td>
         </tr>`,
@@ -139,8 +157,8 @@ export function itemsSection(order: Pick<Order, 'items'>, c: EmailCopy): string 
 export function totalsSection(order: Order, c: EmailCopy): string {
   const row = (label: string, value: string, strong = false) => `
     <tr>
-      <td style="padding:${strong ? '14px' : '6px'} 0 0 0; font-family:${SANS}; font-size:${strong ? '14px' : '13px'}; color:${strong ? L.heading : L.muted};">${esc(label)}</td>
-      <td align="right" style="padding:${strong ? '14px' : '6px'} 0 0 0; font-family:${strong ? SERIF : SANS}; font-size:${strong ? '19px' : '13px'}; color:${strong ? L.heading : L.body}; white-space:nowrap;">${esc(value)}</td>
+      <td style="padding:${strong ? '14px' : '6px'} 0 0 0; font-family:${SANS}; font-size:${strong ? '14px' : '13px'}; color:${strong ? L.strong : L.muted};">${esc(label)}</td>
+      <td align="right" style="padding:${strong ? '14px' : '6px'} 0 0 0; font-family:${strong ? SERIF : SANS}; font-size:${strong ? '20px' : '13px'}; color:${strong ? L.heading : L.body}; white-space:nowrap;">${esc(value)}</td>
     </tr>`
   return `
     <tr>
@@ -162,7 +180,7 @@ export function addressSection(order: Order, c: EmailCopy): string {
       <td class="lv-pad" style="padding:26px 36px 0 36px;">
         <p style="margin:0 0 6px 0; ${LABEL}">${esc(c.shippingTo)}</p>
         <p style="margin:0; font-family:${SANS}; font-size:14px; line-height:22px; color:${L.body};">
-          <span style="color:${L.heading};">${esc(order.customer.name)}</span><br />
+          <span style="color:${L.strong};">${esc(order.customer.name)}</span><br />
           ${esc(order.customer.address)}
         </p>
       </td>
@@ -178,20 +196,7 @@ export function paragraphSection(text: string, muted = false): string {
     </tr>`
 }
 
-/** "28 September – 4 October" in the reader's language; one date when both ends match. */
-export function formatDateRange(fromMs: number, toMs: number, lang: EmailLang): string {
-  try {
-    const fmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' })
-    const a = fmt.format(new Date(fromMs))
-    const b = fmt.format(new Date(toMs))
-    return a === b ? a : `${a} – ${b}`
-  } catch {
-    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
-    return `${iso(fromMs)} – ${iso(toMs)}`
-  }
-}
-
-/** The delivery estimate, set off by a gold rule: a date window and how it was reached. */
+/** A date window set off by a gold rule, with a line on what it means. */
 export function deliverySection(label: string, value: string, note?: string): string {
   return `
     <tr>
@@ -200,7 +205,7 @@ export function deliverySection(label: string, value: string, note?: string): st
           <tr>
             <td style="padding:14px 18px;">
               <span style="${LABEL}">${esc(label)}</span><br />
-              <span style="font-family:${SERIF}; font-size:17px; line-height:26px; color:${L.heading};">${esc(value)}</span>
+              <span style="font-family:${SERIF}; font-size:17px; line-height:26px; color:${L.strong};">${esc(value)}</span>
               ${note ? `<br /><span style="font-family:${SANS}; font-size:12px; line-height:18px; color:${L.muted};">${esc(note)}</span>` : ''}
             </td>
           </tr>
@@ -211,6 +216,28 @@ export function deliverySection(label: string, value: string, note?: string): st
 
 // ------------------------------------------------------------------ layout --
 
+/**
+ * The gold accent line across the top of the card. A row of its own with a
+ * bgcolor rather than a border-top: Outlook draws that reliably, and it sits
+ * inside the card's #222222 border instead of fighting it.
+ */
+export const ACCENT_LINE = `<tr><td height="3" bgcolor="${L.rule}" style="height:3px; line-height:3px; font-size:0; background:${L.rule};">&nbsp;</td></tr>`
+
+/** The primary button: solid gold, bold black capitals. A table cell with a
+ *  bgcolor so Outlook paints the gold too. */
+export function buttonHtml(label: string, href: string): string {
+  return `
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td bgcolor="${L.button}" style="background:${L.button};">
+                <a href="${esc(href)}" style="display:inline-block; padding:14px 30px; font-family:${SANS}; font-size:12px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:${L.buttonText}; text-decoration:none;">
+                  ${esc(label)}
+                </a>
+              </td>
+            </tr>
+          </table>`
+}
+
 export function renderEmail(o: {
   lang: EmailLang
   subject: string
@@ -220,6 +247,9 @@ export function renderEmail(o: {
   intro?: string
   sections?: string[]
   cta?: { label: string; href: string } | null
+  /** A quieter gold text link under the button — e.g. "View order" when the
+   *  button goes to the carrier. */
+  secondaryLink?: { label: string; href: string }
   /** A line in the footer saying why this email was sent (prompted mail). */
   footerNote?: string
   /** An opt-out link in the footer (prompted mail; order emails have none). */
@@ -230,16 +260,15 @@ export function renderEmail(o: {
   const cta = o.cta
     ? `
       <tr>
-        <td class="lv-pad" align="left" style="padding:30px 36px 0 36px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td bgcolor="${L.button}" style="background:${L.button};">
-                <a href="${esc(o.cta.href)}" style="display:inline-block; padding:14px 30px; font-family:${SANS}; font-size:12px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:${L.buttonText}; text-decoration:none;">
-                  ${esc(o.cta.label)}
-                </a>
-              </td>
-            </tr>
-          </table>
+        <td class="lv-pad" align="left" style="padding:30px 36px 0 36px;">${buttonHtml(o.cta.label, o.cta.href)}
+        </td>
+      </tr>`
+    : ''
+  const secondary = o.secondaryLink
+    ? `
+      <tr>
+        <td class="lv-pad" align="left" style="padding:16px 36px 0 36px;">
+          <a href="${esc(o.secondaryLink.href)}" style="font-family:${SANS}; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:${L.goldText}; text-decoration:none;">${esc(o.secondaryLink.label)} &rarr;</a>
         </td>
       </tr>`
     : ''
@@ -269,10 +298,11 @@ export function renderEmail(o: {
       <tr>
         <td align="center" class="lv-shell" style="padding:36px 16px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.card}" style="max-width:580px; width:100%; background:${L.card}; border:1px solid ${L.border};">
+            ${ACCENT_LINE}
             <tr>
-              <td class="lv-pad" style="padding:26px 36px 22px 36px; border-bottom:1px solid ${L.border};">
+              <td class="lv-pad" style="padding:24px 36px 22px 36px; border-bottom:1px solid ${L.border};">
                 <a href="${esc(site)}" style="text-decoration:none;">
-                  <span style="font-family:${SERIF}; font-size:18px; letter-spacing:4px; color:${L.heading};">LUXE</span><span style="font-family:${SERIF}; font-size:18px; letter-spacing:4px; color:${L.goldText};">VAULT</span>
+                  <span style="font-family:${SERIF}; font-size:18px; letter-spacing:4px; color:${L.strong};">LUXE</span><span style="font-family:${SERIF}; font-size:18px; letter-spacing:4px; color:${L.goldText};">VAULT</span>
                 </a>
               </td>
             </tr>
@@ -284,6 +314,7 @@ export function renderEmail(o: {
             </tr>
             ${(o.sections ?? []).join('')}
             ${cta}
+            ${secondary}
             <tr>
               <td class="lv-pad" style="padding:32px 36px 0 36px;">
                 <p style="margin:0; font-family:${SANS}; font-size:13px; line-height:21px; color:${L.muted};">

@@ -37,8 +37,6 @@ export type EmailCopy = {
   status: string
   trackOrder: string
   viewOrder: string
-  /** The delivery estimate's label, and "{span} from payment confirmation". */
-  delivery: { label: string; note: (span: string) => string }
   shopNow: string
   help: string
   automatic: string
@@ -53,7 +51,15 @@ export type EmailCopy = {
   }
   failed: { subject: (id: string) => string; heading: string; intro: string; nothingCharged: string }
   processing: Status
-  shipped: Status & { tracking: string }
+  shipped: Status & {
+    tracking: string
+    /** Label of the arrival window counted from the day the parcel left. */
+    arrival: string
+    /** Where the live tracking is, and that a delivery email follows. */
+    updates: string
+    /** The button to the carrier's own tracking page. */
+    trackWith: (carrier: string) => string
+  }
   delivered: Status
   cancelled: Status
   refunded: { subject: (id: string) => string; heading: string; body: (min: number, max: number) => string; amount: string }
@@ -76,9 +82,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     shippingTo: 'Адрес доставки',
     status: 'Статус',
     trackOrder: 'Отследить заказ',
-    viewOrder: 'Открыть заказ',
-    delivery: { label: 'Ориентировочная доставка', note: (span) => `${span} с момента подтверждения оплаты` },
-    shopNow: 'Перейти в магазин',
+    viewOrder: 'Открыть заказ',    shopNow: 'Перейти в магазин',
     help: 'Вопросы? Ответьте на это письмо или напишите на',
     automatic: 'Это письмо отправлено автоматически.',
     confirm: {
@@ -110,6 +114,9 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
       heading: 'Заказ в пути',
       body: 'Посылка передана перевозчику. Первые данные отслеживания могут появиться в течение суток.',
       tracking: 'Трек-номер',
+      arrival: 'Ожидаемая доставка',
+      updates: 'Все этапы пути видны на сайте перевозчика. Мы напишем, когда посылка будет доставлена.',
+      trackWith: (carrier) => `Отследить в ${carrier}`,
     },
     delivered: {
       subject: (id) => `Заказ ${id} доставлен`,
@@ -147,9 +154,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     shippingTo: 'Shipping to',
     status: 'Status',
     trackOrder: 'Track order',
-    viewOrder: 'View order',
-    delivery: { label: 'Estimated delivery', note: (span) => `${span} from payment confirmation` },
-    shopNow: 'Visit the shop',
+    viewOrder: 'View order',    shopNow: 'Visit the shop',
     help: 'Questions? Reply to this email or write to',
     automatic: 'This email was sent automatically.',
     confirm: {
@@ -181,6 +186,9 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
       heading: 'Your order is on its way',
       body: 'Your parcel has been handed to the carrier. Tracking can take a day to show its first scan.',
       tracking: 'Tracking number',
+      arrival: 'Expected arrival',
+      updates: "Every scan along the way is on the carrier's page. We'll write again when it's delivered.",
+      trackWith: (carrier) => `Track with ${carrier}`,
     },
     delivered: {
       subject: (id) => `Your order ${id} has been delivered`,
@@ -218,9 +226,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     shippingTo: 'Indirizzo di consegna',
     status: 'Stato',
     trackOrder: 'Segui l’ordine',
-    viewOrder: 'Vedi l’ordine',
-    delivery: { label: 'Consegna stimata', note: (span) => `${span} dalla conferma del pagamento` },
-    shopNow: 'Vai al negozio',
+    viewOrder: 'Vedi l’ordine',    shopNow: 'Vai al negozio',
     help: 'Domande? Rispondi a questa email o scrivi a',
     automatic: 'Questa email è stata inviata automaticamente.',
     confirm: {
@@ -252,6 +258,9 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
       heading: 'Il tuo ordine è in viaggio',
       body: 'Il pacco è stato affidato al corriere. Il tracciamento può impiegare un giorno a mostrare la prima scansione.',
       tracking: 'Numero di tracciamento',
+      arrival: 'Arrivo previsto',
+      updates: 'Ogni passaggio del viaggio è sulla pagina del corriere. Ti scriveremo quando sarà consegnato.',
+      trackWith: (carrier) => `Traccia con ${carrier}`,
     },
     delivered: {
       subject: (id) => `Il tuo ordine ${id} è stato consegnato`,
@@ -289,9 +298,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     shippingTo: 'Adresse de livraison',
     status: 'Statut',
     trackOrder: 'Suivre la commande',
-    viewOrder: 'Voir la commande',
-    delivery: { label: 'Livraison estimée', note: (span) => `${span} à compter de la confirmation du paiement` },
-    shopNow: 'Visiter la boutique',
+    viewOrder: 'Voir la commande',    shopNow: 'Visiter la boutique',
     help: 'Des questions ? Répondez à cet e-mail ou écrivez à',
     automatic: 'Cet e-mail a été envoyé automatiquement.',
     confirm: {
@@ -323,6 +330,9 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
       heading: 'Votre commande est en route',
       body: 'Votre colis a été remis au transporteur. Le suivi peut mettre une journée à afficher le premier scan.',
       tracking: 'Numéro de suivi',
+      arrival: 'Arrivée prévue',
+      updates: 'Chaque étape du trajet figure sur la page du transporteur. Nous vous écrirons à la livraison.',
+      trackWith: (carrier) => `Suivre avec ${carrier}`,
     },
     delivered: {
       subject: (id) => `Votre commande ${id} a été livrée`,
@@ -360,9 +370,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     shippingTo: 'Lieferadresse',
     status: 'Status',
     trackOrder: 'Bestellung verfolgen',
-    viewOrder: 'Bestellung ansehen',
-    delivery: { label: 'Voraussichtliche Lieferung', note: (span) => `${span} ab Zahlungsbestätigung` },
-    shopNow: 'Zum Shop',
+    viewOrder: 'Bestellung ansehen',    shopNow: 'Zum Shop',
     help: 'Fragen? Antworten Sie auf diese E-Mail oder schreiben Sie an',
     automatic: 'Diese E-Mail wurde automatisch versendet.',
     confirm: {
@@ -394,6 +402,9 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
       heading: 'Ihre Bestellung ist unterwegs',
       body: 'Ihr Paket wurde dem Versanddienst übergeben. Bis zum ersten Scan kann es einen Tag dauern.',
       tracking: 'Sendungsnummer',
+      arrival: 'Voraussichtliche Zustellung',
+      updates: 'Jeder Scan unterwegs steht auf der Seite des Versanddienstes. Wir melden uns, sobald das Paket zugestellt ist.',
+      trackWith: (carrier) => `Mit ${carrier} verfolgen`,
     },
     delivered: {
       subject: (id) => `Ihre Bestellung ${id} wurde zugestellt`,

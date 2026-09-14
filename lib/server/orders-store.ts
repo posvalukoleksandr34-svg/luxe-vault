@@ -487,6 +487,19 @@ export async function setOrderStatus(
     patch.courier_name = courierName?.trim() || null
   }
 
+  // What the order was before this save, to decide whether the customer hears
+  // about it. A failed read counts as "changed" — the previous behaviour.
+  const { data: before } = await createAdminClient()
+    .from('orders')
+    .select('status, tracking_number, courier_name')
+    .eq('order_number', id)
+    .maybeSingle()
+  const prev = before as {
+    status?: string
+    tracking_number?: string | null
+    courier_name?: string | null
+  } | null
+
   const { data, error } = await createAdminClient()
     .from('orders')
     .update(patch)
@@ -498,9 +511,22 @@ export async function setOrderStatus(
   if (!data) return null
 
   const updated = rowToOrder(asRow(data))
+
+  // The customer is emailed when the status actually changes — re-saving an
+  // order unchanged used to send the same email again — and, for a shipped
+  // order, when its tracking number or carrier is added or corrected, so a
+  // parcel marked shipped before its label existed still gets its tracking.
+  const statusChanged = !prev || prev.status !== status
+  const trackingChanged =
+    status === 'shipped' &&
+    Boolean(updated.trackingNumber) &&
+    (!prev ||
+      (prev.tracking_number ?? null) !== (updated.trackingNumber ?? null) ||
+      (prev.courier_name ?? null) !== (updated.courierName ?? null))
+
   // Fire-and-forget: an admin marking twenty parcels shipped should not wait
   // on twenty SMTP round trips, and a mail failure must not undo the status.
-  void sendOrderStatusEmail(updated, status)
+  if (statusChanged || trackingChanged) void sendOrderStatusEmail(updated, status)
   return updated
 }
 
