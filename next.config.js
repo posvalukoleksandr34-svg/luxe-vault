@@ -1,3 +1,80 @@
+const isDev = process.env.NODE_ENV !== 'production'
+
+/**
+ * Content-Security-Policy, one directive per key.
+ *
+ * Every origin here is one the BROWSER talks to. Geocoding (Photon, Google
+ * Places), NOWPayments and Resend are called from our own API routes, so they
+ * are deliberately absent — listing them would widen the policy for nothing.
+ *
+ * - Stripe: Stripe.js from js.stripe.com, the PaymentElement and 3-D Secure
+ *   frames from js.stripe.com / hooks.stripe.com, card confirmation against
+ *   api.stripe.com. This is the set Stripe documents for Elements.
+ * - Supabase: auth and queries over HTTPS, realtime over WSS, product imagery
+ *   from Storage. Wildcarded because the project host is per-environment.
+ *   Supabase is kept OUT of script-src and style-src on purpose: anyone can
+ *   create a *.supabase.co project and serve files from its public bucket, so
+ *   allowing it there would let an attacker's own project supply code or CSS.
+ * - images.unsplash.com: seed catalogue images, loaded directly (not through
+ *   the optimiser) by the full-resolution zoom view. Drop with remotePatterns.
+ *
+ * KNOWN GAP: script-src carries 'unsafe-inline'. Next 13 emits inline
+ * bootstrap scripts (the RSC payload), and the layout's motion boot script is
+ * inline too. The only way to drop 'unsafe-inline' is a per-request nonce,
+ * which a static header cannot carry — it has to be generated in middleware
+ * and threaded into the document. Everything else is locked to named
+ * origins, which is what stops injected markup loading an attacker's script,
+ * frame or stylesheet, or sending data anywhere but Stripe and Supabase.
+ *
+ * style-src needs 'unsafe-inline' for React `style` attributes and the inline
+ * styles Stripe.js puts on its own frames. In development only, 'unsafe-eval'
+ * (React Refresh / eval source maps) and ws: (the HMR socket) are added.
+ *
+ * @type {Record<string, string[]>}
+ */
+const CSP_DIRECTIVES = {
+  'default-src': ["'self'"],
+  'script-src': [
+    "'self'",
+    "'unsafe-inline'",
+    ...(isDev ? ["'unsafe-eval'"] : []),
+    'https://js.stripe.com',
+    'https://*.js.stripe.com',
+  ],
+  'style-src': ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
+  'img-src': [
+    "'self'",
+    // The product placeholder SVG and the crypto-payment QR code.
+    'data:',
+    'https://*.supabase.co',
+    'https://*.stripe.com',
+    'https://images.unsplash.com',
+  ],
+  // next/font self-hosts both families under /_next/static.
+  'font-src': ["'self'", 'data:'],
+  'connect-src': [
+    "'self'",
+    'https://*.supabase.co',
+    'wss://*.supabase.co',
+    'https://api.stripe.com',
+    ...(isDev ? ['ws:'] : []),
+  ],
+  'frame-src': ['https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com'],
+  'object-src': ["'none'"],
+  // Stops injected <base href> re-pointing every relative URL on the page.
+  'base-uri': ["'self'"],
+  // No form on the site posts off-origin; Stripe and Supabase redirects are
+  // navigations, which this does not restrict.
+  'form-action': ["'self'"],
+  // Clickjacking. 'none' rather than 'self': nothing on this site is meant to
+  // be framed, including by itself. Supersedes X-Frame-Options.
+  'frame-ancestors': ["'none'"],
+}
+
+const contentSecurityPolicy = Object.entries(CSP_DIRECTIVES)
+  .map(([directive, sources]) => [directive, ...sources].join(' '))
+  .join('; ')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Lint runs in the build again. It was disabled, which meant nothing ever
@@ -48,33 +125,16 @@ const nextConfig = {
   },
 
   /**
-   * Security headers.
-   *
-   * There were none. These are the ones that are safe to apply blindly to a
-   * whole site and that a browser enforces on the customer's behalf.
-   *
-   * NOT INCLUDED: a full Content-Security-Policy with script-src. This site
-   * embeds Stripe.js, which injects its own frames and inline styles, and Next
-   * emits inline bootstrap scripts — so a strict policy needs per-response
-   * nonces threaded through the document. Getting that wrong does not fail a
-   * build; it silently breaks the card form for real customers. It is worth
-   * doing, and worth doing as its own change with the payment flow re-tested
-   * end to end, rather than bundled into a headers block.
-   *
-   * `frame-ancestors` IS included, because it is the one CSP directive with no
-   * such risk and it supersedes X-Frame-Options.
+   * Security headers, applied to every response. The CSP is built above;
+   * the rest are safe to apply blindly to a whole site and are enforced by
+   * the browser on the customer's behalf.
    */
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
-          // Clickjacking. 'none' rather than 'self': nothing on this site is
-          // meant to be framed, including by itself.
-          {
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'none'",
-          },
+          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
           // Stops a browser second-guessing a Content-Type, which is how a
           // user-uploaded file gets executed as script.
           { key: 'X-Content-Type-Options', value: 'nosniff' },
