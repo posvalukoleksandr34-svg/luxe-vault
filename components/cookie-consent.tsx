@@ -10,6 +10,7 @@ import {
   writeConsent,
   type ConsentState,
 } from '@/lib/cookie-consent'
+import { REOPEN_EVENT } from '@/lib/cookie-settings'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -219,14 +220,9 @@ function ConsentRow({
   )
 }
 
-/** Event the footer link fires to reopen the banner for withdrawal. */
-export const REOPEN_EVENT = 'lv:cookie-consent:reopen'
-
-/** Call from anywhere to let a visitor change or withdraw their choice. */
-export function openCookieSettings(): void {
-  if (typeof window === 'undefined') return
-  window.dispatchEvent(new Event(REOPEN_EVENT))
-}
+// Moved to lib/cookie-settings.ts so the footer can reopen the banner without
+// bundling it; re-exported here for any existing import.
+export { REOPEN_EVENT, openCookieSettings } from '@/lib/cookie-settings'
 
 /**
  * Reads consent reactively, so a gated script mounts the moment permission is

@@ -3,13 +3,20 @@
 import { Bookmark, Check, Loader2, Share2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SaveLookAuthDialog } from '@/components/stylist/save-look-dialog'
-import { ShareDialog } from '@/components/stylist/share-dialog'
+import dynamic from 'next/dynamic'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { capsuleUrl, rememberLook } from '@/lib/saved-looks'
 import { canShareNatively, shareNatively } from '@/lib/share'
 import { useStore } from '@/lib/store'
 import { matchScore } from '@/lib/stylist/match'
 import type { Look, StylistBrief } from '@/lib/stylist/types'
+
+// Mounted only once a capsule has been saved and shared (see below), so its
+// code loads then rather than with the stylist page.
+const ShareDialog = dynamic(
+  () => import('@/components/stylist/share-dialog').then((m) => m.ShareDialog),
+  { ssr: false },
+)
 
 /**
  * A saved_looks row this component knows about, and whose it is:

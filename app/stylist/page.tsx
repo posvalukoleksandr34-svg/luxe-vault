@@ -4,7 +4,7 @@ import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { StylistExperience } from '@/components/stylist/stylist-experience'
 import { StylistIntro } from '@/components/stylist/stylist-intro'
-import { SupportWidget } from '@/components/support-widget'
+import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 
 /**
  * The AI Stylist route.
@@ -56,7 +56,7 @@ export default function StylistPage({
       </main>
 
       <Footer />
-      <SupportWidget />
+      <SupportWidgetLazy />
     </>
   )
 }

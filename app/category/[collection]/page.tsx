@@ -4,7 +4,7 @@ import { breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { CategoryView } from '@/components/products/category-view'
-import { SupportWidget } from '@/components/support-widget'
+import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
 
 /**
@@ -76,7 +76,7 @@ export default async function CollectionPage({ params }: { params: { collection:
         <Footer />
       </main>
 
-      <SupportWidget />
+      <SupportWidgetLazy />
 
       <script
         type="application/ld+json"

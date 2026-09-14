@@ -10,7 +10,15 @@ import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  priority = false,
+}: {
+  product: Product
+  /** Above the fold (the first row of a category page): fetch the photo
+   *  eagerly and at high priority — it is the page's LCP candidate. */
+  priority?: boolean
+}) {
   const { localize, t, categoryLabels } = useStore()
   const { playHoverSound } = useAudioFeedback()
   const outOfStock = product.statuses.includes('out_of_stock')
@@ -41,7 +49,10 @@ export function ProductCard({ product }: { product: Product }) {
           onError={() => setImageFailed(true)}
           alt={localize(product.name)}
           fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+          priority={priority}
+          // The grid's own breakpoints: 2 columns below md (768px), 3 below
+          // xl (1280px), then 4 in a 1400px container (~320px a card).
+          sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 320px"
           className={cn(
             'size-full object-cover transition-[transform,opacity] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.045]',
             outOfStock && 'opacity-40 grayscale',
@@ -54,7 +65,7 @@ export function ProductCard({ product }: { product: Product }) {
             src={secondaryImage}
             alt=""
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+            sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 320px"
             aria-hidden
             className={cn(
               'absolute inset-0 size-full scale-[1.045] object-cover opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100',

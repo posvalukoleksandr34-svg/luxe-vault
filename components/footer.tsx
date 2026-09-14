@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { openCookieSettings } from '@/components/cookie-consent'
+import { openCookieSettings } from '@/lib/cookie-settings'
 import { SoundToggle } from '@/components/sound-toggle'
 import { MotionToggle } from '@/components/motion-toggle'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'

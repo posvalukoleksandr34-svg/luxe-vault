@@ -37,6 +37,7 @@ export function ProductGrid({
   lockedGroup,
   lockedCategory,
   wrap = true,
+  eagerCount = 0,
 }: {
   /**
    * Pins the grid to one collection — and optionally to one category — from
@@ -58,6 +59,12 @@ export function ProductGrid({
    * already has a page shell around it, so it opts out of the outer padding.
    */
   wrap?: boolean
+  /**
+   * How many leading cards load their photo with `priority`. A category page
+   * opens on the grid, so its first row is the LCP; on the homepage the grid
+   * sits below the hero and every photo stays lazy (the default).
+   */
+  eagerCount?: number
 } = {}) {
   const {
     products,
@@ -566,7 +573,7 @@ export function ProductGrid({
           <div className="grid grid-cols-2 gap-x-5 gap-y-12 transition-all duration-300 sm:gap-x-7 md:grid-cols-3 xl:grid-cols-4">
             {shown.map((product, i) => (
               <Reveal key={product.id} delay={(i % 8) * 70}>
-                <ProductCard product={product} />
+                <ProductCard product={product} priority={i < eagerCount} />
               </Reveal>
             ))}
           </div>

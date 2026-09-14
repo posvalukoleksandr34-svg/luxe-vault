@@ -4,10 +4,9 @@ import { StoreProvider } from '@/lib/store';
 import { readCatalog } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
-import { AudioFeedback } from '@/components/audio-feedback';
+import { AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
 import { PageTransition } from '@/components/page-transition';
 import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
-import { CookieConsent } from '@/components/cookie-consent';
 import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
@@ -197,8 +196,8 @@ export default async function RootLayout({
         {/* UI sound, delegated from the document — one listener set for the
             whole app rather than handlers on every control. Outside
             StoreProvider: it reads no store state and must not re-render when
-            the cart does. */}
-        <AudioFeedback />
+            the cart does. Loaded after hydration (components/deferred-ui.tsx). */}
+        <AudioFeedbackLazy />
 
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen
@@ -222,7 +221,7 @@ export default async function RootLayout({
           {/* Inside StoreProvider: the banner is localised via the store. It
               renders nothing until mounted, so it cannot flash for visitors
               who already answered. */}
-          <CookieConsent />
+          <CookieConsentLazy />
         </StoreProvider>
       </body>
     </html>

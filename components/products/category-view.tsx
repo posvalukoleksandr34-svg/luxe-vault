@@ -52,7 +52,9 @@ export function CategoryView({ group, category }: { group: string; category?: st
         {/* min-w-0: without it the grid's own content sets the flex basis and
             a long product name pushes the sidebar off-screen. */}
         <div className="min-w-0 flex-1">
-          <ProductGrid lockedGroup={group} lockedCategory={category} wrap={false} />
+          {/* The grid is what a category page opens on: its first row is
+              the LCP, so those photos load with priority. */}
+          <ProductGrid lockedGroup={group} lockedCategory={category} wrap={false} eagerCount={4} />
         </div>
       </div>
     </div>
