@@ -12,10 +12,14 @@ export const dynamic = 'force-dynamic'
  * The abandoned-cart reminder run: every cart left untouched for more than two
  * hours after its owner typed an email at checkout gets ONE reminder.
  *
- * Scheduled hourly in vercel.json. Authenticated like /api/cron/sweep — a
- * shared secret in the Authorization header, which Vercel Cron sends by itself
- * when CRON_SECRET is set — and failing closed without it: an open version
- * would be a button anyone could press to mail customers.
+ * NOT scheduled in vercel.json: the Vercel Hobby plan allows only daily cron
+ * jobs and fails the deployment on an hourly one, and a daily run would turn
+ * "two hours" into "up to a day". Call it hourly from an external scheduler
+ * instead (cron-job.org, GitHub Actions, Supabase pg_cron + pg_net, …).
+ *
+ * Authenticated like /api/cron/sweep — the shared secret in the Authorization
+ * header — and failing closed without it: an open version would be a button
+ * anyone could press to mail customers.
  *
  * The claim (claim_abandoned_carts, migration 0029) stamps each cart before
  * any email goes out, so overlapping runs divide the work rather than
@@ -72,6 +76,6 @@ async function run(request: NextRequest) {
   return NextResponse.json({ claimed: claimed.length, sent, skipped })
 }
 
-/** Vercel Cron issues a GET; see /api/cron/sweep for why that is fine here. */
+/** Most schedulers issue a GET; see /api/cron/sweep for why that is fine here. */
 export const GET = run
 export const POST = run
