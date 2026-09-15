@@ -11,6 +11,8 @@ import 'server-only'
 import { SUPPORT_EMAIL } from '@/lib/data'
 import { emailLang, type EmailLang } from '@/lib/server/emails/copy'
 import { L } from '@/lib/server/emails/layout'
+import { supportReplyEmail, ticketReceivedEmail } from '@/lib/server/emails/support'
+import { getSiteUrl } from '@/lib/site-url'
 import { orderConfirmationEmail } from '@/lib/server/emails/order-confirmation'
 import { paymentFailedEmail } from '@/lib/server/emails/payment-failed'
 import { paymentReceiptEmail } from '@/lib/server/emails/payment-receipt'
@@ -21,7 +23,7 @@ import {
   sendEmail,
   SUPPORT_FROM_ADDRESS,
 } from '@/lib/server/resend'
-import type { Order } from '@/lib/types'
+import type { Order, SupportTicket } from '@/lib/types'
 
 export { isMailConfigured }
 
@@ -80,84 +82,94 @@ const SHELL = (title: string, body: string) => `
   </body>
 </html>`
 
-export type SupportEnquiry = {
-  id: string
-  name: string
-  email: string
-  message: string
+// ------------------------------------------------------------ support ----
+
+const CATEGORY_RU: Record<string, string> = {
+  order: 'Заказ',
+  payment: 'Оплата',
+  shipping: 'Доставка',
+  returns: 'Возврат',
+  sizes: 'Размеры',
+  product: 'Товар',
+  account: 'Аккаунт',
+  other: 'Другое',
 }
 
-/** Notifies the support inbox. `replyTo` is the customer, so hitting Reply in
- *  the mail client answers them directly instead of the noreply sender. */
-export async function sendSupportNotification(t: SupportEnquiry): Promise<boolean> {
+/** The link that opens a ticket's conversation — for guests the token is the
+ *  key, for account holders it saves a sign-in. */
+export function ticketLink(number: string, token: string): string {
+  return `${getSiteUrl()}/support/tickets/${encodeURIComponent(number)}?t=${encodeURIComponent(token)}`
+}
+
+/**
+ * Tells the support inbox about a new request, or a customer's new message in
+ * one. replyTo is the customer — but the reply that counts is the one written
+ * in the admin, which lands in the thread and emails the customer.
+ */
+export async function sendTicketToSupportInbox(
+  ticket: SupportTicket,
+  message: string,
+  kind: 'new' | 'reply',
+  attachments = 0,
+): Promise<boolean> {
+  const title = kind === 'new' ? `Новое обращение ${ticket.number}` : `Новое сообщение в ${ticket.number}`
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:4px 0;color:${L.muted};width:96px;">${esc(label)}</td><td style="padding:4px 0;color:${L.strong};">${value}</td></tr>`
   const { ok } = await sendEmail({
     to: SUPPORT_INBOX,
-    replyTo: t.email,
-    subject: `Новое обращение — ${t.name}`,
+    replyTo: ticket.email,
+    subject: `${title} — ${ticket.subject}`,
     html: SHELL(
-        'Новое обращение в поддержку',
-        `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13px;color:${L.body};">
-           <tr><td style="padding:4px 0;color:${L.muted};width:90px;">Имя</td><td style="padding:4px 0;color:${L.strong};">${esc(t.name)}</td></tr>
-           <tr><td style="padding:4px 0;color:${L.muted};">Email</td><td style="padding:4px 0;"><a href="mailto:${esc(t.email)}" style="color:${L.rule};">${esc(t.email)}</a></td></tr>
-           <tr><td style="padding:4px 0;color:${L.muted};">Тикет</td><td style="padding:4px 0;color:${L.muted};font-family:monospace;">${esc(t.id)}</td></tr>
-         </table>
-         <div style="margin-top:20px;padding:16px;background:${L.inset};border-left:2px solid ${L.rule};color:${L.body};font-size:14px;line-height:1.7;">
-           ${escMultiline(t.message)}
-         </div>`,
+      title,
+      `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;font-size:13px;color:${L.body};">
+         ${row('Тема', esc(ticket.subject))}
+         ${row('Категория', esc(CATEGORY_RU[ticket.category] ?? ticket.category))}
+         ${ticket.orderNumber ? row('Заказ', esc(ticket.orderNumber)) : ''}
+         ${row('Клиент', `${esc(ticket.name)} · <a href="mailto:${esc(ticket.email)}" style="color:${L.rule};">${esc(ticket.email)}</a>`)}
+         ${attachments ? row('Вложения', String(attachments)) : ''}
+       </table>
+       <div style="margin-top:20px;padding:16px;background:${L.inset};border-left:2px solid ${L.rule};color:${L.body};font-size:14px;line-height:1.7;">
+         ${escMultiline(message)}
+       </div>
+       <p style="margin:20px 0 0;"><a href="${esc(getSiteUrl())}/admin" style="color:${L.rule};">Ответить в админ-панели → Поддержка</a></p>`,
     ),
   })
   return ok
 }
 
+/** "We received your request" — in the language the customer wrote in. */
+export async function sendTicketReceived(ticket: SupportTicket, token: string, lang: EmailLang): Promise<boolean> {
+  const message = ticketReceivedEmail(ticket, ticketLink(ticket.number, token), lang)
+  const { ok } = await sendEmail({ from: SUPPORT_FROM_ADDRESS, to: ticket.email, replyTo: SUPPORT_INBOX, ...message })
+  return ok
+}
+
+/** "You have a reply" — sent when support answers in the admin. */
+export async function sendSupportReply(
+  ticket: SupportTicket,
+  token: string,
+  reply: string,
+  lang: EmailLang,
+): Promise<boolean> {
+  const message = supportReplyEmail(ticket, reply, ticketLink(ticket.number, token), lang)
+  const { ok } = await sendEmail({ from: SUPPORT_FROM_ADDRESS, to: ticket.email, replyTo: SUPPORT_INBOX, ...message })
+  return ok
+}
+
 /**
- * Auto-reply to the customer who submitted the form.
- *
- * Keeps the dark brand layout (SHELL above): black ground, LUXE/VAULT header,
- * the quoted "Копия вашего обращения" block and the ticket number.
- *
- * Sent from support@ rather than the default orders@ so a reply lands with the
- * support team, and replyTo points at the monitored inbox — the copy tells the
- * customer to "просто ответьте на это письмо", so that reply has to reach a
- * human.
+ * A payment landed on an order whose units had already been returned to
+ * stock, and they could not be taken again (reclaim_order_stock). The money
+ * is real and the goods are gone: a person must refund or restock.
  */
-export async function sendSupportConfirmation(t: SupportEnquiry): Promise<boolean> {
+export async function sendStockConflictAlert(order: Order): Promise<boolean> {
   const { ok } = await sendEmail({
-    from: SUPPORT_FROM_ADDRESS,
-    to: t.email,
-    replyTo: SUPPORT_INBOX,
-    subject: 'Мы получили ваше сообщение — LUXE VAULT',
+    to: SUPPORT_INBOX,
+    subject: `Оплачен заказ ${order.id} без остатка — нужен возврат`,
     html: SHELL(
-      `Здравствуйте, ${t.name}!`,
-      `<p style="margin:0 0 16px;">
-           Спасибо, что связались с нами. Мы получили ваше сообщение и уже
-           передали его нашей команде поддержки. Наш менеджер свяжется с вами
-           в течение 24 часов. Если у вас появились срочные дополнения, просто
-           ответьте на это письмо.
-         </p>
-         <p style="margin:0 0 8px;color:${L.heading};font-size:12px;text-transform:uppercase;letter-spacing:.12em;">
-           Копия вашего обращения
-         </p>
-         <div style="padding:16px;background:${L.inset};border-left:2px solid ${L.rule};color:${L.body};font-size:14px;line-height:1.7;">
-           ${escMultiline(t.message)}
-         </div>
-         <p style="margin:20px 0 0;color:${L.muted};font-size:12px;">
-           Номер обращения: <span style="font-family:monospace;color:${L.strong};">${esc(t.id)}</span>
-         </p>`,
+      `Оплата заказа ${order.id} без товара на складе`,
+      `<p style="margin:0 0 12px;">Платёж подтверждён, но заказ был отменён и его позиции уже вернулись в продажу — повторно зарезервировать их не удалось (закончились).</p>
+       <p style="margin:0;">Верните платёж клиенту (${esc(order.customer.email ?? '')}) или пополните остаток и обработайте заказ вручную.</p>`,
     ),
-    text: [
-      `Здравствуйте, ${t.name}!`,
-      '',
-      'Спасибо, что связались с нами. Мы получили ваше сообщение и уже передали',
-      'его нашей команде поддержки. Наш менеджер свяжется с вами в течение 24 часов.',
-      'Если у вас появились срочные дополнения, просто ответьте на это письмо.',
-      '',
-      'КОПИЯ ВАШЕГО ОБРАЩЕНИЯ',
-      t.message,
-      '',
-      `Номер обращения: ${t.id}`,
-      '',
-      'LUXE VAULT · Это письмо отправлено автоматически',
-    ].join('\n'),
   })
   return ok
 }

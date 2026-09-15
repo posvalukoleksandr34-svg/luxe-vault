@@ -196,6 +196,20 @@ export function paragraphSection(text: string, muted = false): string {
     </tr>`
 }
 
+/** Someone's own words, quoted: a gold rule on the left, line breaks kept. */
+export function quoteSection(text: string): string {
+  return `
+    <tr>
+      <td class="lv-pad" style="padding:22px 36px 0 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.inset}" style="background:${L.inset}; border-left:2px solid ${L.rule};">
+          <tr>
+            <td style="padding:14px 18px; font-family:${SANS}; font-size:14px; line-height:22px; color:${L.body};">${esc(text).replace(/\r?\n/g, '<br />')}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>`
+}
+
 /** A date window set off by a gold rule, with a line on what it means. */
 export function deliverySection(label: string, value: string, note?: string): string {
   return `

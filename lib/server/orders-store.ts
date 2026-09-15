@@ -583,6 +583,28 @@ export async function cancelOrder(
 }
 
 /**
+ * Makes sure a paid order still holds its units (reclaim_order_stock, 0030).
+ *
+ * 'held' — they were never given back (the normal case). 'reclaimed' — the
+ * order had been cancelled and restocked, and the units were taken again.
+ * 'insufficient' — they were given back and are gone: the payment must be
+ * reviewed. 'unknown' — the function is not deployed yet, or the check failed;
+ * never throws, because the payment itself is already real.
+ */
+export async function ensurePaidOrderStock(
+  orderNumber: string,
+): Promise<'held' | 'reclaimed' | 'insufficient' | 'missing' | 'unknown'> {
+  const { data, error } = await createAdminClient().rpc('reclaim_order_stock', {
+    p_order_number: orderNumber,
+  })
+  if (error) {
+    if (error.code !== 'PGRST202') console.error(`[orders] stock check at payment failed for ${orderNumber}:`, error.message)
+    return 'unknown'
+  }
+  return data === 'held' || data === 'reclaimed' || data === 'insufficient' || data === 'missing' ? data : 'unknown'
+}
+
+/**
  * Returns a dead order's units to stock.
  *
  * Deliberately non-throwing. The order is already cancelled or refunded by the

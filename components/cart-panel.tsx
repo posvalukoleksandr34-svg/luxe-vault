@@ -29,6 +29,7 @@ export function CartPanel() {
     currency,
     products,
     localize,
+    stockLimit,
     t,
     tf,
   } = useStore()
@@ -168,7 +169,11 @@ export function CartPanel() {
           <>
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <div className="space-y-5">
-                {cart.map((item) => (
+                {cart.map((item) => {
+                  // This exact size and colour: "+" stops at what exists.
+                  const limit = stockLimit(item.productId, item.size, item.color)
+                  const atMax = limit !== null && item.qty >= limit
+                  return (
                   <div key={item.key} className="flex gap-4">
                     <Image
                       src={productImage(item.image)}
@@ -193,12 +198,21 @@ export function CartPanel() {
                       <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/50">
                         {item.size} · {item.color}
                       </p>
+                      {atMax && (
+                        <p className="mt-1 text-[10px] font-light text-gold/75">
+                          {limit === 0
+                            ? t('sold.out')
+                            : tf('stock.onlyInSize', { n: limit as number, size: item.size })}
+                        </p>
+                      )}
                       <div className="mt-auto flex items-center justify-between pt-2">
                         <div className="flex items-center border border-border">
                           <button
                             type="button"
                             onClick={() => updateCartQty(item.key, item.qty - 1)}
-                            className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                            disabled={item.qty <= 1}
+                            aria-label={t('product.decrease')}
+                            className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Minus className="size-3" />
                           </button>
@@ -208,7 +222,10 @@ export function CartPanel() {
                           <button
                             type="button"
                             onClick={() => updateCartQty(item.key, item.qty + 1)}
-                            className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                            disabled={atMax}
+                            aria-label={t('product.increase')}
+                            title={atMax && limit ? tf('stock.onlyInSize', { n: limit, size: item.size }) : undefined}
+                            className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Plus className="size-3" />
                           </button>
@@ -219,7 +236,8 @@ export function CartPanel() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

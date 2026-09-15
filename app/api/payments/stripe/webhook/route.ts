@@ -3,12 +3,18 @@ import type Stripe from 'stripe'
 import { fromMinorUnits, orderChargeRate, roundMinor } from '@/lib/currency'
 import {
   claimReceiptSend,
+  ensurePaidOrderStock,
   findOrderByPaymentId,
   recordRefund,
   releaseReceiptClaim,
   setPaymentStatus,
 } from '@/lib/server/orders-store'
-import { isMailConfigured, sendPaymentFailedEmail, sendPaymentReceipt } from '@/lib/server/mailer'
+import {
+  isMailConfigured,
+  sendPaymentFailedEmail,
+  sendPaymentReceipt,
+  sendStockConflictAlert,
+} from '@/lib/server/mailer'
 import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
@@ -122,6 +128,17 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
     // 200, not 404: a missing order is not something Stripe can fix by
     // retrying, and a non-2xx would have it retry for days.
     return NextResponse.json({ received: true, matched: false })
+  }
+
+  // Stock at payment confirmation: the order must still hold its units. If it
+  // was cancelled and restocked while the customer was paying, they are taken
+  // again atomically — or, when they are gone, support is told to refund.
+  if (next === 'paid') {
+    const stock = await ensurePaidOrderStock(order.id)
+    if (stock === 'insufficient') {
+      console.error(`[stripe] ${order.id} was paid but its stock had been released and sold`)
+      if (isMailConfigured) await sendStockConflictAlert(order)
+    }
   }
 
   // In-app notification for a failed payment. Guest orders have no user_id

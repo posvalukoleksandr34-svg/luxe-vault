@@ -53,6 +53,7 @@ import type {
   Order,
   Product,
   Promo,
+  SupportCategory,
   User,
 } from './types'
 
@@ -63,7 +64,21 @@ export type Toast = {
   variant?: 'default' | 'success' | 'gold'
 }
 
-export type PanelState = 'cart' | 'checkout' | 'user' | null
+export type PanelState = 'cart' | 'checkout' | 'user' | 'support' | null
+
+/** Where the support center drawer opens: its help screen, the request form
+ *  (optionally on a topic or an order), the list of requests, or one of them. */
+export type SupportEntry = {
+  view: 'home' | 'new' | 'tickets' | 'ticket'
+  number?: string
+  token?: string
+  category?: SupportCategory
+  orderNumber?: string
+}
+
+/** What an add-to-cart did. `added` is less than asked for — or 0 — when the
+ *  variant's stock is the limit. */
+export type AddToCartResult = { added: number; limit: number | null; inCart: number }
 
 /** Which section the account drawer shows. Lifted out of the drawer so a
  *  caller can open it on a specific tab rather than on whatever was open
@@ -174,8 +189,22 @@ type StoreContextValue = {
 
   pushToast: (t: Omit<Toast, 'id'>) => void
   dismissToast: (id: number) => void
-  addToCart: (item: Omit<CartItem, 'key'>) => void
+  /** Adds up to what the variant's stock allows, counting what the cart
+   *  already holds; says how many went in. */
+  addToCart: (item: Omit<CartItem, 'key'>) => AddToCartResult
+  /** Sets a line's quantity, never above its variant's stock. */
   updateCartQty: (key: string, qty: number) => void
+  /** How many units of this exact size + colour exist to sell: null when the
+   *  product's stock is not tracked. The server's latest answer when there is
+   *  one, else the catalogue. */
+  stockLimit: (productId: string, size: string, color: string) => number | null
+
+  supportEntry: SupportEntry
+  /** Opens the support center drawer. */
+  openSupport: (entry?: SupportEntry) => void
+  /** Replies from the support team the customer has not read yet. */
+  supportUnread: number
+  setSupportUnread: (n: number) => void
   removeFromCart: (key: string) => void
   clearCart: () => void
   cartCount: number
@@ -258,6 +287,36 @@ export function formatChf(value: number, exact = false) {
 }
 
 let toastSeq = 0
+
+/** A variant's stock per the catalogue. null when the product is untracked
+ *  (no variant rows — see Product.variants), 0 for a combination with no row
+ *  or a product the admin marked out of stock. */
+function catalogLimit(product: Product, size: string, color: string): number | null {
+  if (product.statuses.includes('out_of_stock')) return 0
+  if (!product.variants || product.variants.length === 0) return null
+  return product.variants.find((v) => v.size === size && v.color === color)?.stock ?? 0
+}
+
+type StockNote = { name: string; size: string; n: number }
+
+/** The lines clamped to their limits, and what changed — for the notice. */
+function clampToStock(
+  lines: CartItem[],
+  limitOf: (line: CartItem) => number | null,
+): { next: CartItem[]; notes: StockNote[] } {
+  const notes: StockNote[] = []
+  const next: CartItem[] = []
+  for (const line of lines) {
+    const limit = limitOf(line)
+    if (limit === null || line.qty <= limit) {
+      next.push(line)
+      continue
+    }
+    notes.push({ name: line.name, size: line.size, n: limit })
+    if (limit > 0) next.push({ ...line, qty: limit })
+  }
+  return { next: notes.length ? next : lines, notes }
+}
 
 export function StoreProvider({
   children,
@@ -612,6 +671,15 @@ function maybeSendWelcome() {
     setAuthMode(mode)
     setPanel('user')
   }, [])
+
+  const [supportEntry, setSupportEntry] = useState<SupportEntry>({ view: 'home' })
+  const [supportUnread, setSupportUnread] = useState(0)
+  /** Opens the support center on its help screen, or straight on the form or
+   *  a conversation — one call, for the same reason as openAccount. */
+  const openSupport = useCallback((entry?: SupportEntry) => {
+    setSupportEntry(entry ?? { view: 'home' })
+    setPanel('support')
+  }, [])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>(EMPTY_FILTER)
@@ -673,35 +741,175 @@ function maybeSendWelcome() {
 
 
 
-  const addToCart = useCallback(
-    (item: Omit<CartItem, 'key'>) => {
-      const key = `${item.productId}-${item.size}-${item.color}`
-      setCart((prev) => {
-        const existing = prev.find((c) => c.key === key)
-        if (existing) {
-          return prev.map((c) =>
-            c.key === key ? { ...c, qty: c.qty + item.qty } : c,
-          )
-        }
-        return [...prev, { ...item, key }]
-      })
-      trackAddToCart(item)
-      pushToast({
-        title: t('toast.addedToCart'),
-        description: `${item.name} · ${item.size} · ${item.color}`,
-        variant: 'gold',
-      })
+  // ---------------------------------------------------------------- stock ----
+  // A cart line never holds more of a size + colour than exists. Enforced
+  // here against the freshest figure known — the server's answer to the last
+  // /api/cart/validate when there is one, else the catalogue — and again, for
+  // real, by the database when the order is placed (place_order's
+  // `stock >= qty`), so a stale page can at worst be told "no" at checkout.
+
+  /** Per-variant stock from the last server check. Cleared when a new
+   *  catalogue arrives: that is a newer snapshot until the next check. */
+  const [serverStock, setServerStock] = useState<Record<string, number | null>>({})
+
+  const stockLimit = useCallback(
+    (productId: string, size: string, color: string): number | null => {
+      const product = products.find((p) => p.id === productId)
+      if (product?.statuses.includes('out_of_stock')) return 0
+      const key = `${productId}|${size}|${color}`
+      if (key in serverStock) return serverStock[key]
+      return product ? catalogLimit(product, size, color) : null
     },
-    [pushToast, t],
+    [products, serverStock],
   )
 
-  const updateCartQty = useCallback((key: string, qty: number) => {
-    setCart((prev) =>
-      prev
-        .map((c) => (c.key === key ? { ...c, qty: Math.max(1, qty) } : c))
-        .filter((c) => c.qty > 0),
-    )
+  /** The cart as of the last change, readable synchronously: two presses in
+   *  the same frame must both see the line the first one added, or a quick
+   *  double click on "+" could put a third XL in a basket that allows two. */
+  const cartRef = useRef<CartItem[]>(cart)
+  useIsomorphicLayoutEffect(() => {
+    cartRef.current = cart
+  }, [cart])
+
+  const announceStock = useCallback(
+    (notes: StockNote[]) => {
+      if (notes.length === 0) return
+      pushToast({
+        title: t('stock.cartChanged'),
+        description: notes
+          .slice(0, 3)
+          .map((n) =>
+            n.n > 0
+              ? tf('stock.cartReduced', { name: n.name, size: n.size, n: n.n })
+              : tf('stock.cartRemoved', { name: n.name, size: n.size }),
+          )
+          .join(' · '),
+        variant: 'default',
+      })
+    },
+    [pushToast, t, tf],
+  )
+
+  const validateTimer = useRef<ReturnType<typeof setTimeout>>()
+  const validating = useRef(false)
+  const validateAgain = useRef(false)
+  const validateRef = useRef<() => Promise<void>>(async () => {})
+
+  /** Checks the whole cart against live stock, shortly after the last change. */
+  const scheduleValidate = useCallback((delay = 400) => {
+    if (validateTimer.current) clearTimeout(validateTimer.current)
+    validateTimer.current = setTimeout(() => void validateRef.current(), delay)
   }, [])
+
+  const validateCart = useCallback(async () => {
+    const lines = cartRef.current
+    if (lines.length === 0) return
+    if (validating.current) {
+      validateAgain.current = true
+      return
+    }
+    validating.current = true
+    try {
+      const res = await fetch('/api/cart/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: lines.map(({ productId, size, color, qty }) => ({ productId, size, color, qty })),
+        }),
+      })
+      // Fails open: the order itself is checked by the database.
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      if (!Array.isArray(data?.items)) return
+      const fresh: Record<string, number | null> = {}
+      for (const it of data.items as { productId: string; size: string; color: string; available: unknown }[]) {
+        fresh[`${it.productId}|${it.size}|${it.color}`] = typeof it.available === 'number' ? it.available : null
+      }
+      setServerStock((prev) => ({ ...prev, ...fresh }))
+      const limitOf = (l: CartItem) => {
+        const k = `${l.productId}|${l.size}|${l.color}`
+        return k in fresh ? fresh[k] : null
+      }
+      const { notes } = clampToStock(cartRef.current, limitOf)
+      if (notes.length) {
+        setCart((prev) => clampToStock(prev, limitOf).next)
+        announceStock(notes)
+      }
+    } catch {
+      // Offline — the next change or the checkout checks again.
+    } finally {
+      validating.current = false
+      if (validateAgain.current) {
+        validateAgain.current = false
+        scheduleValidate(0)
+      }
+    }
+  }, [announceStock, scheduleValidate])
+
+  useEffect(() => {
+    validateRef.current = validateCart
+  }, [validateCart])
+
+  const addToCart = useCallback(
+    (item: Omit<CartItem, 'key'>): AddToCartResult => {
+      const key = `${item.productId}-${item.size}-${item.color}`
+      const limit = stockLimit(item.productId, item.size, item.color)
+      const inCart = cartRef.current.find((c) => c.key === key)?.qty ?? 0
+      const added = Math.max(0, limit === null ? item.qty : Math.min(item.qty, limit - inCart))
+      const onlyNote = limit ? tf('stock.onlyInSize', { n: limit, size: item.size }) : undefined
+
+      if (added === 0) {
+        // Calm, not an error: what exists, and that it is already theirs.
+        pushToast({
+          title: limit === 0 ? t('sold.out') : t('stock.maxInCart'),
+          description: onlyNote,
+          variant: 'default',
+        })
+        return { added: 0, limit, inCart }
+      }
+
+      // Applied to the ref now (so the next press sees it) and to state
+      // through an updater that clamps again against whatever state is.
+      const apply = (prev: CartItem[]): CartItem[] => {
+        const existing = prev.find((c) => c.key === key)
+        const current = existing?.qty ?? 0
+        const qty = limit === null ? current + added : Math.min(limit, current + added)
+        if (qty <= current) return prev
+        return existing
+          ? prev.map((c) => (c.key === key ? { ...c, qty } : c))
+          : [...prev, { ...item, key, qty }]
+      }
+      cartRef.current = apply(cartRef.current)
+      setCart(apply)
+      trackAddToCart({ ...item, qty: added })
+      pushToast({
+        title: t('toast.addedToCart'),
+        description: added < item.qty ? onlyNote : `${item.name} · ${item.size} · ${item.color}`,
+        variant: 'gold',
+      })
+      scheduleValidate()
+      return { added, limit, inCart: inCart + added }
+    },
+    [stockLimit, pushToast, t, tf, scheduleValidate],
+  )
+
+  const updateCartQty = useCallback(
+    (key: string, qty: number) => {
+      const line = cartRef.current.find((c) => c.key === key)
+      if (!line) return
+      const limit = stockLimit(line.productId, line.size, line.color)
+      const ceiling = limit === null ? Infinity : Math.max(1, limit)
+      const target = Math.min(Math.max(1, qty), ceiling)
+      if (limit !== null && qty > ceiling) {
+        pushToast({ title: tf('stock.onlyInSize', { n: limit, size: line.size }), variant: 'default' })
+      }
+      const apply = (prev: CartItem[]) => prev.map((c) => (c.key === key ? { ...c, qty: target } : c))
+      cartRef.current = apply(cartRef.current)
+      setCart(apply)
+      if (target > line.qty) scheduleValidate()
+    },
+    [stockLimit, pushToast, tf, scheduleValidate],
+  )
 
   const removeFromCart = useCallback((key: string) => {
     setCart((prev) => {
@@ -724,9 +932,13 @@ function maybeSendWelcome() {
   const cartRestored = useRef(false)
   useIsomorphicLayoutEffect(() => {
     const saved = readCart()
-    if (saved.length > 0) setCart(saved)
+    if (saved.length > 0) {
+      setCart(saved)
+      // A basket from last week meets this week's stock.
+      scheduleValidate(2500)
+    }
     cartRestored.current = true
-  }, [])
+  }, [scheduleValidate])
 
   /* Persist on every change. Gated on the restore having run, or this effect's
      own first pass would write the empty initial state over the saved cart
@@ -742,8 +954,23 @@ function maybeSendWelcome() {
      update rather than re-rendering every consumer on each catalogue poll. */
   useEffect(() => {
     if (!cartRestored.current) return
-    setCart((prev) => reconcileCart(prev, products, localize))
-  }, [products, localize])
+    // A new catalogue is a new stock snapshot, and lines are clamped to it —
+    // with a notice that says what changed rather than a silent edit.
+    setServerStock({})
+    const byId = new Map(products.map((p) => [p.id, p]))
+    const limitOf = (l: CartItem) => {
+      const p = byId.get(l.productId)
+      return p ? catalogLimit(p, l.size, l.color) : null
+    }
+    const { notes } = clampToStock(reconcileCart(cartRef.current, products, localize), limitOf)
+    setCart((prev) => clampToStock(reconcileCart(prev, products, localize), limitOf).next)
+    announceStock(notes)
+  }, [products, localize, announceStock])
+
+  // Opening the basket checks it against live stock.
+  useEffect(() => {
+    if (panel === 'cart') scheduleValidate(0)
+  }, [panel, scheduleValidate])
 
   /* Keep two open tabs in step. Without this the last tab to write wins, and
      a customer who adds a coat in one tab and a bag in another silently loses
@@ -1212,6 +1439,11 @@ function maybeSendWelcome() {
     openAccount,
     authMode,
     openAuth,
+    supportEntry,
+    openSupport,
+    supportUnread,
+    setSupportUnread,
+    stockLimit,
     toasts,
     query,
     setQuery,

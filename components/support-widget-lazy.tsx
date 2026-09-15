@@ -3,7 +3,8 @@
 import dynamic from 'next/dynamic'
 
 /**
- * The floating support launcher and its message form, loaded after hydration.
+ * The floating support launcher, loaded after hydration. It opens the support
+ * center drawer, which GlobalPanels mounts.
  *
  * It is fixed-position, so appearing a moment later shifts nothing on the
  * page, and nobody needs it before the page is interactive. A client wrapper

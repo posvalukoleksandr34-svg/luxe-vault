@@ -333,16 +333,74 @@ export type Review = {
   status: ReviewStatus
 }
 
-export type SupportTicketStatus = 'open' | 'resolved'
+/** A support request's state. Mirrors the check on support_tickets.status
+ *  (migration 0030). */
+export type SupportTicketStatus = 'open' | 'in_progress' | 'waiting_user' | 'resolved' | 'closed'
+export const SUPPORT_TICKET_STATUSES: SupportTicketStatus[] = [
+  'open',
+  'in_progress',
+  'waiting_user',
+  'resolved',
+  'closed',
+]
+
+export type SupportCategory =
+  | 'order'
+  | 'payment'
+  | 'shipping'
+  | 'returns'
+  | 'sizes'
+  | 'product'
+  | 'account'
+  | 'other'
+export const SUPPORT_CATEGORIES: SupportCategory[] = [
+  'order',
+  'payment',
+  'shipping',
+  'returns',
+  'sizes',
+  'product',
+  'account',
+  'other',
+]
+
+/** A file on a support message. `url` is a short-lived signed link, present
+ *  only when the thread is being shown. */
+export type SupportAttachment = {
+  path: string
+  name: string
+  type: string
+  size: number
+  url?: string
+}
+
+export type SupportMessage = {
+  id: string
+  createdAt: number
+  author: 'customer' | 'staff'
+  body: string
+  attachments: SupportAttachment[]
+}
 
 export type SupportTicket = {
   id: string
+  /** What the customer quotes: "LVS-7K2Q9D". */
+  number: string
+  createdAt: number
+  lastMessageAt: number
+  lastMessageBy: 'customer' | 'staff'
+  status: SupportTicketStatus
+  category: SupportCategory
+  subject: string
+  orderNumber?: string
   name: string
   email: string
-  message: string
-  createdAt: number
-  status: SupportTicketStatus
+  /** The viewer has something new: for the customer a staff reply, for the
+   *  admin a customer message, written after they last opened the ticket. */
+  unread: boolean
 }
+
+export type SupportTicketDetail = SupportTicket & { messages: SupportMessage[] }
 
 
 /** Mirrors the public.notification_type enum. */

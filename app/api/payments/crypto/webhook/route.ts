@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { setPaymentStatus } from '@/lib/server/orders-store'
+import { isMailConfigured, sendStockConflictAlert } from '@/lib/server/mailer'
+import { ensurePaidOrderStock, setPaymentStatus } from '@/lib/server/orders-store'
 import { isIpnConfigured, toPaymentStatus, verifyIpnSignature } from '@/lib/server/nowpayments'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +39,17 @@ export async function POST(request: NextRequest) {
   }
 
   const mapped = toPaymentStatus(payload.payment_status)
-  await setPaymentStatus(payload.payment_id, mapped)
+  const order = await setPaymentStatus(payload.payment_id, mapped)
+
+  // Stock at payment confirmation — see the Stripe webhook: a restocked order
+  // takes its units again, or support is told the payment needs a refund.
+  if (order && mapped === 'paid') {
+    const stock = await ensurePaidOrderStock(order.id)
+    if (stock === 'insufficient') {
+      console.error(`[crypto] ${order.id} was paid but its stock had been released and sold`)
+      if (isMailConfigured) await sendStockConflictAlert(order)
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

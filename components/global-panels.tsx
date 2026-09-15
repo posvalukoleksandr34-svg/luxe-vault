@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { PasswordRecoveryModal } from '@/components/password-recovery-modal'
+import { SupportUnreadWatcher } from '@/components/support/support-unread'
 import { useStore } from '@/lib/store'
 
 /**
@@ -33,11 +34,16 @@ const CartPanel = dynamic(() => import('@/components/cart-panel').then((m) => m.
 const UserPanel = dynamic(() => import('@/components/user-panel').then((m) => m.UserPanel), {
   ssr: false,
 })
+const SupportDrawer = dynamic(
+  () => import('@/components/support/support-drawer').then((m) => m.SupportDrawer),
+  { ssr: false },
+)
 
-/** Fetches both drawer chunks without mounting anything. */
+/** Fetches the drawer chunks without mounting anything. */
 function warmDrawers() {
   void import('@/components/cart-panel')
   void import('@/components/user-panel')
+  void import('@/components/support/support-drawer')
 }
 
 export function GlobalPanels() {
@@ -49,8 +55,10 @@ export function GlobalPanels() {
   // cart-panel.tsx); unmounting it on close would drop that step.
   const [cartMounted, setCartMounted] = useState(false)
   const [userMounted, setUserMounted] = useState(false)
+  const [supportMounted, setSupportMounted] = useState(false)
   if (panel === 'cart' && !cartMounted) setCartMounted(true)
   if (panel === 'user' && !userMounted) setUserMounted(true)
+  if (panel === 'support' && !supportMounted) setSupportMounted(true)
 
   useEffect(() => {
     if ('requestIdleCallback' in window) {
@@ -66,6 +74,9 @@ export function GlobalPanels() {
     <>
       {cartMounted && <CartPanel />}
       {userMounted && <UserPanel />}
+      {supportMounted && <SupportDrawer />}
+      {/* Tiny and not lazy: it keeps the unread count on the support buttons. */}
+      <SupportUnreadWatcher />
       {/* Listens for Supabase's PASSWORD_RECOVERY event, which can fire on any
           route when someone follows a recovery link. Deliberately NOT lazy:
           the event fires while the client parses the URL on load, and a

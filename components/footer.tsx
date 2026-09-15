@@ -14,6 +14,22 @@ import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { describeBusinessDays } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
 
+/** Opens the support center drawer: help, the request form, and the
+ *  customer's requests with our replies. */
+function FooterSupportLink() {
+  const { t, openSupport } = useStore()
+  return (
+    <button
+      type="button"
+      onClick={() => openSupport()}
+      className="tap-safe flex items-center gap-2 text-left text-[12px] font-light text-gold/80 transition hover:text-gold"
+    >
+      <LifeBuoy className="size-3.5 shrink-0" />
+      {t('support.footerLink')}
+    </button>
+  )
+}
+
 function scrollTo(id: string) {
   const el = document.getElementById(id)
   if (el) {
@@ -139,13 +155,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-gold/80 transition hover:text-gold"
-                >
-                  <LifeBuoy className="size-3.5 shrink-0" />
-                  {t('support.footerLink')}
-                </a>
+                <FooterSupportLink />
               </li>
             </ul>
           </div>

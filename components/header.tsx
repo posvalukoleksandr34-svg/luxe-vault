@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { LifeBuoy, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
@@ -29,6 +29,8 @@ export function Header() {
     setFilter,
     filter,
     openAccount,
+    openSupport,
+    supportUnread,
   } = useStore()
 
   const router = useRouter()
@@ -98,10 +100,13 @@ export function Header() {
         <button
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
-          className="tap-safe lg:hidden text-muted-foreground transition hover:text-foreground"
+          className="tap-safe relative lg:hidden text-muted-foreground transition hover:text-foreground"
           aria-label="Menu"
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          {!mobileOpen && supportUnread > 0 && (
+            <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-gold sm:hidden" aria-hidden />
+          )}
         </button>
 
         {/* A Link, not a scroll-to-top button.
@@ -170,6 +175,24 @@ export function Header() {
               shape rather than showing a bell that could only ever be empty. */}
           <NotificationCenter />
 
+          {/* Support messages, on every page. The count is replies from the
+              team the customer has not read yet. From sm up — a phone's row
+              is full, so there it lives in the menu (with a dot on the menu
+              button when a reply is waiting). */}
+          <button
+            type="button"
+            onClick={() => openSupport()}
+            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:flex"
+            aria-label={supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')}
+          >
+            <LifeBuoy className="size-[18px]" />
+            {supportUnread > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
+                {supportUnread}
+              </span>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => openAccount('orders')}
@@ -228,6 +251,20 @@ export function Header() {
             </button>
             <button onClick={goSale} className="rounded-lg px-3 py-2.5 text-left text-sm text-gold transition hover:bg-accent">
               {t('filter.sale')}
+            </button>
+            <button
+              onClick={() => {
+                setMobileOpen(false)
+                openSupport()
+              }}
+              className="flex items-center justify-between px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] sm:hidden"
+            >
+              {t('support.title')}
+              {supportUnread > 0 && (
+                <span className="flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
+                  {supportUnread}
+                </span>
+              )}
             </button>
           </nav>
         </div>

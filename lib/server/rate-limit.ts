@@ -56,6 +56,21 @@ const LIMITS = {
    *  email, so an unbounded version would be a way to mail strangers. */
   'cart.capture': { max: 20, windowSeconds: 600 },
 
+  /** Stock checks on add-to-cart, "+" and opening the basket. Generous —
+   *  every press is one — but bounded, since each reads the database. */
+  'cart.validate': { max: 120, windowSeconds: 300 },
+
+  /** Replies inside an existing support ticket, and its attachments. */
+  'support.reply': { max: 20, windowSeconds: 900 },
+
+  /** "My tickets" and the unread badge. Polled about once a minute while the
+   *  site is open, so it is generous. */
+  'support.mine': { max: 120, windowSeconds: 600 },
+
+  /** Opening one ticket's conversation — guarded by the ticket's token, and
+   *  bounded so the token cannot be guessed at volume. */
+  'support.read': { max: 60, windowSeconds: 600 },
+
   /** Catalogue search. Generous — typing is iterative — but bounded, because
    *  an unthrottled search endpoint is a cheap way to make the database work. */
   'search': { max: 60, windowSeconds: 300 },

@@ -180,9 +180,35 @@ export function ProductDetail({ product }: { product: Product }) {
     ? undefined
     : p.colors.find((c) => c.name !== color && c.stock !== 0)
 
-  // Never offer more than exists. 10 stays the ceiling for untracked products
-  // and is the previous behaviour.
-  const maxQty = selectedStock === undefined ? 10 : Math.min(10, selectedStock)
+  // What this exact size + colour still allows: its stock minus what the cart
+  // already holds. From the store, which also knows the server's latest
+  // answer — the catalogue this page was rendered with can be minutes old.
+  const { cart, stockLimit } = useStore()
+  const lineColor = color ?? p.colors[0]?.name ?? '—'
+  const limit = size ? stockLimit(p.id, size, lineColor) : null
+  const inCart = size ? cart.find((c) => c.key === `${p.id}-${size}-${lineColor}`)?.qty ?? 0 : 0
+  const remaining = limit === null ? null : Math.max(0, limit - inCart)
+  /** The server says none are left, although the page's catalogue did not. */
+  const unavailable = outOfStock || limit === 0
+  /** Everything there is of this variant is already in the cart. */
+  const maxedOut = !unavailable && remaining === 0 && inCart > 0
+
+  // Never offer more than exists. 10 stays the ceiling, as before.
+  const maxQty =
+    remaining !== null
+      ? Math.min(10, remaining)
+      : selectedStock === undefined
+        ? 10
+        : Math.min(10, selectedStock)
+
+  // The limit, said once the quantity reaches it — "Only 2 pcs. available in
+  // size XL" — and never as a permanent counter on a well-stocked item.
+  const limitNote =
+    size && limit !== null && limit > 0 && remaining !== null && (maxedOut || qty >= remaining)
+      ? namesSize
+        ? tf('stock.onlyInSize', { n: limit, size })
+        : tf('stock.only', { n: limit })
+      : null
 
   // Switching to a size with less on hand must not carry a now-impossible
   // quantity across with it.
@@ -326,19 +352,23 @@ export function ProductDetail({ product }: { product: Product }) {
   }
 
   function handleAdd() {
-    if (!size || outOfStock) return
-    // After the guard: the click confirms an item went in, so a press that
-    // added nothing stays silent. Covers the main button and the sticky bar.
-    playClickSound()
-    addToCart({
+    if (!size || unavailable || maxedOut) return
+    // The store adds only what the variant's stock allows, counting what is
+    // already in the cart, and says how many went in — so a fast double tap,
+    // or the main button and the sticky bar together, can never overshoot.
+    const result = addToCart({
       productId: p.id,
       name: productName,
       image: selectedImage || p.image,
       price: p.price,
       size,
-      color: color ?? p.colors[0]?.name ?? '—',
+      color: lineColor,
       qty,
     })
+    // The click confirms an item went in, so a press that added nothing
+    // stays silent (the store's notice says why). Covers both buttons.
+    if (result.added === 0) return
+    playClickSound()
     setPanel('cart')
   }
 
@@ -648,12 +678,13 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         )}
 
-        <div className="mt-8 flex items-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center border border-border">
             <button
               type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="no-juice flex size-11 items-center justify-center text-muted-foreground transition hover:text-foreground"
+              disabled={qty <= 1}
+              className="no-juice flex size-11 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               aria-label={t('product.decrease')}
             >
               <Minus className="size-3.5" />
@@ -664,13 +695,21 @@ export function ProductDetail({ product }: { product: Product }) {
             <button
               type="button"
               onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
-              disabled={qty >= maxQty}
+              disabled={qty >= maxQty || maxedOut || unavailable}
               className="no-juice flex size-11 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               aria-label={t('product.increase')}
             >
               <Plus className="size-3.5" />
             </button>
           </div>
+          {limitNote && (
+            <p className="text-[11px] font-light leading-snug text-gold/80" role="status">
+              {limitNote}
+              {inCart > 0 && (
+                <span className="text-muted-foreground"> · {tf('stock.inCart', { n: inCart })}</span>
+              )}
+            </p>
+          )}
         </div>
 
         <div ref={buyButtonRef} className="mt-4">
@@ -685,10 +724,14 @@ export function ProductDetail({ product }: { product: Product }) {
             <button
               type="button"
               onClick={handleAdd}
-              disabled={!size || outOfStock}
+              disabled={!size || unavailable || maxedOut}
               className="w-full border border-gold/30 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
             >
-              {outOfStock ? t('sold.out') : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
+              {unavailable
+                ? t('sold.out')
+                : maxedOut
+                  ? t('stock.maxInCart')
+                  : `${t('product.addToCart')} — ${formatPrice(p.price * qty)}`}
             </button>
           )}
         </div>
@@ -887,11 +930,17 @@ export function ProductDetail({ product }: { product: Product }) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!size || outOfStock}
+            disabled={!size || unavailable || maxedOut}
             tabIndex={showStickyBuy ? 0 : -1}
-            className="shrink-0 border border-gold/40 bg-gold/10 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+            className="max-w-[55%] shrink-0 border border-gold/40 bg-gold/10 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
           >
-            {outOfStock ? t('sold.out') : !size ? t('product.selectSize') : t('product.addToCart')}
+            {unavailable
+              ? t('sold.out')
+              : !size
+                ? t('product.selectSize')
+                : maxedOut
+                  ? t('stock.maxInCart')
+                  : t('product.addToCart')}
           </button>
         </div>
       </div>

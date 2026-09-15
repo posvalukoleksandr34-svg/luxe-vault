@@ -64,6 +64,14 @@ export async function POST(request: NextRequest) {
   if (order.paymentStatus === 'paid') {
     return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
   }
+  // A cancelled or refunded order has given its units back to stock; taking
+  // money for it now could sell something another customer already bought.
+  if (order.status === 'cancelled' || order.status === 'refunded') {
+    return NextResponse.json(
+      { error: 'Заказ отменён, и его товары вернулись в продажу. Оформите, пожалуйста, новый заказ.' },
+      { status: 409 },
+    )
+  }
 
   try {
     // The Stripe Customer that owns saved cards. Resolved from the SESSION,
