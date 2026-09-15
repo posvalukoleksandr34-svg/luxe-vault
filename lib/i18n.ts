@@ -174,6 +174,11 @@ export const UI = {
   'cart.shipping': { ru: 'Доставка', en: 'Shipping', it: 'Spedizione', fr: 'Livraison', de: 'Versand' },
   'cart.free': { ru: 'Бесплатно', en: 'Free', it: 'Gratis', fr: 'Offerte', de: 'Kostenlos' },
   'cart.freeShippingGap': { ru: 'До бесплатной доставки осталось', en: 'Spend this much more for free shipping:', it: 'Ancora per la spedizione gratuita:', fr: 'Encore pour la livraison offerte :', de: 'Noch bis zum kostenlosen Versand:' },
+  // The drawer's shipping bar. {amount} is highlighted, so the template is
+  // split on it rather than filled with tf().
+  'cart.close': { ru: 'Закрыть корзину', en: 'Close cart', it: 'Chiudi il carrello', fr: 'Fermer le panier', de: 'Warenkorb schließen' },
+  'cart.freeShippingAddMore': { ru: 'Добавьте ещё {amount} — и доставка бесплатна', en: 'Add {amount} more for Free Shipping', it: 'Aggiungi ancora {amount} per la spedizione gratuita', fr: 'Ajoutez encore {amount} pour la livraison offerte', de: 'Noch {amount} bis zum kostenlosen Versand' },
+  'cart.freeShippingCongrats': { ru: 'Поздравляем! Доставка для вас бесплатна', en: 'Congratulations! You get Free Shipping', it: 'Congratulazioni! La spedizione è gratuita', fr: 'Félicitations ! La livraison vous est offerte', de: 'Glückwunsch! Ihr Versand ist kostenlos' },
   'cart.freeShippingEarned': { ru: 'Бесплатная доставка применена', en: 'Free shipping applied', it: 'Spedizione gratuita applicata', fr: 'Livraison offerte appliquée', de: 'Kostenloser Versand aktiv' },
   'order.tax': { ru: 'Налог', en: 'Tax', it: 'Imposta', fr: 'Taxe', de: 'Steuer' },
   'cart.continueShopping': { ru: 'Продолжить покупки', en: 'Continue shopping', it: 'Continua lo shopping', fr: 'Continuer mes achats', de: 'Weiter einkaufen' },
