@@ -3,6 +3,7 @@ import { CATEGORY_LABELS } from '@/lib/i18n'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import { fetchWithTimeout, loadGoogleFont } from '@/lib/server/og-font'
 import { getSiteUrl } from '@/lib/site-url'
+import { monogramSvg } from '@/lib/brand/monogram.generated'
 import type { Product } from '@/lib/types'
 
 /**
@@ -35,6 +36,9 @@ const TEXT = '#E5E5E5'
 const MUTED = '#8c8c8c'
 const SERIF = 'Playfair Display'
 const PHOTO_WIDTH = 504
+/** Shown in the photo panel when the product has no photo the renderer can
+ *  use (WebP uploads): the card keeps its shape and still reads as the brand. */
+const MARK = `data:image/svg+xml;base64,${btoa(monogramSvg())}`
 
 /** Russian first, as for the page's own metadata (<html lang="ru">). */
 function pick(text: Record<string, string> | undefined): string {
@@ -125,17 +129,24 @@ export default async function ProductOpengraphImage({ params }: { params: { slug
           color: TEXT,
         }}
       >
-        {photo && (
-          <div style={{ display: 'flex', width: PHOTO_WIDTH, height: '100%' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
-            <img
-              src={photo}
-              width={PHOTO_WIDTH}
-              height={630}
-              style={{ width: PHOTO_WIDTH, height: 630, objectFit: 'cover' }}
-            />
-          </div>
-        )}
+        <div
+          style={{
+            display: 'flex',
+            width: PHOTO_WIDTH,
+            height: '100%',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#050505',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+          <img
+            src={photo ?? MARK}
+            width={photo ? PHOTO_WIDTH : 168}
+            height={photo ? 630 : 168}
+            style={photo ? { width: PHOTO_WIDTH, height: 630, objectFit: 'cover' } : { width: 168, height: 168 }}
+          />
+        </div>
         <div
           style={{
             flex: 1,
@@ -143,7 +154,7 @@ export default async function ProductOpengraphImage({ params }: { params: { slug
             flexDirection: 'column',
             justifyContent: 'space-between',
             padding: '64px 72px',
-            borderLeft: photo ? '1px solid rgba(212,175,55,0.45)' : 'none',
+            borderLeft: '1px solid rgba(212,175,55,0.45)',
           }}
         >
           <div style={{ display: 'flex', fontFamily: SERIF, fontSize: 28, letterSpacing: 10 }}>

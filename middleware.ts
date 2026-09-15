@@ -69,6 +69,6 @@ export const config = {
      * optimiser requests are excluded — they carry no session and running the
      * auth round-trip on them would be pure latency.
      */
-    '/((?!_next/static|_next/image|favicon.ico|icon|opengraph-image|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|webmanifest)$).*)',
   ],
 }

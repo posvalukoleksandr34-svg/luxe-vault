@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/server'
+import { monogramSvg } from '@/lib/brand/monogram.generated'
+import { loadGoogleFont } from '@/lib/server/og-font'
 
 export const runtime = 'edge'
 export const alt = 'LUXE VAULT — Premium Apparel & Accessories'
@@ -6,13 +8,29 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 /**
- * Next.js automatically wires this file up as the `og:image` (and
- * `twitter:image`) for every page under this segment via the file-based
- * Metadata API — nothing else needs to reference it manually. When a link
- * to the site is shared in Telegram, WhatsApp, etc., the messenger fetches
- * this route and renders the resulting 1200x630 PNG as the preview card.
+ * The site-wide link preview: the card Telegram, WhatsApp, iMessage, Facebook,
+ * LinkedIn and X show for any page that has no card of its own (product pages
+ * have theirs — app/product/[slug]/opengraph-image.tsx).
+ *
+ * Next wires this file up as og:image (with og:image:width/height/type/alt)
+ * and twitter:image for every route below it, so no page is ever left for a
+ * scraper to pick a random image from the page body.
+ *
+ * 1200x630 (1.91:1): the size every one of those platforms crops to without
+ * cutting anything off. Everything important sits in the central area, so the
+ * square crops some apps make of it still read as the brand.
  */
-export default function OpengraphImage() {
+
+const GOLD = '#D4AF37'
+const TEXT = '#E5E5E5'
+const BODY = '#CCCCCC'
+const SERIF = 'Playfair Display'
+const MARK = `data:image/svg+xml;base64,${btoa(monogramSvg())}`
+
+export default async function OpengraphImage() {
+  // The serif wordmark; the renderer's built-in sans if Google Fonts is slow.
+  const serif = await loadGoogleFont(SERIF, 500, 'LUXEVAULT')
+
   return new ImageResponse(
     (
       <div
@@ -23,60 +41,54 @@ export default function OpengraphImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#0a0a0a',
+          backgroundColor: '#000000',
           backgroundImage:
-            'radial-gradient(circle at 25% 20%, rgba(212,175,55,0.18), transparent 45%), radial-gradient(circle at 80% 80%, rgba(212,175,55,0.12), transparent 40%)',
+            'radial-gradient(circle at 22% 18%, rgba(212,175,55,0.16), transparent 42%), radial-gradient(circle at 82% 86%, rgba(212,175,55,0.10), transparent 40%)',
         }}
       >
+        {/* A hairline frame, inset — the card reads as a finished object even
+            when an app draws it on white. */}
         <div
           style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 14,
+            position: 'absolute',
+            top: 28,
+            left: 28,
+            right: 28,
+            bottom: 28,
+            border: '1px solid rgba(212,175,55,0.35)',
           }}
-        >
-          <span
-            style={{
-              fontSize: 96,
-              fontWeight: 600,
-              letterSpacing: 12,
-              color: '#f5f5f0',
-            }}
-          >
-            LUXE
-          </span>
-          <span
-            style={{
-              fontSize: 96,
-              fontWeight: 600,
-              letterSpacing: 12,
-              color: '#d4af37',
-            }}
-          >
-            VAULT
-          </span>
+        />
+
+        {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+        <img src={MARK} width={120} height={120} />
+
+        <div style={{ display: 'flex', marginTop: 26, fontFamily: SERIF, fontSize: 92, letterSpacing: 14 }}>
+          <span style={{ color: TEXT }}>LUXE</span>
+          <span style={{ color: GOLD, marginLeft: 26 }}>VAULT</span>
         </div>
+
+        <div style={{ marginTop: 28, width: 88, height: 2, backgroundColor: GOLD }} />
+
         <div
           style={{
-            marginTop: 28,
-            fontSize: 28,
-            fontWeight: 400,
-            letterSpacing: 3,
-            color: '#a3a3a3',
+            marginTop: 26,
+            fontSize: 24,
+            letterSpacing: 6,
             textTransform: 'uppercase',
+            color: BODY,
           }}
         >
           Premium Apparel &amp; Accessories
         </div>
         <div
           style={{
-            marginTop: 40,
+            marginTop: 16,
             display: 'flex',
-            gap: 40,
-            fontSize: 20,
-            color: '#d4af37',
-            letterSpacing: 2,
+            gap: 26,
+            fontSize: 18,
+            letterSpacing: 4,
             textTransform: 'uppercase',
+            color: GOLD,
           }}
         >
           <span>Mirror Quality</span>
@@ -87,6 +99,9 @@ export default function OpengraphImage() {
         </div>
       </div>
     ),
-    { ...size },
+    {
+      ...size,
+      fonts: serif ? [{ name: SERIF, data: serif, weight: 500, style: 'normal' }] : undefined,
+    },
   )
 }

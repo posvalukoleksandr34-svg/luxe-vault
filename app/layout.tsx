@@ -147,7 +147,11 @@ export const metadata: Metadata = {
   // вручную — Next добавит правильный <meta property="og:image"> сам.
   openGraph: {
     type: 'website',
-    url: SITE_URL,
+    // No `url` here. This object is inherited by every page that does not
+    // declare its own openGraph (/stylist, the legal pages, …), and a
+    // site-wide og:url told Facebook, WhatsApp and Telegram that each of those
+    // pages WAS the homepage. Pages that need one (products, categories) set
+    // their own; without one, scrapers use the shared URL — which is correct.
     siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION_SHORT,
@@ -184,6 +188,9 @@ export const metadata: Metadata = {
   // iOS otherwise turns sizes, prices and article numbers that look like
   // phone numbers into tel: links.
   formatDetection: { telephone: false, email: false, address: false },
+  // "Add to Home Screen" on iOS: the name under the icon (apple-icon.png is
+  // linked by Next's file convention) and a black status bar, not white.
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'black' },
 };
 
 export default async function RootLayout({
