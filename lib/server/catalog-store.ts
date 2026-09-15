@@ -12,6 +12,7 @@
 // refers to by slug throughout.
 import 'server-only'
 
+import { withDerivedAvailability } from '@/lib/availability'
 import { isDeliveryDays } from '@/lib/fulfilment'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
@@ -451,7 +452,17 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
     images: product.images ?? [],
     sizes: product.sizes ?? [],
     colors: product.colors ?? [],
-    statuses: product.statuses ?? [],
+    // Availability follows stock whenever the product tracks it — never the
+    // admin's toggle or the browser's word for it (lib/availability.ts). The
+    // same filter as syncVariants, so the tag describes exactly the rows that
+    // get written. A payload without variants leaves stock alone, and so the
+    // tag as sent; the database re-derives it from the stored rows (0032).
+    statuses: product.variants
+      ? withDerivedAvailability(
+          product.statuses ?? [],
+          product.variants.filter((v) => v.size.trim() && v.color.trim()),
+        )
+      : (product.statuses ?? []),
     is_new: Boolean(product.isNew),
     limited: Boolean(product.limited),
     size_chart: product.sizeChart ?? null,
