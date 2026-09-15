@@ -106,6 +106,9 @@ const nextConfig = {
     ignoreDuringBuilds: false,
   },
   experimental: {
+    // Server Actions (actions/*.ts). Stable from Next 14; behind this flag in
+    // 13.5. They POST to the page's own origin, so the CSP needs nothing new.
+    serverActions: true,
     // Loaded by Node at runtime instead of bundled by webpack. @google/genai
     // (the AI stylist's copy) pulls in `ws` for its Live API, and `ws` probes
     // for two OPTIONAL native add-ons — bufferutil and utf-8-validate — inside

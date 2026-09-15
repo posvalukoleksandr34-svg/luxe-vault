@@ -82,6 +82,8 @@ export type Color = {
  * availability; every decision that spends stock is made by the database.
  */
 export type Variant = {
+  /** product_variants.id, when the catalogue sends it. */
+  id?: string
   size: string
   color: string
   stock: number

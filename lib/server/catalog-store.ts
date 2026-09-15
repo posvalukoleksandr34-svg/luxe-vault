@@ -35,7 +35,7 @@ const PRODUCT_BASE_SELECT = `
 `
 
 const PRODUCT_SELECT = `${PRODUCT_BASE_SELECT},
-  variants:product_variants ( size, color, stock, low_stock_at, sku )
+  variants:product_variants ( id, size, color, stock, low_stock_at, sku )
 `
 
 /** Status keys this build can label. See rowToProduct. */
@@ -75,6 +75,7 @@ function rowToCollection(row: Record<string, unknown>): Collection {
 }
 
 type VariantRow = {
+  id?: string
   size: string
   color: string
   stock: number | string
@@ -84,6 +85,8 @@ type VariantRow = {
 
 function rowToProduct(row: Record<string, unknown>): Product {
   const variants: Variant[] = ((row.variants as VariantRow[] | null) ?? []).map((v) => ({
+    // Lets the waitlist name the exact variant (actions/waitlist.ts).
+    id: v.id,
     size: v.size,
     color: v.color,
     stock: Math.max(0, Math.trunc(num(v.stock))),

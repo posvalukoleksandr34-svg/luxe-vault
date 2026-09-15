@@ -144,6 +144,8 @@ export const UI = {
   'stock.lowOne': { ru: 'Осталась 1 шт.', en: 'Only 1 item left', it: 'Solo 1 pezzo disponibile', fr: 'Plus qu’une pièce', de: 'Nur noch 1 Stück' },
   'stock.low': { ru: 'Осталось {n} шт.', en: 'Only {n} items left', it: 'Solo {n} pezzi disponibili', fr: 'Plus que {n} pièces', de: 'Nur noch {n} Stück' },
   // The quantity limit, said calmly: what exists, not an error.
+  // Scarcity, only when real: three or fewer of the exact variant.
+  'stock.hurry': { ru: 'Спешите! Осталось всего {n} шт.', en: 'Hurry! Only {n} left in stock', it: 'Affrettati! Ne restano solo {n} in magazzino', fr: 'Vite ! Plus que {n} en stock', de: 'Schnell! Nur noch {n} auf Lager' },
   'stock.onlyInSize': { ru: 'Доступно только {n} шт. в размере {size}', en: 'Only {n} pcs. available in size {size}', it: 'Disponibili solo {n} pz. nella taglia {size}', fr: 'Seulement {n} pièce(s) disponible(s) en taille {size}', de: 'Nur {n} Stück in Größe {size} verfügbar' },
   'stock.only': { ru: 'Доступно только {n} шт.', en: 'Only {n} pcs. available', it: 'Disponibili solo {n} pz.', fr: 'Seulement {n} pièce(s) disponible(s)', de: 'Nur {n} Stück verfügbar' },
   'stock.maxInCart': { ru: 'Весь доступный остаток уже в корзине', en: 'Maximum available already in cart', it: 'Quantità massima già nel carrello', fr: 'Quantité maximale déjà dans le panier', de: 'Maximale Menge bereits im Warenkorb' },
@@ -298,6 +300,8 @@ export const UI = {
   'stockAlert.confirmed': { ru: 'Готово — мы напишем, когда товар вернётся', en: 'Done — we will email you when it returns', it: 'Fatto — ti scriveremo al ritorno', fr: 'Entendu — nous vous écrirons au retour', de: 'Erledigt — wir melden uns bei Rückkehr' },
   'stockAlert.badEmail': { ru: 'Проверьте адрес электронной почты', en: 'Check the email address', it: "Controlla l'indirizzo email", fr: "Vérifiez l'adresse e-mail", de: 'Bitte E-Mail-Adresse prüfen' },
   'stockAlert.available': { ru: 'Этот вариант снова в наличии — обновите страницу', en: 'This option is back in stock — refresh the page', it: 'Questa variante è di nuovo disponibile — aggiorna la pagina', fr: 'Cette option est de retour — actualisez la page', de: 'Diese Variante ist wieder da — Seite neu laden' },
+  'stockAlert.already': { ru: 'Вы уже в списке ожидания — мы напишем, когда товар вернётся', en: 'You are already on the waitlist — we will email you when it returns', it: 'Sei già in lista d’attesa: ti scriveremo quando tornerà', fr: 'Vous êtes déjà sur la liste d’attente : nous vous écrirons à son retour', de: 'Sie stehen bereits auf der Warteliste – wir melden uns, sobald er wieder da ist' },
+  'stockAlert.rateLimited': { ru: 'Слишком много попыток. Попробуйте через несколько минут', en: 'Too many attempts. Please try again in a few minutes', it: 'Troppi tentativi. Riprova tra qualche minuto', fr: 'Trop de tentatives. Réessayez dans quelques minutes', de: 'Zu viele Versuche. Bitte versuchen Sie es in ein paar Minuten erneut' },
   'stockAlert.failed': { ru: 'Не удалось сохранить подписку', en: 'Could not save the alert', it: "Impossibile salvare l'avviso", fr: "Impossible d'enregistrer l'alerte", de: 'Benachrichtigung konnte nicht gespeichert werden' },
   'account.title': { ru: 'Личный кабинет', en: 'Your account', it: 'Il tuo account', fr: 'Votre compte', de: 'Ihr Konto' },
   'account.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },

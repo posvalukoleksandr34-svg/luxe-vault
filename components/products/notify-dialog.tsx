@@ -10,16 +10,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { joinWaitlist } from '@/actions/waitlist'
+import { waitlistErrorMessage } from '@/components/products/waitlist-form'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /**
  * "Notify when available" — the back-in-stock sign-up, as a dialog.
  *
- * It writes through /api/stock-alerts into public.stock_alerts: the same
- * table the scheduled sweep (app/api/cron/sweep) reads and emails from. That
- * is the whole reason there is no second subscriptions table — a sign-up the
- * sweep never reads is a sign-up that is never answered.
+ * It writes through the joinWaitlist Server Action into public.waitlist: the
+ * same table the scheduled sweep (app/api/cron/sweep) reads and emails from.
+ * That is the whole reason there is no second subscriptions table — a sign-up
+ * the sweep never reads is a sign-up that is never answered.
  *
  * The API, not this component, decides whose address the email goes to: for
  * a signed-in customer it uses the session and ignores the body. The field is
@@ -76,20 +78,10 @@ export function NotifyWhenAvailable({
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/stock-alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, size: chosen, color, email }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(
-          data.error === 'INVALID_EMAIL'
-            ? t('stockAlert.badEmail')
-            : data.error === 'IN_STOCK'
-              ? t('stockAlert.available')
-              : t('stockAlert.failed'),
-        )
+      // The same Server Action as the product page's inline waitlist form.
+      const result = await joinWaitlist({ productId, size: chosen, color, email })
+      if (!result.ok) {
+        setError(waitlistErrorMessage(result.error, t))
         return
       }
       setDone(true)

@@ -19,7 +19,9 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
+import { HurryDot } from '@/components/products/hurry-dot'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
+import { WaitlistForm } from '@/components/products/waitlist-form'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
 import {
   Accordion,
@@ -209,6 +211,17 @@ export function ProductDetail({ product }: { product: Product }) {
         ? tf('stock.onlyInSize', { n: limit, size })
         : tf('stock.only', { n: limit })
       : null
+
+  // Scarcity, said when it is real: three or fewer of this exact size and
+  // colour, read from live stock — so it never claims a shortage the database
+  // does not have. Not once everything left is already in this cart.
+  const hurryCount =
+    size && limit !== null && limit > 0 && limit <= 3 && !maxedOut ? limit : null
+
+  // The chosen variant is tracked and at zero: the waitlist form takes the
+  // add-to-cart button's place.
+  const showWaitlist = Boolean(tracked && size && color && (selectedStock === 0 || limit === 0))
+  const soldOutSizes = tracked && color ? p.sizes.filter((s) => stockFor(s, color) === 0) : []
 
   // Switching to a size with less on hand must not carry a now-impossible
   // quantity across with it.
@@ -645,7 +658,19 @@ export function ProductDetail({ product }: { product: Product }) {
           {!size && <p className="mt-2 text-[11px] text-destructive/80">{t('product.selectSize')}</p>}
           {/* Only when tracked AND actually low — a permanent counter on a
               well-stocked item is noise and manufactured urgency. */}
-          {lowStockText && <p className="mt-2 text-[11px] text-gold/80">{lowStockText}</p>}
+          {lowStockText && hurryCount === null && <p className="mt-2 text-[11px] text-gold/80">{lowStockText}</p>}
+          {/* Sold-out sizes cannot be selected, so the waitlist for them is a
+              quiet link here — it opens the dialog on just those sizes. (A
+              chosen variant at zero gets the inline form instead, below.) */}
+          {soldOutSizes.length > 0 && color && !showWaitlist && (
+            <NotifyWhenAvailable
+              variant="compact"
+              productId={p.id}
+              color={color}
+              sizes={soldOutSizes}
+              className="mt-3"
+            />
+          )}
         </div>
 
         {showGuide && (
@@ -678,7 +703,14 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         )}
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {hurryCount !== null && (
+          <p role="status" className="mt-7 flex items-center gap-2.5 text-[12px] font-medium tracking-wide text-orange-400">
+            <HurryDot />
+            {tf('stock.hurry', { n: hurryCount })}
+          </p>
+        )}
+
+        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2', hurryCount !== null ? 'mt-4' : 'mt-8')}>
           <div className="flex items-center border border-border">
             <button
               type="button"
@@ -718,8 +750,8 @@ export function ProductDetail({ product }: { product: Product }) {
               available" — a dead disabled button is the worst thing to show at
               the moment of disappointment. An untracked product marked sold
               out keeps the disabled state: there is no variant to subscribe to. */}
-          {tracked && size && color && selectedStock === 0 ? (
-            <NotifyWhenAvailable productId={p.id} size={size} color={color} />
+          {showWaitlist && size && color ? (
+            <WaitlistForm productId={p.id} variantId={selectedVariant?.id} size={size} color={color} />
           ) : (
             <button
               type="button"

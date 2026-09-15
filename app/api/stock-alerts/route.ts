@@ -1,25 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { enforceLimit } from '@/lib/server/rate-limit'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { addToWaitlist } from '@/lib/server/waitlist'
 import { getCurrentUser } from '@/lib/supabase/server'
-import { isValidEmail } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * "Tell me when this is back."
+ * "Tell me when this is back" — the JSON entry point, kept for anything that
+ * still posts here (an open tab from before the Server Action). It writes to
+ * public.waitlist through the same helper as actions/waitlist.ts.
  *
- * Open to guests as well as signed-in customers: the person most likely to
- * want this is someone who came for one thing, found it gone, and has no
- * reason to make an account first.
- *
- * The email is taken from the SESSION when there is one, and only from the
- * body when there is not. Otherwise a signed-in visitor could subscribe
- * somebody else's address, and this endpoint would be a way to make the shop
- * email a stranger.
- *
- * Throttled, because it sends mail eventually and an unbounded version is a
- * queue anyone can fill.
+ * Open to guests as well as signed-in customers. The email is taken from the
+ * SESSION when there is one, and only from the body when there is not, so a
+ * signed-in visitor cannot subscribe somebody else's address. Throttled,
+ * because it ends in an email.
  */
 export async function POST(request: NextRequest) {
   const limited = await enforceLimit('stock.alert', request)
@@ -35,55 +29,16 @@ export async function POST(request: NextRequest) {
   const productId = typeof body.productId === 'string' ? body.productId.trim() : ''
   const size = typeof body.size === 'string' ? body.size.trim() : ''
   const color = typeof body.color === 'string' ? body.color.trim() : ''
-
   if (!productId || !size || !color) {
     return NextResponse.json({ error: 'Missing variant' }, { status: 400 })
   }
 
   const user = await getCurrentUser()
-  const email = user?.email ?? (typeof body.email === 'string' ? body.email.trim() : '')
+  const email = user?.email ?? (typeof body.email === 'string' ? body.email : '')
 
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'INVALID_EMAIL' }, { status: 400 })
-  }
+  const result = await addToWaitlist({ productSlug: productId, size, color, email, userId: user?.id })
+  if (result.ok) return NextResponse.json({ ok: true, already: result.already }, { status: result.already ? 200 : 201 })
 
-  const supabase = createAdminClient()
-
-  // Only for a variant that exists and is actually out of stock. Subscribing
-  // to something already available would fire on the next sweep and read as a
-  // spam email about a product the customer could simply have bought.
-  const { data: variant } = await supabase
-    .from('product_variants')
-    .select('stock, products!inner ( slug )')
-    .eq('products.slug', productId)
-    .eq('size', size)
-    .eq('color', color)
-    .maybeSingle()
-
-  if (!variant) {
-    return NextResponse.json({ error: 'UNKNOWN_VARIANT' }, { status: 404 })
-  }
-  if (Number(variant.stock) > 0) {
-    return NextResponse.json({ error: 'IN_STOCK' }, { status: 409 })
-  }
-
-  const { error } = await supabase.from('stock_alerts').insert({
-    user_id: user?.id ?? null,
-    email: email.toLowerCase(),
-    product_id: productId,
-    size,
-    color,
-  })
-
-  if (error) {
-    // 23505 is the one-live-alert-per-variant index. Already subscribed is a
-    // success from the customer's point of view — they asked to be told, and
-    // they will be.
-    if (error.code === '23505') return NextResponse.json({ ok: true, already: true })
-
-    console.error('[stock-alerts] insert failed:', error.message)
-    return NextResponse.json({ error: 'Could not save the alert' }, { status: 500 })
-  }
-
-  return NextResponse.json({ ok: true }, { status: 201 })
+  const status = { INVALID_EMAIL: 400, UNKNOWN_VARIANT: 404, IN_STOCK: 409, FAILED: 500 }[result.error]
+  return NextResponse.json({ error: result.error }, { status })
 }

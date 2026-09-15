@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
+import { HurryDot } from '@/components/products/hurry-dot'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { PRODUCT_PLACEHOLDER, productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
@@ -19,9 +20,17 @@ export function ProductCard({
    *  eagerly and at high priority — it is the page's LCP candidate. */
   priority?: boolean
 }) {
-  const { localize, t, categoryLabels } = useStore()
+  const { localize, t, tf, categoryLabels } = useStore()
   const { playHoverSound } = useAudioFeedback()
-  const outOfStock = product.statuses.includes('out_of_stock')
+  // Units across every size and colour — null when stock is not tracked
+  // (no variant rows), which is NOT the same as none left.
+  const totalStock =
+    product.variants && product.variants.length > 0
+      ? product.variants.reduce((sum, v) => sum + Math.max(0, v.stock), 0)
+      : null
+  const outOfStock = product.statuses.includes('out_of_stock') || totalStock === 0
+  // Scarcity only when real: three or fewer left in all.
+  const hurryCount = !outOfStock && totalStock !== null && totalStock <= 3 ? totalStock : null
   // Only a real discount — a compare-at price above the price. See
   // discountPercent: an old price at or below the price shows nothing.
   const discount = discountPercent(product.price, product.oldPrice)
@@ -137,6 +146,12 @@ export function ProductCard({
             </span>
           )}
         </div>
+        {hurryCount !== null && (
+          <p className="mt-1 flex items-center gap-2 text-[11px] font-medium text-orange-400">
+            <HurryDot />
+            {tf('stock.hurry', { n: hurryCount })}
+          </p>
+        )}
       </div>
     </Link>
   )
