@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
 import { ProductGridSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/state-view'
+import { isProductBuyable } from '@/lib/availability'
+import { buildSearchContext, interpretQuery } from '@/lib/search/interpret'
+import { matchProducts } from '@/lib/search/match'
 import { EMPTY_FILTER, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -27,11 +30,7 @@ function discountOf(p: Product): number {
  * distinction the product page makes. Reading absent stock as zero here would
  * empty the grid the moment the availability filter was ticked.
  */
-function isBuyable(p: Product): boolean {
-  if (p.statuses.includes('out_of_stock')) return false
-  if (!p.variants?.length) return true
-  return p.variants.some((v) => v.stock > 0)
-}
+const isBuyable = isProductBuyable
 
 export function ProductGrid({
   lockedGroup,
@@ -78,6 +77,9 @@ export function ProductGrid({
     categoryTree,
     groupLabels,
     categoryLabels,
+    // Named apart from the grid's own `categories` (its filter chips) below.
+    categories: storeCategories,
+    currency,
   } = useStore()
 
   // When the route pins the taxonomy, the store's own group/category are
@@ -86,6 +88,26 @@ export function ProductGrid({
   const locked = lockedGroup !== undefined
   const activeGroup = locked ? lockedGroup : filter.group
   const activeCategory = locked ? (lockedCategory ?? null) : filter.category
+
+  // A query that names attributes — "black oversized jacket under €200" — is
+  // read into filters (lib/search/interpret.ts), the same reading the search
+  // box uses, so pressing Enter narrows the grid the way the dropdown did. A
+  // plain word keeps the substring match below.
+  const smartIds = useMemo(() => {
+    if (!query.trim()) return null
+    const reading = interpretQuery(
+      query,
+      buildSearchContext({
+        products,
+        categoryLabels,
+        groupLabels,
+        categorySlugs: storeCategories.map((c) => c.slug),
+        currency,
+      }),
+    )
+    if (reading.filters.length === 0) return null
+    return new Set(matchProducts(products, reading).products.map((p) => p.id))
+  }, [query, products, categoryLabels, groupLabels, storeCategories, currency])
 
   const filtered = useMemo(() => {
     const result = products.filter((p) => {
@@ -104,7 +126,9 @@ export function ProductGrid({
       if (filter.minPrice !== null && p.price < filter.minPrice) return false
       if (filter.maxPrice !== null && p.price > filter.maxPrice) return false
       if (filter.inStockOnly && !isBuyable(p)) return false
-      if (query) {
+      if (query && smartIds) {
+        if (!smartIds.has(p.id)) return false
+      } else if (query) {
         // Matches the search box's reach — name, description, category and
         // collection — so typing in the header and pressing Enter narrows the
         // grid the way the dropdown ranked it. The stemming and typo
@@ -143,7 +167,7 @@ export function ProductGrid({
     }
 
     return result
-  }, [products, filter, activeGroup, activeCategory, query, localize, categoryLabels, groupLabels])
+  }, [products, filter, activeGroup, activeCategory, query, smartIds, localize, categoryLabels, groupLabels])
 
   // Counts are derived live from `products` on every render, and any group
   // or category with zero matching products is dropped from the filter bar

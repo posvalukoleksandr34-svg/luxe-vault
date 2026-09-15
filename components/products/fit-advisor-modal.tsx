@@ -12,21 +12,26 @@ import {
 } from '@/components/ui/dialog'
 import {
   HEIGHT_RANGE,
+  LETTER_SIZES,
   WEIGHT_RANGE,
+  checkFitInput,
   fitToProduct,
+  indexOfSize,
   isLetterSizeRun,
-  isValidFitInput,
   recommendSize,
   type FitPreference,
   type FitRecommendation,
+  type LetterSize,
   type ProductFit,
 } from '@/lib/fit-advisor'
 import { STYLIST_FIT_LABELS } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
+import type { SizeMeasurement } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /**
- * "Find my size" — height, weight and fit preference in, a size out.
+ * "Find my size" — a usual size and/or height and weight, a preferred fit,
+ * and this product's own cut in; a size this product can actually sell out.
  *
  * Presentation only. The rule lives in lib/fit-advisor.ts, so it can be read
  * and tuned without touching this file.
@@ -48,6 +53,8 @@ export function FitAdvisorModal({
   sizes,
   isAvailable,
   onApply,
+  productCut,
+  sizeChart,
 }: {
   /** The product's size run. */
   sizes: string[]
@@ -55,11 +62,16 @@ export function FitAdvisorModal({
   isAvailable: (size: string) => boolean
   /** Selects the size on the product page. */
   onApply: (size: string) => void
+  /** How this product is cut, when known. */
+  productCut?: FitPreference
+  /** This product's own measurements, per size. Never a shared default. */
+  sizeChart?: SizeMeasurement[]
 }) {
   const { t, tf, localize } = useStore()
   const [open, setOpen] = useState(false)
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
+  const [usual, setUsual] = useState<LetterSize | null>(null)
   const [preference, setPreference] = useState<FitPreference>('regular')
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +82,7 @@ export function FitAdvisorModal({
       if (saved && typeof saved === 'object') {
         if (typeof saved.height === 'string') setHeight(saved.height)
         if (typeof saved.weight === 'string') setWeight(saved.weight)
+        if ((LETTER_SIZES as readonly string[]).indexOf(saved.usual) !== -1) setUsual(saved.usual)
         if (PREFERENCES.indexOf(saved.preference) !== -1) setPreference(saved.preference)
       }
     } catch {
@@ -78,6 +91,8 @@ export function FitAdvisorModal({
   }, [])
 
   if (!isLetterSizeRun(sizes)) return null
+
+  const hasChart = Boolean(sizeChart?.length)
 
   // Any change to the inputs invalidates a previous answer rather than leaving
   // a recommendation on screen that no longer matches what is typed.
@@ -89,28 +104,37 @@ export function FitAdvisorModal({
 
   function calculate() {
     // A comma decimal ("72,5") is how half this site's locales type numbers.
+    const num = (v: string) => (v.trim() ? Number(v.trim().replace(',', '.')) : undefined)
     const input = {
-      heightCm: Number(height.replace(',', '.')),
-      weightKg: Number(weight.replace(',', '.')),
+      heightCm: num(height),
+      weightKg: num(weight),
+      usualSize: usual ?? undefined,
       preference,
+      productCut,
     }
-    if (!isValidFitInput(input)) {
+    const check = checkFitInput(input)
+    if (check !== 'ok') {
       setResult(null)
       setError(
-        tf('fit.invalid', {
-          hMin: HEIGHT_RANGE.min,
-          hMax: HEIGHT_RANGE.max,
-          wMin: WEIGHT_RANGE.min,
-          wMax: WEIGHT_RANGE.max,
-        }),
+        check === 'missing'
+          ? t('fit.needInput')
+          : tf('fit.invalid', {
+              hMin: HEIGHT_RANGE.min,
+              hMax: HEIGHT_RANGE.max,
+              wMin: WEIGHT_RANGE.min,
+              wMax: WEIGHT_RANGE.max,
+            }),
       )
       return
     }
-    const rec = recommendSize(input)
+    let rec = recommendSize(input)
+    // Without this product's own measurements the answer rests on standard
+    // sizing alone — never present that as certain.
+    if (!hasChart && rec.confidence === 'high') rec = { ...rec, confidence: 'medium' }
     setResult({ rec, fit: fitToProduct(rec, sizes, isAvailable) })
     setError(null)
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ height, weight, preference }))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ height, weight, usual, preference }))
     } catch {
       // Not remembering is fine.
     }
@@ -121,8 +145,28 @@ export function FitAdvisorModal({
     setOpen(false)
   }
 
+  // The size the shopper can actually select, and its real measurements.
+  const selectable = result && result.fit.kind !== 'none' ? result.fit.size : null
+  // The ideal size as THIS product writes it ("2XL" rather than "XXL").
+  const idealName = result
+    ? sizes.find((s) => indexOfSize(s) === indexOfSize(result.rec.size)) ?? result.rec.size
+    : ''
+  const row = selectable
+    ? sizeChart?.find((r) => r.size.trim().toUpperCase() === selectable.trim().toUpperCase())
+    : undefined
+  const cm = t('sizeGuide.cm')
+  const measures = row
+    ? [
+        row.chest ? `${t('sizeGuide.chest')} ${row.chest} ${cm}` : '',
+        row.length ? `${t('sizeGuide.length')} ${row.length} ${cm}` : '',
+        row.shoulder ? `${t('sizeGuide.shoulder')} ${row.shoulder} ${cm}` : '',
+        row.sleeve ? `${t('sizeGuide.sleeve')} ${row.sleeve} ${cm}` : '',
+      ].filter(Boolean)
+    : []
+
   const inputClass =
     'w-full border border-border bg-background px-3 py-2.5 text-[14px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-gold'
+  const labelClass = 'mb-1.5 block text-[11px] uppercase tracking-[0.12em] text-foreground'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -136,7 +180,7 @@ export function FitAdvisorModal({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-md border-gold/20 bg-popover">
+      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto border-gold/20 bg-popover">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-serif text-xl font-bold tracking-tight">
             <Ruler className="size-4 text-gold" />
@@ -156,10 +200,9 @@ export function FitAdvisorModal({
         >
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.12em] text-foreground">
-                {t('fit.height')}
-              </span>
+              <span className={labelClass}>{t('fit.height')}</span>
               <input
+                id="fit-height"
                 inputMode="decimal"
                 value={height}
                 onChange={(e) => edit(() => setHeight(e.target.value))}
@@ -168,10 +211,9 @@ export function FitAdvisorModal({
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-[11px] uppercase tracking-[0.12em] text-foreground">
-                {t('fit.weight')}
-              </span>
+              <span className={labelClass}>{t('fit.weight')}</span>
               <input
+                id="fit-weight"
                 inputMode="decimal"
                 value={weight}
                 onChange={(e) => edit(() => setWeight(e.target.value))}
@@ -181,10 +223,35 @@ export function FitAdvisorModal({
             </label>
           </div>
 
+          {/* Optional, and enough on its own: the quickest way in for someone
+              who knows they wear an M. Tap again to clear. */}
           <fieldset>
-            <legend className="mb-2 text-[11px] uppercase tracking-[0.12em] text-foreground">
-              {t('fit.preference')}
+            <legend className={labelClass}>
+              {t('fit.usual')}{' '}
+              <span className="normal-case tracking-normal text-muted-foreground/60">· {t('fit.optional')}</span>
             </legend>
+            <div className="grid grid-cols-7 gap-1">
+              {LETTER_SIZES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => edit(() => setUsual(usual === s ? null : s))}
+                  aria-pressed={usual === s}
+                  className={cn(
+                    'min-h-[40px] border text-[12px] transition-colors duration-200',
+                    usual === s
+                      ? 'border-gold bg-gold/5 text-gold'
+                      : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className={labelClass}>{t('fit.preference')}</legend>
             {/* The same labels the stylist uses for fit, so "Оверсайз" means one
                 thing across the whole shop. */}
             <div className="grid grid-cols-3 gap-2">
@@ -222,35 +289,59 @@ export function FitAdvisorModal({
         </form>
 
         {result && (
-          <div role="status" className="border border-gold/30 bg-gold/[0.04] p-4">
-            <p className="font-serif text-lg font-bold text-foreground">
-              {tf('fit.recommended', { size: result.rec.size })}
+          <div role="status" className="border border-gold/30 bg-gold/[0.04] p-5">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {t('fit.recommendedLabel')}
             </p>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="mt-1.5 font-serif text-5xl font-bold leading-none text-gold">{idealName}</p>
+            {result.fit.kind === 'exact' && (
+              <p className="mt-3 text-[13px] font-light leading-relaxed text-foreground/90">
+                {tf('fit.closest', { size: result.fit.size })}
+              </p>
+            )}
+            <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               {t('fit.basedOn')} · {t(`fit.confidence.${result.rec.confidence}` as Parameters<typeof t>[0])}
             </p>
 
             {result.fit.kind === 'not_carried' && (
               <p className="mt-3 text-[12px] font-light text-muted-foreground">
-                {tf('fit.notCarried', { ideal: result.fit.ideal, size: result.fit.size })}
+                {tf('fit.notCarried', { ideal: idealName, size: result.fit.size })}
               </p>
             )}
             {result.fit.kind === 'sold_out' && (
               <p className="mt-3 text-[12px] font-light text-muted-foreground">
-                {tf('fit.soldOut', { ideal: result.fit.ideal, size: result.fit.size })}
+                {tf('fit.soldOut', { ideal: idealName, size: result.fit.size })}
               </p>
             )}
             {result.fit.kind === 'none' && (
               <p className="mt-3 text-[12px] font-light text-destructive/80">{t('fit.none')}</p>
             )}
 
-            {result.fit.kind !== 'none' && (
+            {productCut && productCut !== 'regular' && (
+              <p className="mt-3 text-[12px] font-light text-muted-foreground">
+                {tf('fit.cutNote', { cut: localize(STYLIST_FIT_LABELS[productCut]).toLowerCase() })}
+              </p>
+            )}
+
+            {selectable && measures.length > 0 && (
+              <p className="mt-3 border-t border-gold/15 pt-3 text-[12px] font-light leading-relaxed text-muted-foreground">
+                <span className="text-foreground/80">{tf('fit.measurements', { size: selectable })}:</span>{' '}
+                {measures.join(' · ')}
+              </p>
+            )}
+            {!hasChart && (
+              <p className="mt-3 border-t border-gold/15 pt-3 text-[12px] font-light leading-relaxed text-muted-foreground">
+                {t('fit.noChart')}
+              </p>
+            )}
+
+            {selectable && (
               <button
                 type="button"
-                onClick={() => apply((result.fit as { size: string }).size)}
+                onClick={() => apply(selectable)}
                 className="mt-4 w-full border border-gold bg-gold px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90"
               >
-                {tf('fit.apply', { size: result.fit.size })}
+                {tf('fit.apply', { size: selectable })}
               </button>
             )}
           </div>

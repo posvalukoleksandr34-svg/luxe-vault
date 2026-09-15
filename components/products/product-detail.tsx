@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
 import { HurryDot } from '@/components/products/hurry-dot'
+import { resolveTags } from '@/lib/stylist/tagging'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
 import { WaitlistForm } from '@/components/products/waitlist-form'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
@@ -608,8 +609,12 @@ export function ProductDetail({ product }: { product: Product }) {
                   "Available" means buyable in the colour chosen right now. */}
               <FitAdvisorModal
                 sizes={p.sizes}
-                isAvailable={(s) => stockFor(s, color) !== 0}
+                // Buyable now: the catalogue's stock AND the server's latest
+                // word on it (the store's stockLimit).
+                isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor) !== 0}
                 onApply={setSize}
+                productCut={resolveTags(p).fit}
+                sizeChart={p.sizeChart}
               />
               {/* Hidden entirely when the product has no measurements — an
                   empty guide is worse than no guide. */}

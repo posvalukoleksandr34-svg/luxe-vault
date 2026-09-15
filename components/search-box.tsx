@@ -5,8 +5,25 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { trackSearch } from '@/lib/analytics'
+import { isProductBuyable } from '@/lib/availability'
+import { formatMoney } from '@/lib/currency'
+import {
+  STATUS_LABELS,
+  STYLIST_COLOR_LABELS,
+  STYLIST_FIT_LABELS,
+  STYLIST_OCCASION_LABELS,
+  STYLIST_STYLE_LABELS,
+} from '@/lib/i18n'
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches'
 import { productImage } from '@/lib/product-image'
+import {
+  buildSearchContext,
+  interpretQuery,
+  normalizeText,
+  removePhrase,
+  type SearchFilter,
+} from '@/lib/search/interpret'
+import { matchProducts, productHaystack, type RelaxedKind } from '@/lib/search/match'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -15,22 +32,34 @@ import type { Product } from '@/lib/types'
  * The catalogue search box, with suggestions.
  *
  * Replaces a bare input that set a store filter and nothing else. Ranking,
- * stemming and typo tolerance all happen in Postgres — see migration 0017 —
- * so this component's job is only to ask at the right moment and show the
+ * stemming and typo tolerance happen in Postgres (migration 0017); natural
+ * requests — "black oversized jacket under €200" — are read into filters
+ * (lib/search/interpret.ts) and shown as chips the shopper can take off one
+ * at a time. This component's job is to ask at the right moment and show the
  * answer well.
  *
  * WHAT THE PANEL SHOWS, AND WHEN
  *
  *   empty query   recent searches (local) and popular ones (aggregate)
- *   typing        matching products, ranked
+ *   typing        matching products, ranked — with the understood filters
  *   no matches    a plain empty state plus something to click, because a dead
  *                 end on a search box is a lost sale
+ *
+ * NEVER BROKEN. If the request fails — offline, throttled, a server error —
+ * the same reading is applied to the catalogue already in the browser.
  *
  * The store's `query` is still updated, so the grid below stays in sync for
  * anyone who ignores the dropdown and just presses Enter.
  */
 
 const DEBOUNCE_MS = 220
+/** A model-assisted reading is asked for only once typing has paused. */
+const AI_SETTLE_MS = 700
+const MAX_RESULTS = 24
+
+type Reading = { filters: SearchFilter[]; keywords: string[]; relaxed: RelaxedKind[] }
+type Found = { results: Product[]; total: number; fuzzy: boolean; reading: Reading | null }
+const NOTHING: Found = { results: [], total: 0, fuzzy: false, reading: null }
 
 export function SearchBox({
   variant = 'desktop',
@@ -40,12 +69,22 @@ export function SearchBox({
   /** Lets the header close its mobile panel when a result is clicked. */
   onNavigate?: () => void
 }) {
-  const { query, setQuery, localize, t } = useStore()
+  const {
+    query,
+    setQuery,
+    localize,
+    t,
+    tf,
+    products,
+    categories,
+    categoryLabels,
+    groupLabels,
+    currency,
+  } = useStore()
 
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<Product[]>([])
-  const [fuzzy, setFuzzy] = useState(false)
+  const [found, setFound] = useState<Found>(NOTHING)
   const [popular, setPopular] = useState<string[]>([])
   const [recent, setRecent] = useState<string[]>([])
 
@@ -73,6 +112,32 @@ export function SearchBox({
     }
   }, [open])
 
+  /** The same search, run on the catalogue this browser already holds. */
+  function searchLocally(term: string): Found {
+    const reading = interpretQuery(
+      term,
+      buildSearchContext({
+        products,
+        categoryLabels,
+        groupLabels,
+        categorySlugs: categories.map((c) => c.slug),
+        currency,
+      }),
+    )
+    if (reading.filters.length > 0) {
+      const m = matchProducts(products, reading)
+      return {
+        results: m.products.slice(0, MAX_RESULTS),
+        total: m.products.length,
+        fuzzy: false,
+        reading: { ...reading, relaxed: m.relaxed },
+      }
+    }
+    const q = normalizeText(term)
+    const hits = products.filter((p) => productHaystack(p).indexOf(q) !== -1)
+    return { results: hits.slice(0, MAX_RESULTS), total: hits.length, fuzzy: false, reading: null }
+  }
+
   /**
    * Debounced fetch.
    *
@@ -85,8 +150,7 @@ export function SearchBox({
     const term = query.trim()
 
     if (term.length < 2) {
-      setResults([])
-      setFuzzy(false)
+      setFound(NOTHING)
       setLoading(false)
       // Popular searches are worth having ready before the customer types.
       if (open && popular.length === 0) {
@@ -100,31 +164,69 @@ export function SearchBox({
 
     setLoading(true)
     const controller = new AbortController()
+    let aiTimer: ReturnType<typeof setTimeout> | undefined
+    const url = `/api/search?q=${encodeURIComponent(term)}&cur=${currency}`
+
+    async function ask(href: string) {
+      const res = await fetch(href, { signal: controller.signal })
+      if (!res.ok) throw new Error(String(res.status))
+      return res.json()
+    }
+
+    function show(data: {
+      results?: Product[]
+      total?: number
+      fuzzy?: boolean
+      popular?: string[]
+      interpretation?: Reading
+    }) {
+      const results = data.results ?? []
+      setFound({
+        results,
+        total: data.total ?? results.length,
+        fuzzy: Boolean(data.fuzzy),
+        reading: data.interpretation?.filters?.length ? data.interpretation : null,
+      })
+      if (data.popular?.length) setPopular(data.popular)
+      trackSearch(term, results.length)
+      if (results.length) rememberSearch(term)
+    }
+
     const timer = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: controller.signal })
-        .then((r) => (r.ok ? r.json() : null))
+      ask(url)
         .then((data) => {
-          if (!data) return
-          setResults(data.results ?? [])
-          setFuzzy(Boolean(data.fuzzy))
-          if (data.popular?.length) setPopular(data.popular)
-          trackSearch(term, data.results?.length ?? 0)
-          if (data.results?.length) {
-            rememberSearch(term)
+          show(data)
+          // Words the rules could not place: once typing has settled, ask
+          // again with the model's help. Until then — and if it fails — the
+          // rules' answer stands.
+          if (data?.aiEligible) {
+            aiTimer = setTimeout(() => {
+              ask(`${url}&ai=1`)
+                .then((next) => {
+                  if (next?.interpretation?.ai) show(next)
+                })
+                .catch(() => {})
+            }, AI_SETTLE_MS)
           }
         })
-        .catch(() => {})
+        .catch((e) => {
+          if ((e as Error).name === 'AbortError') return
+          // Offline, throttled or a server error: search what is already here.
+          setFound(searchLocally(term))
+        })
         .finally(() => setLoading(false))
     }, DEBOUNCE_MS)
 
     return () => {
       controller.abort()
       clearTimeout(timer)
+      if (aiTimer) clearTimeout(aiTimer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, open])
+  }, [query, open, currency])
 
   const term = query.trim()
+  const { results, total, fuzzy, reading } = found
   const showSuggestions = term.length < 2
   const showEmptyState = !loading && term.length >= 2 && results.length === 0
 
@@ -136,6 +238,47 @@ export function SearchBox({
     setOpen(false)
     onNavigate?.()
   }
+
+  /** The chip for one understood filter, in the visitor's language. */
+  function chipLabel(f: SearchFilter): string {
+    switch (f.kind) {
+      case 'color':
+        return localize(STYLIST_COLOR_LABELS[f.value])
+      case 'fit':
+        return localize(STYLIST_FIT_LABELS[f.value])
+      case 'style':
+        return localize(STYLIST_STYLE_LABELS[f.value])
+      case 'occasion':
+        return localize(STYLIST_OCCASION_LABELS[f.value])
+      case 'category':
+        return localize(categoryLabels[f.value[0]] ?? {}) || f.value[0]
+      case 'group':
+        return localize(groupLabels[f.value] ?? {}) || f.value
+      case 'brand':
+        return f.value
+      case 'maxPrice':
+        return tf('search.under', { amount: formatMoney(f.value, f.currency) })
+      case 'minPrice':
+        return tf('search.over', { amount: formatMoney(f.value, f.currency) })
+      case 'inStock':
+        return localize(STATUS_LABELS.in_stock)
+    }
+  }
+
+  // What was let go to find anything at all, said plainly.
+  const relaxedText = reading
+    ? reading.relaxed
+        .map((kind) =>
+          kind === 'keywords'
+            ? reading.keywords.map((w) => `“${w}”`).join(' ')
+            : reading.filters
+                .filter((f) => f.kind === kind)
+                .map(chipLabel)
+                .join(', '),
+        )
+        .filter(Boolean)
+        .join(', ')
+    : ''
 
   return (
     <div ref={containerRef} className={cn('relative', variant === 'mobile' && 'w-full')}>
@@ -167,7 +310,7 @@ export function SearchBox({
           type="button"
           onClick={() => {
             setQuery('')
-            setResults([])
+            setFound(NOTHING)
           }}
           aria-label={t('search.clear')}
           className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-muted-foreground/60 transition hover:text-foreground"
@@ -182,7 +325,7 @@ export function SearchBox({
           role="listbox"
           className={cn(
             'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto border border-border bg-popover shadow-xl',
-            variant === 'desktop' ? 'right-0 w-[22rem]' : 'left-0 right-0 w-full',
+            variant === 'desktop' ? 'right-0 w-[24rem]' : 'left-0 right-0 w-full',
           )}
         >
           {loading && (
@@ -227,8 +370,42 @@ export function SearchBox({
               )}
 
               {recent.length === 0 && popular.length === 0 && (
-                <p className="py-4 text-center text-[12px] font-light text-muted-foreground">
+                <p className="py-3 text-center text-[12px] font-light text-muted-foreground">
                   {t('search.hint')}
+                </p>
+              )}
+              <p className="mt-3 border-t border-border/40 pt-2.5 text-[11px] font-light text-muted-foreground/60">
+                {t('search.hintSmart')}
+              </p>
+            </div>
+          )}
+
+          {/* What the query was understood as — each filter removable */}
+          {!loading && !showSuggestions && reading && (
+            <div className="border-b border-border/50 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {reading.filters.map((f, i) => {
+                  const label = chipLabel(f)
+                  return (
+                    <button
+                      key={`${f.kind}-${i}`}
+                      type="button"
+                      onClick={() => setQuery(removePhrase(query, f.phrase))}
+                      aria-label={`${t('search.removeFilter')}: ${label}`}
+                      className="group flex items-center gap-1 border border-gold/30 px-2 py-[3px] text-[10px] uppercase tracking-[0.14em] text-gold/90 transition-colors hover:border-gold hover:text-gold"
+                    >
+                      {label}
+                      <X className="size-2.5 opacity-50 transition-opacity group-hover:opacity-100" />
+                    </button>
+                  )
+                })}
+                <span className="ml-auto text-[10px] uppercase tracking-[0.14em] tabular-nums text-muted-foreground">
+                  {tf('search.count', { n: total })}
+                </span>
+              </div>
+              {relaxedText && results.length > 0 && (
+                <p className="mt-2 text-[11px] font-light text-muted-foreground">
+                  {tf('search.relaxed', { what: relaxedText })}
                 </p>
               )}
             </div>
@@ -243,33 +420,37 @@ export function SearchBox({
                 </p>
               )}
               <ul>
-                {results.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/product/${encodeURIComponent(p.id)}`}
-                      onClick={close}
-                      className="flex items-center gap-3 border-b border-border/40 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40"
-                    >
-                      <span className="relative size-11 shrink-0 overflow-hidden border border-border/60">
-                        <Image
-                          src={productImage(p.image)}
-                          alt=""
-                          fill
-                          sizes="44px"
-                          className="object-cover"
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-light text-foreground">
-                          {localize(p.name)}
+                {results.map((p) => {
+                  const buyable = isProductBuyable(p)
+                  return (
+                    <li key={p.id}>
+                      <Link
+                        href={`/product/${encodeURIComponent(p.id)}`}
+                        onClick={close}
+                        className="flex items-center gap-3 border-b border-border/40 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40"
+                      >
+                        <span className="relative size-11 shrink-0 overflow-hidden border border-border/60">
+                          <Image
+                            src={productImage(p.image)}
+                            alt=""
+                            fill
+                            sizes="44px"
+                            className={cn('object-cover', !buyable && 'opacity-50 grayscale')}
+                          />
                         </span>
-                        <span className="block text-[11px] text-muted-foreground/70">
-                          {formatPrice(p.price)}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-light text-foreground">
+                            {localize(p.name)}
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground/70">
+                            {formatPrice(p.price)}
+                            {!buyable && <span className="text-muted-foreground/60"> · {t('sold.out')}</span>}
+                          </span>
                         </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}

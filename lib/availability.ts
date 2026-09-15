@@ -6,7 +6,19 @@
 // the same rule on every later stock change — a sale, a cancellation, an
 // inventory edit — in migration 0032, so the tag can never drift from the
 // quantities it describes.
-import type { StatusKey, Variant } from './types'
+import type { Product, StatusKey, Variant } from './types'
+
+/**
+ * Whether a customer can buy the product at all right now.
+ *
+ * A product with no variant rows is UNTRACKED, not sold out — reading absent
+ * stock as zero would empty every availability filter the moment it is used.
+ */
+export function isProductBuyable(p: Pick<Product, 'statuses' | 'variants'>): boolean {
+  if (p.statuses.includes('out_of_stock')) return false
+  if (!p.variants?.length) return true
+  return p.variants.some((v) => v.stock > 0)
+}
 
 /** The availability pair. A product carries exactly one of them. */
 export const AVAILABILITY_STATUSES: StatusKey[] = ['in_stock', 'out_of_stock']
