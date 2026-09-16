@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { applyCoupon } from '@/lib/server/coupons'
+import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
 
@@ -42,11 +43,22 @@ export async function POST(request: NextRequest) {
     ? body.productSlugs.filter((s): s is string => typeof s === 'string').slice(0, 50)
     : []
 
-  const userId = (await getCurrentUser())?.id
+  const user = await getCurrentUser()
+  const userId = user?.id
 
   const result = await applyCoupon(code, subtotal, { userId, productSlugs, commit: false })
 
-  if (!result.ok) return NextResponse.json({ ok: false, reason: result.reason })
+  if (!result.ok) {
+    // Not a coupon: perhaps a friend's referral code (REF-XXXXXX). Previewed
+    // with what is known now; order creation checks the full rules again.
+    const referralCode = normaliseReferralCode(code)
+    if (result.reason === 'NOT_FOUND' && referralCode) {
+      const referral = await checkReferralCode(referralCode, subtotal, { userId, email: user?.email ?? undefined })
+      if (referral.ok) return NextResponse.json({ ok: true, code: referralCode, discount: referral.discount })
+      return NextResponse.json({ ok: false, reason: referral.reason })
+    }
+    return NextResponse.json({ ok: false, reason: result.reason })
+  }
 
   // The coupon's id is deliberately not returned — the browser has no use for
   // it and it is an internal identifier.

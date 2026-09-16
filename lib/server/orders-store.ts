@@ -12,6 +12,7 @@
 import 'server-only'
 
 import { sendOrderStatusEmail } from '@/lib/server/emails/send-lifecycle'
+import { grantReferralReward, reverseReferralReward } from '@/lib/server/referrals'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
 
@@ -466,7 +467,15 @@ export async function setPaymentStatus(
     .maybeSingle()
 
   if (error) throw new Error(`Failed to set payment status: ${error.message}`)
-  return data ? rowToOrder(asRow(data)) : null
+  if (!data) return null
+
+  const order = rowToOrder(asRow(data))
+  // A referred friend's first order: paid credits the referrer; expired
+  // unpaid frees the friend's code for a real first order. Both idempotent,
+  // so a replayed webhook changes nothing. Neither throws.
+  if (paymentStatus === 'paid') await grantReferralReward(order.id)
+  else if (paymentStatus === 'expired') await reverseReferralReward(order.id)
+  return order
 }
 
 export async function setOrderStatus(
@@ -511,6 +520,10 @@ export async function setOrderStatus(
   if (!data) return null
 
   const updated = rowToOrder(asRow(data))
+
+  // Cancelled by the team: a referral on this order is released or, if it
+  // had been rewarded, reversed.
+  if (status === 'cancelled' && prev?.status !== 'cancelled') await reverseReferralReward(id)
 
   // The customer is emailed when the status actually changes — re-saving an
   // order unchanged used to send the same email again — and, for a shipped
@@ -577,6 +590,7 @@ export async function cancelOrder(
   if (!data) return { order: null, conflict: true }
 
   await restoreStock(id)
+  await reverseReferralReward(id)
   const cancelled = rowToOrder(asRow(data))
   void sendOrderStatusEmail(cancelled, 'cancelled')
   return { order: cancelled, conflict: false }
@@ -659,7 +673,11 @@ export async function recordRefund(
   // back would corrupt the count.
   if (!data) return null
 
-  if (params.fully) await restoreStock(id)
+  if (params.fully) {
+    await restoreStock(id)
+    // A referral bonus earned on this order does not survive its refund.
+    await reverseReferralReward(id)
+  }
 
   const refunded = rowToOrder(asRow(data))
   // Silence after money moves is what turns a refund into a chargeback, so

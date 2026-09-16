@@ -25,6 +25,7 @@ import {
   type CurrencyCode,
 } from './currency'
 import { createClient } from './supabase/client'
+import { readReferralCookie } from './referral-program'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
 import {
@@ -465,6 +466,26 @@ function maybeSendWelcome() {
       active = false
     }
   }, [currentUserId, locale, metadataLanguage])
+
+  /**
+   * An invited friend who signs in: recorded as the referrer's pending invite.
+   * Only when the browser holds a referral code (the /r/<code> cookie), and
+   * once per account per browser session. The server decides eligibility —
+   * a new account with no orders — and reads the code from the cookie itself.
+   */
+  useEffect(() => {
+    if (!currentUserId || !readReferralCookie()) return
+    const key = `lv-ref-claimed:${currentUserId}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+    } catch {
+      // Storage blocked: the claim is idempotent, so trying again is harmless.
+    }
+    fetch('/api/referrals/claim', { method: 'POST' }).catch(() => {
+      // Best effort; the code still applies at checkout.
+    })
+  }, [currentUserId])
 
   useEffect(() => {
     if (!currentUserId || !isSupabaseConfigured) return

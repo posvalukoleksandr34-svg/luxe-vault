@@ -14,6 +14,7 @@ import {
 import { readCatalog } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import { applyCoupon } from '@/lib/server/coupons'
+import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
 import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
 import type { CartItem, Order, Product } from '@/lib/types'
 
@@ -51,6 +52,9 @@ export type ValidatedDraft = {
   claimedTotal?: number
   promo?: string
   couponId?: string
+  /** Set by repriceItems() when the promo is a friend's referral code: whose
+   *  it is. Not stored on the order; the referral row records the link. */
+  referrerId?: string
   /** auth.users.id of the buyer, when signed in. Scopes user-specific codes. */
   userId?: string
   payment: string
@@ -255,6 +259,7 @@ export async function repriceItems(
   let discount = 0
   let couponId: string | undefined
   let appliedCode: string | undefined
+  let referrerId: string | undefined
 
   if (draft.promo) {
     const coupon = await applyCoupon(draft.promo, subtotal, {
@@ -266,6 +271,18 @@ export async function repriceItems(
       discount = round2(coupon.discount)
       couponId = coupon.couponId
       appliedCode = coupon.code
+    } else if (coupon.reason === 'NOT_FOUND' && normaliseReferralCode(draft.promo)) {
+      // A friend's referral code: the first-order discount, for a buyer who
+      // is not the referrer and has not ordered before (checkReferralCode).
+      const referral = await checkReferralCode(draft.promo, subtotal, {
+        userId: draft.userId,
+        email: draft.customer.email,
+      })
+      if (referral.ok) {
+        discount = round2(referral.discount)
+        appliedCode = normaliseReferralCode(draft.promo) ?? undefined
+        referrerId = referral.referrerId
+      }
     }
     // A code that no longer validates is silently dropped rather than failing
     // the order. It expired, or ran out, between the cart and the button —
@@ -312,6 +329,7 @@ export async function repriceItems(
       total,
       promo: appliedCode,
       couponId,
+      referrerId,
       // From the catalogue, like the prices: the slowest piece sets the window.
       // Pieces without their own use the admin's timeframe, in calendar days.
       deliveryDays: basketDeliveryDays(basket, businessToCalendarDays(shipping.deliveryTimeframe)),

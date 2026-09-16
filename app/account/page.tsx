@@ -2,12 +2,13 @@
 
 import { ArrowRight, ChevronDown, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
 import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
+import { ReferralSection } from '@/components/account/referral-section'
 import {
   ACCOUNT_SECTIONS,
   CARD_ORDER,
@@ -26,7 +27,7 @@ import { openCookieSettings } from '@/lib/cookie-settings'
 import { CURRENCY_CODES } from '@/lib/currency'
 import { LOCALES } from '@/lib/i18n'
 import { loadMyOrders } from '@/lib/order-registry'
-import { useStore } from '@/lib/store'
+import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CurrencyCode } from '@/lib/currency'
 import type { Locale, Order } from '@/lib/types'
@@ -43,8 +44,11 @@ import type { Locale, Order } from '@/lib/types'
  * sign-in, and an order mid-browse. Both read the same components, so there is
  * one implementation of each thing rather than two that drift.
  *
- * Sections without a backend yet — the loyalty and referral programmes, store
- * credit — say so plainly. They show no invented tiers, balances or codes.
+ * The referral programme and the bonus balance it feeds are real (migration
+ * 0036); until that migration is applied they say so plainly.
+ *
+ * An unknown section — including the retired `loyalty` — is not an error page:
+ * the address is replaced with /account and the overview shows.
  */
 
 /** The old `?tab=` values, so links and bookmarks from before still land. */
@@ -93,6 +97,7 @@ function Spinner() {
 function Account() {
   const { currentUser, authLoading, t, setPanel } = useStore()
   const params = useSearchParams()
+  const router = useRouter()
 
   const requested = params.get('section')
   const legacy = params.get('tab')
@@ -101,6 +106,14 @@ function Account() {
     : legacy && LEGACY_TABS[legacy]
       ? LEGACY_TABS[legacy]
       : null
+
+  // A section that does not exist (a retired one such as `loyalty`, an old
+  // bookmark, a typo): the overview is already showing, so drop the stale
+  // query rather than leave a URL that names something not on the page.
+  const stale = (requested !== null || legacy !== null) && section === null
+  useEffect(() => {
+    if (stale) router.replace('/account', { scroll: false })
+  }, [stale, router])
 
   // Waiting for the session to settle, so an already-signed-in customer is
   // never shown the sign-in prompt for a frame.
@@ -274,8 +287,7 @@ function SectionView({ section }: { section: AccountSectionKey }) {
           )}
           {section === 'looks' && <CuratedVaults />}
           {section === 'settings' && <SettingsSection />}
-          {section === 'loyalty' && <NotYet text={t('acct.loyaltySoon')} />}
-          {section === 'referral' && <NotYet text={t('acct.referralSoon')} />}
+          {section === 'referral' && <ReferralSection />}
           {section === 'credits' && <CreditsSection />}
         </div>
       </div>
@@ -283,22 +295,39 @@ function SectionView({ section }: { section: AccountSectionKey }) {
   )
 }
 
-/** A programme that has no backend yet. Says so; invents nothing. */
-function NotYet({ text }: { text: string }) {
-  const { t } = useStore()
-  return (
-    <div className="max-w-xl border border-white/10 p-6">
-      <p className="t-label text-foreground/50">{t('acct.soon')}</p>
-      <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/75">{text}</p>
-    </div>
-  )
-}
-
 function CreditsSection() {
   const { t } = useStore()
+  // The referral bonus balance (account_credits). Null while loading, or when
+  // the ledger is not there yet — then the section reads as it always did.
+  const [balance, setBalance] = useState<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/account/credits', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.available) setBalance(Number(data.balance) || 0)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="max-w-xl border border-white/10 p-6">
-      <p className="text-[15px] font-normal text-foreground">{t('acct.creditsEmpty')}</p>
+      {balance !== null && balance > 0 ? (
+        <>
+          <p className="t-label text-foreground/55">{t('acct.creditsBalance')}</p>
+          <p className="mt-3 font-serif text-[36px] font-normal leading-none tabular-nums text-foreground">
+            {formatPrice(balance)}
+          </p>
+          <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsSpendSoon')}</p>
+          <div className="my-6 border-t border-white/10" />
+        </>
+      ) : (
+        <p className="text-[15px] font-normal text-foreground">{t('acct.creditsEmpty')}</p>
+      )}
       <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsHint')}</p>
       <Link
         href={accountHref('orders')}

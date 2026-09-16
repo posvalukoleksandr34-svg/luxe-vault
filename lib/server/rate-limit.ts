@@ -48,6 +48,13 @@ const LIMITS = {
    *  an unbounded version would be a way to subscribe strangers in bulk. */
   'newsletter.subscribe': { max: 5, windowSeconds: 900 },
 
+  /** Referral-link visits that count as clicks. Beyond this the visitor is
+   *  still redirected; the visit just is not counted. */
+  'referral.click': { max: 20, windowSeconds: 600 },
+
+  /** Linking a new account to the friend who invited it. */
+  'referral.claim': { max: 10, windowSeconds: 600 },
+
   /** Product reviews and site testimonials. */
   'review.create': { max: 10, windowSeconds: 3600 },
 

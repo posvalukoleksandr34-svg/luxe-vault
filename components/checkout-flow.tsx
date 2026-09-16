@@ -32,6 +32,7 @@ const StripePayment = dynamic(
   { ssr: false },
 )
 import { rememberOrder } from '@/lib/order-registry'
+import { readReferralCookie } from '@/lib/referral-program'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
 import { useStore, formatChf } from '@/lib/store'
 import {
@@ -107,6 +108,24 @@ export function CheckoutFlow({
   // instead of redirecting to checkout.stripe.com.
   const [cardOrder, setCardOrder] = useState<Order | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+
+  // Arrived through a friend's referral link: their code goes in the promo
+  // field and is applied, once, as soon as there is a basket to price it
+  // against. A code that does not apply (a returning customer, the referrer
+  // themselves) is left out quietly — the customer never typed it.
+  const referralTried = useRef(false)
+  useEffect(() => {
+    if (referralTried.current || cart.length === 0) return
+    const code = readReferralCookie()
+    if (!code) return
+    referralTried.current = true
+    void applyPromo(code).then((promo) => {
+      if (!promo) return
+      setForm((prev) => (prev.promo ? prev : { ...prev, promo: promo.code }))
+      setAppliedPromo((prev) => prev ?? { code: promo.code, percent: promo.percent })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.length])
 
   /**
    * Abandoned-cart capture. Once the email field holds a valid address — typed

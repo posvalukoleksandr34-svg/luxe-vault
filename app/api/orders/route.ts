@@ -11,6 +11,7 @@ import { emailLang } from '@/lib/server/emails/copy'
 import { isMailConfigured, sendOrderConfirmation } from '@/lib/server/mailer'
 import { setOrderLocale } from '@/lib/server/order-locale'
 import { markCartRecovered } from '@/lib/server/abandoned-carts'
+import { attachReferralOrder } from '@/lib/server/referrals'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -125,6 +126,18 @@ export async function POST(request: NextRequest) {
   // Their cart became an order: no abandoned-cart reminder for it. Never
   // throws, and tolerant of migration 0029 not being applied.
   await markCartRecovered(order.customer.email)
+
+  // Bought with a friend's referral code: the referral moves to "order
+  // placed". The referrer is credited when this order is paid (see
+  // setPaymentStatus). Never throws.
+  if (priced.draft.referrerId && order.customer.email) {
+    await attachReferralOrder({
+      referrerId: priced.draft.referrerId,
+      userId,
+      email: order.customer.email,
+      orderNumber: order.id,
+    })
+  }
 
   // Confirmation is sent only after the order is committed, and its failure is
   // never allowed to fail the request. The purchase is already real at this
