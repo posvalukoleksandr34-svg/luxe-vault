@@ -89,6 +89,7 @@ export function SearchBox({
   const [recent, setRecent] = useState<string[]>([])
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setRecent(readRecentSearches())
@@ -282,11 +283,18 @@ export function SearchBox({
 
   return (
     <div ref={containerRef} className={cn('relative', variant === 'mobile' && 'w-full')}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
+      {/* A plain search field that controls the panel below — not an ARIA
+          combobox, which would promise arrow-key option navigation the panel
+          of links and chips does not have. */}
       <input
+        ref={inputRef}
         type="search"
-        role="combobox"
-        aria-expanded={open}
+        name="q"
+        enterKeyHint="search"
         aria-controls="search-suggestions"
         aria-label={t('filter.search')}
         autoComplete="off"
@@ -298,10 +306,11 @@ export function SearchBox({
         onFocus={() => setOpen(true)}
         placeholder={t('filter.search')}
         className={cn(
-          'text-foreground outline-none transition-all duration-300 placeholder:text-muted-foreground/60',
+          // outline-none is replaced, not dropped: focus draws a gold border.
+          'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/60',
           variant === 'desktop'
-            ? 'w-36 border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-border'
-            : 'w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-8 text-sm focus:border-gold/30',
+            ? 'w-36 border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-gold/50'
+            : 'w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-8 text-sm focus:border-gold/60',
         )}
       />
 
@@ -319,18 +328,31 @@ export function SearchBox({
         </button>
       )}
 
+      {/* One announcement for screen readers as results change: searching,
+          how many were found, or that nothing was. */}
+      <p className="sr-only" aria-live="polite">
+        {open && term.length >= 2
+          ? loading
+            ? t('search.searching')
+            : results.length
+              ? tf('search.count', { n: total })
+              : t('search.noResults')
+          : ''}
+      </p>
+
       {open && (
         <div
           id="search-suggestions"
-          role="listbox"
+          role="region"
+          aria-label={t('search.panel')}
           className={cn(
-            'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto border border-border bg-popover shadow-xl',
+            'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto overscroll-contain border border-border bg-popover shadow-xl',
             variant === 'desktop' ? 'right-0 w-[24rem]' : 'left-0 right-0 w-full',
           )}
         >
           {loading && (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="size-4 animate-spin text-gold" />
+              <Loader2 aria-hidden className="size-4 animate-spin text-gold" />
             </div>
           )}
 
@@ -341,7 +363,7 @@ export function SearchBox({
                 <div className="mb-3">
                   <div className="mb-1.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                      <Clock className="size-3" />
+                      <Clock aria-hidden className="size-3" />
                       {t('search.recent')}
                     </span>
                     <button
@@ -350,7 +372,7 @@ export function SearchBox({
                         clearRecentSearches()
                         setRecent([])
                       }}
-                      className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60 transition hover:text-foreground"
+                      className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 transition hover:text-foreground"
                     >
                       {t('search.clearRecent')}
                     </button>
@@ -362,7 +384,7 @@ export function SearchBox({
               {popular.length > 0 && (
                 <div>
                   <span className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                    <TrendingUp className="size-3" />
+                    <TrendingUp aria-hidden className="size-3" />
                     {t('search.popular')}
                   </span>
                   <TermList terms={popular} onPick={choose} />
@@ -374,7 +396,7 @@ export function SearchBox({
                   {t('search.hint')}
                 </p>
               )}
-              <p className="mt-3 border-t border-border/40 pt-2.5 text-[11px] font-light text-muted-foreground/60">
+              <p className="mt-3 border-t border-border/40 pt-2.5 text-[11px] font-light text-muted-foreground/80">
                 {t('search.hintSmart')}
               </p>
             </div>
@@ -390,12 +412,19 @@ export function SearchBox({
                     <button
                       key={`${f.kind}-${i}`}
                       type="button"
-                      onClick={() => setQuery(removePhrase(query, f.phrase))}
+                      onClick={() => {
+                        setQuery(removePhrase(query, f.phrase))
+                        // The chip unmounts; keep the keyboard where the
+                        // shopper is working rather than dropping it to <body>.
+                        inputRef.current?.focus()
+                      }}
                       aria-label={`${t('search.removeFilter')}: ${label}`}
-                      className="group flex items-center gap-1 border border-gold/30 px-2 py-[3px] text-[10px] uppercase tracking-[0.14em] text-gold/90 transition-colors hover:border-gold hover:text-gold"
+                      // The chip stays slim; its tap target is 26px tall
+                      // through an invisible band above and below.
+                      className="group relative flex items-center gap-1 border border-gold/30 px-2 py-[3px] text-[10px] uppercase tracking-[0.14em] text-gold/90 transition-colors before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] hover:border-gold hover:text-gold"
                     >
                       {label}
-                      <X className="size-2.5 opacity-50 transition-opacity group-hover:opacity-100" />
+                      <X aria-hidden className="size-2.5 opacity-50 transition-opacity group-hover:opacity-100" />
                     </button>
                   )
                 })}
@@ -442,9 +471,9 @@ export function SearchBox({
                           <span className="block truncate text-[13px] font-light text-foreground">
                             {localize(p.name)}
                           </span>
-                          <span className="block text-[11px] text-muted-foreground/70">
+                          <span className="block text-[11px] tabular-nums text-muted-foreground/80">
                             {formatPrice(p.price)}
-                            {!buyable && <span className="text-muted-foreground/60"> · {t('sold.out')}</span>}
+                            {!buyable && <span className="text-muted-foreground/80"> · {t('sold.out')}</span>}
                           </span>
                         </span>
                       </Link>
@@ -458,13 +487,13 @@ export function SearchBox({
           {/* Nothing found — never a dead end */}
           {showEmptyState && (
             <div className="flex flex-col items-center gap-3 px-4 py-7 text-center">
-              <SearchX className="size-6 text-muted-foreground/30" strokeWidth={1.25} />
+              <SearchX aria-hidden className="size-6 text-muted-foreground/30" strokeWidth={1.25} />
               <p className="text-[12px] font-light text-muted-foreground">
                 {t('search.noResults')}
               </p>
               {popular.length > 0 && (
                 <div className="w-full">
-                  <span className="mb-1.5 block text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
+                  <span className="mb-1.5 block text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80">
                     {t('search.tryInstead')}
                   </span>
                   <TermList terms={popular} onPick={choose} />
@@ -473,7 +502,7 @@ export function SearchBox({
               <Link
                 href="/#shop"
                 onClick={close}
-                className="mt-1 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                className="mt-1 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
               >
                 {t('search.browseAll')}
               </Link>

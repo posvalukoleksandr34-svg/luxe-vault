@@ -1,7 +1,7 @@
 'use client'
 
 import { Ruler } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -75,6 +75,8 @@ export function FitAdvisorModal({
   const [preference, setPreference] = useState<FitPreference>('regular')
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const heightRef = useRef<HTMLInputElement>(null)
+  const weightRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     try {
@@ -125,6 +127,11 @@ export function FitAdvisorModal({
               wMax: WEIGHT_RANGE.max,
             }),
       )
+      // Straight to the field to fix: an empty or out-of-range height first,
+      // otherwise the weight.
+      const h = input.heightCm
+      const heightFirst = h === undefined || h < HEIGHT_RANGE.min || h > HEIGHT_RANGE.max
+      ;(heightFirst ? heightRef : weightRef).current?.focus()
       return
     }
     let rec = recommendSize(input)
@@ -157,10 +164,11 @@ export function FitAdvisorModal({
   const cm = t('sizeGuide.cm')
   const measures = row
     ? [
-        row.chest ? `${t('sizeGuide.chest')} ${row.chest} ${cm}` : '',
-        row.length ? `${t('sizeGuide.length')} ${row.length} ${cm}` : '',
-        row.shoulder ? `${t('sizeGuide.shoulder')} ${row.shoulder} ${cm}` : '',
-        row.sleeve ? `${t('sizeGuide.sleeve')} ${row.sleeve} ${cm}` : '',
+        // A non-breaking space keeps "112 cm" on one line.
+        row.chest ? `${t('sizeGuide.chest')} ${row.chest} ${cm}` : '',
+        row.length ? `${t('sizeGuide.length')} ${row.length} ${cm}` : '',
+        row.shoulder ? `${t('sizeGuide.shoulder')} ${row.shoulder} ${cm}` : '',
+        row.sleeve ? `${t('sizeGuide.sleeve')} ${row.sleeve} ${cm}` : '',
       ].filter(Boolean)
     : []
 
@@ -175,15 +183,15 @@ export function FitAdvisorModal({
           type="button"
           className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
         >
-          <Ruler className="size-3" />
+          <Ruler aria-hidden className="size-3" />
           {t('fit.cta')}
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto border-gold/20 bg-popover">
+      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto overscroll-contain border-gold/20 bg-popover">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-serif text-xl font-bold tracking-tight">
-            <Ruler className="size-4 text-gold" />
+            <Ruler aria-hidden className="size-4 text-gold" />
             {t('fit.title')}
           </DialogTitle>
           <DialogDescription className="text-[13px] font-light leading-relaxed">
@@ -202,8 +210,13 @@ export function FitAdvisorModal({
             <label className="block">
               <span className={labelClass}>{t('fit.height')}</span>
               <input
+                ref={heightRef}
                 id="fit-height"
+                name="height"
+                autoComplete="off"
                 inputMode="decimal"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'fit-error' : undefined}
                 value={height}
                 onChange={(e) => edit(() => setHeight(e.target.value))}
                 placeholder="178"
@@ -213,8 +226,13 @@ export function FitAdvisorModal({
             <label className="block">
               <span className={labelClass}>{t('fit.weight')}</span>
               <input
+                ref={weightRef}
                 id="fit-weight"
+                name="weight"
+                autoComplete="off"
                 inputMode="decimal"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'fit-error' : undefined}
                 value={weight}
                 onChange={(e) => edit(() => setWeight(e.target.value))}
                 placeholder="72"
@@ -228,7 +246,7 @@ export function FitAdvisorModal({
           <fieldset>
             <legend className={labelClass}>
               {t('fit.usual')}{' '}
-              <span className="normal-case tracking-normal text-muted-foreground/60">· {t('fit.optional')}</span>
+              <span className="normal-case tracking-normal text-muted-foreground/80">· {t('fit.optional')}</span>
             </legend>
             <div className="grid grid-cols-7 gap-1">
               {LETTER_SIZES.map((s) => (
@@ -275,14 +293,14 @@ export function FitAdvisorModal({
           </fieldset>
 
           {error && (
-            <p role="alert" className="text-[12px] text-destructive">
+            <p id="fit-error" role="alert" className="text-[12px] text-destructive">
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full border border-gold/40 bg-gold/5 px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="w-full border border-gold/40 bg-gold/5 px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
           >
             {t('fit.calculate')}
           </button>
@@ -347,7 +365,7 @@ export function FitAdvisorModal({
           </div>
         )}
 
-        <p className="text-[11px] font-light leading-relaxed text-muted-foreground/70">
+        <p className="text-[11px] font-light leading-relaxed text-muted-foreground/80">
           {t('fit.disclaimer')}
         </p>
       </DialogContent>

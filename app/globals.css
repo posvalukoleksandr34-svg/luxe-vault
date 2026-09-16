@@ -266,6 +266,10 @@
 html {
   scroll-behavior: smooth;
 
+  /* The site is dark only: native scrollbars, form controls, date pickers and
+     autofill render in their dark variants instead of flashing light ones. */
+  color-scheme: dark;
+
   /* Reserves the scrollbar's width whether or not a scrollbar is present, so
      the content column never changes width.
      
