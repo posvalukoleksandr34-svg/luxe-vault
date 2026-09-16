@@ -33,9 +33,12 @@ import { useEffect, useRef } from 'react'
 /** How much of the remaining distance each layer covers per frame. Small
  *  numbers lag further; the spread between them is the stretch. */
 const EASE = {
-  far: 0.022,
-  mid: 0.055,
-  core: 0.115,
+  // The pools follow at half their original pace, matching the atmosphere's
+  // half intensity. The ring keeps its speed: a lagging cursor ring reads as
+  // input lag, not as calm.
+  far: 0.011,
+  mid: 0.0275,
+  core: 0.0575,
   ring: 0.19,
 } as const
 

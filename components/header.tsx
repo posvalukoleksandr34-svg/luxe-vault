@@ -43,8 +43,8 @@ export function Header() {
    *
    * At rest the bar is nearly transparent, so the hero runs edge to edge and
    * the wordmark is not sitting under a grey strip. Once content passes
-   * beneath it, the ground deepens and a gold hairline appears — the bar
-   * becomes a surface only when it has something to separate.
+   * beneath it, the ground becomes solid charcoal with a neutral hairline —
+   * the bar becomes a surface only when it has something to separate.
    *
    * A boolean, not a scroll position: the listener writes state at most twice
    * per page, when the threshold is crossed in either direction.
@@ -133,15 +133,15 @@ export function Header() {
           </span>
         </Link>
 
-        {/* gap-8 -> gap-9: hover scales each item 5%, and at the old spacing
-            an enlarged item nearly touched its neighbour. */}
-        <nav className="ml-10 hidden items-center gap-9 lg:flex">
+        {/* Quiet links, generous spacing: the space between them does the
+            separating, not ornament. */}
+        <nav className="ml-12 hidden items-center gap-8 lg:flex">
           {/* The stylist sits first in the nav: it is the entry point to the
               catalogue for someone who does not yet know what they want. A
               real Link, not a scroll handler, because it is its own route. */}
           <Link
             href="/stylist"
-            className="nav-gold text-[11px] uppercase tracking-[0.15em]"
+            className="nav-link t-label"
           >
             {t('stylist.cta')}
           </Link>
@@ -229,27 +229,27 @@ export function Header() {
 
       {mobileOpen && (
         <div className="animate-fade-in border-t border-border lg:hidden">
-          <nav className="flex flex-col gap-0.5 px-4 py-3">
+          <nav className="flex flex-col divide-y divide-border/40 px-4 py-2">
             <Link
               href="/stylist"
               onClick={() => setMobileOpen(false)}
-              className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]"
+              className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground"
             >
               {t('stylist.cta')}
             </Link>
-            <button onClick={goCollections} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
+            <button onClick={goCollections} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
               {t('nav.collections')}
             </button>
-            <button onClick={goAbout} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
+            <button onClick={goAbout} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
               {t('nav.about')}
             </button>
-            <button onClick={goNew} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
+            <button onClick={goNew} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
               {t('filter.new')}
             </button>
-            <button onClick={goReviews} className="px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] hover:drop-shadow-[0_0_10px_rgba(212,175,55,0.45)]">
+            <button onClick={goReviews} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
               {t('reviews.title')}
             </button>
-            <button onClick={goSale} className="rounded-lg px-3 py-2.5 text-left text-sm text-gold transition hover:bg-accent">
+            <button onClick={goSale} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-gold/90 transition-colors hover:text-gold">
               {t('filter.sale')}
             </button>
             <button
@@ -257,7 +257,7 @@ export function Header() {
                 setMobileOpen(false)
                 openSupport()
               }}
-              className="flex items-center justify-between px-3 py-2.5 text-left text-sm text-[#c9a227] transition-all duration-300 hover:bg-accent hover:text-[#d4af37] sm:hidden"
+              className="flex min-h-[44px] items-center justify-between px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground sm:hidden"
             >
               {t('support.title')}
               {supportUnread > 0 && (
@@ -276,10 +276,10 @@ export function Header() {
 /**
  * Desktop nav item.
  *
- * The gold/scale/glow treatment lives in the `.nav-gold` component class
- * (app/globals.css) so the six items here — and the mobile drawer — cannot
- * drift apart. `accent` brightens Распродажа a step above the rest, which is
- * the one item that should pull the eye.
+ * The treatment lives in the `.nav-link` component class (app/globals.css):
+ * neutral at rest, a gold hairline drawn in on hover, so the six items here
+ * cannot drift apart. `accent` gives Распродажа the nav's one touch of gold —
+ * the item that should pull the eye.
  */
 function NavLink({
   onClick,
@@ -295,10 +295,10 @@ function NavLink({
       type="button"
       onClick={onClick}
       className={cn(
-        'nav-gold text-[11px] uppercase tracking-[0.15em]',
-        // Slightly hotter at rest, so "Sale" reads as the priority item
-        // without needing a different size or a badge.
-        accent && 'text-[#e0bb4a]',
+        'nav-link t-label',
+        // Sale is the one nav item allowed its gold: warmer at rest, so it
+        // reads as the priority without a different size or a badge.
+        accent && 'text-gold/90 hover:text-gold',
       )}
     >
       {children}

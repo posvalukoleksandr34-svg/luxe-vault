@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDown, Sparkles } from 'lucide-react'
+import { ArrowDown } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/lib/store'
@@ -93,20 +93,14 @@ export function Hero() {
              letters appear to stand on a lit surface. */}
       <div className="hero__horizon" />
 
-      {/* 4. Scan lines, unchanged — they give the flat areas a texture that
-             stops the gradients banding on a wide display. */}
-      <div className="hero__lines" />
-
       <div
         ref={contentRef}
         className="relative z-10 flex flex-col items-center px-4 text-center will-change-transform"
       >
         <div className="animate-reveal-up mb-7 flex items-center gap-4">
-          <span className="h-px w-10 bg-gradient-to-r from-transparent to-gold/50" />
-          <span className="text-[10px] uppercase tracking-[0.5em] text-gold/75">
-            Premium Collection 2026
-          </span>
-          <span className="h-px w-10 bg-gradient-to-l from-transparent to-gold/50" />
+          <span className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
+          <span className="t-eyebrow text-muted-foreground">{t('hero.eyebrow')}</span>
+          <span className="h-px w-10 bg-gradient-to-l from-transparent to-gold/40" />
         </div>
 
         {/* The two words rise separately, 140ms apart. A single block sliding
@@ -123,7 +117,7 @@ export function Hero() {
         <div className="animate-reveal-up mt-14 flex flex-col items-center gap-4 sm:flex-row">
           <button
             onClick={scrollToShop}
-            className="hero__cta group inline-flex items-center gap-2.5 border border-gold/25 px-8 py-3.5 text-[11px] uppercase tracking-[0.28em] text-foreground/90"
+            className="hero__cta t-cta group inline-flex items-center gap-3 border border-foreground/20 px-9 py-4 text-foreground/90"
           >
             {t('hero.cta')}
             <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />
@@ -131,11 +125,7 @@ export function Hero() {
 
           {/* Secondary, not competing with the primary CTA: someone who knows
               what they want browses; someone who does not asks the stylist. */}
-          <Link
-            href="/stylist"
-            className="tap-safe inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gold/80 transition-colors duration-300 hover:text-gold"
-          >
-            <Sparkles className="size-3.5" />
+          <Link href="/stylist" className="nav-link t-label tap-safe">
             {t('stylist.cta')}
           </Link>
         </div>
@@ -145,10 +135,8 @@ export function Hero() {
              darkens at the edges the way a lens does. */}
       <div className="hero__vignette" />
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-70">
-        <div className="flex h-10 w-6 items-start justify-center border border-border/50 p-1.5">
-          <div className="hero__scroll-dot h-2 w-0.5 bg-gold/60" />
-        </div>
+      <div aria-hidden className="absolute bottom-10 left-1/2 -translate-x-1/2">
+        <div className="hero__scroll-line" />
       </div>
     </section>
   )

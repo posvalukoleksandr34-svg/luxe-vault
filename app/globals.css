@@ -403,6 +403,8 @@ body::before {
   /* Softens the gradient's own banding, which is very visible at these low
      alphas on a dark ground. */
   filter: blur(28px);
+  /* Half strength: atmosphere, never an effect. */
+  opacity: 0.5;
 }
 
 .ambient__wave--a {
@@ -416,7 +418,7 @@ body::before {
     hsl(40 70% 50% / 0.06) 45%,
     transparent 74%
   );
-  animation: smoke-a 46s ease-in-out infinite alternate;
+  animation: smoke-a 92s ease-in-out infinite alternate;
 }
 
 .ambient__wave--b {
@@ -430,7 +432,7 @@ body::before {
     hsl(38 70% 46% / 0.05) 48%,
     transparent 72%
   );
-  animation: smoke-b 58s ease-in-out infinite alternate;
+  animation: smoke-b 116s ease-in-out infinite alternate;
 }
 
 /* The cool body. Counterintuitive on a gold palette, but without a cooler
@@ -447,7 +449,7 @@ body::before {
     hsl(38 60% 40% / 0.055) 52%,
     transparent 76%
   );
-  animation: smoke-c 68s ease-in-out infinite alternate;
+  animation: smoke-c 136s ease-in-out infinite alternate;
 }
 
 /* The "breath": one very wide, very slow diagonal sheen crossing the viewport.
@@ -464,15 +466,16 @@ body::before {
   background: linear-gradient(
     103deg,
     transparent 38%,
-    hsl(45 80% 62% / 0.05) 50%,
+    hsl(45 80% 62% / 0.025) 50%,
     transparent 62%
   );
-  animation: sheen-sweep 90s ease-in-out infinite;
+  animation: sheen-sweep 180s ease-in-out infinite;
 }
 
 .ambient__dust {
   position: absolute;
   inset: 0;
+  opacity: 0.5;
 }
 
 .ambient__mote {
@@ -491,7 +494,7 @@ body::before {
     hsl(43 74% 56% / 0.4) 42%,
     transparent 70%
   );
-  animation: mote-rise var(--d) linear var(--delay) infinite;
+  animation: mote-rise calc(var(--d) * 2) linear var(--delay) infinite;
 }
 
 @keyframes smoke-a {
@@ -617,93 +620,38 @@ body::before {
 }
 
 /* ---------------------------------------------------------------------------
-   Global "juicy" interaction physics
+   Interaction — quiet by default
    ---------------------------------------------------------------------------
-   Applied once, here, rather than pasted onto ~200 className strings across 29
-   component files. Two reasons: the treatment cannot drift out of sync between
-   a button in the header and one in the checkout drawer, and a future change is
-   a single edit instead of a repo-wide find-and-replace.
+   Links and buttons used to grow 5%, turn gold and glow on hover, site-wide,
+   at a specificity no component could override. A fashion house does the
+   opposite: the pointer's arrival is acknowledged, not celebrated.
 
-   SPECIFICITY IS DELIBERATE HERE. The first draft wrapped everything in
-   :where() so components could override it — and measurement showed that is
-   exactly what happened: the hero CTA carries `text-foreground` and
-   `transition` (150ms), so it scaled and glowed but never turned gold and ran
-   at half the intended duration. Since the treatment is meant to be universal,
-   the hover rule instead stacks its :not() exclusions, which raises it to
-   (0,8,1) — above any single Tailwind utility. Components no longer override
-   it by accident; they opt out on purpose.
+   - No scale, no glow, no forced colour. Each component's own hover — a
+     colour step, an underline drawing in, a photograph easing — is the
+     response.
+   - A control with no hover styling of its own dims slightly, so nothing
+     interactive is ever inert under the pointer.
+   - Only colour, borders, background and opacity transition, on one easing
+     curve. Never `transition: all`.
 
-   The four exclusion classes are listed at the rule. Opt out of the physics on
-   any one element with `no-juice`.
+   All of it is zero-specificity (:where) or in the base layer, so a
+   component's own classes always win. `.no-juice` stays as a harmless marker
+   at existing call sites.
 --------------------------------------------------------------------------- */
 
 @layer base {
-  /* `transform` is silently ignored on an inline box, so a bare <a> would never
-     scale. inline-block is the smallest fix; any display utility (flex, grid,
-     block) still overrides it, because of :where(). */
+  /* `transform` is ignored on an inline box, so an inline link could never
+     ease; inline-block is the smallest fix, and any display utility wins. */
   :where(a, button, [role='button'], summary) {
     display: inline-block;
+    transition-property: color, background-color, border-color, text-decoration-color, opacity;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 }
 
-/* Outside any @layer, so it also outranks Tailwind's utilities layer.
-   The exclusions, in order:
-     :disabled / [aria-disabled]     — a dead control must not feel alive.
-     .no-juice                       — explicit per-element opt-out.
-     .card-gold                      — cards get the lift+breathe treatment
-                                       below instead; this also stops an
-                                       expensive drop-shadow being rasterised
-                                       over a full-bleed photograph.
-     [class*='destructive']          — delete/remove actions stay red rather
-                                       than turning gold.
-     [class*='hover:bg-gold'] and
-     [class*='text-gold-foreground'] — solid gold slabs. Their ink is dark by
-                                       design; forcing it to #d4af37 would sink
-                                       the label into its own background.
-
-   Tailwind writes class names verbatim into the class attribute, which is what
-   makes these substring matches reliable. */
-a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
-button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
-[role='button']:not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']),
-summary:not(.no-juice) {
-  transition: all 300ms ease-in-out;
-}
-
-a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
-a:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):focus-visible,
-button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
-button:not(:disabled):not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):focus-visible,
-[role='button']:not([aria-disabled='true']):not(.no-juice):not(.card-gold):not([class*='destructive']):not([class*='hover:bg-gold']):not([class*='text-gold-foreground']):hover,
-summary:not(.no-juice):hover {
-  transform: scale(1.05);
-  color: #d4af37;
-  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.6));
-  outline: none;
-}
-
-/* Solid gold slabs still respond — brightness and a wider, softer halo instead
-   of a colour shift, because the shape is what the eye tracks on a filled
-   button, not the ink. */
-a[class*='hover:bg-gold']:hover,
-button[class*='hover:bg-gold']:hover,
-button[class*='text-gold-foreground']:hover,
-a[class*='hover:bg-gold']:focus-visible,
-button[class*='hover:bg-gold']:focus-visible {
-  transform: scale(1.05);
-  filter: drop-shadow(0 0 18px rgba(212, 175, 55, 0.5)) brightness(1.04);
-  outline: none;
-}
-
-/* A dead control must not hint at interactivity — this sits last so it wins
-   over both rules above regardless of the element's classes. */
-a[disabled]:hover,
-button[disabled]:hover,
-button:disabled:hover,
-[aria-disabled='true']:hover,
-.no-juice:hover {
-  transform: none;
-  filter: none;
+:where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .nav-link, .hero__cta, [class*='hover:'])):hover {
+  opacity: 0.72;
 }
 
 @layer components {
@@ -713,71 +661,115 @@ button:disabled:hover,
     transform: none;
   }
 
-  /* Nav treatment. A thin alias over the global physics, kept because a few
-     places (the mobile drawer, the accent Sale item) want the gold *resting*
-     colour too — which the global rule deliberately does not set, since turning
-     every link on the site gold at rest would flatten the hierarchy. */
-  .nav-gold {
-    @apply inline-block text-[#c9a227] transition-all duration-300 ease-in-out
-           hover:scale-105 hover:text-[#d4af37]
-           hover:drop-shadow-[0_0_12px_rgba(212,175,55,0.6)]
-           focus-visible:scale-105 focus-visible:text-[#d4af37]
-           focus-visible:outline-none
-           focus-visible:drop-shadow-[0_0_12px_rgba(212,175,55,0.6)];
+  /* Small type, as a scale. The site used seven hand-picked sizes (9–15px)
+     and fourteen letter-spacings for the same few jobs; these are the jobs. */
+  .t-eyebrow {
+    font-size: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+  .t-label {
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .t-meta {
+    font-size: 11px;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+  }
+  .t-price {
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-cta {
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
   }
 
-  /* Frosted, breathing card.
+  /* Navigation. Neutral at rest; on hover the ink steps up and a gold hairline
+     draws in beneath — the only gold the nav shows. */
+  .nav-link {
+    position: relative;
+    color: hsl(var(--foreground) / 0.7);
+    transition: color 300ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  /* ::before, not ::after: `.tap-safe` uses ::after as a 44px invisible touch
+     target, and sharing the pseudo-element turned the hairline into a solid
+     gold block on phones. */
+  .nav-link::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6px;
+    height: 1px;
+    background: hsl(var(--gold) / 0.7);
+    transform: scaleX(0);
+    transform-origin: right center;
+    transition: transform 500ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    color: hsl(var(--foreground));
+    outline: none;
+  }
+  .nav-link:hover::before,
+  .nav-link:focus-visible::before,
+  .nav-link[aria-current='page']::before {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
 
-     Rest is a hairline gold edge over a translucent, lightly blurred ground —
-     the ambient gold from body::before shows through, which is what makes the
-     surface read as glass rather than as a grey rectangle.
+  /* Surfaces: flat and quiet.
 
-     Hover deepens the blur, warms the border, and hands the glow to the
-     `gold-breathe` animation so it pulses for as long as the cursor stays.
-     The glow is box-shadow, not drop-shadow: it traces the card's rectangle
-     instead of compositing every child's alpha channel, which on a grid of
-     photographs is the difference between smooth and janky. */
+     Cards used to be frosted glass that lifted 2px and pulsed a gold glow for
+     as long as the pointer rested on them — the vocabulary of a dashboard, not
+     of a fashion house. A card is now a charcoal plane with a hairline edge;
+     hover warms the edge and deepens the ground a step, and the photograph
+     inside does the rest. */
   .card-gold {
-    @apply border transition-all duration-500 ease-out;
-    border-color: hsl(var(--gold-hairline) / 0.35);
-    background-color: hsl(var(--card) / 0.72);
-    backdrop-filter: blur(3px) saturate(115%);
-    -webkit-backdrop-filter: blur(3px) saturate(115%);
+    @apply border;
+    border-color: hsl(var(--gold-hairline) / 0.22);
+    background-color: hsl(var(--card) / 0.55);
+    transition:
+      border-color 400ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 400ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   .card-gold:hover,
-  .card-gold:focus-visible,
   .card-gold:focus-within {
-    border-color: hsl(var(--gold) / 0.55);
-    background-color: hsl(var(--card) / 0.88);
-    backdrop-filter: blur(7px) saturate(130%);
-    -webkit-backdrop-filter: blur(7px) saturate(130%);
-    transform: translateY(-2px);
-    outline: none;
-    animation: gold-breathe 3.4s ease-in-out infinite;
+    border-color: hsl(var(--gold-hairline) / 0.45);
+    background-color: hsl(var(--card) / 0.7);
   }
 
-  /* Same glass, no lift — for containers inside a fixed drawer or modal, where
-     a 2px translate would fight the panel's own entrance transform. */
+  .card-gold:focus-visible {
+    outline: 1px solid hsl(var(--gold) / 0.55);
+    outline-offset: 3px;
+  }
+
+  /* The same plane for containers inside drawers and modals. */
   .panel-gold {
-    @apply border transition-all duration-500 ease-out;
-    border-color: hsl(var(--gold-hairline) / 0.3);
-    background-color: hsl(var(--card) / 0.6);
-    backdrop-filter: blur(6px) saturate(115%);
-    -webkit-backdrop-filter: blur(6px) saturate(115%);
+    @apply border;
+    border-color: hsl(var(--gold-hairline) / 0.2);
+    background-color: hsl(var(--card) / 0.5);
+    transition: border-color 400ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   .panel-gold:hover,
   .panel-gold:focus-within {
-    border-color: hsl(var(--gold) / 0.45);
-    background-color: hsl(var(--card) / 0.8);
-    animation: gold-breathe 3.4s ease-in-out infinite;
+    border-color: hsl(var(--gold-hairline) / 0.38);
   }
 
-  /* Always-on pulse, for the one or two elements that should feel alive before
-     the cursor arrives. Used sparingly — everything breathing at once is noise. */
+  /* Formerly an always-on pulse. The class stays so its call sites remain
+     valid; nothing on the site breathes any more. */
   .glow-breathe {
-    animation: gold-breathe 4.5s ease-in-out infinite;
+    animation: none;
   }
 }
 
@@ -801,8 +793,6 @@ button:disabled:hover,
 @media (prefers-reduced-motion: reduce) {
   :where(a, button, [role='button'], summary):hover,
   :where(a, button, [role='button'], summary):focus-visible,
-  .nav-gold:hover,
-  .nav-gold:focus-visible,
   .card-gold:hover,
   .card-gold:focus-visible,
   .card-gold:focus-within {
@@ -941,7 +931,8 @@ iframe[src*="elements-inner-easel"] {
 }
 
 .pa[data-active='true'][data-seen='true'] {
-  opacity: 1;
+  /* Half strength, like the ambient layer beneath it. */
+  opacity: 0.5;
 }
 
 .pa__layer {
@@ -979,7 +970,7 @@ iframe[src*="elements-inner-easel"] {
     transparent 74%
   );
   filter: blur(46px);
-  animation: pa-churn-a 21s ease-in-out infinite;
+  animation: pa-churn-a 42s ease-in-out infinite;
 }
 
 /* The middle pool: the body of the liquid. Elongated, and rotating against
@@ -994,7 +985,7 @@ iframe[src*="elements-inner-easel"] {
     transparent 72%
   );
   filter: blur(34px);
-  animation: pa-churn-b 14s ease-in-out infinite;
+  animation: pa-churn-b 28s ease-in-out infinite;
 }
 
 /* The core: small, warm, and nearly on the cursor. Kept dim on purpose — a
@@ -1010,7 +1001,7 @@ iframe[src*="elements-inner-easel"] {
     transparent 70%
   );
   filter: blur(22px);
-  animation: pa-churn-c 9s ease-in-out infinite;
+  animation: pa-churn-c 18s ease-in-out infinite;
 }
 
 /* Slow, unequal churn. Different periods and different axes, so the three
@@ -1112,7 +1103,6 @@ iframe[src*="elements-inner-easel"] {
 .hero__floor,
 .hero__key,
 .hero__horizon,
-.hero__lines,
 .hero__vignette {
   position: absolute;
   inset: 0;
@@ -1148,17 +1138,6 @@ iframe[src*="elements-inner-easel"] {
   );
 }
 
-.hero__lines {
-  opacity: 0.028;
-  background-image: repeating-linear-gradient(
-    0deg,
-    hsl(var(--foreground)) 0px,
-    hsl(var(--foreground)) 1px,
-    transparent 1px,
-    transparent 80px
-  );
-}
-
 .hero__vignette {
   background: radial-gradient(
     ellipse 92% 78% at 50% 50%,
@@ -1182,8 +1161,8 @@ iframe[src*="elements-inner-easel"] {
 @keyframes hero-word {
   from {
     opacity: 0;
-    transform: translate3d(0, 26px, 0);
-    filter: blur(14px);
+    transform: translate3d(0, 18px, 0);
+    filter: blur(8px);
   }
   to {
     opacity: 1;
@@ -1192,13 +1171,10 @@ iframe[src*="elements-inner-easel"] {
   }
 }
 
-/* --- The specular sweep ---------------------------------------------------
-   One slow pass of light across the gold word. Replaces the flat
-   `text-gradient-gold` on this element only; everything else keeps the static
-   version, because a page of sweeping text is a casino, not a fashion house.
-
-   The gradient is 260% of the element and slides — a background-position
-   animation on ONE text node, which repaints that node and nothing else. */
+/* --- The gold word --------------------------------------------------------
+   A metallic gradient, set once and held still. It used to sweep a highlight
+   across the word every eleven seconds; a loop that never ends is a shop
+   window display, and the brand should not need to wave. */
 .hero__sheen {
   background: linear-gradient(
     100deg,
@@ -1214,21 +1190,8 @@ iframe[src*="elements-inner-easel"] {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation:
-    hero-word 1500ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both,
-    hero-sheen 11s cubic-bezier(0.45, 0, 0.2, 1) 1.9s infinite;
-}
-
-@keyframes hero-sheen {
-  0% {
-    background-position: 100% 0;
-  }
-  /* The pass takes ~3s of the 11s cycle; the rest is the metal at rest. A
-     continuous sweep is a loading shimmer. */
-  32%,
-  100% {
-    background-position: 0% 0;
-  }
+  background-position: 40% 0;
+  animation: hero-word 1500ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
 }
 
 /* --- The CTA --------------------------------------------------------------
@@ -1247,7 +1210,7 @@ iframe[src*="elements-inner-easel"] {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, hsl(43 74% 56% / 0.16), hsl(45 80% 66% / 0.06));
+  background: hsl(var(--foreground) / 0.04);
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -1255,8 +1218,8 @@ iframe[src*="elements-inner-easel"] {
 
 .hero__cta:hover,
 .hero__cta:focus-visible {
-  border-color: hsl(var(--gold) / 0.6);
-  color: hsl(var(--gold-light));
+  border-color: hsl(var(--gold) / 0.45);
+  color: hsl(var(--foreground));
 }
 
 .hero__cta:hover::before,
@@ -1269,28 +1232,39 @@ iframe[src*="elements-inner-easel"] {
   position: relative;
 }
 
-/* The scroll cue. `animate-bounce` was a spring; this is a slow fall, which
-   is what a cue should be at the bottom of a still frame. */
-.hero__scroll-dot {
-  animation: hero-scroll-dot 2.6s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+/* The scroll cue: a hairline with light travelling down it, slowly. */
+.hero__scroll-line {
+  position: relative;
+  width: 1px;
+  height: 56px;
+  overflow: hidden;
+  background: hsl(var(--foreground) / 0.12);
 }
 
-@keyframes hero-scroll-dot {
-  0%,
-  100% {
+.hero__scroll-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -40%;
+  width: 1px;
+  height: 40%;
+  background: linear-gradient(transparent, hsl(var(--gold) / 0.7));
+  animation: hero-scroll-line 2.8s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+}
+
+@keyframes hero-scroll-line {
+  from {
     transform: translateY(0);
-    opacity: 0.25;
   }
-  40% {
-    transform: translateY(9px);
-    opacity: 1;
+  to {
+    transform: translateY(350%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero__word,
   .hero__sheen,
-  .hero__scroll-dot {
+  .hero__scroll-line::after {
     animation: none;
   }
   .hero__sheen {
@@ -1465,74 +1439,30 @@ iframe[src*="elements-inner-easel"] {
 
 .site-header {
   border-color: transparent;
-  background: linear-gradient(hsl(var(--background) / 0.5), hsl(var(--background) / 0.16));
-  backdrop-filter: blur(6px) saturate(120%);
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  background-color: transparent;
   transition:
-    background 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 620ms ease,
-    backdrop-filter 620ms ease,
-    box-shadow 620ms ease;
+    background-color 600ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 600ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Once the page moves under it, the bar becomes a solid charcoal band with a
+   single neutral hairline — present, never ornamental. */
 .site-header[data-scrolled='true'] {
-  background: hsl(var(--background) / 0.9);
-  border-color: hsl(var(--gold-hairline) / 0.24);
-  backdrop-filter: blur(16px) saturate(145%);
-  -webkit-backdrop-filter: blur(16px) saturate(145%);
-  box-shadow: 0 18px 40px -34px hsl(36 30% 2% / 0.95);
+  background-color: hsl(var(--background) / 0.94);
+  border-color: hsl(var(--foreground) / 0.07);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-/* A gold hairline that fades in along the bottom edge as the bar settles —
-   the same detail as the card's edge, at page scale. */
+/* The gold gradient hairline that used to fade in here is retired: the bar's
+   edge is the neutral border above. */
 .site-header::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(var(--gold) / 0.28) 22%,
-    hsl(var(--gold) / 0.4) 50%,
-    hsl(var(--gold) / 0.28) 78%,
-    transparent 100%
-  );
-  opacity: 0;
-  transition: opacity 620ms ease;
-}
-
-.site-header[data-scrolled='true']::after {
-  opacity: 1;
-}
-
-/* Nav underline. `nav-gold` supplies the colour and the lift; this adds the
-   rule that grows from the centre, which is the detail that makes a text link
-   feel considered rather than merely coloured. */
-.nav-gold::after {
-  content: '';
-  display: block;
-  height: 1px;
-  margin-top: 3px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: center;
-  opacity: 0.7;
-  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.nav-gold:hover::after,
-.nav-gold:focus-visible::after {
-  transform: scaleX(1);
+  content: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-header,
-  .site-header::after,
-  .nav-gold::after {
+  .nav-link::before {
     transition: none;
   }
 }
