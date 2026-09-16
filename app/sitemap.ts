@@ -111,6 +111,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Category pages sit between the homepage and the products: broader than a
     // single item, narrower than the shop.
     ...categoryUrls,
+    // Help & contact: how to reach the team, and the newsletter.
+    {
+      url: `${BASE}/contact`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.4,
+    },
     // The AI stylist: a standing landing page with its own canonical.
     {
       url: `${BASE}/stylist`,

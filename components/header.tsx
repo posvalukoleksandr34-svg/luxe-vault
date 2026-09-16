@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LifeBuoy, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { LifeBuoy, Menu, Search, ShoppingBag, X } from 'lucide-react'
+import { AccountMenu } from '@/components/account/account-menu'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
@@ -25,10 +26,8 @@ export function Header() {
     t,
     query,
     setQuery,
-    currentUser,
     setFilter,
     filter,
-    openAccount,
     openSupport,
     supportUnread,
   } = useStore()
@@ -193,17 +192,8 @@ export function Header() {
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={() => openAccount('orders')}
-            className="tap-safe relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
-            aria-label={t('nav.profile')}
-          >
-            <User className="size-[18px]" />
-            {currentUser && (
-              <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-gold" />
-            )}
-          </button>
+          {/* Signed in: the account menu. Signed out: the drawer's sign-in. */}
+          <AccountMenu />
 
           <button
             type="button"

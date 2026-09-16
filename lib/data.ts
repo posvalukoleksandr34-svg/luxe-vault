@@ -310,3 +310,14 @@ export const TELEGRAM_ADMIN = '@luxevault_orders'
  * на это письмо" and pointed that reply somewhere unowned.
  */
 export const SUPPORT_EMAIL = 'support@luxe-vault.store'
+
+/**
+ * The support phone line and its hours, for the "По телефону" card on
+ * /contact. Configuration rather than constants: a phone number nobody answers
+ * is worse than none, so the card only offers one when it has been set. Until
+ * then the second card offers Telegram, which is staffed.
+ *
+ * Hours are shown as written, e.g. "Пн–Пт, 10:00–18:00 (CET, GMT+1)".
+ */
+export const SUPPORT_PHONE = (process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? '').trim()
+export const SUPPORT_PHONE_HOURS = (process.env.NEXT_PUBLIC_SUPPORT_PHONE_HOURS ?? '').trim()

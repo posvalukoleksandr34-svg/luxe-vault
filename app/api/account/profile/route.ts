@@ -6,7 +6,8 @@ import { isValidName } from '@/lib/validation'
 export const dynamic = 'force-dynamic'
 
 /**
- * Updates the customer's display name.
+ * Updates the customer's display name and, once migration 0035 is applied,
+ * their optional date of birth.
  *
  * WHY THIS IS A ROUTE AND NOT A BROWSER WRITE
  *
@@ -33,31 +34,92 @@ export const dynamic = 'force-dynamic'
  * because it must send a confirmation link to the new address before switching,
  * password because the active session is the only thing that authorises it.
  */
+// Postgres "undefined column" and PostgREST "column not in the schema cache":
+// migration 0035 (birth_date) has not been applied yet.
+const MISSING_COLUMN = new Set(['42703', 'PGRST204'])
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** A real calendar date, not in the future, not before 1900. */
+function validBirthDate(value: string): boolean {
+  if (!ISO_DATE.test(value)) return false
+  const d = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value) return false
+  return value >= '1900-01-01' && d.getTime() <= Date.now()
+}
+
+/**
+ * The profile fields the account edits that are not auth identity: today the
+ * optional date of birth. `available: false` means the column does not exist
+ * yet, and the account hides the field rather than offering one that cannot
+ * save.
+ */
+export async function GET() {
+  const user = await getCurrentUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data, error } = await createClient()
+    .from('profiles')
+    .select('birth_date')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (error) {
+    if (MISSING_COLUMN.has(error.code)) return NextResponse.json({ available: false, birthDate: null })
+    console.error('[account/profile] read failed:', error.message)
+    return NextResponse.json({ error: 'Could not read the profile' }, { status: 500 })
+  }
+  return NextResponse.json({ available: true, birthDate: (data?.birth_date as string | null) ?? null })
+}
+
 export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { name?: unknown }
+  let body: { name?: unknown; birthDate?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
-  if (!isValidName(name)) {
-    return NextResponse.json({ error: 'INVALID_NAME' }, { status: 400 })
+  // Each field is optional; whichever are present are validated and written.
+  const update: { name?: string; birth_date?: string | null } = {}
+
+  if (body.name !== undefined) {
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    if (!isValidName(name)) {
+      return NextResponse.json({ error: 'INVALID_NAME' }, { status: 400 })
+    }
+    update.name = name
+  }
+
+  if (body.birthDate !== undefined) {
+    if (body.birthDate === null || body.birthDate === '') {
+      update.birth_date = null
+    } else if (typeof body.birthDate === 'string' && validBirthDate(body.birthDate)) {
+      update.birth_date = body.birthDate
+    } else {
+      return NextResponse.json({ error: 'INVALID_BIRTH_DATE' }, { status: 400 })
+    }
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
   // Request-scoped, so the RLS policy from 0001 is what authorises the write —
   // the same rule that would refuse someone else's row.
   const { data, error } = await createClient()
     .from('profiles')
-    .update({ name })
+    .update(update)
     .eq('id', user.id)
     .select('id')
 
   if (error) {
+    if (MISSING_COLUMN.has(error.code)) {
+      return NextResponse.json({ error: 'BIRTH_DATE_UNAVAILABLE' }, { status: 503 })
+    }
     console.error('[account/profile] update failed:', error.message)
     return NextResponse.json({ error: 'Could not save the profile' }, { status: 500 })
   }
@@ -68,16 +130,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'NOT_SAVED' }, { status: 409 })
   }
 
-  // Metadata needs the admin client — a user cannot rewrite their own
-  // `raw_user_meta_data` through the anon key. Non-fatal: the profile row is
-  // what the UI reads, and a stale metadata copy only affects how a future
-  // email greets them.
-  const { error: metaError } = await createAdminClient().auth.admin.updateUserById(user.id, {
-    user_metadata: { name },
-  })
-  if (metaError) {
-    console.warn('[account/profile] metadata sync failed:', metaError.message)
+  if (update.name) {
+    // Metadata needs the admin client — a user cannot rewrite their own
+    // `raw_user_meta_data` through the anon key. Non-fatal: the profile row is
+    // what the UI reads, and a stale metadata copy only affects how a future
+    // email greets them.
+    const { error: metaError } = await createAdminClient().auth.admin.updateUserById(user.id, {
+      user_metadata: { name: update.name },
+    })
+    if (metaError) {
+      console.warn('[account/profile] metadata sync failed:', metaError.message)
+    }
   }
 
-  return NextResponse.json({ ok: true, name })
+  return NextResponse.json({ ok: true, name: update.name, birthDate: update.birth_date })
 }

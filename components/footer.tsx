@@ -157,6 +157,14 @@ export function Footer() {
               <li>
                 <FooterSupportLink />
               </li>
+              <li>
+                <a
+                  href="/contact"
+                  className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground"
+                >
+                  {t('footer.contactPage')}
+                </a>
+              </li>
             </ul>
           </div>
         </div>

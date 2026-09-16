@@ -34,6 +34,11 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
 
   const [name, setName] = useState(currentUser?.name ?? '')
   const [email, setEmail] = useState(currentUser?.email ?? '')
+  // Date of birth: read from /api/account/profile, and only offered once the
+  // column exists (migration 0035) — `available` stays false until then.
+  const [birthDate, setBirthDate] = useState('')
+  const [savedBirthDate, setSavedBirthDate] = useState('')
+  const [birthAvailable, setBirthAvailable] = useState(false)
   const [saving, setSaving] = useState(false)
   const [emailPending, setEmailPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,8 +50,31 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
     setEmail(currentUser?.email ?? '')
   }, [currentUser])
 
+  const userId = currentUser?.id
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    fetch('/api/account/profile', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return
+        setBirthAvailable(Boolean(data.available))
+        setBirthDate(data.birthDate ?? '')
+        setSavedBirthDate(data.birthDate ?? '')
+      })
+      .catch(() => {
+        // The field simply stays hidden.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  const birthDirty = birthAvailable && birthDate !== savedBirthDate
   const dirty =
-    name.trim() !== (currentUser?.name ?? '') || email.trim() !== (currentUser?.email ?? '')
+    name.trim() !== (currentUser?.name ?? '') ||
+    email.trim() !== (currentUser?.email ?? '') ||
+    birthDirty
 
   async function save() {
     if (saving || !currentUser) return
@@ -66,7 +94,7 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
     const supabase = createClient()
 
     try {
-      if (trimmedName !== currentUser.name) {
+      if (trimmedName !== currentUser.name || birthDirty) {
         // Through a route, not the browser client. Writing `profiles` directly
         // from here matched zero rows under RLS and reported success, so the
         // customer saw "saved" for a change that never happened. Every other
@@ -75,14 +103,22 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
         const res = await fetch('/api/account/profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: trimmedName }),
+          body: JSON.stringify({
+            ...(trimmedName !== currentUser.name ? { name: trimmedName } : {}),
+            ...(birthDirty ? { birthDate: birthDate || null } : {}),
+          }),
         })
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
           throw new Error(
-            data.error === 'INVALID_NAME' ? t('checkout.errName') : t('account.saveRefused'),
+            data.error === 'INVALID_NAME'
+              ? t('checkout.errName')
+              : data.error === 'INVALID_BIRTH_DATE'
+                ? t('acct.birthDateInvalid')
+                : t('account.saveRefused'),
           )
         }
+        if (birthDirty) setSavedBirthDate(birthDate)
       }
 
       if (trimmedEmail && trimmedEmail !== currentUser.email) {
@@ -128,6 +164,17 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
           type="email"
           autoComplete="email"
         />
+        {birthAvailable && (
+          <Field
+            label={t('acct.birthDate')}
+            value={birthDate}
+            onChange={setBirthDate}
+            type="date"
+            autoComplete="bday"
+            max={new Date().toISOString().slice(0, 10)}
+            min="1900-01-01"
+          />
+        )}
 
         {emailPending && (
           <p className="border border-gold/40 bg-gold/5 px-3 py-2.5 text-[12px] font-light text-gold">
@@ -162,12 +209,16 @@ function Field({
   onChange,
   type,
   autoComplete,
+  min,
+  max,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   type: string
   autoComplete: string
+  min?: string
+  max?: string
 }) {
   return (
     <label className="block">
@@ -179,6 +230,8 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
+        min={min}
+        max={max}
         // 44px / 16px below md — the iOS zoom threshold; the desktop field is
         // unchanged.
         className="h-11 w-full border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]"

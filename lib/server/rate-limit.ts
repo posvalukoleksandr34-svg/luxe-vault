@@ -44,6 +44,10 @@ const LIMITS = {
   /** Support tickets. */
   'support.create': { max: 5, windowSeconds: 900 },
 
+  /** Newsletter sign-ups. Every accepted address is someone we may email, so
+   *  an unbounded version would be a way to subscribe strangers in bulk. */
+  'newsletter.subscribe': { max: 5, windowSeconds: 900 },
+
   /** Product reviews and site testimonials. */
   'review.create': { max: 10, windowSeconds: 3600 },
 
