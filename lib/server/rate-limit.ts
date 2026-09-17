@@ -48,6 +48,10 @@ const LIMITS = {
    *  an unbounded version would be a way to subscribe strangers in bulk. */
   'newsletter.subscribe': { max: 5, windowSeconds: 900 },
 
+  /** The unsubscribe link. Generous — a real person clicks it once — but
+   *  bounded, since tokens are the only thing standing behind it. */
+  'newsletter.unsubscribe': { max: 20, windowSeconds: 600 },
+
   /** Referral-link visits that count as clicks. Beyond this the visitor is
    *  still redirected; the visit just is not counted. */
   'referral.click': { max: 20, windowSeconds: 600 },

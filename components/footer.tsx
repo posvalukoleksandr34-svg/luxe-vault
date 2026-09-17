@@ -13,6 +13,7 @@ import { MotionToggle } from '@/components/motion-toggle'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { describeBusinessDays } from '@/lib/fulfilment'
 import { formatPrice, useStore } from '@/lib/store'
+import { FooterNewsletter } from '@/components/newsletter/footer-newsletter'
 
 /** Opens the support center drawer: help, the request form, and the
  *  customer's requests with our replies. */
@@ -45,12 +46,16 @@ function scrollTo(id: string) {
  * closes any other open item — so "Доставка", "Возврат" and "Отзывы" never
  * appear open at the same time and clicking one never toggles another.
  */
-export function Footer() {
+/** `newsletter={false}` on a page that already has its own sign-up block
+ *  (/contact), so the offer is not made twice on one screen. */
+export function Footer({ newsletter = true }: { newsletter?: boolean } = {}) {
   const { t, tf, locale, shipping } = useStore()
 
   return (
     <footer className="border-t border-border bg-card/20">
       <div className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10">
+        {newsletter && <FooterNewsletter />}
+
         <div className="grid gap-10 md:grid-cols-4">
           <div className="md:col-span-1">
             <div className="flex items-baseline gap-0.5">

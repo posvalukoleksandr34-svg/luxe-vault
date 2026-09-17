@@ -155,6 +155,84 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
 }
 
+/**
+ * Sender for newsletter campaigns. Same verified domain, its own mailbox, so a
+ * marketing email never shares a sender with order mail — a recipient who
+ * files one as unwanted does not teach their provider to bury the other.
+ */
+export const NEWSLETTER_FROM_ADDRESS = 'Luxe Vault <news@luxe-vault.store>'
+
+const BATCH_ENDPOINT = 'https://api.resend.com/emails/batch'
+/** Resend accepts up to 100 emails per batch request. */
+export const BATCH_SIZE = 100
+
+export type BatchResult = {
+  /** Emails Resend accepted (or, in test mode, rendered and not delivered). */
+  sent: number
+  failed: number
+  error?: string
+}
+
+/**
+ * Sends up to BATCH_SIZE individual emails in one request — each with its own
+ * recipient, body and headers, so every subscriber gets their own unsubscribe
+ * link. Never throws.
+ *
+ * Test mode keeps its promise not to mail real recipients: without
+ * EMAIL_TEST_RECIPIENT it logs and delivers nothing; with it, ONE sample of
+ * the batch goes to the test inbox (not a hundred copies).
+ */
+export async function sendEmailBatch(inputs: SendEmailInput[]): Promise<BatchResult> {
+  if (inputs.length === 0) return { sent: 0, failed: 0 }
+  if (inputs.length > BATCH_SIZE) {
+    return { sent: 0, failed: inputs.length, error: `A batch holds at most ${BATCH_SIZE} emails.` }
+  }
+
+  if (emailMode() === 'test') {
+    const first = inputs[0]
+    const sample = await sendEmail(first)
+    console.info(`[mail:test] batch of ${inputs.length} — "${first.subject}" — not delivered to recipients`)
+    return sample.ok ? { sent: inputs.length, failed: 0 } : { sent: 0, failed: inputs.length, error: sample.message }
+  }
+
+  if (!API_KEY) {
+    return { sent: 0, failed: inputs.length, error: 'RESEND_API_KEY is not set; nothing was sent.' }
+  }
+
+  try {
+    const res = await fetch(BATCH_ENDPOINT, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        inputs.map((input) => ({
+          from: input.from ?? FROM_ADDRESS,
+          to: Array.isArray(input.to) ? input.to : [input.to],
+          subject: input.subject,
+          html: input.html,
+          ...(input.text ? { text: input.text } : {}),
+          ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+          ...(input.headers ? { headers: input.headers } : {}),
+        })),
+      ),
+    })
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      const error = `Resend rejected the batch (${res.status}): ${detail.slice(0, 400)}`
+      console.error(`[resend] ${error}`)
+      return { sent: 0, failed: inputs.length, error }
+    }
+
+    const data = (await res.json().catch(() => null)) as { data?: { id?: string }[] } | null
+    const accepted = Array.isArray(data?.data) ? data!.data.length : inputs.length
+    return { sent: accepted, failed: inputs.length - accepted }
+  } catch (e) {
+    const error = (e as Error).message
+    console.error(`[resend] batch network failure: ${error}`)
+    return { sent: 0, failed: inputs.length, error }
+  }
+}
+
 /** Minimal HTML escaping. Customer-supplied text (names, product titles) goes
  *  into an HTML email, so an unescaped angle bracket would corrupt the markup. */
 export function escapeHtml(value: string): string {

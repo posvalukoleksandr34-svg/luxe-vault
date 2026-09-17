@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Truck,
   Users,
+  Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -326,6 +327,13 @@ export function AdminPanel() {
                 <Truck className="size-4" />
                 Доставка
               </Link>
+              <Link
+                href="/admin/newsletter"
+                className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <Mail className="size-4" />
+                Рассылка
+              </Link>
             </nav>
 
             <button
@@ -376,6 +384,13 @@ export function AdminPanel() {
             >
               <Truck className="size-4" />
               Доставка
+            </Link>
+            <Link
+              href="/admin/newsletter"
+              className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <Mail className="size-4" />
+              Рассылка
             </Link>
             <button
               type="button"

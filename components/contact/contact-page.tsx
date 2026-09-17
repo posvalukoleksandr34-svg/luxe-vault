@@ -87,7 +87,7 @@ export function ContactPage() {
 
         <NewsletterBlock c={c} />
       </main>
-      <Footer />
+      <Footer newsletter={false} />
 
       {formWanted && (
         <SupportRequestModal open={formOpen} onOpenChange={setFormOpen} c={c} replySpan={replySpan} />
