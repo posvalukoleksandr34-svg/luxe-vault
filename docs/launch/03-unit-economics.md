@@ -1,12 +1,15 @@
 # 3. Unit Economics
 
-All figures CHF. Assumptions: retail **109**, shipping charged **25**, free
-shipping above **200** (`config/shipping.ts`).
+All figures CHF. Assumptions: retail **109** (VAT-inclusive, as Swiss and EU
+consumer prices must be), shipping charged **25**, free shipping above **200**
+(`config/shipping.ts`), **8.1%** Swiss VAT, **6%** refund rate, **2%**
+shrinkage.
 
-**[→ Margin Desk — the live calculator](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)** — change any input (price,
-ex-works cost, freight, card fee, refund reserve) and every figure below
-recomputes: contribution, target CAC, break-even CAC and ROAS, the scenario
-table, and a daily "did today make money" check.
+**[→ Margin Desk — the live calculator](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)**
+— change any input (price, VAT rate, gateway mix from 2.9% card to 5.5% BNPL,
+ex-works cost, freight, refund rate, return handling, shrinkage) and every
+figure below recomputes: contribution, target and break-even CAC, ROAS,
+monthly break-even orders, the scenario table, and a daily profit check.
 
 ---
 
@@ -14,30 +17,32 @@ table, and a daily "did today make money" check.
 
 Work backwards from the multiple, not forwards from the supplier's quote.
 
-**The rule: landed cost ≤ 25% of retail. Absolute ceiling 33%.**
+**The rule: landed cost ≤ 25% of the VAT-exclusive retail price.** At 109 CHF
+inclusive, the price you actually earn is 109 ÷ 1.081 = **100.83**, so the
+budget is against that figure, not the sticker.
 
 "Landed" = product ex-works **+ freight + duties + import VAT prepaid (DDP)**.
 Quoting yourself the ex-works price alone is the most common way founders
 discover at order 30 that they have no margin.
 
-| At retail 109 CHF | Landed cost | Multiple | Verdict |
+| At retail 109 CHF incl. VAT (100.83 net) | Landed cost | Multiple | Verdict |
 |---|---|---|---|
-| Target | **≤ 27** | 4.0× | Healthy. Scales |
-| Acceptable | 28–36 | 3.0–3.9× | Works, no room for error |
-| Ceiling | 36 | 3.0× | Below this you are working for Meta |
-| Typical China quote | 38–45 | 2.4–2.9× | ❌ Under-priced product, not overpriced supply |
+| Target | **≤ 25** | 4.0× | Healthy. Scales |
+| Acceptable | 26–33 | 3.0–3.9× | Works, no room for error |
+| Ceiling | 34 | 3.0× | Below this you are working for Meta |
+| Typical China quote | 38–45 | 2.2–2.7× | ❌ Under-priced product, not overpriced supply |
 
 **What to say to your agent, verbatim:**
 
 > "I need this jacket delivered **DDP to Switzerland** — duties and import VAT
-> prepaid, customer pays nothing at the door — for **under USD 30 all-in**.
+> prepaid, customer pays nothing at the door — for **under USD 28 all-in**.
 > Split the quote: ex-works price, freight, duty. My ex-works ceiling is
-> **USD 24**. Line used and measured door-to-door time to Zürich, please."
+> **USD 22**. Line used and measured door-to-door time to Zürich, please."
 
-Budget split inside that 27 CHF: **ex-works ≤ 22 CHF (~USD 24)**, **freight +
-DDP ≤ 14 CHF**. The 25 CHF you charge for shipping more than covers the freight
-— shipping is a margin line, not a cost line, which is exactly why the 25 CHF
-fee stays.
+Budget split inside that 25 CHF: **ex-works ≤ 18 CHF (~USD 20)**, **freight +
+DDP ≤ 9 CHF** on a consolidated line. The 25 CHF you charge for shipping more
+than covers the freight — shipping is a margin line, not a cost line, which is
+exactly why the fee stays.
 
 ---
 
@@ -48,28 +53,56 @@ realistic first quote, before you negotiate).
 
 | Line | Amount | Basis |
 |---|---:|---|
-| Product | 109.00 | |
-| Shipping charged | 25.00 | `shippingPrice` |
-| **Revenue collected** | **134.00** | |
-| Landed COGS (DDP) | −38.00 | product 24 + freight/duty 14 |
-| Stripe fee | −4.19 | 2.9% × 134 + 0.30 |
-| Refund / chargeback reserve | −8.04 | 6% of revenue |
+| Product | 109.00 | incl. VAT |
+| Shipping charged | 25.00 | `shippingPrice`, taxed at the same rate |
+| **Gross charged to the card** | **134.00** | what the gateway moves |
+| VAT / sales tax | −10.04 | 8.1% **extracted** from the gross |
+| **Net revenue** | **123.96** | yours to work with |
+| Landed COGS (DDP) | −38.00 | ex-works 24 + freight/duty 14 |
+| Gateway fee | −4.19 | 2.9% of **gross** + 0.30 |
+| Refund provision | −9.72 | 6% × (net revenue + goods written off) |
+| Return handling | −0.48 | 6% × 8.00 per unit |
+| Shrinkage / damage | −0.76 | 2% of landed cost |
 | Per-order overhead | −2.50 | insert card, mailer, support time |
-| **Contribution margin** | **81.27** | **60.6% of revenue** |
+| **Contribution margin** | **68.32** | **55.1% of net revenue** |
 
 Everything else in the business — ads, software, your time — comes out of that
-81.27.
+68.32.
 
-**Why a 6% refund reserve and not zero.** A 14–20 day delivery window on a
-first-purchase fashion item, sold to EU consumers with a statutory 14-day
-withdrawal right, generates returns. 6% is optimistic for apparel; sizing
-disputes alone usually exceed it. Reserve it or it will arrive as a surprise.
+### Why each line is where it is
 
-**Stripe, realistically.** 2.9% + 0.30 is the domestic Swiss card rate. Add
-~1.5% for non-Swiss cards and ~1% for currency conversion on EUR/USD
-presentment (`STRIPE_PRESENTMENT_CURRENCIES`). A realistic blended rate for a
-CH+EU mix is **~4.0% + 0.30 = 5.66 CHF**, which costs you 1.47 CHF of the
-margin above. Not fatal — but model 4%, not 2.9%.
+**VAT comes out of the price, not on top of it.** Swiss and EU consumer prices
+are quoted tax-inclusive. A 109 CHF tag at 8.1% is 100.83 of revenue and 8.17
+owed to the Eidgenössische Steuerverwaltung — and the 25 CHF shipping fee
+carries the same rate. Model it as an addition and you overstate every margin
+in the business by 8%.
+
+**But you do not owe it yet.** Below **CHF 100,000** of turnover you are not
+registered for Swiss MWST, so at VAT = 0 the same order contributes **77.75**
+(58.0%) and target CAC rises to **31**. Crossing the threshold therefore costs
+you **9.43 CHF of contribution per order, overnight** — roughly 2,800 CHF a
+month at 300 orders. Set the calculator's VAT field to 0 for today's reality
+and to 8.1 to see the cliff you are walking toward. Plan the price increase
+*before* you cross, not after.
+
+**The gateway takes its cut of the gross**, because the gross is what it moved.
+2.9% + 0.30 is the domestic Swiss card rate; non-Swiss cards add ~1.5%,
+EUR/USD presentment ~1%, and Klarna or PayPal land between 3.4% and 5.5%. The
+calculator's slider spans that range — set it to your real channel mix. At a
+**5.5% BNPL-heavy mix**, contribution falls to **64.83** and target CAC to
+**21**, which is a different business. If you offer Klarna, price for Klarna.
+
+**Refunds cost more than the refund.** A reversed order loses the net revenue
+*and* writes off the landed goods, because a garment on a 14–20 day
+China-direct line is rarely worth shipping back — then the return label and
+repackaging are charged on top. At 6% that is 9.72 + 0.48 = **10.20 per order
+on average**, not the 8.04 a naive "6% of revenue" reserve would suggest.
+6% is optimistic for apparel; sizing disputes alone usually exceed it.
+
+**Shrinkage is a separate event.** Units lost, stolen or damaged before they
+ever earn, valued at what replacing them costs — landed cost, freight
+included, because you ship the replacement too. 2% is normal for a long
+cross-border line; treat 5% as the signal to change carriers.
 
 ---
 
@@ -77,15 +110,23 @@ margin above. Not fatal — but model 4%, not 2.9%.
 
 | Tier | Max CAC | Net per order | ROAS needed | Meaning |
 |---|---:|---:|---:|---|
-| **Break-even** | **81.27** | 0.00 | **1.65** | One franc past this and you are paying to work |
-| Survival | 55 | 26.27 | 2.44 | Acceptable while testing creative |
-| **Target** | **35** | **46.27** | **3.83** | The number to run the business on |
-| Scaling band | 40–50 | 31–41 | 2.7–3.4 | Where you will actually live once volume comes |
+| **Break-even** | **68.32** | 0.00 | **1.96** | One franc past this and you are paying to work |
+| Survival | 52 | 16.32 | 2.58 | Acceptable while testing creative |
+| **Target** (35% net) | **25** | **43.39** | **5.38** | ⚠️ see below |
+| Realistic band | 40–52 | 16–28 | 2.6–3.4 | Where you will actually live |
 
-**So: 35 CHF to acquire a customer, 81 CHF before you lose money.**
+**The target is the finding, and it is bad news.** A 35% net margin at this
+price implies a **25 CHF CAC and a 5.4× ROAS**. Cold Meta traffic in
+Switzerland and Germany for a new apparel brand does not deliver a 5.4× ROAS —
+not with good creative, not ever, reliably. Read that not as "try harder on
+ads" but as **the price is wrong**, which § 3.4 fixes.
+
+ROAS here is measured on **gross** revenue, because that is what Meta reports.
+Comparing Meta's ROAS to a break-even computed on net revenue is a common and
+expensive error.
 
 Read the break-even number as a tripwire, not a budget. If your 7-day rolling
-CAC crosses ~55, the campaign is not "still learning" — pause it, change the
+CAC crosses ~52, the campaign is not "still learning" — pause it, change the
 creative, and restart. Creative is the variable that moves CAC; bid settings
 are not.
 
@@ -96,47 +137,62 @@ doing its job):
 
 | Line | Amount |
 |---|---:|
-| Revenue collected | 218.00 |
-| Landed COGS (2 units, one parcel) | −68.00 |
-| Stripe (2.9% + 0.30) | −6.62 |
-| Refund reserve 6% | −13.08 |
+| Gross charged | 218.00 |
+| VAT 8.1% | −16.33 |
+| Net revenue | 201.67 |
+| Landed COGS (2 units, one parcel) | −70.40 |
+| Gateway fee | −6.62 |
+| Refunds + return handling | −17.28 |
+| Shrinkage | −1.41 |
 | Overhead | −2.50 |
-| **Contribution margin** | **127.80** (58.6%) |
-| **Break-even CAC** | **127.80** |
-| **Target CAC** (35% net) | **51.50** |
+| **Contribution margin** | **103.45** (51.3%) |
+| **Break-even CAC** | **103.45** |
+| **Target CAC** (35% net) | **32.87** |
 
 One extra item in the basket raises what you can profitably pay per customer
-from **35 to 51 CHF** — a 47% increase in your buying power against every other
-advertiser in the auction. Concretely: a bundle, a second colourway, and the
-"free shipping over 200" threshold surfaced in the cart are worth more than any
-bid optimisation you will ever do.
+from **25 to 33 CHF** — a 32% increase in your buying power against every other
+advertiser in the auction. Note that CM *percentage* falls (51.3% vs 55.1%),
+because the waived shipping fee was pure margin; the CM in **francs** is what
+pays for the customer, and that nearly doubles. Concretely: a bundle, a second
+colourway, and the "free shipping over 200" threshold surfaced in the cart are
+worth more than any bid optimisation you will ever do.
 
 ---
 
 ## 3.4 The price problem
 
-At 109 CHF retail and a 38 CHF landed cost, your multiple is **2.87×**. Premium
-DTC needs 4×, because ads eat the difference. There are two ways out and you
-should do both:
+At 109 CHF inclusive and a 38 CHF landed cost, your real multiple is
+**2.65×** on the VAT-exclusive price. Premium DTC needs 4×, because ads eat the
+difference. There are two ways out and you should do both:
 
-**Fix 1 — negotiate landed cost to 27.** Multiple becomes 4.04×, CM rises to
-92.27, target CAC to **45**. Achievable with a real agent and a serious tech pack.
+**Fix 1 — negotiate landed cost to 27.** Multiple 3.73×, contribution
+**80.20** (64.7%), target CAC **37**. Achievable with a real agent and a
+serious tech pack.
 
 **Fix 2 — raise the price to 139–159.** At **149 + 25**:
 
 | Line | Amount |
 |---|---:|
-| Revenue collected | 174.00 |
+| Gross charged | 174.00 |
+| VAT 8.1% | −13.04 |
+| Net revenue | 160.96 |
 | Landed COGS | −38.00 |
-| Stripe (2.9% + 0.30) | −5.35 |
-| Refund reserve 6% | −10.44 |
+| Gateway fee | −5.35 |
+| Refunds + return handling | −12.42 |
+| Shrinkage | −0.76 |
 | Overhead | −2.50 |
-| **Contribution margin** | **117.71** (67.7%) |
-| **Break-even CAC** | **117.71** |
-| **Target CAC** | **56.81** |
+| **Contribution margin** | **101.94** (63.3%) |
+| **Break-even CAC** | **101.94** |
+| **Target CAC** | **45.60** |
+| **Target ROAS** | **3.82** — reachable |
 
-Same product, same supplier, same ads — and you can now outbid a 109 CHF
-competitor by 60% on every impression.
+**Do both and the business changes shape.** At 149 retail with landed cost cut
+to 27: contribution **113.82** (70.7%), multiple **5.11×**, target CAC
+**57.48**, break-even ROAS **1.53**.
+
+> **25 CHF per customer versus 57 CHF per customer.** Same product, same
+> supplier, same ads. That gap is the entire difference between a store that
+> cannot buy traffic and one that can.
 
 There is also a positioning argument, and it runs the same direction. 109 CHF
 is a mid-market price. A customer shopping "Dark Luxury" reads 109 as *fast
@@ -150,25 +206,49 @@ piece and supported by a 79 CHF accessory.** Keep 25 CHF shipping and the
 
 ---
 
-## 3.5 The daily formula
+## 3.5 Monthly break-even
+
+Fixed costs ÷ contribution margin per order, and then the two figures that
+actually matter.
+
+| Question | Orders / month | Why |
+|---|---:|---|
+| Clear fixed costs (60 CHF) | **1** | `60 ÷ 68.32` |
+| Clear fixed costs **+ the ads that brought them** | **2** | `60 ÷ (68.32 − 25)` |
+| **+ pay yourself 3,000 CHF** | **71** | `3,060 ÷ 43.39` ≈ **2.4 orders/day** |
+| Gross revenue at that point | **9,514 CHF** | 71 × 134 |
+
+**Overhead is not your problem.** One order a month clears every subscription
+you have — the infrastructure is free-tier and the repo already works around
+the Vercel Hobby cron limit. What you actually have to clear is the ads that
+produce the orders and the money you live on, and that is a **71-order,
+9,500 CHF month**. Anchor the plan to that number, not to the 1.
+
+Two things move it hard: contribution per order (see § 3.4 — at 149 retail and
+27 landed, the same draw needs **46** orders, not 71) and the owner draw
+itself. Nothing else in the fixed-cost column is worth optimising.
+
+---
+
+## 3.6 The daily formula
 
 Three numbers. Track them every morning for the previous day.
 
 ```
-                 Landed COGS + Payment fees + Refund reserve + Overhead
-  CM%   =  1  −  ───────────────────────────────────────────────────────
-                                  Revenue collected
+               Landed COGS + Gateway + Refunds + Returns + Shrinkage + Overhead
+  CM%  =  1 −  ────────────────────────────────────────────────────────────────
+                        Net revenue  ( = Gross ÷ (1 + VAT rate) )
 
-  Break-even ROAS  =  1 ÷ CM%
+  Break-even ROAS  =  Gross revenue ÷ Contribution margin
 
-  Net profit  =  (Revenue × CM%)  −  Ad spend  −  (Monthly fixed ÷ 30)
+  Net profit  =  (Orders × CM per order)  −  Ad spend  −  (Monthly fixed ÷ 30)
 ```
 
-**On today's assumptions** (CM% = 60.6%, fixed ≈ 60 CHF/month = 2/day), the
+**On today's assumptions** (CM = 68.32, fixed ≈ 60 CHF/month = 2/day), the
 pocket version:
 
 ```
-  Net today  =  (Orders × 81)  −  Ad spend  −  2
+  Net today  =  (Orders × 68)  −  Ad spend  −  2
 ```
 
 If that is negative, you have exactly two moves: **cut spend** or **fix
@@ -176,21 +256,23 @@ creative**. Not "wait for the algorithm".
 
 ### Break-even ROAS by margin — pin this to the wall
 
-| Your CM% | Break-even ROAS | Target ROAS (35% net) |
+Measured on gross revenue, so it compares directly to what Meta reports.
+
+| Your CM (CHF) | CM % of net rev. | Break-even ROAS |
 |---:|---:|---:|
-| 50% | 2.00 | 3.3 |
-| 55% | 1.82 | 2.8 |
-| **60.6%** ← you | **1.65** | **3.8** |
-| 65% | 1.54 | 3.3 |
-| 70% | 1.43 | 2.9 |
+| 65 (5.5% BNPL mix) | 52.3% | 2.07 |
+| **68** ← you today | **55.1%** | **1.96** |
+| 80 (landed cut to 27) | 64.7% | 1.67 |
+| 102 (retail 149) | 63.3% | 1.71 |
+| 114 (149 **and** landed 27) | 70.7% | 1.53 |
 
 ### Weekly review — five numbers, nothing else
 
 | Metric | Target at launch | Where |
 |---|---|---|
-| **CAC** (ad spend ÷ orders) | ≤ 35, alarm at 55 | Meta + orders table |
-| **AOV** | ≥ 150 | admin orders |
-| **CM%** | ≥ 60% | formula above |
+| **CAC** (ad spend ÷ orders) | ≤ 40, alarm at 52 | Meta + orders table |
+| **AOV** | ≥ 150 gross | admin orders |
+| **CM %** | ≥ 55% of net revenue | formula above |
 | **CVR** (site conversion) | ≥ 1.5%, alarm below 0.8% | GA4 |
 | **Refund rate** | ≤ 6% | admin refunds |
 
@@ -200,16 +282,20 @@ leaking is the most expensive mistake available to you.
 
 ---
 
-## 3.6 Cash flow — the thing the margin table hides
+## 3.7 Cash flow — the thing the margin table hides
 
-You are profitable per order and can still run out of money. Two traps:
+You are profitable per order and can still run out of money. Three traps:
 
 1. **Stripe payouts lag.** A new Swiss Stripe account typically pays out on a
    ~7-day rolling delay. You pay the agent for order #1 days before Stripe pays
-   you for it. At 20 orders in flight, that is roughly **700–800 CHF of working
+   you for it. At 20 orders in flight, that is roughly **760 CHF of working
    capital** tied up before a single payout lands.
 2. **Ads are prepaid, revenue is not.** Meta bills you on a threshold; refunds
    arrive 14–30 days after the sale.
+3. **VAT is not your money.** Once registered, the 8.1% sitting in your bank
+   account belongs to the tax office and is settled quarterly. Spending it on
+   ads is the single most common way a growing store becomes insolvent while
+   showing a profit. Move it to a separate account the day it arrives.
 
 **Practical rule for month one:** never let committed ad spend plus unfunded
 COGS exceed cash on hand minus 150 CHF. With a 500 CHF budget this caps you at

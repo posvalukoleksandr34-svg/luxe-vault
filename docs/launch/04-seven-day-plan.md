@@ -21,8 +21,9 @@ from a supplier whose sample you have not held.
 **Morning — money before product.**
 - [ ] Decide the launch price. Recommendation: **hero puffer at 149 CHF**, one
       249 CHF anchor, one 79 CHF accessory. (`03-unit-economics.md` § 3.4)
-- [ ] Write your target landed cost on a sticky note: **≤ 27 CHF for a 109 piece,
-      ≤ 37 for a 149 piece.** This is the number you negotiate against all week.
+- [ ] Write your target landed cost on a sticky note: **≤ 25 CHF for a 109
+      piece, ≤ 34 for a 149 piece** — budgeted against the VAT-exclusive price,
+      not the sticker. This is the number you negotiate against all week.
 - [ ] Open the [Margin Desk](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r), enter your real numbers, and note **target CAC** and
       **break-even CAC**. You will check ad performance against these daily.
 
@@ -189,9 +190,12 @@ Creative is the only variable that meaningfully moves CAC. Spend the whole day.
 
 | Actual CAC | Verdict | Next move |
 |---|---|---|
-| **< 45** | It works | Raise budget 20–30%/day, no more. Reinvest revenue |
-| **45–81** | Marginal | Fix AOV first (bundles, the 200 CHF threshold), then creative |
-| **> 81** | Losing money per sale | Stop paid. Fix the offer, the price or the product page before spending another franc |
+| **< 40** | It works | Raise budget 20–30%/day, no more. Reinvest revenue |
+| **40–68** | Marginal | Fix price and AOV first (§ 3.4, bundles, the 200 CHF threshold), then creative |
+| **> 68** | Losing money per sale | Stop paid. Fix the offer, the price or the product page before spending another franc |
+
+Thresholds are for the 109 CHF launch case at 8.1% VAT. At 149 retail they
+become < 55 / 55–102 / > 102 — which is the point of raising the price.
 
 **Whatever the result, you will know three things by Day 7 that you cannot know
 today:** whether the product converts, what a customer actually costs, and
