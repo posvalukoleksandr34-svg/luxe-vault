@@ -5,7 +5,8 @@ consumer prices must be), shipping charged **25**, free shipping above **200**
 (`config/shipping.ts`), **8.1%** Swiss VAT, **6%** refund rate, **2%**
 shrinkage.
 
-**[→ Margin Desk — the live calculator](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)**
+**[→ Анализ Маржинальности — the live calculator](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)**
+(interface in Russian; the figures below are the same model)
 — change any input (price, VAT rate, gateway mix from 2.9% card to 5.5% BNPL,
 ex-works cost, freight, refund rate, return handling, shrinkage) and every
 figure below recomputes: contribution, target and break-even CAC, ROAS,

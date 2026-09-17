@@ -9,7 +9,7 @@ Four documents, in the order you should act on them:
 | 2 | [02-launch-checklist.md](./02-launch-checklist.md) | Exactly what to pay for and configure, prioritised |
 | 3 | [03-unit-economics.md](./03-unit-economics.md) | The per-order maths, target COGS, target CAC, the daily formula |
 | 4 | [04-seven-day-plan.md](./04-seven-day-plan.md) | Day-by-day operations for the first week |
-| — | **[Margin Desk](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)** | Live calculator — every figure in #3, recomputed from your own inputs |
+| — | **[Анализ Маржинальности](https://claude.ai/artifact/CNPh5eMby8Kh7PPwkWXC3r)** | Live calculator, Russian interface — every figure in #3, recomputed from your own inputs |
 
 ## Working assumptions
 
