@@ -136,6 +136,58 @@ export async function uploadImage(
   return { ok: true, url: `${STORAGE_PUBLIC_PREFIX}${name}` }
 }
 
+/**
+ * Newsletter campaign images (bucket `newsletter-images`, migration 0038).
+ *
+ * A separate public bucket rather than a folder of product-images: an email
+ * holds its image URL forever, so these must never be cleaned up along with
+ * catalogue photos. JPEG, PNG and GIF only — mail clients (Outlook above all)
+ * still do not display WebP or AVIF.
+ */
+const NEWSLETTER_BUCKET = 'newsletter-images'
+
+export const NEWSLETTER_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif']
+
+export async function uploadNewsletterImage(
+  bytes: ArrayBuffer | Buffer,
+  contentType: string,
+): Promise<UploadResult> {
+  const type = contentType.toLowerCase()
+  if (NEWSLETTER_IMAGE_TYPES.indexOf(type) === -1) {
+    return { ok: false, error: 'Для писем подходят только JPEG, PNG или GIF.' }
+  }
+  const ext = ALLOWED.get(type)!
+
+  const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes)
+  if (body.byteLength === 0) return { ok: false, error: 'Файл пустой.' }
+  if (body.byteLength > MAX_UPLOAD_BYTES) {
+    return {
+      ok: false,
+      error: `Файл весит ${(body.byteLength / 1024 / 1024).toFixed(1)} МБ, максимум — ${MAX_UPLOAD_BYTES / 1024 / 1024} МБ.`,
+    }
+  }
+
+  const name = `campaigns/${Date.now().toString(36)}-${randomId(12)}.${ext}`
+  const { error } = await createAdminClient().storage.from(NEWSLETTER_BUCKET).upload(name, body, {
+    contentType: type,
+    upsert: false,
+    cacheControl: '31536000',
+  })
+  if (error) {
+    const missing = /bucket not found/i.test(error.message)
+    return {
+      ok: false,
+      error: missing
+        ? 'В Supabase нет бакета newsletter-images — примените миграцию 0038_newsletter_images_bucket.sql.'
+        : error.message,
+    }
+  }
+  return {
+    ok: true,
+    url: `${SUPABASE_URL}/storage/v1/object/public/${NEWSLETTER_BUCKET}/${name}`,
+  }
+}
+
 function randomId(length: number): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
   // Indexed rather than iterated: the project targets ES5, where for..of over

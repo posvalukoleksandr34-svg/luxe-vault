@@ -1,7 +1,7 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowLeft, Loader2, Mail, Monitor, Search, Send, Smartphone, Users, X } from 'lucide-react'
+import { ArrowLeft, ImagePlus, Loader2, Mail, Monitor, Search, Send, Smartphone, Users, X } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
@@ -12,6 +12,7 @@ import {
   type CampaignContent,
   type CampaignFieldError,
 } from '@/lib/newsletter/campaign'
+import { CTA_LINK_PRESETS, CTA_TEXT_PRESETS, isPresetPath } from '@/lib/newsletter/cta-links'
 import { getSiteUrl } from '@/lib/site-url'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -397,17 +398,19 @@ export function NewsletterManager() {
             <Field id="nl-body" label="Основной текст" hint="Пустая строка — новый абзац. Только текст, без HTML." error={shownErrors.body} count={[draft.body.length, CAMPAIGN_LIMITS.body]}>
               <textarea id="nl-body" rows={8} value={draft.body} onChange={(e) => update('body', e.target.value)} aria-invalid={Boolean(shownErrors.body)} className={cn(INPUT, 'resize-y leading-relaxed')} />
             </Field>
-            <Field id="nl-image" label="URL изображения" hint="Необязательно. https://…, ширина от 1160px" error={shownErrors.imageUrl}>
-              <input id="nl-image" type="url" inputMode="url" value={draft.imageUrl} onChange={(e) => update('imageUrl', e.target.value)} aria-invalid={Boolean(shownErrors.imageUrl)} className={INPUT} placeholder="https://" />
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field id="nl-cta-label" label="Текст кнопки" error={shownErrors.ctaLabel}>
-                <input id="nl-cta-label" value={draft.ctaLabel} onChange={(e) => update('ctaLabel', e.target.value)} aria-invalid={Boolean(shownErrors.ctaLabel)} className={INPUT} placeholder="Смотреть коллекцию" />
-              </Field>
-              <Field id="nl-cta-url" label="Ссылка кнопки" error={shownErrors.ctaUrl}>
-                <input id="nl-cta-url" value={draft.ctaUrl} onChange={(e) => update('ctaUrl', e.target.value)} aria-invalid={Boolean(shownErrors.ctaUrl)} className={INPUT} placeholder="/category/clothing" />
-              </Field>
-            </div>
+            <ImageUpload
+              value={draft.imageUrl}
+              onChange={(url) => update('imageUrl', url)}
+              error={shownErrors.imageUrl}
+            />
+
+            <CtaFields
+              label={draft.ctaLabel}
+              url={draft.ctaUrl}
+              onLabel={(v) => update('ctaLabel', v)}
+              onUrl={(v) => update('ctaUrl', v)}
+              errors={shownErrors}
+            />
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
               <p className="text-xs text-muted-foreground">
@@ -772,6 +775,276 @@ function Field({
       ) : hint ? (
         <p className="mt-1.5 text-[11px] text-muted-foreground/70">{hint}</p>
       ) : null}
+    </div>
+  )
+}
+
+/** Mirrors the bucket (migration 0038): JPEG, PNG, GIF — what every mail
+ *  client displays — up to 5 MB. */
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif']
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/**
+ * The campaign image: drop a file or pick one, and it is uploaded straight to
+ * Supabase Storage (`newsletter-images`) through /api/admin/newsletter/image.
+ * The returned public URL is what the email uses.
+ */
+function ImageUpload({
+  value,
+  onChange,
+  error,
+}: {
+  value: string
+  onChange: (url: string) => void
+  error?: string
+}) {
+  const { pushToast } = useStore()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function upload(file: File | undefined) {
+    if (!file || uploading) return
+    setProblem(null)
+    if (IMAGE_TYPES.indexOf(file.type) === -1) {
+      setProblem('Для писем подходят только JPEG, PNG или GIF.')
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setProblem(`Файл весит ${(file.size / 1024 / 1024).toFixed(1)} МБ, максимум — 5 МБ.`)
+      return
+    }
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.set('file', file, file.name)
+      const res = await fetch('/api/admin/newsletter/image', { method: 'POST', body: form })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || typeof data?.url !== 'string') {
+        setProblem(typeof data?.error === 'string' ? data.error : 'Не удалось загрузить изображение.')
+        return
+      }
+      onChange(data.url)
+      pushToast({ title: 'Изображение загружено', variant: 'success' })
+    } catch {
+      setProblem('Не удалось загрузить изображение. Проверьте соединение.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const message = problem ?? error
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <span id="nl-image-label" className="text-xs text-muted-foreground">
+          Изображение
+        </span>
+        {value && !uploading && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-[11px] text-muted-foreground transition hover:text-destructive"
+          >
+            Удалить
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={IMAGE_TYPES.join(',')}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          void upload(e.target.files?.[0])
+          e.target.value = ''
+        }}
+      />
+
+      <button
+        type="button"
+        aria-labelledby="nl-image-label"
+        aria-describedby={message ? undefined : 'nl-image-hint'}
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault()
+          if (!dragging) setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragging(false)
+          void upload(e.dataTransfer.files?.[0])
+        }}
+        className={cn(
+          'relative flex w-full items-center justify-center overflow-hidden rounded-lg border border-dashed text-left transition',
+          value ? 'min-h-[160px]' : 'min-h-[132px]',
+          dragging ? 'border-gold bg-gold/5' : 'border-border hover:border-gold/50',
+          message && !dragging && 'border-destructive/70',
+        )}
+      >
+        {value ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="" className="max-h-[220px] w-full object-cover" />
+            <span className="absolute inset-x-0 bottom-0 bg-background/85 px-3 py-2 text-center text-xs text-foreground">
+              {uploading ? 'Загружаем…' : 'Перетащите другое изображение или нажмите, чтобы заменить'}
+            </span>
+          </>
+        ) : (
+          <span className="flex flex-col items-center gap-2 px-4 py-6 text-center">
+            {uploading ? (
+              <Loader2 className="size-5 animate-spin text-gold" />
+            ) : (
+              <ImagePlus className="size-5 text-muted-foreground" strokeWidth={1.5} />
+            )}
+            <span className="text-sm text-foreground">
+              {uploading ? 'Загружаем…' : dragging ? 'Отпустите, чтобы загрузить' : 'Перетащите изображение или выберите файл'}
+            </span>
+          </span>
+        )}
+        {uploading && value && (
+          <span className="absolute inset-0 flex items-center justify-center bg-background/60">
+            <Loader2 className="size-5 animate-spin text-gold" />
+          </span>
+        )}
+      </button>
+
+      {message ? (
+        <p className="mt-1.5 text-xs text-destructive" role="alert">
+          {message}
+        </p>
+      ) : (
+        <p id="nl-image-hint" className="mt-1.5 text-[11px] text-muted-foreground/70">
+          Необязательно. JPEG, PNG или GIF до 5 МБ, ширина от 1160px.
+        </p>
+      )}
+    </div>
+  )
+}
+
+const CUSTOM = '__custom__'
+
+/**
+ * The button: preset labels as chips over the text field, and a link chosen
+ * from the shop's stable addresses (lib/newsletter/cta-links.ts) or typed in.
+ */
+function CtaFields({
+  label,
+  url,
+  onLabel,
+  onUrl,
+  errors,
+}: {
+  label: string
+  url: string
+  onLabel: (value: string) => void
+  onUrl: (value: string) => void
+  errors: CampaignFieldError
+}) {
+  const [customMode, setCustomMode] = useState(false)
+  const selected = customMode || (url && !isPresetPath(url)) ? CUSTOM : url
+
+  return (
+    <div className="space-y-5 rounded-xl border border-border p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Кнопка</p>
+        {(label || url || customMode) && (
+          <button
+            type="button"
+            onClick={() => {
+              onLabel('')
+              onUrl('')
+              setCustomMode(false)
+            }}
+            className="text-[11px] text-muted-foreground transition hover:text-destructive"
+          >
+            Без кнопки
+          </button>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Готовые подписи кнопки">
+          {CTA_TEXT_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => onLabel(preset)}
+              aria-pressed={label === preset}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs transition',
+                label === preset
+                  ? 'border-gold bg-gold/10 text-gold'
+                  : 'border-border text-muted-foreground hover:border-gold/50 hover:text-foreground',
+              )}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+        <Field id="nl-cta-label" label="Текст кнопки" error={errors.ctaLabel}>
+          <input
+            id="nl-cta-label"
+            value={label}
+            onChange={(e) => onLabel(e.target.value)}
+            aria-invalid={Boolean(errors.ctaLabel)}
+            className={INPUT}
+            placeholder="Или напишите свой текст"
+          />
+        </Field>
+      </div>
+
+      <Field id="nl-cta-url" label="Ссылка кнопки" error={selected === CUSTOM ? undefined : errors.ctaUrl}>
+        <select
+          id="nl-cta-url"
+          value={selected}
+          onChange={(e) => {
+            const next = e.target.value
+            if (next === CUSTOM) {
+              setCustomMode(true)
+              if (isPresetPath(url)) onUrl('')
+            } else {
+              setCustomMode(false)
+              onUrl(next)
+            }
+          }}
+          aria-invalid={Boolean(errors.ctaUrl) && selected !== CUSTOM}
+          className={cn(INPUT, 'cursor-pointer')}
+        >
+          <option value="">— Выберите страницу —</option>
+          {CTA_LINK_PRESETS.map((preset) => (
+            <option key={preset.path} value={preset.path}>
+              {preset.label} · {preset.path}
+            </option>
+          ))}
+          <option value={CUSTOM}>Своя ссылка…</option>
+        </select>
+      </Field>
+
+      {selected === CUSTOM && (
+        <Field
+          id="nl-cta-custom"
+          label="Своя ссылка"
+          hint="https://… или путь на сайте, например /category/clothing"
+          error={errors.ctaUrl}
+        >
+          <input
+            id="nl-cta-custom"
+            value={url}
+            onChange={(e) => onUrl(e.target.value)}
+            aria-invalid={Boolean(errors.ctaUrl)}
+            className={INPUT}
+            placeholder="https://"
+          />
+        </Field>
+      )}
     </div>
   )
 }

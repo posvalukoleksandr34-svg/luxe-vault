@@ -1,6 +1,6 @@
-// The wording of /contact — the contact cards, the request form and the
-// newsletter block — in the storefront's five languages. Kept out of
-// lib/i18n.ts because only the contact chunk needs it (like lib/support/copy.ts).
+// The wording of /contact — the contact cards and the request form — in the
+// storefront's five languages. Kept out of lib/i18n.ts because only the
+// contact chunk needs it (like lib/support/copy.ts).
 import type { Locale } from '@/lib/types'
 
 export type ContactMethod = 'email' | 'phone' | 'telegram'
@@ -19,20 +19,6 @@ export type ContactCopy = {
   telegramLabel: string
   telegramBody: string
 
-  newsTitle: string
-  newsBody: string
-  newsLabel: string
-  newsPlaceholder: string
-  newsCta: string
-  newsSending: string
-  newsConsentBefore: string
-  newsConsentLink: string
-  newsConsentAfter: string
-  newsInvalid: string
-  newsDone: string
-  newsAlready: string
-  newsUnavailable: string
-  newsError: string
 
   formTitle: string
   formIntro: string
@@ -86,20 +72,6 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Позвоните нам в рабочие часы',
     telegramLabel: 'Telegram',
     telegramBody: 'Напишите нам напрямую — отвечаем в течение {span}',
-    newsTitle: 'Ничего не пропустите',
-    newsBody: 'Новые поступления, лимитированные серии и специальные предложения — первыми и прямо на почту.',
-    newsLabel: 'Получать уведомления',
-    newsPlaceholder: 'Адрес электронной почты',
-    newsCta: 'Подписаться',
-    newsSending: 'Подписываем…',
-    newsConsentBefore: 'Нажимая «Подписаться», вы соглашаетесь получать письма от LUXE VAULT и принимаете ',
-    newsConsentLink: 'Политику конфиденциальности',
-    newsConsentAfter: '. Отписаться можно в любой момент — по ссылке в каждом письме.',
-    newsInvalid: 'Проверьте адрес электронной почты',
-    newsDone: 'Готово — вы подписаны.',
-    newsAlready: 'Этот адрес уже подписан.',
-    newsUnavailable: 'Подписка временно недоступна. Попробуйте позже.',
-    newsError: 'Не получилось подписаться. Попробуйте ещё раз.',
     formTitle: 'Помощь и контакты',
     formIntro: 'Ответим на указанную почту в течение {span}.',
     close: 'Закрыть',
@@ -150,20 +122,6 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Call us during opening hours',
     telegramLabel: 'Telegram',
     telegramBody: 'Message us directly — we reply within {span}',
-    newsTitle: "Don't miss a thing",
-    newsBody: 'New arrivals, limited editions and special offers — first, and straight to your inbox.',
-    newsLabel: 'Get updates',
-    newsPlaceholder: 'Email address',
-    newsCta: 'Subscribe',
-    newsSending: 'Subscribing…',
-    newsConsentBefore: 'By selecting "Subscribe" you agree to receive emails from LUXE VAULT and accept our ',
-    newsConsentLink: 'Privacy Policy',
-    newsConsentAfter: '. You can unsubscribe at any time from the link in every email.',
-    newsInvalid: 'Check the email address',
-    newsDone: "Done — you're subscribed.",
-    newsAlready: 'This address is already subscribed.',
-    newsUnavailable: 'Sign-up is temporarily unavailable. Please try later.',
-    newsError: "We couldn't subscribe you. Please try again.",
     formTitle: 'Help & contact',
     formIntro: "We'll reply to the address you give within {span}.",
     close: 'Close',
@@ -214,20 +172,6 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Chiamaci negli orari di apertura',
     telegramLabel: 'Telegram',
     telegramBody: 'Scrivici direttamente: rispondiamo entro {span}',
-    newsTitle: 'Non perderti nulla',
-    newsBody: 'Nuovi arrivi, edizioni limitate e offerte speciali: in anteprima, direttamente nella tua casella.',
-    newsLabel: 'Ricevi aggiornamenti',
-    newsPlaceholder: 'Indirizzo email',
-    newsCta: 'Iscriviti',
-    newsSending: 'Iscrizione…',
-    newsConsentBefore: 'Selezionando «Iscriviti» accetti di ricevere email da LUXE VAULT e l’',
-    newsConsentLink: 'Informativa sulla privacy',
-    newsConsentAfter: '. Puoi annullare l’iscrizione in qualsiasi momento dal link in ogni email.',
-    newsInvalid: "Controlla l'indirizzo email",
-    newsDone: 'Fatto: sei iscritto.',
-    newsAlready: 'Questo indirizzo è già iscritto.',
-    newsUnavailable: "L'iscrizione non è al momento disponibile. Riprova più tardi.",
-    newsError: 'Iscrizione non riuscita. Riprova.',
     formTitle: 'Assistenza e contatti',
     formIntro: "Risponderemo all'indirizzo indicato entro {span}.",
     close: 'Chiudi',
@@ -278,20 +222,6 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Appelez-nous aux heures d’ouverture',
     telegramLabel: 'Telegram',
     telegramBody: 'Écrivez-nous directement : réponse sous {span}',
-    newsTitle: 'Ne manquez rien',
-    newsBody: 'Nouveautés, éditions limitées et offres spéciales : en avant-première, directement dans votre boîte.',
-    newsLabel: 'Recevoir les actualités',
-    newsPlaceholder: 'Adresse e-mail',
-    newsCta: 'S’abonner',
-    newsSending: 'Inscription…',
-    newsConsentBefore: 'En sélectionnant « S’abonner », vous acceptez de recevoir des e-mails de LUXE VAULT ainsi que notre ',
-    newsConsentLink: 'Politique de confidentialité',
-    newsConsentAfter: '. Vous pouvez vous désabonner à tout moment via le lien présent dans chaque e-mail.',
-    newsInvalid: 'Vérifiez l’adresse e-mail',
-    newsDone: 'C’est fait : vous êtes abonné.',
-    newsAlready: 'Cette adresse est déjà abonnée.',
-    newsUnavailable: 'L’inscription est momentanément indisponible. Réessayez plus tard.',
-    newsError: 'L’inscription a échoué. Réessayez.',
     formTitle: 'Aide et contact',
     formIntro: 'Nous répondrons à l’adresse indiquée sous {span}.',
     close: 'Fermer',
@@ -342,20 +272,6 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Rufen Sie uns während der Geschäftszeiten an',
     telegramLabel: 'Telegram',
     telegramBody: 'Schreiben Sie uns direkt – Antwort innerhalb von {span}',
-    newsTitle: 'Nichts verpassen',
-    newsBody: 'Neuheiten, limitierte Auflagen und besondere Angebote – als Erste und direkt in Ihr Postfach.',
-    newsLabel: 'Updates erhalten',
-    newsPlaceholder: 'E-Mail-Adresse',
-    newsCta: 'Abonnieren',
-    newsSending: 'Wird abonniert…',
-    newsConsentBefore: 'Mit „Abonnieren“ stimmen Sie zu, E-Mails von LUXE VAULT zu erhalten, und akzeptieren unsere ',
-    newsConsentLink: 'Datenschutzerklärung',
-    newsConsentAfter: '. Sie können sich jederzeit über den Link in jeder E-Mail abmelden.',
-    newsInvalid: 'Prüfen Sie die E-Mail-Adresse',
-    newsDone: 'Erledigt – Sie sind angemeldet.',
-    newsAlready: 'Diese Adresse ist bereits angemeldet.',
-    newsUnavailable: 'Die Anmeldung ist vorübergehend nicht verfügbar. Bitte später erneut versuchen.',
-    newsError: 'Die Anmeldung hat nicht geklappt. Bitte erneut versuchen.',
     formTitle: 'Hilfe & Kontakt',
     formIntro: 'Wir antworten an die angegebene Adresse innerhalb von {span}.',
     close: 'Schließen',

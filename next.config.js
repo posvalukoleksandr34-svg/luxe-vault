@@ -148,6 +148,22 @@ const nextConfig = {
    * the rest are safe to apply blindly to a whole site and are enforced by
    * the browser on the customer's behalf.
    */
+  /**
+   * Short, stable addresses for links the shop hands out — newsletter buttons
+   * above all (lib/newsletter/cta-links.ts). An email cannot be edited once it
+   * is sent, so these point at wherever that content lives today, and can be
+   * repointed later without breaking a single old campaign. Temporary (307)
+   * for the same reason: nothing here is a canonical page.
+   */
+  async redirects() {
+    return [
+      { source: '/catalog', destination: '/#shop', permanent: false },
+      { source: '/new-arrivals', destination: '/?view=new#shop', permanent: false },
+      { source: '/sale', destination: '/?view=sale#shop', permanent: false },
+      { source: '/about', destination: '/#about', permanent: false },
+    ]
+  },
+
   async headers() {
     return [
       {

@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ContactMethods } from '@/components/contact/contact-methods'
-import { NewsletterBlock } from '@/components/contact/newsletter-block'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { CONTACT_COPY } from '@/lib/contact-copy'
@@ -27,7 +26,8 @@ const FORM_HASH = '#request'
  * /contact — "Помощь и контакты".
  *
  * Deliberately plain: monochrome type, 1px hairlines, one solid button per
- * view. The page title, the two ways to reach us, then the newsletter.
+ * view. The page title and the two ways to reach us; the newsletter sign-up
+ * is the footer's, as on every page.
  */
 export function ContactPage() {
   const { locale } = useStore()
@@ -85,9 +85,8 @@ export function ContactPage() {
           <ContactMethods c={c} replySpan={replySpan} onOpenForm={openForm} />
         </section>
 
-        <NewsletterBlock c={c} />
       </main>
-      <Footer newsletter={false} />
+      <Footer />
 
       {formWanted && (
         <SupportRequestModal open={formOpen} onOpenChange={setFormOpen} c={c} replySpan={replySpan} />

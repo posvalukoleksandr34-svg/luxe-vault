@@ -213,6 +213,20 @@ export function ProductGrid({
 
   const saleCount = useMemo(() => scoped.filter((p) => p.oldPrice).length, [scoped])
 
+  /**
+   * Arriving from a link that names a view — /sale and /new-arrivals redirect
+   * to /?view=sale and /?view=new (next.config.js), which is what newsletter
+   * buttons point at. Applied once, on the homepage grid only; after that the
+   * chips own the filter as usual.
+   */
+  useEffect(() => {
+    if (locked) return
+    const view = new URLSearchParams(window.location.search).get('view')
+    if (view === 'sale') setFilter({ ...EMPTY_FILTER, sale: true })
+    else if (view === 'new') setFilter({ ...EMPTY_FILTER, sort: 'newest' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function toggleSize(size: string) {
     setFilter({
       ...filter,

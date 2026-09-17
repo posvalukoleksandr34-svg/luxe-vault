@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { About } from '@/components/about'
 import { Collections } from '@/components/collections'
 import { Footer } from '@/components/footer'
+import { HashScroll } from '@/components/hash-scroll'
 import { Header } from '@/components/header'
 import { Hero } from '@/components/hero'
 import { ProductGrid } from '@/components/products/product-grid'
@@ -33,6 +34,7 @@ export default function Home() {
       </main>
 
       <SupportWidgetLazy />
+      <HashScroll />
     </>
   )
 }
