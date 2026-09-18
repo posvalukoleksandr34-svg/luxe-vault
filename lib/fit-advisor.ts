@@ -61,10 +61,6 @@ export function checkFitInput(input: FitInput): 'ok' | 'missing' | 'range' {
     : 'range'
 }
 
-export function isValidFitInput(input: FitInput): boolean {
-  return checkFitInput(input) === 'ok'
-}
-
 /** True when the product is sold in letter sizes — the only run this table
  *  describes. Shoes (41, 42…) and one-size caps get no advisor at all. */
 export function isLetterSizeRun(sizes: string[]): boolean {

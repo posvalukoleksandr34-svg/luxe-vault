@@ -4,7 +4,6 @@ import type {
   Order,
   Product,
   Promo,
-  SizeMeasurement,
 } from './types'
 
 export const CATEGORY_TREE: { group: CategoryGroupKey; items: CategoryKey[] }[] = [
@@ -291,13 +290,6 @@ export const PAYMENT_METHODS = [CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD]
 export function requiresPrepayment(_method: string): boolean {
   return true
 }
-
-export const DEFAULT_SIZE_CHART: SizeMeasurement[] = [
-  { size: 'S', length: 63, chest: 106, shoulder: 47, sleeve: 60 },
-  { size: 'M', length: 65, chest: 110, shoulder: 48, sleeve: 62 },
-  { size: 'L', length: 67, chest: 114, shoulder: 49, sleeve: 64 },
-  { size: 'XL', length: 69, chest: 118, shoulder: 50, sleeve: 66 },
-]
 
 export const TELEGRAM_ADMIN = '@luxevault_orders'
 /**

@@ -126,14 +126,6 @@ export async function activeRecipients(): Promise<Recipient[]> {
   return out
 }
 
-export async function countActiveSubscribers(): Promise<number | null> {
-  const { count, error } = await createAdminClient()
-    .from('newsletter_subscribers')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'active')
-  return error ? null : count ?? 0
-}
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function isToken(value: unknown): value is string {

@@ -209,16 +209,6 @@ export type PaymentStatus =
 /** Mirrors the public.return_status enum. */
 export type ReturnStatus = 'none' | 'requested' | 'approved' | 'refunded'
 
-export type CustomerAddress = {
-  /** Full single-line address, composed from the structured parts below.
-   * Kept for admin display and for orders placed before structured input. */
-  address: string
-  street?: string
-  postalCode?: string
-  city?: string
-  country?: string
-}
-
 export type Order = {
   id: string
   createdAt: number

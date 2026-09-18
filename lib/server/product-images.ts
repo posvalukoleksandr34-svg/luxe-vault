@@ -70,26 +70,6 @@ export function isDataUri(url: string | null | undefined): boolean {
 }
 
 /**
- * Decode a `data:image/...;base64,...` string.
- *
- * Only needed by the one-off backfill, but it lives here so the data-URI
- * format is understood in exactly one place.
- */
-export function decodeDataUri(
-  uri: string,
-): { bytes: Buffer; contentType: string } | null {
-  const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(uri)
-  if (!match) return null
-  const contentType = match[1].toLowerCase()
-  if (!ALLOWED.has(contentType)) return null
-  try {
-    return { bytes: Buffer.from(match[2], 'base64'), contentType }
-  } catch {
-    return null
-  }
-}
-
-/**
  * Store one image and return its public URL.
  *
  * The object name is random rather than derived from the original filename:

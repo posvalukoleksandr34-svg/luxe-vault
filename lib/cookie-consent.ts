@@ -104,15 +104,6 @@ export function writeConsent(choice: Omit<ConsentState, 'version' | 'timestamp'>
   return state
 }
 
-export function clearConsent(): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    /* nothing useful to do */
-  }
-}
-
 /** Fired whenever consent is saved. */
 export const CONSENT_EVENT = 'lv:cookie-consent'
 

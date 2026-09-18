@@ -121,10 +121,6 @@ export async function createPayment(params: CreatePaymentParams) {
   })
 }
 
-export async function getPaymentStatus(paymentId: string) {
-  return request<NowPaymentsPayment>(`/payment/${encodeURIComponent(paymentId)}`)
-}
-
 /** NOWPayments' documented IPN scheme: HMAC-SHA512 of the payload with its
  * keys sorted (recursively) and JSON-stringified with no extra whitespace,
  * signed with the IPN secret and sent as `x-nowpayments-sig`. */

@@ -205,16 +205,6 @@
   .text-gold\/80 { color: hsl(var(--gold) / 0.8); }
   .ring-gold\/40 { --tw-ring-color: hsl(var(--gold) / 0.4); }
   .shadow-gold { box-shadow: 0 0 24px hsl(var(--gold) / 0.12); }
-  .shadow-gold-lg { box-shadow: 0 0 48px hsl(var(--gold) / 0.2); }
-  .bg-gradient-gold {
-    background: linear-gradient(135deg, hsl(45 80% 66%) 0%, hsl(40 75% 50%) 100%);
-  }
-  .text-gradient-gold {
-    background: linear-gradient(135deg, hsl(45 80% 70%) 0%, hsl(38 70% 48%) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
   /* Frosted editorial header ground. Semi-transparent + blurred so the ambient
      gold pools behind it bleed through the bar instead of stopping at it. */
   .glass {

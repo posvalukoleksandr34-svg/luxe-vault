@@ -126,6 +126,8 @@ export function CryptoPayment({
         .then(setQrDataUrl)
         .catch(() => setQrDataUrl(null))
 
+      // A retry must not leave the previous poll running beside the new one.
+      stopPolling()
       pollRef.current = setInterval(async () => {
         try {
           const statusRes = await fetch(`/api/payments/crypto/status?orderId=${encodeURIComponent(createdOrder.id)}`, {

@@ -40,15 +40,6 @@ export function rememberOrder(credential: OrderCredential): void {
   }
 }
 
-export function forgetOrder(id: string): void {
-  try {
-    const next = readOrderRegistry().filter((entry) => entry.id !== id)
-    window.localStorage.setItem(ORDER_REGISTRY_KEY, JSON.stringify(next))
-  } catch {
-    // ignore
-  }
-}
-
 /**
  * Fetches the full, current server-side record for every order this browser
  * knows about, plus every order bound to the signed-in account.
