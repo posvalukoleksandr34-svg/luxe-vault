@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CURRENCY_CODES } from '@/lib/currency'
+import { CURRENCY_CODES, CURRENCY_NAME_KEY } from '@/lib/currency'
 import { LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -11,12 +11,6 @@ import type { Locale } from '@/lib/types'
  *  Russian kept after them: it is the site's DEFAULT language, and removing
  *  it from the only language switch would strand everyone who lands in it. */
 const LANGUAGE_ORDER: Locale[] = ['it', 'en', 'de', 'fr', 'ru']
-
-const CURRENCY_NAME_KEY = {
-  CHF: 'currency.CHF',
-  EUR: 'currency.EUR',
-  USD: 'currency.USD',
-} as const
 
 /**
  * Language and currency, in one place — `IT · CHF` in the header, a small

@@ -36,9 +36,10 @@ import { readReferralCookie } from '@/lib/referral-program'
 import { clearSavedProfile, readSavedProfile, writeSavedProfile } from '@/lib/saved-profile'
 import { useStore, formatChf } from '@/lib/store'
 import {
-  EXCHANGE_RATES,
   formatCharged,
   formatMoney,
+  getRates,
+  isCardCurrency,
   isCurrencyCode,
   type CurrencyCode,
 } from '@/lib/currency'
@@ -51,6 +52,7 @@ import {
   validateAddress,
 } from '@/lib/validation'
 import type { Order } from '@/lib/types'
+import { logAbandonedCheckout } from '@/actions/abandoned-cart'
 
 type FieldKey = 'name' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
@@ -130,7 +132,7 @@ export function CheckoutFlow({
   /**
    * Abandoned-cart capture. Once the email field holds a valid address — typed
    * or prefilled — and the cart has something in it, the server keeps a copy
-   * (app/api/abandoned-carts), so a checkout left unfinished can get its one
+   * (server action actions/abandoned-cart.ts), so a checkout left unfinished can get its one
    * reminder. Debounced, and re-sent only when the address, the cart or the
    * language actually changed. Stops as soon as an order exists: the server
    * marks the cart recovered then, and a late capture must not revive it.
@@ -144,12 +146,7 @@ export function CheckoutFlow({
     if (signature === lastCapture.current) return
     const timer = setTimeout(() => {
       lastCapture.current = signature
-      void fetch('/api/abandoned-carts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, items: cart, locale }),
-        keepalive: true,
-      }).catch(() => {})
+      void logAbandonedCheckout({ email, items: cart, locale }).catch(() => {})
     }, 1500)
     return () => clearTimeout(timer)
   }, [form.email, cart, locale, cardOrder, cryptoOrder])
@@ -917,10 +914,16 @@ export function CheckoutFlow({
                 <p className="-mt-2 mb-5 border-l-2 border-gold/40 bg-gold/[0.04] py-2 pl-3 text-[11px] font-light leading-relaxed text-muted-foreground">
                   {form.payment === CRYPTO_PAYMENT_METHOD
                     ? tf('checkout.cryptoInChf', { amount: formatChf(total, true) })
-                    : tf('checkout.chargeInCurrency', {
-                        currency,
-                        rate: String(EXCHANGE_RATES[currency]),
-                      })}
+                    : isCardCurrency(currency)
+                      ? tf('checkout.chargeInCurrency', {
+                          currency,
+                          rate: getRates()[currency].toFixed(4),
+                        })
+                      : tf('checkout.displayOnlyCurrency', {
+                          currency,
+                          rate: getRates()[currency].toFixed(4),
+                          amount: formatChf(total, true),
+                        })}
                 </p>
               )}
               {hasErrors && (

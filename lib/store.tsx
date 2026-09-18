@@ -20,8 +20,12 @@ import {
   CURRENCY_STORAGE_KEY,
   formatMoney,
   getActiveCurrency,
+  getRates,
   isCurrencyCode,
+  isExchangeRates,
   setActiveCurrency,
+  setRates,
+  type ExchangeRates,
   type CurrencyCode,
 } from './currency'
 import { createClient } from './supabase/client'
@@ -159,6 +163,9 @@ type StoreContextValue = {
    *  lib/currency.ts. */
   currency: CurrencyCode
   setCurrency: (c: CurrencyCode) => void
+  /** Units of each currency per 1 CHF currently in force (live, or the
+   *  fallback table until /api/rates answers). */
+  exchangeRates: ExchangeRates
   t: (key: UIKey) => string
   /** Localized string with {placeholder} substitution, e.g.
    *  tf('otp.step2.resendIn', { n: 42 }). Values are inserted verbatim, so
@@ -533,6 +540,33 @@ function maybeSendWelcome() {
       }
     } catch {
       // localStorage unavailable — stay in CHF.
+    }
+  }, [])
+
+  /**
+   * Live exchange rates — the same snapshot the server charges cards at
+   * (app/api/rates). Fetched once per visit after hydration; until then, and if
+   * it fails, prices use the fallback table, exactly as the server rendered
+   * them. Installed in the module first so every formatPrice() in the
+   * re-render this state change triggers already reads them.
+   */
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>(getRates)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/rates')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rates?: unknown } | null) => {
+        const rates = data?.rates
+        if (cancelled || !isExchangeRates(rates)) return
+        setRates(rates)
+        setExchangeRates(rates)
+      })
+      .catch(() => {
+        // Offline or blocked: the fallback rates stay in force.
+      })
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -1452,6 +1486,7 @@ function maybeSendWelcome() {
       setLocale,
       currency,
       setCurrency,
+      exchangeRates,
       t,
       tf,
       localize,
@@ -1501,7 +1536,7 @@ function maybeSendWelcome() {
       products, collections, categories, categoryTree, groupLabels, categoryLabels,
       catalogLoading, loadCatalog, shipping, categoryImages, setCategoryImage,
       resetCategoryImage, cart, promos, currentUser, authLoading, locale, setLocale, currency,
-      setCurrency, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
+      setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
       addToCart, updateCartQty, removeFromCart, clearCart, cartCount, cartSubtotal, applyPromo,

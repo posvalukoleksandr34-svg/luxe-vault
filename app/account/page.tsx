@@ -24,7 +24,7 @@ import { SavedAddresses } from '@/components/saved-addresses'
 import { SavedCards } from '@/components/saved-cards'
 import { SoundToggle } from '@/components/sound-toggle'
 import { openCookieSettings } from '@/lib/cookie-settings'
-import { CURRENCY_CODES } from '@/lib/currency'
+import { CURRENCY_CODES, CURRENCY_NAME_KEY } from '@/lib/currency'
 import { LOCALES } from '@/lib/i18n'
 import { loadMyOrders } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
@@ -339,12 +339,6 @@ function CreditsSection() {
     </div>
   )
 }
-
-const CURRENCY_NAME_KEY = {
-  CHF: 'currency.CHF',
-  EUR: 'currency.EUR',
-  USD: 'currency.USD',
-} as const
 
 /** Language, currency, sound and motion, cookies — the preferences that
  *  already exist elsewhere on the site, gathered in one place. */

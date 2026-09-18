@@ -1,0 +1,50 @@
+# Hourly trigger for the abandoned-cart reminder run.
+#
+# Vercel's Hobby plan only allows daily cron jobs (see vercel.json), which
+# would turn a two-hour reminder into "up to a day". GitHub runs this hourly
+# for free instead. It does nothing until both repository secrets exist:
+#
+#   SITE_URL      e.g. https://luxe-vault.store   (no trailing slash)
+#   CRON_SECRET   the same value as the deployment's CRON_SECRET
+#
+# Settings → Secrets and variables → Actions → New repository secret.
+# A failed run posts to the Telegram operations chat when INTERNAL_API_SECRET
+# is also set here.
+
+name: Abandoned-cart reminders
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE_URL: ${{ secrets.SITE_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+    steps:
+      - name: Run reminders
+        if: ${{ env.SITE_URL != '' && env.CRON_SECRET != '' }}
+        run: |
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${SITE_URL}/api/cron/abandoned-carts")
+          cat response.json; echo
+          if [ "$status" -ge 300 ]; then
+            echo "::error::Reminder run answered HTTP $status"
+            exit 1
+          fi
+
+      - name: Report failure to Telegram
+        if: ${{ failure() && env.INTERNAL_API_SECRET != '' }}
+        run: |
+          curl -sS --max-time 20 -X POST "${SITE_URL}/api/internal/telegram" \
+            -H "Authorization: Bearer ${INTERNAL_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d '{"kind":"error","context":"Abandoned-cart cron (GitHub Actions)","text":"The hourly reminder run failed; see the Actions log."}'

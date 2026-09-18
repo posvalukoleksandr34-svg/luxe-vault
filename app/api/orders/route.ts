@@ -14,6 +14,7 @@ import { markCartRecovered } from '@/lib/server/abandoned-carts'
 import { attachReferralOrder } from '@/lib/server/referrals'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { readJsonObject } from '@/lib/server/http'
+import { notifyNewOrder } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 
@@ -153,6 +154,9 @@ export async function POST(request: NextRequest) {
       )
     }
   }
+
+  // Operations chat. Never throws, and gives up within seconds.
+  await notifyNewOrder(order)
 
   // `orderId` at the top level is what the checkout handler redirects with;
   // the full order is kept for the existing callers.

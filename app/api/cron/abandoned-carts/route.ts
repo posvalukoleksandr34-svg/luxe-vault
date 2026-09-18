@@ -1,22 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { claimDueCarts } from '@/lib/server/abandoned-carts'
-import { readCatalog } from '@/lib/server/catalog-store'
-import { sendAbandonedCartEmail } from '@/lib/server/emails/abandoned-cart'
-import { emailLang } from '@/lib/server/emails/copy'
-import { isMailConfigured } from '@/lib/server/resend'
-import type { CartItem } from '@/lib/types'
+import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
+import { reportCriticalError } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * The abandoned-cart reminder run: every cart left untouched for more than two
- * hours after its owner typed an email at checkout gets ONE reminder.
+ * The abandoned-cart reminder run: every cart left untouched for longer than
+ * ABANDONED_CART_DELAY_MINUTES (default two hours) after its owner typed an
+ * email at checkout gets ONE reminder (lib/server/abandoned-cart-flow.ts).
  *
  * NOT scheduled in vercel.json: the Vercel Hobby plan allows only daily cron
  * jobs and fails the deployment on an hourly one, and a daily run would turn
  * "two hours" into "up to a day". Call it hourly from an external scheduler
- * instead (cron-job.org, GitHub Actions, Supabase pg_cron + pg_net, …).
+ * instead — .github/workflows/abandoned-cart-reminders.yml does exactly that
+ * once CRON_SECRET and SITE_URL are set as repository secrets. The nightly
+ * sweep also runs it, so reminders still go out (up to a day late) with no
+ * external scheduler at all.
  *
  * Authenticated like /api/cron/sweep — the shared secret in the Authorization
  * header — and failing closed without it: an open version would be a button
@@ -39,42 +39,12 @@ async function run(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Claiming stamps the carts; with no way to send, that would spend their
-  // one reminder on nothing.
-  if (!isMailConfigured) return NextResponse.json({ skipped: 'mail not configured' })
-
-  let claimed
   try {
-    claimed = await claimDueCarts(100)
+    return NextResponse.json(await runAbandonedCartReminders(100))
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 503 })
+    await reportCriticalError('Abandoned-cart run', e)
+    return NextResponse.json({ error: 'Reminder run failed' }, { status: 503 })
   }
-  if (claimed.length === 0) return NextResponse.json({ claimed: 0, sent: 0, skipped: 0 })
-
-  // One catalogue read for the batch. Each reminder shows today's price and
-  // the name in the customer's language, and leaves out anything since
-  // removed from the shop.
-  const { products } = await readCatalog()
-  const byId = new Map(products.map((p) => [p.id, p]))
-
-  let sent = 0
-  let skipped = 0
-  for (const cart of claimed) {
-    const lang = emailLang(cart.locale)
-    const items: CartItem[] = []
-    for (const item of cart.cart_items ?? []) {
-      const product = byId.get(item.productId)
-      if (!product) continue
-      items.push({ ...item, price: product.price, name: product.name[lang] || product.name.ru || item.name })
-    }
-    if (items.length === 0) {
-      skipped++
-      continue
-    }
-    if (await sendAbandonedCartEmail(cart, items, lang)) sent++
-  }
-
-  return NextResponse.json({ claimed: claimed.length, sent, skipped })
 }
 
 /** Most schedulers issue a GET; see /api/cron/sweep for why that is fine here. */

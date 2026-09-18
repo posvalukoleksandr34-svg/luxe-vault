@@ -4,6 +4,7 @@ import { notifyStatusUpdate } from '@/lib/server/notifications'
 import { ORDER_STATUSES, type OrderStatus } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { readJsonObject } from '@/lib/server/http'
+import { notifyOrderStatus } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,6 +84,8 @@ export async function PATCH(
       trackingNumber: updated.trackingNumber,
     })
   }
+
+  await notifyOrderStatus(updated, 'admin')
 
   return NextResponse.json({ order: updated })
 }

@@ -11,6 +11,7 @@ import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
+import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -254,6 +255,8 @@ export default async function RootLayout({
         {/* GA4 and the Meta Pixel, each only with its consent category and
             only once the browser is idle. Stateless; outside StoreProvider. */}
         <AnalyticsManagerLazy />
+        {/* PWA: static-asset cache, offline page, installability (public/sw.js). */}
+        <ServiceWorkerRegister />
 
         {/* Skip link. The header carries a logo, five nav items, a search box,
             a language menu and four icon buttons, so a keyboard or screen

@@ -19,6 +19,7 @@ import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
 import type { PaymentStatus } from '@/lib/types'
+import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict, reportCriticalError } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 // The signature is computed over the exact request bytes, so the body must not
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
     // Stripe DOES retry, and the retry can claim and process it.
     if (claim === 'claimed') await releaseStripeEvent(event.id)
     const message = error instanceof Error ? error.message : 'Failed to update order'
+    await reportCriticalError(`Stripe webhook ${event.type}`, message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
@@ -138,6 +140,17 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
     if (stock === 'insufficient') {
       console.error(`[stripe] ${order.id} was paid but its stock had been released and sold`)
       if (isMailConfigured) await sendStockConflictAlert(order)
+      await notifyStockConflict(order)
+    }
+    // Once per order, via the event ledger — the same guard as the emails.
+    if (
+      isTelegramConfigured() &&
+      (await claimStripeEvent(`telegram:paid:${order.id}`, 'telegram.paid')) !== 'duplicate'
+    ) {
+      await notifyPaymentConfirmed(order, 'stripe', {
+        amount: fromMinorUnits(intent.amount_received || intent.amount),
+        currency: intent.currency.toUpperCase(),
+      })
     }
   }
 

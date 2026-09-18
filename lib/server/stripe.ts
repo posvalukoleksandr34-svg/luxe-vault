@@ -1,15 +1,18 @@
 import Stripe from 'stripe'
 import {
   BASE_CURRENCY,
-  CURRENCY_CODES,
-  EXCHANGE_RATES,
+  CARD_CURRENCIES,
   chargeAmount,
   fromMinorUnits,
+  isCardCurrency,
   isCurrencyCode,
   roundMinor,
   toMinorUnits,
+  type CardCurrencyCode,
   type CurrencyCode,
+  type ExchangeRates,
 } from '@/lib/currency'
+import { getExchangeRates } from '@/lib/server/exchange-rates'
 import type { Order } from '@/lib/types'
 
 /**
@@ -44,13 +47,13 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET?.trim()
  * the account; unset, every currency the shop displays is accepted. CHF is
  * always included: every price is in francs, and it is the fallback.
  */
-export function chargeCurrencies(): CurrencyCode[] {
+export function chargeCurrencies(): CardCurrencyCode[] {
   const raw = process.env.STRIPE_PRESENTMENT_CURRENCIES?.trim()
-  if (!raw) return CURRENCY_CODES
+  if (!raw) return CARD_CURRENCIES
   const listed = raw
     .split(',')
     .map((code) => code.trim().toUpperCase())
-    .filter(isCurrencyCode)
+    .filter(isCardCurrency)
   return listed.indexOf(BASE_CURRENCY) === -1 ? [BASE_CURRENCY].concat(listed) : listed
 }
 
@@ -89,7 +92,7 @@ export type PreparedPayment =
       ok: true
       intent: Stripe.PaymentIntent
       /** What the card will be charged in… */
-      currency: CurrencyCode
+      currency: CardCurrencyCode
       /** …and how much, in major units, rounded to the cent. */
       amount: number
       /** Units of `currency` per 1 CHF behind `amount`. */
@@ -102,7 +105,7 @@ export type PreparedPayment =
   | { ok: false; reason: 'already_paid' }
 
 type Charge =
-  | { ok: true; intent: Stripe.PaymentIntent; currency: CurrencyCode; amount: number; rate: number }
+  | { ok: true; intent: Stripe.PaymentIntent; currency: CardCurrencyCode; amount: number; rate: number }
   | { ok: false; reason: 'already_paid' }
 
 /**
@@ -145,14 +148,16 @@ async function retrieveIntent(id: string): Promise<Stripe.PaymentIntent | null> 
  */
 async function chargeIn(
   order: Order,
-  currency: CurrencyCode,
+  currency: CardCurrencyCode,
   options: { customerId?: string; saveCard?: boolean },
+  rates: ExchangeRates,
 ): Promise<Charge> {
   const stripe = getStripe()
-  const rate = EXCHANGE_RATES[currency]
+  const rate = rates[currency]
   // Converted from the STORED order total, never from anything the client
-  // sends: the request carries a currency code, not a figure.
-  const amount = chargeAmount(order.total, currency)
+  // sends: the request carries a currency code, not a figure. `rates` is the
+  // live snapshot — the same one /api/rates gives the storefront.
+  const amount = chargeAmount(order.total, currency, rates)
   const saveCard = Boolean(options.customerId && options.saveCard)
 
   const priced = {
@@ -253,15 +258,19 @@ export async function preparePaymentIntent(
 ): Promise<PreparedPayment> {
   const asked = typeof options.currency === 'string' ? options.currency.trim().toUpperCase() : ''
   const requested: CurrencyCode = isCurrencyCode(asked) ? asked : BASE_CURRENCY
-  const target = chargeCurrencies().indexOf(requested) !== -1 ? requested : BASE_CURRENCY
+  // USDT is display-only: it is never a card currency, so it falls back to
+  // francs here and the response says so (`fellBack`).
+  const target: CardCurrencyCode =
+    isCardCurrency(requested) && chargeCurrencies().indexOf(requested) !== -1 ? requested : BASE_CURRENCY
+  const { rates } = await getExchangeRates()
 
   let charge: Charge
   try {
-    charge = await chargeIn(order, target, options)
+    charge = await chargeIn(order, target, options, rates)
   } catch (error) {
     if (target === BASE_CURRENCY || !isCurrencyRejection(error)) throw error
     console.warn(`[stripe] ${target} refused for ${order.id}; charging ${BASE_CURRENCY} instead`)
-    charge = await chargeIn(order, BASE_CURRENCY, options)
+    charge = await chargeIn(order, BASE_CURRENCY, options, rates)
   }
 
   if (!charge.ok) return charge

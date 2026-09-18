@@ -8,37 +8,90 @@
  * same table (lib/server/stripe.ts) and records what it charged in
  * orders.payment_currency / payment_amount. Crypto payments stay priced in CHF.
  *
- * `EXCHANGE_RATES` is the one thing to replace when this moves to a live rates
- * API: fetch the rates, keep the same shape, and every caller follows. The
- * rate a payment was actually made at stays recoverable from the order itself
- * (payment_amount / total), so a later rate change never re-prices a refund.
+ * Rates are LIVE: lib/server/exchange-rates.ts fetches ECB reference rates
+ * (cached for an hour) and installs them with setRates() on the server; the
+ * store fetches the same figures from /api/rates and installs them in the
+ * browser. EXCHANGE_RATES below is the fallback used until then, or whenever
+ * the feed is unreachable. The rate a payment was actually made at stays
+ * recoverable from the order itself (payment_amount / total), so a later rate
+ * change never re-prices a refund.
+ *
+ * USDT is a DISPLAY currency: prices can be shown in it (pegged to the US
+ * dollar), but a card cannot be charged in it — CARD_CURRENCIES leaves it
+ * out, so a card payment falls back to francs and says so, and crypto
+ * payments are priced in CHF as before.
  */
 
 import type { Order } from './types'
 
-export type CurrencyCode = 'CHF' | 'EUR' | 'USD'
+export type CurrencyCode = 'CHF' | 'EUR' | 'USD' | 'USDT'
 
-export const BASE_CURRENCY: CurrencyCode = 'CHF'
+/** The fiat currencies a card can be charged in. */
+export type CardCurrencyCode = Exclude<CurrencyCode, 'USDT'>
 
-export const CURRENCY_CODES: CurrencyCode[] = ['CHF', 'EUR', 'USD']
+export const BASE_CURRENCY: CardCurrencyCode = 'CHF'
+
+export const CURRENCY_CODES: CurrencyCode[] = ['CHF', 'EUR', 'USD', 'USDT']
+
+export const CARD_CURRENCIES: CardCurrencyCode[] = ['CHF', 'EUR', 'USD']
+
+/** i18n keys for each currency's name, for every currency picker. */
+export const CURRENCY_NAME_KEY = {
+  CHF: 'currency.CHF',
+  EUR: 'currency.EUR',
+  USD: 'currency.USD',
+  USDT: 'currency.USDT',
+} as const
+
+export type ExchangeRates = Record<CurrencyCode, number>
 
 /**
- * Units of each currency per 1 CHF.
- *
- * Set by hand (Sept 2026) — not a live feed. These decide what a card is
- * actually CHARGED in EUR or USD, so keep them current: a stale rate over- or
- * under-charges every non-franc card payment by the drift.
+ * Units of each currency per 1 CHF — the FALLBACK table, used until live rates
+ * arrive and whenever the feed fails. Refreshed by hand (18 Sept 2026, ECB).
+ * The live feed is also sanity-checked against these (lib/server/exchange-rates.ts),
+ * so keep them roughly current.
  */
-export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
+export const EXCHANGE_RATES: ExchangeRates = {
   CHF: 1,
-  EUR: 1.07,
-  USD: 1.25,
+  EUR: 1.06,
+  USD: 1.21,
+  USDT: 1.21,
 }
 
 export const CURRENCY_STORAGE_KEY = 'lv.currency.v1'
 
 export function isCurrencyCode(value: unknown): value is CurrencyCode {
+  return value === 'CHF' || value === 'EUR' || value === 'USD' || value === 'USDT'
+}
+
+export function isCardCurrency(value: unknown): value is CardCurrencyCode {
   return value === 'CHF' || value === 'EUR' || value === 'USD'
+}
+
+/**
+ * The rates currently in force — module-level, like the active currency
+ * below, so every existing convert/format call picks them up without a new
+ * parameter. Replaced wholesale by setRates(); never partially.
+ */
+let activeRates: ExchangeRates = EXCHANGE_RATES
+
+export function getRates(): ExchangeRates {
+  return activeRates
+}
+
+export function setRates(next: ExchangeRates): void {
+  activeRates = next
+}
+
+/** Validates a rates object from the network: every currency present, each a
+ *  positive finite number, CHF exactly 1. */
+export function isExchangeRates(value: unknown): value is ExchangeRates {
+  if (!value || typeof value !== 'object') return false
+  const r = value as Record<string, unknown>
+  return (
+    r.CHF === 1 &&
+    CURRENCY_CODES.every((code) => typeof r[code] === 'number' && Number.isFinite(r[code]) && (r[code] as number) > 0)
+  )
 }
 
 /**
@@ -65,7 +118,7 @@ export function fromMinorUnits(minor: number): number {
 export function convertFromChf(
   amountChf: number,
   to: CurrencyCode,
-  rates: Record<CurrencyCode, number> = EXCHANGE_RATES,
+  rates: ExchangeRates = getRates(),
 ): number {
   return amountChf * (rates[to] ?? 1)
 }
@@ -78,18 +131,23 @@ export function convertFromChf(
 export function chargeAmount(
   amountChf: number,
   currency: CurrencyCode,
-  rates: Record<CurrencyCode, number> = EXCHANGE_RATES,
+  rates: ExchangeRates = getRates(),
 ): number {
   return roundMinor(convertFromChf(amountChf, currency, rates))
 }
 
 function formatIn(value: number, currency: string, fractionDigits: number): string {
+  const digits = { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }
+  // Intl only knows ISO 4217 codes; USDT (and any coin ticker) is laid out the
+  // same way by hand — code, space, de-CH grouped figure.
+  if (currency.length !== 3) {
+    return `${currency} ${new Intl.NumberFormat('de-CH', digits).format(value)}`
+  }
   return new Intl.NumberFormat('de-CH', {
     style: 'currency',
     currency,
     currencyDisplay: 'code',
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    ...digits,
   }).format(value)
 }
 
@@ -148,7 +206,7 @@ export function orderCharge(
   order: Pick<Order, 'total' | 'paymentProvider' | 'paymentCurrency' | 'paymentAmount'>,
 ): { amount: number; currency: CurrencyCode; converted: boolean } {
   const code = order.paymentCurrency?.toUpperCase()
-  if (order.paymentProvider === 'stripe' && isCurrencyCode(code) && order.paymentAmount != null) {
+  if (order.paymentProvider === 'stripe' && isCardCurrency(code) && order.paymentAmount != null) {
     return { amount: order.paymentAmount, currency: code, converted: code !== BASE_CURRENCY }
   }
   return { amount: order.total, currency: BASE_CURRENCY, converted: false }

@@ -75,14 +75,29 @@ export async function markCartRecovered(email: string | undefined): Promise<void
 }
 
 /**
- * Claims the carts due a reminder — pending, untouched for two hours, never
+ * How long a cart must sit untouched before its reminder:
+ * ABANDONED_CART_DELAY_MINUTES, default 120, clamped to 15 minutes – 7 days
+ * (a cart idle longer than a week is expired by the claim instead).
+ */
+export function abandonedCartDelayMinutes(): number {
+  const raw = Number(process.env.ABANDONED_CART_DELAY_MINUTES)
+  if (!Number.isFinite(raw) || raw <= 0) return 120
+  return Math.min(7 * 24 * 60, Math.max(15, Math.round(raw)))
+}
+
+/**
+ * Claims the carts due a reminder — pending, untouched for the configured
+ * delay (abandonedCartDelayMinutes, two hours by default), never
  * reminded, address not opted out and not reminded in the last week, and not
  * followed by an order — stamping reminder_sent_at in the same statement.
  * Carts idle for a week are expired on the way. Safe to run concurrently.
  * Throws: the cron reports it.
  */
 export async function claimDueCarts(limit = 100): Promise<AbandonedCart[]> {
-  const { data, error } = await createAdminClient().rpc('claim_abandoned_carts', { p_limit: limit })
+  const { data, error } = await createAdminClient().rpc('claim_abandoned_carts', {
+    p_limit: limit,
+    p_idle: `${abandonedCartDelayMinutes()} minutes`,
+  })
   if (error) throw new Error(error.message)
   return (data ?? []) as AbandonedCart[]
 }

@@ -4,6 +4,7 @@ import { cancelPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { readJsonObject } from '@/lib/server/http'
+import { notifyOrderStatus } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,6 +94,8 @@ export async function POST(
       { status: 409 },
     )
   }
+
+  if (cancelled) await notifyOrderStatus(cancelled, 'customer')
 
   return NextResponse.json({ order: cancelled })
 }

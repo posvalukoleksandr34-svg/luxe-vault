@@ -5,6 +5,8 @@ import { readCatalog } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
 import { primaryText } from '@/lib/localized-text'
+import { reportCriticalError } from '@/lib/telegram'
+import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +44,7 @@ async function runSweep(request: NextRequest) {
   }
 
   const supabase = createAdminClient()
-  const result = { recovery: 0, restock: 0, errors: [] as string[] }
+  const result = { recovery: 0, restock: 0, abandonedCarts: 0, errors: [] as string[] }
 
   // ------------------------------------------------ unpaid-order reminders --
   try {
@@ -96,6 +98,17 @@ async function runSweep(request: NextRequest) {
     result.errors.push(`restock: ${(e as Error).message}`)
   }
 
+  // -------------------------------------------- abandoned-cart reminders --
+  // Normally hourly (app/api/cron/abandoned-carts); run here too so the
+  // reminders still go out when no external scheduler is set up.
+  try {
+    const run = await runAbandonedCartReminders(100)
+    if ('sent' in run) result.abandonedCarts = run.sent
+  } catch (e) {
+    result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+  }
+
+  if (result.errors.length > 0) await reportCriticalError('Nightly sweep', result.errors.join('; '))
   return NextResponse.json(result)
 }
 

@@ -2,12 +2,17 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { isMailConfigured, sendStockConflictAlert } from '@/lib/server/mailer'
 import { ensurePaidOrderStock, setPaymentStatus } from '@/lib/server/orders-store'
 import { isIpnConfigured, toPaymentStatus, verifyIpnSignature } from '@/lib/server/nowpayments'
+import { claimStripeEvent } from '@/lib/server/stripe-events'
+import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
 
 type IpnPayload = {
   payment_id?: string
   payment_status?: string
+  pay_amount?: number
+  actually_paid?: number
+  pay_currency?: string
 }
 
 // Public by necessity — NOWPayments calls this directly, with no session of
@@ -48,6 +53,21 @@ export async function POST(request: NextRequest) {
     if (stock === 'insufficient') {
       console.error(`[crypto] ${order.id} was paid but its stock had been released and sold`)
       if (isMailConfigured) await sendStockConflictAlert(order)
+      await notifyStockConflict(order)
+    }
+    // NOWPayments repeats "finished" IPNs; the ledger keeps this to one alert.
+    if (
+      isTelegramConfigured() &&
+      (await claimStripeEvent(`telegram:paid:${order.id}`, 'telegram.paid')) !== 'duplicate'
+    ) {
+      const amount = Number(payload.actually_paid ?? payload.pay_amount)
+      await notifyPaymentConfirmed(
+        order,
+        'nowpayments',
+        amount > 0 && typeof payload.pay_currency === 'string'
+          ? { amount, currency: payload.pay_currency.toUpperCase() }
+          : undefined,
+      )
     }
   }
 

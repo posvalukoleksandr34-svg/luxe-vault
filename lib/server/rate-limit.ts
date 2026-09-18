@@ -134,6 +134,10 @@ const LIMITS = {
   /** CSP violation reports. A page with a broken policy can fire dozens at
    *  once; past this they are dropped, not logged. */
   'csp.report': { max: 50, windowSeconds: 600 },
+
+  /** Internal Telegram dispatch (bearer-authenticated). Bounds a leaked
+   *  secret or a looping script to a readable number of messages. */
+  'internal.telegram': { max: 30, windowSeconds: 600 },
 } as const
 
 export type LimitResult = {

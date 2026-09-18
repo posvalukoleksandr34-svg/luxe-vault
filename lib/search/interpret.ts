@@ -10,7 +10,7 @@
 // catalogue has, a brand filter a brand a product carries, a colour one of the
 // families the stylist already maps the catalogue's colour names onto
 // (lib/stylist/tagging.ts), and a price only one the query states.
-import { EXCHANGE_RATES, type CurrencyCode } from '@/lib/currency'
+import { getRates, type CurrencyCode } from '@/lib/currency'
 import type { ColorFamily, Fit, Occasion, StyleKey } from '@/lib/stylist/types'
 import type { LocalizedText, Product } from '@/lib/types'
 
@@ -182,7 +182,7 @@ function readAmount(s: string): { amount: number; currency: CurrencyCode | null 
 }
 
 const toChf = (amount: number, currency: CurrencyCode) =>
-  Math.round((amount / EXCHANGE_RATES[currency]) * 100) / 100
+  Math.round((amount / getRates()[currency]) * 100) / 100
 
 // ------------------------------------------------------------- the reader --
 

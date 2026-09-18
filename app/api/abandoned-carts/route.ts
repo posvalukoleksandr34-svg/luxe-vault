@@ -1,21 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { captureAbandonedCart } from '@/lib/server/abandoned-carts'
-import { readCatalog } from '@/lib/server/catalog-store'
-import { emailLang } from '@/lib/server/emails/copy'
-import { enforceLimit } from '@/lib/server/rate-limit'
-import { isValidEmail } from '@/lib/validation'
-import type { CartItem } from '@/lib/types'
-import { primaryText } from '@/lib/localized-text'
+import { captureCheckoutCart } from '@/lib/server/abandoned-cart-flow'
 import { readJsonObject } from '@/lib/server/http'
+import { enforceLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_ITEMS = 20
-const MAX_QTY = 20
-
 /**
- * Captures a cart for the abandoned-cart reminder, once the customer has typed
- * a valid email at checkout (components/checkout-flow.tsx).
+ * Captures a cart for the abandoned-cart reminder. The checkout now logs carts
+ * through its server action (actions/abandoned-cart.ts); this route stays for
+ * other callers and for requests sent with fetch keepalive.
  *
  * Public by necessity, so it is careful about what it accepts — the reminder
  * is an email from this domain to whatever address arrives here:
@@ -56,42 +49,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  if (email.length > 254 || !isValidEmail(email)) {
+  // Validation, re-pricing and storage are shared with the checkout's server
+  // action (lib/server/abandoned-cart-flow.ts).
+  const outcome = await captureCheckoutCart(body)
+  if (outcome === 'invalid_email') {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
   }
-
-  const raw = Array.isArray(body.items) ? body.items.slice(0, MAX_ITEMS) : []
-  if (raw.length === 0) return new NextResponse(null, { status: 204 })
-
-  try {
-    const { products } = await readCatalog()
-    const byId = new Map(products.map((p) => [p.id, p]))
-    const items: CartItem[] = []
-    for (const entry of raw) {
-      const line = (entry ?? {}) as Record<string, unknown>
-      const product = typeof line.productId === 'string' ? byId.get(line.productId) : undefined
-      if (!product) continue
-      const size = typeof line.size === 'string' ? line.size : ''
-      const color = typeof line.color === 'string' ? line.color : ''
-      if (product.sizes.length > 0 && product.sizes.indexOf(size) === -1) continue
-      if (product.colors.length > 0 && !product.colors.some((c) => c.name === color)) continue
-      const gallery = [product.image, ...(product.images ?? [])]
-      items.push({
-        key: `${product.id}-${size}-${color}`,
-        productId: product.id,
-        name: primaryText(product.name, product.id),
-        image: typeof line.image === 'string' && gallery.indexOf(line.image) !== -1 ? line.image : product.image,
-        price: product.price,
-        size,
-        color,
-        qty: Math.min(MAX_QTY, Math.max(1, Math.floor(Number(line.qty) || 1))),
-      })
-    }
-    if (items.length > 0) await captureAbandonedCart(email, items, emailLang(body.locale))
-  } catch (e) {
-    console.warn('[abandoned-carts] capture failed:', (e as Error).message)
-  }
-
   return new NextResponse(null, { status: 204 })
 }

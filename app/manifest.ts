@@ -12,13 +12,20 @@ import type { MetadataRoute } from 'next'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    // A stable identity for the installed app, independent of start_url.
+    id: '/',
     name: 'LUXE VAULT — Premium Apparel & Luxury Fashion',
     short_name: 'LUXE VAULT',
     description:
       'Designer-inspired apparel, footwear and accessories. Limited drops, shipped from Switzerland.',
-    start_url: '/',
+    // Tagged so analytics can tell launches of the installed app apart.
+    start_url: '/?source=pwa',
     scope: '/',
     display: 'standalone',
+    display_override: ['standalone', 'minimal-ui'],
+    lang: 'ru',
+    dir: 'ltr',
+    prefer_related_applications: false,
     orientation: 'portrait',
     // The storefront's black, so the splash screen and the status bar match
     // the site rather than flashing white.
@@ -29,6 +36,12 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+    // Long-press on the installed icon (Android, desktop Chrome/Edge).
+    shortcuts: [
+      { name: 'Каталог', short_name: 'Каталог', url: '/#shop', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Мой аккаунт', short_name: 'Аккаунт', url: '/account', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Поддержка', short_name: 'Поддержка', url: '/support', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
     ],
   }
 }
