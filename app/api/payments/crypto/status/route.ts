@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const orderId = request.nextUrl.searchParams.get('orderId')
   const token = request.headers.get('x-order-token')
-  if (!orderId || !token) {
+  if (!orderId || !token || orderId.length > 64 || token.length > 256) {
     return NextResponse.json({ error: 'Missing orderId or token' }, { status: 400 })
   }
 

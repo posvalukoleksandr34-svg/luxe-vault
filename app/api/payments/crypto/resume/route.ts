@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
   })
 
   if (!payment.ok) {
-    return NextResponse.json({ error: payment.error.message, code: 'PROVIDER_ERROR' }, { status: 502 })
+    // The gateway's message is for the logs; the client maps `code` to copy.
+    console.error('[crypto/resume] NOWPayments createPayment failed:', order.id, payment.error.message)
+    return NextResponse.json({ error: 'Payment provider error', code: 'PROVIDER_ERROR' }, { status: 502 })
   }
   if (!payment.data.pay_address || !payment.data.pay_amount) {
     return NextResponse.json(

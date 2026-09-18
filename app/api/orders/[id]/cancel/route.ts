@@ -76,7 +76,12 @@ export async function POST(
           { status: 409 },
         )
       }
-      return NextResponse.json({ error: result.message }, { status: 502 })
+      // The provider's own wording stays in the logs, not in front of the customer.
+      console.error('[orders/cancel] Stripe cancel failed:', order.id, result.message)
+      return NextResponse.json(
+        { error: 'Не удалось отменить платёж. Повторите попытку позже.' },
+        { status: 502 },
+      )
     }
   }
 

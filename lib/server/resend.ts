@@ -67,6 +67,11 @@ function maskEmail(address: string): string {
   return `${local.slice(0, 1)}***@${domain}`
 }
 
+/** Upper bounds on one Resend call; a timeout lands in the same `failed`
+ *  result as any other delivery error. A batch carries up to 100 messages. */
+const SEND_TIMEOUT_MS = 15_000
+const BATCH_TIMEOUT_MS = 30_000
+
 export type SendEmailInput = {
   to: string | string[]
   subject: string
@@ -121,6 +126,8 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   try {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
+      // A stalled mail API must not hold an order or support request open.
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
@@ -202,6 +209,7 @@ export async function sendEmailBatch(inputs: SendEmailInput[]): Promise<BatchRes
   try {
     const res = await fetch(BATCH_ENDPOINT, {
       method: 'POST',
+      signal: AbortSignal.timeout(BATCH_TIMEOUT_MS),
       headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(
         inputs.map((input) => ({

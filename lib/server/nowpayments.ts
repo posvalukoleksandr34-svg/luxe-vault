@@ -38,6 +38,11 @@ export function isIpnConfigured(): boolean {
 
 type NowPaymentsError = { message: string; status?: number }
 
+/** A payment gateway that stops answering must not hold a checkout request
+ *  open until the platform kills the function; the caller's error path (a
+ *  retryable "network unavailable") is the better outcome. */
+const REQUEST_TIMEOUT_MS = 15_000
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -54,6 +59,7 @@ async function request<T>(
         ...init?.headers,
       },
       cache: 'no-store',
+      signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
     const data = await res.json().catch(() => null)
     if (!res.ok) {
@@ -71,7 +77,24 @@ async function request<T>(
 /** All currency tickers NOWPayments supports account-wide. Used to check
  * which of our curated crypto options are actually payable right now,
  * rather than hardcoding ticker strings that may not match their API. */
+/**
+ * The enabled-coin list changes only when the merchant edits their account, but
+ * it is read by a public endpoint on every checkout visit. Held per instance
+ * for ten minutes, so page views cannot be turned into a flood of gateway
+ * calls, and checkout does not wait on the gateway for a list it already has.
+ * Only a non-empty answer is kept: a failed lookup is retried next time.
+ */
+const TICKERS_TTL_MS = 10 * 60 * 1000
+let tickersCache: { at: number; tickers: string[] } | null = null
+
 export async function fetchAvailableTickers(): Promise<string[]> {
+  if (tickersCache && Date.now() - tickersCache.at < TICKERS_TTL_MS) return tickersCache.tickers
+  const tickers = await fetchTickersUncached()
+  if (tickers.length > 0) tickersCache = { at: Date.now(), tickers }
+  return tickers
+}
+
+async function fetchTickersUncached(): Promise<string[]> {
   // /v1/merchant/coins reflects the currencies enabled on this specific
   // merchant account; fall back to the full public currency list if that
   // endpoint isn't available on this account tier.

@@ -17,6 +17,7 @@ import type {
   SupportTicketDetail,
   SupportTicketStatus,
 } from '@/lib/types'
+import { matchesDeclaredType } from '@/lib/server/file-signature'
 
 const BUCKET = 'support-attachments'
 
@@ -102,6 +103,9 @@ export function checkFiles(files: IncomingFile[]): void {
     if (!ALLOWED_TYPES.has(f.type)) throw new SupportInputError(`"${f.name}": only photos and PDF files can be attached.`)
     if (f.bytes.byteLength === 0) throw new SupportInputError(`"${f.name}" is empty.`)
     if (f.bytes.byteLength > MAX_ATTACHMENT_BYTES) throw new SupportInputError(`"${f.name}" is larger than 4 MB.`)
+    if (!matchesDeclaredType(f.bytes, f.type)) {
+      throw new SupportInputError(`"${f.name}" is not a valid photo or PDF file.`)
+    }
     total += f.bytes.byteLength
   }
   if (total > MAX_REQUEST_ATTACHMENT_BYTES) throw new SupportInputError('Attachments together must be under 4 MB.')

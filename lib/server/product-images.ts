@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SUPABASE_URL } from '@/lib/supabase/env'
+import { matchesDeclaredType } from '@/lib/server/file-signature'
 
 /**
  * Product and collection imagery, held in Supabase Storage.
@@ -97,6 +98,9 @@ export async function uploadImage(
   if (body.byteLength === 0) {
     return { ok: false, error: 'Image is empty.' }
   }
+  if (!matchesDeclaredType(body, contentType)) {
+    return { ok: false, error: `The file is not a valid ${ext.toUpperCase()} image.` }
+  }
 
   const name = `${folder}/${Date.now().toString(36)}-${randomId(10)}.${ext}`
 
@@ -140,6 +144,9 @@ export async function uploadNewsletterImage(
 
   const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes)
   if (body.byteLength === 0) return { ok: false, error: 'Файл пустой.' }
+  if (!matchesDeclaredType(body, type)) {
+    return { ok: false, error: 'Файл не похож на изображение JPEG, PNG или GIF.' }
+  }
   if (body.byteLength > MAX_UPLOAD_BYTES) {
     return {
       ok: false,

@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ type: 'recovery', email }),
+      signal: AbortSignal.timeout(10_000),
     })
 
     if (res.ok) {
