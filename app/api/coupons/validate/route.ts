@@ -3,6 +3,7 @@ import { applyCoupon } from '@/lib/server/coupons'
 import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +22,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('coupon.validate', request)
   if (limited) return limited
 
-  let body: { code?: unknown; subtotal?: unknown; productSlugs?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ code?: unknown; subtotal?: unknown; productSlugs?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { subscribeToNewsletter } from '@/lib/server/newsletter'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,10 +17,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('newsletter.subscribe', request)
   if (limited) return limited
 
-  let body: { email?: unknown; locale?: unknown; consent?: unknown; source?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ email?: unknown; locale?: unknown; consent?: unknown; source?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
   if (body.consent !== true) {

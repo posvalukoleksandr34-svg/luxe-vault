@@ -8,7 +8,7 @@
 // with the rules' reading — the shopper never waits on, or sees, an error.
 import 'server-only'
 
-import { FinishReason, GoogleGenAI, ThinkingLevel, Type, type Schema } from '@google/genai'
+import { FinishReason, ThinkingLevel, Type, type Schema } from '@google/genai'
 import { normalizeText, type SearchContext, type SearchFilter } from '@/lib/search/interpret'
 import {
   COLOR_FAMILIES,
@@ -20,6 +20,7 @@ import {
   type Occasion,
   type StyleKey,
 } from '@/lib/stylist/types'
+import { geminiClient } from '@/lib/server/gemini'
 
 /** The rules' results are already on screen when this is asked (the client
  *  sends ai=1 only once typing has settled), so it can take a little longer
@@ -41,17 +42,12 @@ const SYSTEM_PROMPT =
 const STYLE_VALUES = STYLES.filter((s) => s !== 'open')
 const OCCASION_VALUES = OCCASIONS.filter((o) => o !== 'browsing')
 
-let client: { key: string; ai: GoogleGenAI } | null = null
 const cache = new Map<string, SearchFilter[]>()
 
 export function isSearchAiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY?.trim()) && process.env.SMART_SEARCH_AI !== 'off'
 }
 
-function gemini(key: string): GoogleGenAI {
-  if (!client || client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) }
-  return client.ai
-}
 
 type RawAttribute = { kind?: unknown; value?: unknown; phrase?: unknown }
 type RawAnswer = { attributes?: RawAttribute[] }
@@ -98,7 +94,7 @@ export async function interpretWithAi(query: string, ctx: SearchContext): Promis
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await gemini(key).models.generateContent({
+    const res = await geminiClient(key).models.generateContent({
       model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
       contents:
         JSON.stringify({ query, vocabulary }) +

@@ -3,6 +3,7 @@ import { cancelOrder, getOrderById } from '@/lib/server/orders-store'
 import { cancelPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,12 +34,10 @@ export async function POST(
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  let body: { reason?: string } = {}
-  try {
-    body = await request.json()
-  } catch {
-    // Reason is optional; an empty body is fine.
-  }
+  // Reason is optional; an empty body is fine.
+  const body = (await readJsonObject<{ reason?: unknown }>(request)) ?? {}
+  // Free text from the customer: a string, bounded, or nothing.
+  const reason = typeof body.reason === 'string' ? body.reason.slice(0, 1000) : undefined
 
   const order = await getOrderById(params.id)
   // Same response for "no such order" and "not yours", so the endpoint cannot
@@ -81,7 +80,7 @@ export async function POST(
     }
   }
 
-  const { order: cancelled, conflict } = await cancelOrder(params.id, body.reason)
+  const { order: cancelled, conflict } = await cancelOrder(params.id, reason)
   if (conflict) {
     // The guarded UPDATE rejected it — something changed underneath us.
     return NextResponse.json(

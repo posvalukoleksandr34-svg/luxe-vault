@@ -1,19 +1,16 @@
-import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import { DELIVERY_DAYS_LIMITS, isDeliveryDays } from '@/lib/fulfilment'
 import { createProduct, deleteProduct, updateProduct } from '@/lib/server/catalog-store'
 import { completeProductCopy, sourceLocale } from '@/lib/server/translate'
 import type { Product } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { revalidateStorefront } from '@/lib/server/revalidate'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
 // Auth is enforced by middleware.ts for every /api/admin/* path.
 
-function revalidateStorefront() {
-  revalidatePath('/', 'layout')
-  revalidatePath('/api/catalog')
-}
 
 /** Rejects a payload before it reaches Postgres, so the admin sees a useful
  *  message instead of a constraint violation. */
@@ -53,10 +50,8 @@ async function withCompleteCopy(product: Product): Promise<Product> {
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let product: Product
-  try {
-    product = await request.json()
-  } catch {
+  const product = await readJsonObject<Product>(request)
+  if (!product) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
@@ -81,10 +76,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let product: Product
-  try {
-    product = await request.json()
-  } catch {
+  const product = await readJsonObject<Product>(request)
+  if (!product) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

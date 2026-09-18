@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { canReview, readProductReviews, submitReview } from '@/lib/server/product-reviews'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,10 +45,8 @@ export async function POST(
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { rating?: unknown; comment?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ rating?: unknown; comment?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

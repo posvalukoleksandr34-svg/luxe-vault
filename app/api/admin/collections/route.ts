@@ -1,4 +1,3 @@
-import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import {
   createCollection,
@@ -8,6 +7,8 @@ import {
 } from '@/lib/server/catalog-store'
 import type { LocalizedText } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { revalidateStorefront } from '@/lib/server/revalidate'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,10 +27,6 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
  * matter for any page that is (or later becomes) server-rendered, and cost
  * nothing when there is no cached entry to drop.
  */
-function revalidateStorefront() {
-  revalidatePath('/', 'layout')
-  revalidatePath('/api/catalog')
-}
 
 export async function GET() {
   const denied = await requireAdmin()
@@ -46,10 +43,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
@@ -94,10 +89,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

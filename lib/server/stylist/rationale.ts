@@ -1,10 +1,11 @@
 import 'server-only'
 
-import { FinishReason, GoogleGenAI, ThinkingLevel } from '@google/genai'
+import { FinishReason, ThinkingLevel } from '@google/genai'
 import { STYLIST_OCCASION_LABELS } from '@/lib/i18n'
 import { resolveTags } from '@/lib/stylist/tagging'
 import type { Look, StylistBrief } from '@/lib/stylist/types'
 import type { Product } from '@/lib/types'
+import { geminiClient } from '@/lib/server/gemini'
 
 /**
  * The prose under a look.
@@ -223,13 +224,6 @@ function hasRunawayRepeat(text: string): boolean {
   return false
 }
 
-/** One client per key, created on first use — not per request. */
-let client: { key: string; ai: GoogleGenAI } | null = null
-
-function gemini(key: string): GoogleGenAI {
-  if (!client || client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) }
-  return client.ai
-}
 
 /**
  * Optional model pass, via Google Gemini.
@@ -273,7 +267,7 @@ async function embellish(
     // looped a word — "Объёмное худи худи худи худи худи худи задаёт форму" —
     // and still reported a clean STOP, so every other check here passed it.
     for (let attempt = 0; attempt < 2; attempt++) {
-      const res = await gemini(key).models.generateContent({
+      const res = await geminiClient(key).models.generateContent({
         model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
         contents,
         config: {

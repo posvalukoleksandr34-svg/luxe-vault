@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import { validateAddress } from '@/lib/validation'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,10 +95,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  let body: Body
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<Body>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
@@ -145,10 +144,8 @@ export async function PATCH(request: NextRequest) {
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  let body: Body
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<Body>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

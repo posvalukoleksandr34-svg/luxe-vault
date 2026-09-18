@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, requestRefund } from '@/lib/server/orders-store'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,12 +26,10 @@ export async function POST(
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  let body: { reason?: string } = {}
-  try {
-    body = await request.json()
-  } catch {
-    // Reason is optional.
-  }
+  // Reason is optional.
+  const body = (await readJsonObject<{ reason?: unknown }>(request)) ?? {}
+  // Free text from the customer: a string, bounded, or nothing.
+  const reason = typeof body.reason === 'string' ? body.reason.slice(0, 1000) : undefined
 
   const order = await getOrderById(params.id)
   // One response for "no such order" and "not yours", so ids cannot be probed.
@@ -48,7 +47,7 @@ export async function POST(
     return NextResponse.json({ order, alreadyRequested: true })
   }
 
-  const { order: updated, conflict } = await requestRefund(params.id, body.reason)
+  const { order: updated, conflict } = await requestRefund(params.id, reason)
   if (conflict) {
     return NextResponse.json({ error: 'Запрос уже отправлен' }, { status: 409 })
   }

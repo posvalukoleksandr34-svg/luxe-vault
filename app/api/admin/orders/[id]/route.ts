@@ -3,6 +3,7 @@ import { deleteOrder, setOrderStatus } from '@/lib/server/orders-store'
 import { notifyStatusUpdate } from '@/lib/server/notifications'
 import { ORDER_STATUSES, type OrderStatus } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,10 +17,8 @@ export async function PATCH(
 ) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { status?: string; trackingNumber?: unknown; courierName?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ status?: string; trackingNumber?: unknown; courierName?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

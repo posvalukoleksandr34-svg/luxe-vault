@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { availableFor, readVariantStock } from '@/lib/server/stock'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,10 +32,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('cart.validate', request)
   if (limited) return limited
 
-  let body: { items?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ items?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

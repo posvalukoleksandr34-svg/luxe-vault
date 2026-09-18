@@ -4,6 +4,7 @@ import { enforceLimit } from '@/lib/server/rate-limit'
 import { findResolvedOption, resolveAvailableOptions } from '@/lib/server/crypto-options'
 import { createPayment, fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
 import { safeEqual } from '@/lib/server/secure-compare'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,10 +33,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('payment.start', request)
   if (limited) return limited
 
-  let body: { orderId?: string; token?: string; optionId?: string; ticker?: string }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ orderId?: string; token?: string; optionId?: string; ticker?: string }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body', code: 'BAD_REQUEST' }, { status: 400 })
   }
 

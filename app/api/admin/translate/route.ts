@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { PRODUCT_LOCALES, isTranslationConfigured, translateProductCopy } from '@/lib/server/translate'
 import type { Locale } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -31,10 +32,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  let body: { source?: unknown; targets?: unknown; name?: unknown; description?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ source?: unknown; targets?: unknown; name?: unknown; description?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

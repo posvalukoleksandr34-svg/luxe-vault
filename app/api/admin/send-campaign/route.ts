@@ -17,6 +17,7 @@ import {
 } from '@/lib/server/resend'
 import { getSiteUrl } from '@/lib/site-url'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 // A large list is many batches; give the send room to finish.
@@ -56,10 +57,8 @@ function sleep(ms: number) {
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: Record<string, unknown>
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<Record<string, unknown>>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

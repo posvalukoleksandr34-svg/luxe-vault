@@ -3,6 +3,7 @@ import { orderChargeRate } from '@/lib/currency'
 import { getOrderById, recordRefund } from '@/lib/server/orders-store'
 import { isStripeConfigured, refundPayment } from '@/lib/server/stripe'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,12 +41,8 @@ export async function POST(
     return NextResponse.json({ error: 'Stripe не настроен' }, { status: 503 })
   }
 
-  let body: { amount?: unknown } = {}
-  try {
-    body = await request.json()
-  } catch {
-    // Empty body means a full refund.
-  }
+  // An empty (or non-object) body means a full refund.
+  const body = (await readJsonObject<{ amount?: unknown }>(request)) ?? {}
 
   let amount: number | undefined
   if (body.amount !== undefined && body.amount !== null && body.amount !== '') {

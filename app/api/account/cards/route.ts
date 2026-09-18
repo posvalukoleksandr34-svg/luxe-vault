@@ -3,6 +3,7 @@ import { detachSavedCard, isStripeConfigured, listSavedCards } from '@/lib/serve
 import { getStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,10 +48,8 @@ export async function DELETE(request: NextRequest) {
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  let body: { id?: string }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ id?: string }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
   if (!body.id) return NextResponse.json({ error: 'Missing card id' }, { status: 400 })

@@ -5,6 +5,7 @@ import { enforceLimit } from '@/lib/server/rate-limit'
 import { EMAIL_RE, FIELD_LIMITS, clip } from '@/lib/server/support-input'
 import { createTicket } from '@/lib/server/support-store'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('support.create', request)
   if (limited) return limited
 
-  let body: { name?: unknown; email?: unknown; message?: unknown; locale?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ name?: unknown; email?: unknown; message?: unknown; locale?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
   const str = (v: unknown, max: number) => clip(typeof v === 'string' ? v : '', max)

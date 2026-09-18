@@ -11,6 +11,7 @@ import {
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { COLOR_FAMILIES, OCCASIONS, STYLES } from '@/lib/stylist/types'
 import type { ColorFamily, Occasion, Refinement, StyleKey, StylistBrief } from '@/lib/stylist/types'
+import { readJsonObject } from '@/lib/server/http'
 
 /**
  * The AI Stylist endpoint.
@@ -103,10 +104,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('stylist', request)
   if (limited) return limited
 
-  let payload: Record<string, unknown>
-  try {
-    payload = (await request.json()) as Record<string, unknown>
-  } catch {
+  const payload = await readJsonObject(request)
+  if (!payload) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

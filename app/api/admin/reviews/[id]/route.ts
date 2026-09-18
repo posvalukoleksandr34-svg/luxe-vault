@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { deleteReview, setReviewStatus } from '@/lib/server/reviews-store'
 import type { ReviewStatus } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +16,8 @@ export async function PATCH(
 ) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { status?: string }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ status?: string }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

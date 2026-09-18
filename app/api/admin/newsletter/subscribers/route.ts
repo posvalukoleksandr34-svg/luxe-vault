@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { isToken, listSubscribers, setSubscriberStatus } from '@/lib/server/newsletter-campaigns'
 import { emailMode } from '@/lib/server/resend'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +26,8 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { id?: unknown; status?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ id?: unknown; status?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
   if (!isToken(body.id) || (body.status !== 'active' && body.status !== 'unsubscribed')) {

@@ -3,6 +3,7 @@ import { enforceLimit } from '@/lib/server/rate-limit'
 import { getOrdersByCredentials, getOrdersByUserId } from '@/lib/server/orders-store'
 import { getCurrentUser } from '@/lib/supabase/server'
 import type { Order } from '@/lib/types'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('order.lookup', request)
   if (limited) return limited
 
-  let body: { orders?: { id?: unknown; token?: unknown }[] }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ orders?: { id?: unknown; token?: unknown }[] }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

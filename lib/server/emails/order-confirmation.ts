@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { escapeHtml } from '@/lib/server/resend'
 import type { Order } from '@/lib/types'
 import type { EmailLang } from './copy'
 import {
@@ -72,7 +71,7 @@ export function orderConfirmationEmail(order: Order, lang: EmailLang): RenderedE
 }
 
 // ---------------------------------------------------------------------------
-// The palette and helpers below are used by the prompted emails in
+// The palette below (and the re-exported fonts and money) is used by the prompted emails in
 // campaigns.ts (unpaid-order reminder, back-in-stock). The palette is the
 // layout's own (./layout.ts), so every email the shop sends looks the same.
 // ---------------------------------------------------------------------------
@@ -92,41 +91,5 @@ export const C = {
   buttonText: L.buttonText,
 }
 
-export const SANS = "Helvetica,Arial,sans-serif"
-export const SERIF = "Georgia,'Times New Roman',serif"
-
-/** Money is stored as a number; render it the way the storefront does. */
-export function money(amount: number, currency = 'CHF'): string {
-  return `${currency} ${amount.toFixed(2)}`
-}
-
-export function itemRows(order: Order): string {
-  return order.items
-    .map(
-      (item) => `
-      <tr>
-        <td style="padding:12px 0; border-bottom:1px solid ${C.border}; font-family:${SANS}; font-size:14px; line-height:20px; color:${C.body};">
-          <span style="color:${C.strong};">${escapeHtml(item.name)}</span><br />
-          <span style="font-size:12px; color:${C.muted};">
-            ${escapeHtml(item.size)} &middot; ${escapeHtml(item.color)} &middot; &times;${item.qty}
-          </span>
-        </td>
-        <td align="right" style="padding:12px 0; border-bottom:1px solid ${C.border}; font-family:${SANS}; font-size:14px; color:${C.strong}; white-space:nowrap;">
-          ${money(item.price * item.qty)}
-        </td>
-      </tr>`,
-    )
-    .join('')
-}
-
-export function totalRow(label: string, value: string, emphasis = false): string {
-  return `
-    <tr>
-      <td style="padding:${emphasis ? '14px 0 0 0' : '6px 0 0 0'}; font-family:${SANS}; font-size:${emphasis ? '14px' : '13px'}; color:${emphasis ? C.strong : C.muted};">
-        ${escapeHtml(label)}
-      </td>
-      <td align="right" style="padding:${emphasis ? '14px 0 0 0' : '6px 0 0 0'}; font-family:${SANS}; font-size:${emphasis ? '18px' : '13px'}; font-weight:${emphasis ? 'bold' : 'normal'}; color:${emphasis ? C.gold : C.body}; white-space:nowrap;">
-        ${escapeHtml(value)}
-      </td>
-    </tr>`
-}
+// Same values as the layout's; re-exported so campaigns.ts keeps one import.
+export { SANS, SERIF, money } from './layout'

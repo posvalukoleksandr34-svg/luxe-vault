@@ -15,6 +15,7 @@ import { getProductBySlug } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
+import { primaryText } from '@/lib/localized-text'
 
 /**
  * Dedicated product page.
@@ -43,11 +44,8 @@ const SITE_URL = 'https://luxe-vault.store'
  * The catalogue stores localised text; metadata is a single string. Russian is
  * the site's default locale and the authoritative content, so it is the source
  * for tags — matching <html lang="ru">.
+ * Read through primaryText() (lib/localized-text.ts).
  */
-function pick(text: Record<string, string> | undefined): string {
-  if (!text) return ''
-  return text.ru || text.en || Object.values(text)[0] || ''
-}
 
 /** Trimmed to Google's snippet limit so the description is not cut mid-word. */
 function truncate(s: string, max = 155): string {
@@ -74,12 +72,12 @@ export async function generateMetadata({
     return { title: 'Product not found', robots: { index: false, follow: true } }
   }
 
-  const name = pick(product.name)
+  const name = primaryText(product.name)
   // The fallback is only reached for a product with no description at all.
   // It leads with the product's own brand when it has one, so the sentence
   // says something specific rather than repeating boilerplate.
   const description =
-    truncate(pick(product.description)) ||
+    truncate(primaryText(product.description)) ||
     [product.brand, `${name} — designer-inspired, limited drops, shipped from Switzerland.`]
       .filter(Boolean)
       .join(' · ')
@@ -126,7 +124,7 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
   // Calendar days, like every per-product window: the admin's business-day
   // timeframe converted when the product has no window of its own.
   const days = deliveryDaysFor(product, businessToCalendarDays(shipping.deliveryTimeframe))
-  const name = pick(product.name)
+  const name = primaryText(product.name)
   const slug = product.id
   const outOfStock = product.statuses.includes('out_of_stock')
 
@@ -134,7 +132,7 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name,
-    description: pick(product.description),
+    description: primaryText(product.description),
     sku: slug,
     image: product.images?.length ? product.images : product.image ? [product.image] : undefined,
     brand: { '@type': 'Brand', name: 'Luxe Vault' },
@@ -193,7 +191,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
     ...(product.group
       ? [
           {
-            name: pick(GROUP_LABELS[product.group]) || product.group,
+            name: primaryText(GROUP_LABELS[product.group]) || product.group,
             url: `/category/${product.group}`,
           },
         ]
@@ -201,12 +199,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
     ...(product.group && product.category
       ? [
           {
-            name: pick(CATEGORY_LABELS[product.category]) || product.category,
+            name: primaryText(CATEGORY_LABELS[product.category]) || product.category,
             url: `/category/${product.group}/${product.category}`,
           },
         ]
       : []),
-    { name: pick(product.name), url: `/product/${product.id}` },
+    { name: primaryText(product.name), url: `/product/${product.id}` },
   ]
 
   return (

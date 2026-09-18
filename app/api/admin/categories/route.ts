@@ -1,8 +1,9 @@
-import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createCategory, deleteCategory } from '@/lib/server/catalog-store'
 import type { Locale } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { revalidateStorefront } from '@/lib/server/revalidate'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,10 +14,6 @@ const SLUG_RE = /^[a-z0-9]+(_[a-z0-9]+)*$/
 
 const LOCALES: Locale[] = ['ru', 'en', 'it', 'fr', 'de']
 
-function revalidateStorefront() {
-  revalidatePath('/', 'layout')
-  revalidatePath('/api/catalog')
-}
 
 /**
  * Creates a category under a collection.
@@ -31,10 +28,8 @@ function revalidateStorefront() {
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { collection?: unknown; slug?: unknown; name?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ collection?: unknown; slug?: unknown; name?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

@@ -3,6 +3,7 @@ import { readCatalog } from '@/lib/server/catalog-store'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 /**
  * Saves a stylist look and returns its id — the key of /stylist/share/<id>.
@@ -28,10 +29,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('looks.save', request)
   if (limited) return limited
 
-  let body: { productIds?: unknown; title?: unknown; notes?: unknown; matchScore?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ productIds?: unknown; title?: unknown; notes?: unknown; matchScore?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'INVALID_BODY' }, { status: 400 })
   }
 

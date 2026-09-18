@@ -1,7 +1,8 @@
 import 'server-only'
 
-import { FinishReason, GoogleGenAI, ThinkingLevel, Type, type Schema } from '@google/genai'
+import { FinishReason, ThinkingLevel, Type, type Schema } from '@google/genai'
 import type { Locale, LocalizedText } from '@/lib/types'
+import { geminiClient } from '@/lib/server/gemini'
 
 /**
  * Product copy in every storefront language.
@@ -53,12 +54,6 @@ export function isTranslationConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY?.trim())
 }
 
-let client: { key: string; ai: GoogleGenAI } | null = null
-
-function gemini(key: string): GoogleGenAI {
-  if (!client || client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) }
-  return client.ai
-}
 
 const textIn = (text: Partial<LocalizedText> | null | undefined, locale: Locale): string =>
   typeof text?.[locale] === 'string' ? (text[locale] as string).trim() : ''
@@ -138,7 +133,7 @@ export async function translateProductCopy(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await gemini(key).models.generateContent({
+    const res = await geminiClient(key).models.generateContent({
       model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
       contents,
       config: {

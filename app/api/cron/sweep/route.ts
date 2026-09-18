@@ -4,6 +4,7 @@ import { getOrderById } from '@/lib/server/orders-store'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
+import { primaryText } from '@/lib/localized-text'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,7 +78,7 @@ async function runSweep(request: NextRequest) {
       // One catalogue read for the whole batch rather than one per alert.
       const { products } = await readCatalog()
       const names = new Map(
-        products.map((p) => [p.id, p.name.ru || p.name.en || p.id]),
+        products.map((p) => [p.id, primaryText(p.name, p.id)]),
       )
 
       for (const a of alerts) {

@@ -5,6 +5,7 @@ import { fetchWithTimeout, loadGoogleFont } from '@/lib/server/og-font'
 import { getSiteUrl } from '@/lib/site-url'
 import { monogramSvg } from '@/lib/brand/monogram.generated'
 import type { Product } from '@/lib/types'
+import { primaryText } from '@/lib/localized-text'
 
 /**
  * The link-preview card for a product page: its photo, name and price on the
@@ -39,12 +40,6 @@ const PHOTO_WIDTH = 504
 /** Shown in the photo panel when the product has no photo the renderer can
  *  use (WebP uploads): the card keeps its shape and still reads as the brand. */
 const MARK = `data:image/svg+xml;base64,${btoa(monogramSvg())}`
-
-/** Russian first, as for the page's own metadata (<html lang="ru">). */
-function pick(text: Record<string, string> | undefined): string {
-  if (!text) return ''
-  return text.ru || text.en || Object.values(text)[0] || ''
-}
 
 /** Base64 without Node's Buffer, which the Edge runtime does not have. */
 function toBase64(buffer: ArrayBuffer): string {
@@ -105,9 +100,9 @@ export default async function ProductOpengraphImage({ params }: { params: { slug
     // Database unavailable: still answer with the brand card below.
   }
 
-  const title = product ? pick(product.name).slice(0, 90) : 'LUXE VAULT'
+  const title = product ? primaryText(product.name).slice(0, 90) : 'LUXE VAULT'
   const category = product
-    ? pick((CATEGORY_LABELS as Record<string, Record<string, string> | undefined>)[product.category])
+    ? primaryText((CATEGORY_LABELS as Record<string, Record<string, string> | undefined>)[product.category])
     : ''
   const price = product ? priceLabel(product.price) : ''
   const titleSize = title.length <= 26 ? 64 : title.length <= 48 ? 52 : 42

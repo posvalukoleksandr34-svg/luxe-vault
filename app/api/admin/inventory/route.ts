@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/server/admin-guard'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,10 +76,8 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  let body: { id?: unknown; stock?: unknown; lowStockAt?: unknown; sku?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ id?: unknown; stock?: unknown; lowStockAt?: unknown; sku?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

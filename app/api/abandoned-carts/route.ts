@@ -5,6 +5,8 @@ import { emailLang } from '@/lib/server/emails/copy'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { isValidEmail } from '@/lib/validation'
 import type { CartItem } from '@/lib/types'
+import { primaryText } from '@/lib/localized-text'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,10 +51,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let body: { email?: unknown; items?: unknown; locale?: unknown }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ email?: unknown; items?: unknown; locale?: unknown }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       items.push({
         key: `${product.id}-${size}-${color}`,
         productId: product.id,
-        name: product.name.ru || product.name.en || product.id,
+        name: primaryText(product.name, product.id),
         image: typeof line.image === 'string' && gallery.indexOf(line.image) !== -1 ? line.image : product.image,
         price: product.price,
         size,

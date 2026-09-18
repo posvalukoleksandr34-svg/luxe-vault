@@ -7,6 +7,7 @@ import {
   recoveryLang,
 } from '@/lib/server/emails/password-recovery'
 import { isMailConfigured, sendEmail, SUPPORT_FROM_ADDRESS } from '@/lib/server/resend'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,10 +63,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('auth.recovery', request)
   if (limited) return limited
 
-  let body: { email?: string }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ email?: string }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

@@ -13,6 +13,7 @@ import { setOrderLocale } from '@/lib/server/order-locale'
 import { markCartRecovered } from '@/lib/server/abandoned-carts'
 import { attachReferralOrder } from '@/lib/server/referrals'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,10 +29,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('order.create', request)
   if (limited) return limited
 
-  let body: OrderDraftBody
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<OrderDraftBody>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 

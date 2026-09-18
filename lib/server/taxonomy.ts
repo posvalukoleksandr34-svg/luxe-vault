@@ -2,6 +2,7 @@ import { readCatalog } from '@/lib/server/catalog-store'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { CATEGORY_TREE } from '@/lib/data'
 import type { LocalizedText, Product } from '@/lib/types'
+import { primaryText } from '@/lib/localized-text'
 
 /**
  * The catalogue taxonomy, resolved on the server.
@@ -28,10 +29,8 @@ export type TaxonomyNode = {
  * it is the source for both — matching <html lang="ru"> and the identical
  * `pick()` on the product page.
  */
-export function pick(text: LocalizedText | undefined): string {
-  if (!text) return ''
-  return text.ru || text.en || Object.values(text)[0] || ''
-}
+/** Kept under its old name for the category routes; see lib/localized-text.ts. */
+export const pick = (text: LocalizedText | undefined): string => primaryText(text)
 
 export async function readTaxonomy(): Promise<{ tree: TaxonomyNode[]; products: Product[] }> {
   const catalog = await readCatalog()

@@ -5,6 +5,7 @@ import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { safeEqual } from '@/lib/server/secure-compare'
+import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,10 +51,8 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('payment.start', request)
   if (limited) return limited
 
-  let body: { orderId?: string; token?: string; saveCard?: boolean; currency?: string }
-  try {
-    body = await request.json()
-  } catch {
+  const body = await readJsonObject<{ orderId?: string; token?: string; saveCard?: boolean; currency?: string }>(request)
+  if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
