@@ -7,6 +7,7 @@ import {
   updateCollection,
 } from '@/lib/server/catalog-store'
 import type { LocalizedText } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,8 @@ function revalidateStorefront() {
 }
 
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   try {
     const { collections, categories } = await readCatalog()
     return NextResponse.json({ collections, categories })
@@ -41,6 +44,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }
   try {
     body = await request.json()
@@ -87,6 +92,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }
   try {
     body = await request.json()
@@ -116,6 +123,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const slug = new URL(request.url).searchParams.get('slug')
   if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
 

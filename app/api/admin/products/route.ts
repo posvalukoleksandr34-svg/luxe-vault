@@ -4,6 +4,7 @@ import { DELIVERY_DAYS_LIMITS, isDeliveryDays } from '@/lib/fulfilment'
 import { createProduct, deleteProduct, updateProduct } from '@/lib/server/catalog-store'
 import { completeProductCopy, sourceLocale } from '@/lib/server/translate'
 import type { Product } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,8 @@ async function withCompleteCopy(product: Product): Promise<Product> {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let product: Product
   try {
     product = await request.json()
@@ -76,6 +79,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let product: Product
   try {
     product = await request.json()
@@ -98,6 +103,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const slug = new URL(request.url).searchParams.get('id')
   if (!slug) return NextResponse.json({ error: 'Missing product id' }, { status: 400 })
 

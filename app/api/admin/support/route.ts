@@ -6,6 +6,7 @@ import {
   type SupportCategory,
   type SupportTicketStatus,
 } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,8 @@ export const dynamic = 'force-dynamic'
 
 /** The ticket queue: ?status=&category=&q= (number, email, name, subject). */
 export async function GET(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const sp = request.nextUrl.searchParams
   const status = sp.get('status') ?? ''
   const cat = sp.get('category') ?? ''

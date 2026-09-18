@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { PRODUCT_LOCALES, isTranslationConfigured, translateProductCopy } from '@/lib/server/translate'
 import type { Locale } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -21,6 +22,8 @@ const isLocale = (value: unknown): value is Locale =>
  * Body: { source, targets, name, description }
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   if (!isTranslationConfigured()) {
     return NextResponse.json(
       { error: 'Автоперевод не настроен: задайте GEMINI_API_KEY' },

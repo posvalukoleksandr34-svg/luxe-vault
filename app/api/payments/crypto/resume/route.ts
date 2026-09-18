@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import { findResolvedOption, resolveAvailableOptions } from '@/lib/server/crypto-options'
 import { createPayment, fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
 
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const limited = await enforceLimit('payment.start', request)
+  if (limited) return limited
+
   let body: { orderId?: string; token?: string; optionId?: string; ticker?: string }
   try {
     body = await request.json()
@@ -35,7 +39,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { orderId, token, optionId, ticker } = body
-  if (!orderId || !token || !optionId || !ticker) {
+  if (
+    typeof orderId !== 'string' ||
+    typeof token !== 'string' ||
+    typeof optionId !== 'string' ||
+    typeof ticker !== 'string' ||
+    !orderId ||
+    !token ||
+    !optionId ||
+    !ticker
+  ) {
     return NextResponse.json({ error: 'Malformed request', code: 'BAD_REQUEST' }, { status: 400 })
   }
 

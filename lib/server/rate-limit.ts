@@ -95,6 +95,12 @@ const LIMITS = {
    *  another" repeatedly is the intended way to use the feature. */
   'stylist': { max: 40, windowSeconds: 300 },
 
+  /** Starting or re-pricing a payment (Stripe intent, crypto invoice). Each
+   *  call reaches a paid provider API and is gated only by the order's lookup
+   *  token, so it is bounded — generously, since switching currency or coin
+   *  re-prices the same order. */
+  'payment.start': { max: 30, windowSeconds: 600 },
+
   /** Saved looks / share links. Guests can create them (a link has to work for
    *  whoever receives it), so this is what keeps an anonymous script from
    *  filling the table. Generous for a person: nobody saves twenty looks in

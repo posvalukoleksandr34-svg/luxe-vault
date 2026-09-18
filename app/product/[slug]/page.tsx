@@ -14,6 +14,7 @@ import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
+import { serializeJsonLd } from '@/lib/json-ld'
 
 /**
  * Dedicated product page.
@@ -234,14 +235,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
           crawlers read it. */}
       <script
         type="application/ld+json"
-        // The payload is built from our own database rows, not user input, and
-        // JSON.stringify escapes the values.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, shipping)) }}
+        // Catalogue text is editable and imported, so it is serialised with
+        // `<`, `>` and `&` escaped — plain JSON.stringify would let a
+        // "</script>" in a product name break out of this element.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd(product, shipping)) }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbJsonLd(trail)),
+          __html: serializeJsonLd(breadcrumbJsonLd(trail)),
         }}
       />
     </>

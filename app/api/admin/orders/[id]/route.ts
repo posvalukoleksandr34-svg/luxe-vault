@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { deleteOrder, setOrderStatus } from '@/lib/server/orders-store'
 import { notifyStatusUpdate } from '@/lib/server/notifications'
 import { ORDER_STATUSES, type OrderStatus } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { status?: string; trackingNumber?: unknown; courierName?: unknown }
   try {
     body = await request.json()
@@ -89,6 +92,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const removed = await deleteOrder(params.id)
   if (!removed) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })

@@ -6,6 +6,7 @@ import {
   readShippingSettingsUncached,
   saveShippingSettings,
 } from '@/lib/server/store-settings'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic'
 
 /** The current settings and whether they come from the database or defaults. */
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const read = await readShippingSettingsUncached()
   return NextResponse.json(read, { headers: { 'Cache-Control': 'no-store' } })
 }
@@ -27,6 +30,8 @@ export async function GET() {
  * page render.
  */
 export async function PUT(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: unknown
   try {
     body = await request.json()

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { PREVIEW_TEMPLATES, previewIndexHtml, renderPreview, type PreviewTemplate } from '@/lib/server/emails/preview'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic'
  * Sends nothing.
  */
 export async function GET(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const url = new URL(request.url)
   const template = url.searchParams.get('template')
   if (!template) {

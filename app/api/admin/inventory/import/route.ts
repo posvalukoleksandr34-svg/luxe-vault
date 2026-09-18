@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,6 +102,8 @@ function parseCsv(text: string): string[][] {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let text: string
 
   const contentType = request.headers.get('content-type') ?? ''
@@ -257,6 +260,8 @@ export async function POST(request: NextRequest) {
  * file that matches a format documented somewhere else.
  */
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const { data, error } = await createAdminClient()
     .from('product_variants')
     .select('size, color, stock, product:products ( slug )')

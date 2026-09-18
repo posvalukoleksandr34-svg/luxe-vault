@@ -10,6 +10,18 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Tailwind 3.3's default scale stops at multiples of 5 only up to 10 and
+      // then every 10 (plus 25/75/95), so classes used across the site such as
+      // text-foreground/85, bg-background/85 or bg-gold/15 compiled to nothing
+      // and silently fell back to the inherited colour or no background.
+      opacity: {
+        '15': '0.15',
+        '35': '0.35',
+        '45': '0.45',
+        '55': '0.55',
+        '65': '0.65',
+        '85': '0.85',
+      },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
         serif: ['var(--font-display)', 'Didot', 'Georgia', 'serif'],

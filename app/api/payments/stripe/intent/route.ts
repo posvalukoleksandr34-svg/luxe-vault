@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
+import { enforceLimit } from '@/lib/server/rate-limit'
 import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
@@ -45,6 +46,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Оплата картой временно недоступна' }, { status: 503 })
   }
 
+  const limited = await enforceLimit('payment.start', request)
+  if (limited) return limited
+
   let body: { orderId?: string; token?: string; saveCard?: boolean; currency?: string }
   try {
     body = await request.json()
@@ -53,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { orderId, token } = body
-  if (!orderId || !token) {
+  if (typeof orderId !== 'string' || typeof token !== 'string' || !orderId || !token) {
     return NextResponse.json({ error: 'Malformed request' }, { status: 400 })
   }
 

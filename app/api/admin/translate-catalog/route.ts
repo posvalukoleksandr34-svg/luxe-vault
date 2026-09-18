@@ -8,6 +8,7 @@ import {
   staleLocales,
   translateProductCopy,
 } from '@/lib/server/translate'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -31,6 +32,8 @@ const BATCH = 3
  * its translation comes back identical (a name that is only a brand).
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   if (!isTranslationConfigured()) {
     return NextResponse.json(
       { error: 'Автоперевод не настроен: задайте GEMINI_API_KEY' },

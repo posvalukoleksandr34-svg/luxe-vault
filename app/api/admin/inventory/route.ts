@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic'
  * urgency.
  */
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -70,6 +73,8 @@ export async function GET() {
  * nothing, because the check constraint still refuses a negative.
  */
 export async function PATCH(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { id?: unknown; stock?: unknown; lowStockAt?: unknown; sku?: unknown }
   try {
     body = await request.json()

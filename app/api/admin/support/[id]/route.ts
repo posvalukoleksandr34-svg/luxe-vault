@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteTicket, findTicketById, markRead, setTicketStatus, staffView, ticketDetail } from '@/lib/server/support-store'
 import { SUPPORT_TICKET_STATUSES, type SupportTicketStatus } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,6 +9,8 @@ export const dynamic = 'force-dynamic'
 
 /** The conversation. Opening it marks the customer's messages as read. */
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   try {
     const row = await findTicketById(params.id)
     if (!row) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
@@ -21,6 +24,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { status?: string }
   try {
     body = await request.json()
@@ -40,6 +45,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const removed = await deleteTicket(params.id)
   if (!removed) {
     return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })

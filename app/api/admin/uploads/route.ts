@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { MAX_UPLOAD_BYTES, uploadImage } from '@/lib/server/product-images'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,8 @@ export const dynamic = 'force-dynamic'
  * that middleware already verified is what authorises the write.
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let form: FormData
   try {
     form = await request.formData()

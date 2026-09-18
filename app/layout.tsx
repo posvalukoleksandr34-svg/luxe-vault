@@ -13,6 +13,7 @@ import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
+import { serializeJsonLd } from '@/lib/json-ld'
 
 // Inter carries the small, spaced-out uppercase editorial subtext; Bodoni
 // Moda is the heavy, high-contrast display serif used for every headline —
@@ -223,7 +224,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(SITE_JSON_LD) }}
         />
         {FONT_PRELOADS.map((href) => (
           <link key={href} rel="preload" href={href} as="font" type="font/woff2" crossOrigin="" />

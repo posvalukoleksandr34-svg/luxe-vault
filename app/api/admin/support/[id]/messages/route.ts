@@ -4,6 +4,7 @@ import { isMailConfigured, sendSupportReply } from '@/lib/server/mailer'
 import { FIELD_LIMITS, clip, inputError, readSupportForm } from '@/lib/server/support-input'
 import { addMessage, customerView, findTicketById, ticketDetail } from '@/lib/server/support-store'
 import { SUPPORT_TICKET_STATUSES, type SupportTicketStatus } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,8 @@ export const dynamic = 'force-dynamic'
  * sees the unread mark on the support button next time they visit.
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const form = await readSupportForm(request)
   if (form instanceof NextResponse) return form
   const { fields, files } = form

@@ -6,6 +6,7 @@ import { Header } from '@/components/header'
 import { CategoryView } from '@/components/products/category-view'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
+import { serializeJsonLd } from '@/lib/json-ld'
 
 /**
  * A subcategory: Hoodies, Sneakers, Caps.
@@ -96,7 +97,7 @@ export default async function SubcategoryPage({
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(trail)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd(trail)) }}
       />
     </>
   )

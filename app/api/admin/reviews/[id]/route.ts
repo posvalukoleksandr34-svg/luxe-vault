@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteReview, setReviewStatus } from '@/lib/server/reviews-store'
 import type { ReviewStatus } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { status?: string }
   try {
     body = await request.json()
@@ -34,6 +37,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const removed = await deleteReview(params.id)
   if (!removed) {
     return NextResponse.json({ error: 'Review not found' }, { status: 404 })

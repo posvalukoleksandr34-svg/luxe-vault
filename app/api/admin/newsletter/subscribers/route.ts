@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { isToken, listSubscribers, setSubscriberStatus } from '@/lib/server/newsletter-campaigns'
 import { emailMode } from '@/lib/server/resend'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic'
 /** The subscriber list with its counts, and the last campaigns. `gap` names a
  *  migration that has not been applied yet ('tables' → 0034, 'columns' → 0037). */
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const result = await listSubscribers()
   if (!result.ok) {
     if (result.gap) return NextResponse.json({ gap: result.gap }, { status: 503 })
@@ -20,6 +23,8 @@ export async function GET() {
 
 /** Manually activate or deactivate one subscriber. */
 export async function PATCH(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { id?: unknown; status?: unknown }
   try {
     body = await request.json()

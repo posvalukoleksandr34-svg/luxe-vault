@@ -16,6 +16,7 @@ import {
   type SendEmailInput,
 } from '@/lib/server/resend'
 import { getSiteUrl } from '@/lib/site-url'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 // A large list is many batches; give the send room to finish.
@@ -53,6 +54,8 @@ function sleep(ms: number) {
  * in List-Unsubscribe headers for the mail client's one-click button.
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: Record<string, unknown>
   try {
     body = await request.json()

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,8 @@ export const dynamic = 'force-dynamic'
  * things that did not happen.
  */
 export async function GET() {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const supabase = createAdminClient()
 
   const [profilesRes, ordersRes] = await Promise.all([

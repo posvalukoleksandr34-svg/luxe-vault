@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { orderChargeRate } from '@/lib/currency'
 import { getOrderById, recordRefund } from '@/lib/server/orders-store'
 import { isStripeConfigured, refundPayment } from '@/lib/server/stripe'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   if (!isStripeConfigured()) {
     return NextResponse.json({ error: 'Stripe не настроен' }, { status: 503 })
   }

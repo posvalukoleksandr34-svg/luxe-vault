@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createCategory, deleteCategory } from '@/lib/server/catalog-store'
 import type { Locale } from '@/lib/types'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,8 @@ function revalidateStorefront() {
  * A language left empty falls back to Russian on the storefront.
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let body: { collection?: unknown; slug?: unknown; name?: unknown }
   try {
     body = await request.json()
@@ -74,6 +77,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   const slug = new URL(request.url).searchParams.get('slug')
   if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
 

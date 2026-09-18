@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { MAX_UPLOAD_BYTES, uploadNewsletterImage } from '@/lib/server/product-images'
+import { requireAdmin } from '@/lib/server/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic'
  * admin session middleware already checked is what authorises the upload.
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
   let form: FormData
   try {
     form = await request.formData()
