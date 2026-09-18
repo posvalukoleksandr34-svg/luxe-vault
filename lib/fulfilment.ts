@@ -196,10 +196,15 @@ function russianBusinessDays(n: number, afterAbout: boolean): string {
  * The numbers are the admin's (store_settings); only the wording is generated,
  * so one saved value reads correctly in all five languages.
  */
-export function describeBusinessDays(range: DeliveryTimeframe, locale: Locale): string {
+export function describeBusinessDays(
+  range: DeliveryTimeframe,
+  locale: Locale,
+  options: { genitive?: boolean } = {},
+): string {
   const { min: a, max: b } = range
   const word = (n: number, afterAbout: boolean) => {
-    if (locale === 'ru') return russianBusinessDays(n, afterAbout)
+    // `genitive`: after «в течение», which takes it — «1–2 рабочих дней».
+    if (locale === 'ru') return russianBusinessDays(n, afterAbout || Boolean(options.genitive))
     const [singular, plural] = BUSINESS_DAY_WORDS[locale]
     return n === 1 ? singular : plural
   }

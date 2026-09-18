@@ -94,7 +94,8 @@ export function SupportCenter({
 }) {
   const { locale, currentUser, shipping, openAccount, setSupportUnread } = useStore()
   const c = SUPPORT_COPY[locale]
-  const replySpan = describeBusinessDays(FULFILMENT.supportReply, locale)
+  // Genitive: every support sentence reads «в течение {span}».
+  const replySpan = describeBusinessDays(FULFILMENT.supportReply, locale, { genitive: true })
 
   const [view, setView] = useState<View>(() => fromEntry(initial))
   const [history, setHistory] = useState<View[]>([])
@@ -417,7 +418,7 @@ function HomeView({
                   type="button"
                   onClick={() => onTopic(topic)}
                   className={cn(
-                    'group flex items-center justify-between gap-3 px-4 py-3.5 text-left text-[13px] font-light text-foreground/85 transition hover:text-gold',
+                    'group flex items-center justify-between gap-3 px-4 py-3.5 text-left text-[13px] font-light text-foreground/[0.85] transition hover:text-gold',
                     cell,
                     i === 0 && 'sm:col-span-2',
                   )}
@@ -747,7 +748,7 @@ function AttachmentPicker({
                   <FileText className="size-3.5 text-muted-foreground" />
                 </span>
               )}
-              <span className="max-w-[9rem] truncate text-[11px] text-foreground/85">{f.name}</span>
+              <span className="max-w-[9rem] truncate text-[11px] text-foreground/[0.85]">{f.name}</span>
               <span className="text-[10px] tabular-nums text-muted-foreground/60">{formatBytes(f.size)}</span>
               <button
                 type="button"
@@ -781,7 +782,7 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
             href={a.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 border border-border px-3 py-2 text-[11px] text-foreground/85 transition hover:border-gold/50 hover:text-gold"
+            className="flex items-center gap-2 border border-border px-3 py-2 text-[11px] text-foreground/[0.85] transition hover:border-gold/50 hover:text-gold"
           >
             <FileText className="size-3.5" />
             <span className="max-w-[12rem] truncate">{a.name}</span>
@@ -795,9 +796,12 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
 
 // ------------------------------------------------------------------ form --
 
+// Readable on the drawer's near-black: neutral-300 text, neutral-400
+// placeholders, a crisp white/15 hairline and a quiet amber edge on focus. The
+// border change is the focus indicator, so the global gold outline is off here.
 const FIELD =
-  'w-full border border-border bg-transparent px-3.5 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/45 focus:border-gold/50'
-const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-muted-foreground'
+  'w-full border border-white/[0.15] bg-transparent px-3.5 py-3 text-[13px] font-light text-neutral-300 outline-none transition-colors placeholder:text-neutral-400 focus:border-amber-500/40 focus:ring-0 focus-visible:outline-none'
+const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-neutral-300'
 
 function NewTicketForm({
   c,
@@ -820,6 +824,7 @@ function NewTicketForm({
 }) {
   const [category, setCategory] = useState<SupportCategory>(initialCategory ?? (initialOrder ? 'order' : 'other'))
   const [orderNumber, setOrderNumber] = useState(initialOrder ?? '')
+
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [files, setFiles] = useState<File[]>([])
@@ -828,9 +833,33 @@ function NewTicketForm({
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
+  /**
+   * A cancelled or refunded order is closed: there is nothing left to chase,
+   * and a request filed against one would sit in the queue waiting for an
+   * answer that is already given. Those orders are left out of the picker —
+   * and when the form was opened ON one (a link carrying ?order=, or
+   * openSupport({ orderNumber })), the form says so and refuses to send until
+   * another order is chosen.
+   *
+   * Only orders this customer actually has can be judged; an unknown number is
+   * left alone rather than guessed at.
+   */
+  const closedOrders = useMemo(
+    () => new Set(orders.filter((o) => o.status === 'cancelled' || o.status === 'refunded').map((o) => o.id)),
+    [orders],
+  )
+  const selectableOrders = useMemo(() => orders.filter((o) => !closedOrders.has(o.id)), [orders, closedOrders])
+  const orderClosed = Boolean(orderNumber) && closedOrders.has(orderNumber)
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (sending) return
+    if (orderClosed) {
+      // The refusal is already shown under the order field; send the customer
+      // there rather than repeating it at the foot of the form.
+      document.getElementById('support-order')?.focus()
+      return
+    }
     if (!subject.trim() || !message.trim()) return setError(c.required)
     setSending(true)
     setError(null)
@@ -866,10 +895,10 @@ function NewTicketForm({
               aria-pressed={category === cat}
               onClick={() => setCategory(cat)}
               className={cn(
-                'border px-3.5 py-2 text-[12px] font-light transition',
+                'border px-3.5 py-2 text-xs uppercase tracking-wider transition-[color,border-color,background-color,box-shadow] duration-200',
                 category === cat
-                  ? 'border-gold bg-gold/5 text-gold'
-                  : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
+                  ? 'border-amber-500/60 bg-amber-500/10 text-amber-200 shadow-[0_0_16px_-6px_rgba(245,158,11,0.55)]'
+                  : 'border-white/10 bg-neutral-900/80 text-neutral-300 hover:border-white/25 hover:text-neutral-100',
               )}
             >
               {c.categories[cat]}
@@ -878,24 +907,31 @@ function NewTicketForm({
         </div>
       </fieldset>
 
-      {orders.length > 0 && (
+      {(selectableOrders.length > 0 || orderClosed) && (
         <div className="mt-6">
           <label htmlFor="support-order" className={LABEL}>
             {c.order}
           </label>
           <select
             id="support-order"
-            value={orderNumber}
+            value={orderClosed ? '' : orderNumber}
             onChange={(e) => setOrderNumber(e.target.value)}
-            className={cn(FIELD, 'appearance-none bg-popover')}
+            aria-invalid={orderClosed}
+            aria-describedby={orderClosed ? 'support-order-closed' : undefined}
+            className={cn(FIELD, 'appearance-none bg-popover', orderClosed && 'border-destructive/70')}
           >
             <option value="">{c.orderNone}</option>
-            {orders.map((o) => (
+            {selectableOrders.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.id} · {dateFmt(locale, o.createdAt)} · {formatChf(o.total)}
               </option>
             ))}
           </select>
+          {orderClosed && (
+            <p id="support-order-closed" role="alert" className="mt-2 text-[12px] font-light text-destructive/90">
+              {c.orderClosed}
+            </p>
+          )}
         </div>
       )}
 
@@ -975,7 +1011,7 @@ function NewTicketForm({
 
       <button
         type="submit"
-        disabled={sending || !subject.trim() || !message.trim() || (!signedIn && !email.trim())}
+        disabled={orderClosed || sending || !subject.trim() || !message.trim() || (!signedIn && !email.trim())}
         className="mt-7 flex w-full items-center justify-center gap-2 border border-gold/40 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.18em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
       >
         {sending && <Loader2 className="size-3.5 animate-spin" />}

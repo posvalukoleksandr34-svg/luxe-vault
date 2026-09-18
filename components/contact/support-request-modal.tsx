@@ -226,7 +226,7 @@ export function SupportRequestModal({
                     >
                       {c.doneOpen}
                     </Link>
-                    <Dialog.Close className="t-cta inline-flex min-h-[48px] items-center justify-center border border-white/15 px-8 text-foreground/85 transition-colors hover:border-white/40 hover:text-foreground">
+                    <Dialog.Close className="t-cta inline-flex min-h-[48px] items-center justify-center border border-white/[0.15] px-8 text-foreground/[0.85] transition-colors hover:border-white/40 hover:text-foreground">
                       {c.close}
                     </Dialog.Close>
                   </div>
@@ -243,7 +243,7 @@ export function SupportRequestModal({
                   <div className="mt-8 flex flex-col gap-5">
                     <div>
                       <label htmlFor="contact-name" className={LABEL}>
-                        {c.name} <span className="text-foreground/35">· {c.required}</span>
+                        {c.name} <span className="text-foreground/[0.35]">· {c.required}</span>
                       </label>
                       <input
                         ref={refs.name}
@@ -269,7 +269,7 @@ export function SupportRequestModal({
 
                     <div>
                       <label htmlFor="contact-email" className={LABEL}>
-                        {c.email} <span className="text-foreground/35">· {c.required}</span>
+                        {c.email} <span className="text-foreground/[0.35]">· {c.required}</span>
                       </label>
                       <div className="relative">
                         <input
@@ -331,7 +331,7 @@ export function SupportRequestModal({
                       <div>
                         <label htmlFor="contact-handle" className={LABEL}>
                           {method === 'phone' ? c.handlePhone : c.handleTelegram}{' '}
-                          <span className="text-foreground/35">· {c.required}</span>
+                          <span className="text-foreground/[0.35]">· {c.required}</span>
                         </label>
                         <input
                           ref={refs.handle}
@@ -405,7 +405,7 @@ export function SupportRequestModal({
 
                     <div>
                       <label htmlFor="contact-message" className={LABEL}>
-                        {c.message} <span className="text-foreground/35">· {c.required}</span>
+                        {c.message} <span className="text-foreground/[0.35]">· {c.required}</span>
                       </label>
                       <textarea
                         ref={refs.message}
@@ -434,14 +434,14 @@ export function SupportRequestModal({
                       <span className={LABEL}>{c.attach}</span>
                       <label
                         htmlFor="contact-files"
-                        className="flex min-h-[64px] cursor-pointer items-center gap-4 border border-dashed border-white/15 px-4 py-3 transition-colors hover:border-white/35 focus-within:border-white/50"
+                        className="flex min-h-[64px] cursor-pointer items-center gap-4 border border-dashed border-white/[0.15] px-4 py-3 transition-colors hover:border-white/[0.35] focus-within:border-white/50"
                       >
                         <Paperclip className="size-4 shrink-0 text-foreground/70" strokeWidth={1.25} aria-hidden />
                         <span className="flex flex-col">
                           <span className="text-[13px] text-foreground underline decoration-white/25 underline-offset-4">
                             {c.attachChoose}
                           </span>
-                          <span className="t-meta mt-0.5 text-foreground/45">{c.attachHint}</span>
+                          <span className="t-meta mt-0.5 text-foreground/[0.45]">{c.attachHint}</span>
                         </span>
                         <input
                           id="contact-files"
@@ -464,9 +464,9 @@ export function SupportRequestModal({
                         <ul className="mt-3 divide-y divide-white/10 border-y border-white/10">
                           {files.map((f, i) => (
                             <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-3 py-2">
-                              <span className="min-w-0 truncate text-[13px] font-light text-foreground/85">{f.name}</span>
+                              <span className="min-w-0 truncate text-[13px] font-light text-foreground/[0.85]">{f.name}</span>
                               <span className="flex shrink-0 items-center gap-2">
-                                <span className="t-meta tabular-nums text-foreground/45">{formatBytes(f.size)}</span>
+                                <span className="t-meta tabular-nums text-foreground/[0.45]">{formatBytes(f.size)}</span>
                                 <button
                                   type="button"
                                   onClick={() => setFiles((list) => list.filter((_, j) => j !== i))}
