@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import { isValidName } from '@/lib/validation'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,6 +76,8 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   let body: { name?: unknown; birthDate?: unknown }
   try {

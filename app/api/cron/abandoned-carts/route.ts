@@ -5,6 +5,7 @@ import { sendAbandonedCartEmail } from '@/lib/server/emails/abandoned-cart'
 import { emailLang } from '@/lib/server/emails/copy'
 import { isMailConfigured } from '@/lib/server/resend'
 import type { CartItem } from '@/lib/types'
+import { hasBearerSecret } from '@/lib/server/secure-compare'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,7 @@ async function run(request: NextRequest) {
     console.error('[cron] CRON_SECRET is not set — abandoned-cart reminders are disabled.')
     return NextResponse.json({ error: 'Not configured' }, { status: 503 })
   }
-  if ((request.headers.get('authorization') ?? '') !== `Bearer ${secret}`) {
+  if (!hasBearerSecret(request.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { detachSavedCard, isStripeConfigured, listSavedCards } from '@/lib/server/stripe'
 import { getStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,8 @@ export async function DELETE(request: NextRequest) {
 
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   let body: { id?: string }
   try {

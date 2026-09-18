@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import { validateAddress } from '@/lib/validation'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   let body: Body
   try {
@@ -139,6 +142,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   let body: Body
   try {
@@ -187,6 +192,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   const id = new URL(request.url).searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing address id' }, { status: 400 })

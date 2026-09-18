@@ -3,6 +3,7 @@ import { emailLang } from '@/lib/server/emails/copy'
 import { sendWelcomeEmail } from '@/lib/server/emails/send-lifecycle'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,8 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   const admin = createAdminClient()
 

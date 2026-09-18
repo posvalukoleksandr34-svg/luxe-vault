@@ -3,6 +3,7 @@ import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { findResolvedOption, resolveAvailableOptions } from '@/lib/server/crypto-options'
 import { createPayment, fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
+import { safeEqual } from '@/lib/server/secure-compare'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
   }
 
   const order = await getOrderById(orderId)
-  if (!order || !order.lookupToken || order.lookupToken !== token) {
+  if (!order || !safeEqual(order.lookupToken, token)) {
     // Same response for "no such order" and "wrong token" so the endpoint
     // can't be used to probe which order ids exist.
     return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })

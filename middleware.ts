@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/server/admin-auth'
+import { isCrossSiteWrite } from '@/lib/server/csrf'
 import { updateSession, withAuthCookies } from '@/lib/supabase/middleware'
 
 // Paths that must stay reachable without an admin session — the login page/form
@@ -28,6 +29,12 @@ function isAdminPath(pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // CSRF: a state-changing request a browser marks as cross-site is refused
+  // before any handler, cookie refresh or session check runs (lib/server/csrf.ts).
+  if (isCrossSiteWrite(request.method, pathname, request.headers)) {
+    return NextResponse.json({ error: 'Cross-site request refused' }, { status: 403 })
+  }
 
   if (SESSION_REFRESH_EXEMPT.has(pathname)) {
     return NextResponse.next()

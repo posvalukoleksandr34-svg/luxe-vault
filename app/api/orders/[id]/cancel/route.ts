@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cancelOrder, getOrderById } from '@/lib/server/orders-store'
 import { cancelPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,8 @@ export async function POST(
 ) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceUserLimit('account.write', user.id)
+  if (limited) return limited
 
   let body: { reason?: string } = {}
   try {

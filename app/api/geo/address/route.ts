@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { enforceLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,13 @@ export const dynamic = 'force-dynamic'
 
 const PHOTON_ENDPOINT = 'https://photon.komoot.io/api/'
 const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY?.trim()
+
+/** A geocoder that hangs must not hold the function open: autocomplete
+ *  answers in well under a second or not at all. */
+const UPSTREAM_TIMEOUT_MS = 4000
+/** Longest query forwarded. A full street address fits in far less. */
+const MAX_QUERY_LENGTH = 200
+const COUNTRY_CODE = /^[A-Z]{2}$/
 
 export type AddressSuggestion = {
   /** Single-line label shown in the dropdown. */
@@ -86,6 +94,7 @@ async function queryPhoton(q: string, country: string | null): Promise<AddressSu
     // Nothing here is worth caching across customers, and a stale suggestion
     // list is worse than none.
     cache: 'no-store',
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   })
   if (!res.ok) return []
 
@@ -110,7 +119,7 @@ async function queryGoogle(q: string, country: string | null): Promise<AddressSu
   url.searchParams.set('key', GOOGLE_KEY!)
   if (country) url.searchParams.set('components', `country:${country.toLowerCase()}`)
 
-  const res = await fetch(url, { cache: 'no-store' })
+  const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) })
   if (!res.ok) return []
 
   const data = (await res.json()) as { predictions?: GooglePrediction[] }
@@ -128,12 +137,19 @@ async function queryGoogle(q: string, country: string | null): Promise<AddressSu
 }
 
 export async function GET(request: NextRequest) {
-  const q = (request.nextUrl.searchParams.get('q') ?? '').trim()
-  const country = (request.nextUrl.searchParams.get('country') ?? '').trim().toUpperCase() || null
+  const q = (request.nextUrl.searchParams.get('q') ?? '').trim().slice(0, MAX_QUERY_LENGTH)
+  const rawCountry = (request.nextUrl.searchParams.get('country') ?? '').trim().toUpperCase()
+  // Only an ISO alpha-2 code reaches the upstream `components` filter.
+  const country = COUNTRY_CODE.test(rawCountry) ? rawCountry : null
 
   // Below three characters every geocoder returns noise, and querying on the
   // first keystroke is what gets an app rate-limited.
   if (q.length < 3) return NextResponse.json({ suggestions: [] })
+
+  // An open proxy to a (possibly paid) geocoder is otherwise free for anyone
+  // to drive at volume. Counted only for queries that would reach upstream.
+  const limited = await enforceLimit('geo.lookup', request)
+  if (limited) return limited
 
   try {
     const suggestions = GOOGLE_KEY ? await queryGoogle(q, country) : await queryPhoton(q, country)

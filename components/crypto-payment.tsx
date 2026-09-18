@@ -128,7 +128,9 @@ export function CryptoPayment({
 
       pollRef.current = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/payments/crypto/status?orderId=${encodeURIComponent(createdOrder.id)}`)
+          const statusRes = await fetch(`/api/payments/crypto/status?orderId=${encodeURIComponent(createdOrder.id)}`, {
+            headers: { 'X-Order-Token': token },
+          })
           if (!statusRes.ok) return
           const statusData = await statusRes.json()
           const next: PaymentStatus = statusData.paymentStatus || 'pending_payment'

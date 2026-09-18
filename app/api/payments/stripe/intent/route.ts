@@ -4,6 +4,7 @@ import { enforceLimit } from '@/lib/server/rate-limit'
 import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { safeEqual } from '@/lib/server/secure-compare'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
   }
 
   const order = await getOrderById(orderId)
-  if (!order || !order.lookupToken || order.lookupToken !== token) {
+  if (!order || !safeEqual(order.lookupToken, token)) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
   if (order.paymentStatus === 'paid') {

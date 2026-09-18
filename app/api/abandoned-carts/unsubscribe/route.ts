@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { isCartToken, optOutCart } from '@/lib/server/abandoned-carts'
+import { enforceLimit } from '@/lib/server/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,9 @@ export const dynamic = 'force-dynamic'
  * followed by link scanners and unsubscribe people who never asked.
  */
 export async function POST(request: NextRequest) {
+  const limited = await enforceLimit('cart.unsubscribe', request)
+  if (limited) return limited
+
   const token = request.nextUrl.searchParams.get('token')
   if (!isCartToken(token)) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 })

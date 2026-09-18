@@ -3,6 +3,7 @@ import { sendRecoveryEmail, sendRestockEmail } from '@/lib/server/emails/campaig
 import { getOrderById } from '@/lib/server/orders-store'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasBearerSecret } from '@/lib/server/secure-compare'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +36,7 @@ async function runSweep(request: NextRequest) {
     return NextResponse.json({ error: 'Not configured' }, { status: 503 })
   }
 
-  const auth = request.headers.get('authorization') ?? ''
-  if (auth !== `Bearer ${secret}`) {
+  if (!hasBearerSecret(request.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

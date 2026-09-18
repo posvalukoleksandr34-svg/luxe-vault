@@ -113,6 +113,27 @@ const LIMITS = {
 
   /** Admin login. Replaces the in-memory throttle this module supersedes. */
   'admin.login': { max: 8, windowSeconds: 300 },
+
+  /** Signed-in account writes: addresses, saved cards, profile, notification
+   *  read-marks, order cancellation and refund requests, the welcome email.
+   *  Keyed by user id, not IP. Generous for a person editing their account;
+   *  what it stops is a stolen session being driven by a script. */
+  'account.write': { max: 60, windowSeconds: 600 },
+
+  /** Payment-status polling during a crypto payment: every 4 s while the
+   *  checkout waits, so ~150 per 10 minutes for one real customer. */
+  'payment.status': { max: 300, windowSeconds: 600 },
+
+  /** Address autocomplete. A proxy to a geocoder — paid, when Google Places
+   *  is configured — so it is bounded even though typing is iterative. */
+  'geo.lookup': { max: 90, windowSeconds: 300 },
+
+  /** The abandoned-cart unsubscribe button and its RFC 8058 one-click POST. */
+  'cart.unsubscribe': { max: 20, windowSeconds: 600 },
+
+  /** CSP violation reports. A page with a broken policy can fire dozens at
+   *  once; past this they are dropped, not logged. */
+  'csp.report': { max: 50, windowSeconds: 600 },
 } as const
 
 export type LimitResult = {
@@ -189,17 +210,32 @@ export async function enforceLimit(
   subject?: string,
 ): Promise<NextResponse | null> {
   const result = await checkLimit(name, subject ?? clientKey(request))
-  if (result.allowed) return null
+  return result.allowed ? null : tooManyRequests(result.retryAfter)
+}
 
+/**
+ * Throttles a signed-in customer by account rather than by address — for
+ * handlers that have already resolved the user, so a shared office IP never
+ * throttles colleagues and a rotating-IP script is still counted as one.
+ *
+ *   const limited = await enforceUserLimit('account.write', user.id)
+ *   if (limited) return limited
+ */
+export async function enforceUserLimit(name: LimitName, userId: string): Promise<NextResponse | null> {
+  const result = await checkLimit(name, `user:${userId}`)
+  return result.allowed ? null : tooManyRequests(result.retryAfter)
+}
+
+function tooManyRequests(retryAfter: number): NextResponse {
   return NextResponse.json(
     {
       error: 'RATE_LIMITED',
-      retryAfter: result.retryAfter,
+      retryAfter,
     },
     {
       status: 429,
       headers: {
-        'Retry-After': String(result.retryAfter),
+        'Retry-After': String(retryAfter),
         'X-RateLimit-Remaining': '0',
       },
     },

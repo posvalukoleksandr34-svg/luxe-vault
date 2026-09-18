@@ -85,6 +85,16 @@ const CSP_DIRECTIVES = {
   // Clickjacking. 'none' rather than 'self': nothing on this site is meant to
   // be framed, including by itself. Supersedes X-Frame-Options.
   'frame-ancestors': ["'none'"],
+  'manifest-src': ["'self'"],
+  'worker-src': ["'self'", 'blob:'],
+  // Any http:// subresource left in content (an old product image URL) is
+  // fetched over HTTPS instead of being blocked as mixed content.
+  ...(isDev ? {} : { 'upgrade-insecure-requests': [] }),
+  // Violations are posted to app/api/csp-report and logged. `report-uri` for
+  // Firefox and Safari; `report-to` (with the Reporting-Endpoints header
+  // below) for Chromium, which prefers it when both are present.
+  'report-uri': ['/api/csp-report'],
+  'report-to': ['csp-endpoint'],
 }
 
 const contentSecurityPolicy = Object.entries(CSP_DIRECTIVES)
@@ -177,6 +187,13 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+          { key: 'Reporting-Endpoints', value: 'csp-endpoint="/api/csp-report"' },
+          // Legacy twin of frame-ancestors 'none', for browsers that predate it.
+          { key: 'X-Frame-Options', value: 'DENY' },
+          // Isolates the window from pages it opens and that open it (no
+          // window.opener tampering, no cross-window leaks). allow-popups keeps
+          // payment-provider popups able to report back.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           // Stops a browser second-guessing a Content-Type, which is how a
           // user-uploaded file gets executed as script.
           { key: 'X-Content-Type-Options', value: 'nosniff' },
