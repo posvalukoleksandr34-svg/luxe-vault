@@ -364,10 +364,11 @@ export function UserPanel() {
 
               {mode === 'register' && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+                  <label htmlFor="auth-name" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
                     {t('user.name')}
                   </label>
                   <input
+                    id="auth-name"
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -379,10 +380,11 @@ export function UserPanel() {
               )}
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+                <label htmlFor="auth-email" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
                   {t('user.email')}
                 </label>
                 <input
+                  id="auth-email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}

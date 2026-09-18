@@ -328,6 +328,7 @@ export function Consultation({
 
       {step === 'notes' && (
         <textarea
+          aria-label={t('stylist.notesPlaceholder')}
           value={brief.notes ?? ''}
           onChange={(e) => setBrief({ ...brief, notes: e.target.value })}
           placeholder={t('stylist.notesPlaceholder')}

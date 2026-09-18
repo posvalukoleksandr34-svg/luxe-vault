@@ -739,8 +739,9 @@ export function CheckoutFlow({
                 autoComplete="name"
               />
 
-              <FieldShell label={t('checkout.phone')} required error={errors.phone}>
+              <FieldShell label={t('checkout.phone')} htmlFor="checkout-phone" required error={errors.phone}>
                 <PhoneInput
+                  id="checkout-phone"
                   country={form.phoneCountry}
                   onCountryChange={(c) => update('phoneCountry', c)}
                   value={form.phone}
@@ -800,8 +801,8 @@ export function CheckoutFlow({
                 />
               </div>
 
-              <FieldShell label={t('checkout.country')} required>
-                <CountrySelect value={form.country} onChange={(c) => update('country', c)} />
+              <FieldShell label={t('checkout.country')} htmlFor="checkout-country" required>
+                <CountrySelect id="checkout-country" value={form.country} onChange={(c) => update('country', c)} />
               </FieldShell>
 
               <div>
@@ -836,11 +837,12 @@ export function CheckoutFlow({
               </div>
 
               <div>
-                <span className="mb-2.5 block text-[11px] uppercase tracking-[0.15em] text-foreground">
+                <label htmlFor="checkout-promo" className="mb-2.5 block text-[11px] uppercase tracking-[0.15em] text-foreground">
                   {t('checkout.promo')}
-                </span>
+                </label>
                 <div className="flex gap-2">
                   <input
+                    id="checkout-promo"
                     type="text"
                     value={form.promo}
                     onChange={(e) => update('promo', e.target.value)}
@@ -1010,21 +1012,24 @@ function SaveToggle({
 
 function FieldShell({
   label,
+  htmlFor,
   required,
   error,
   children,
 }: {
   label: string
+  /** The id of the control inside, so the caption is its accessible name. */
+  htmlFor: string
   required?: boolean
   error?: string
   children: React.ReactNode
 }) {
   return (
     <div className="block">
-      <span className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
+      <label htmlFor={htmlFor} className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
-        {required && <span className="text-gold/70">*</span>}
-      </span>
+        {required && <span aria-hidden className="text-gold/70">*</span>}
+      </label>
       {children}
       {error && <span className="mt-1.5 block text-[11px] text-destructive">{error}</span>}
     </div>

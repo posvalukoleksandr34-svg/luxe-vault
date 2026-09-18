@@ -46,6 +46,7 @@ export function AddressAutocomplete({
   // hand-rolled random id would differ between server and client and trip
   // hydration.
   const listboxId = useId()
+  const inputId = useId()
 
   // Set when the value change came from picking a suggestion, so the effect
   // below does not immediately re-query for the text it just wrote.
@@ -125,13 +126,14 @@ export function AddressAutocomplete({
 
   return (
     <div ref={containerRef} className="relative block">
-      <span className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
+      <label htmlFor={inputId} className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
-        {required && <span className="text-gold/70">*</span>}
-      </span>
+        {required && <span aria-hidden className="text-gold/70">*</span>}
+      </label>
 
       <div className="relative">
         <input
+          id={inputId}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}

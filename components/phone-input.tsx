@@ -50,7 +50,7 @@ export function PhoneInput({
   error?: boolean
   id?: string
 }) {
-  const { locale } = useStore()
+  const { locale, t } = useStore()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -136,6 +136,7 @@ export function PhoneInput({
             <input
               type="text"
               autoFocus
+              aria-label={t('filter.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/50"
