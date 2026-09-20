@@ -91,7 +91,7 @@ export function BottomNav() {
               <li key={tab.key} className="contents">
                 <button
                   type="button"
-                  onClick={() => (currentUser ? openAccount() : openAuth('login'))}
+                  onClick={() => (currentUser ? openAccount() : openAuth())}
                   aria-label={label}
                   className={itemClass(on)}
                 >

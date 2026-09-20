@@ -57,7 +57,9 @@ export function UserPanel() {
     setAccountTab: setTab,
   } = useStore()
 
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  // Registration by default; the store's authMode (below) overrides it
+  // whenever the drawer is opened for a specific purpose.
+  const [mode, setMode] = useState<'login' | 'register'>('register')
   // Opens on the form the caller asked for — registration when a "Save look"
   // prompt's "Create an account" brought the visitor here, sign-in otherwise.
   // Re-read on every opening, so the drawer never remembers a stale choice.

@@ -720,16 +720,17 @@ function maybeSendWelcome() {
   const [accountTab, setAccountTab] = useState<AccountTab>('orders')
 
   /**
-   * Which form the account drawer shows a signed-out visitor.
+   * Which form the account drawer shows a signed-out visitor. Registration by
+   * default — most people opening it have no account yet.
    *
-   * A request, not a preference: it reverts to sign-in whenever the drawer
-   * closes. Otherwise a "Save look" prompt that once asked for registration
-   * would make the header's profile icon reopen on the registration form
-   * forever after.
+   * A request, not a preference: it reverts to that default whenever the
+   * drawer closes. Otherwise the basket's "Sign in" choice, which asks for the
+   * sign-in form explicitly, would make the header's profile icon reopen on
+   * sign-in forever after.
    */
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('register')
   useEffect(() => {
-    if (panel === null) setAuthMode('login')
+    if (panel === null) setAuthMode('register')
   }, [panel])
 
   /**
@@ -745,8 +746,14 @@ function maybeSendWelcome() {
     setPanel('user')
   }, [])
 
-  /** Opens the account drawer on sign-in or on registration, in one call. */
-  const openAuth = useCallback((mode: 'login' | 'register' = 'login') => {
+  /**
+   * Opens the account drawer on sign-in or on registration, in one call.
+   * Registration is the default: most people meeting this drawer do not have
+   * an account yet, and the form carries a one-tap switch to sign in. A caller
+   * that knows better — the basket's "Sign in" choice, the stylist's prompt —
+   * passes the mode explicitly and still gets it.
+   */
+  const openAuth = useCallback((mode: 'login' | 'register' = 'register') => {
     setAuthMode(mode)
     setPanel('user')
   }, [])
