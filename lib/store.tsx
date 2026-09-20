@@ -70,7 +70,7 @@ export type Toast = {
   variant?: 'default' | 'success' | 'gold'
 }
 
-export type PanelState = 'cart' | 'checkout' | 'user' | 'support' | null
+export type PanelState = 'cart' | 'checkout' | 'user' | 'support' | 'chat' | null
 
 /** Where the support center drawer opens: its help screen, the request form
  *  (optionally on a topic or an order), the list of requests, or one of them. */
@@ -207,6 +207,9 @@ type StoreContextValue = {
   supportEntry: SupportEntry
   /** Opens the support center drawer. */
   openSupport: (entry?: SupportEntry) => void
+  /** The guided quick-answers bot, in its own panel beside the support centre
+   *  so the two entry points never land on the same screen. */
+  openChat: () => void
   /** Replies from the support team the customer has not read yet. */
   supportUnread: number
   setSupportUnread: (n: number) => void
@@ -762,6 +765,8 @@ function maybeSendWelcome() {
   const [supportUnread, setSupportUnread] = useState(0)
   /** Opens the support center on its help screen, or straight on the form or
    *  a conversation — one call, for the same reason as openAccount. */
+  const openChat = useCallback(() => setPanel('chat'), [])
+
   const openSupport = useCallback((entry?: SupportEntry) => {
     setSupportEntry(entry ?? { view: 'home' })
     setPanel('support')
@@ -1542,6 +1547,7 @@ function maybeSendWelcome() {
       openAuth,
       supportEntry,
       openSupport,
+      openChat,
       supportUnread,
       setSupportUnread,
       stockLimit,
@@ -1584,7 +1590,7 @@ function maybeSendWelcome() {
       catalogLoading, loadCatalog, shipping, categoryImages, setCategoryImage,
       resetCategoryImage, cart, promos, currentUser, authLoading, locale, setLocale, currency,
       setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
-      authMode, openAuth, supportEntry, openSupport, supportUnread, setSupportUnread,
+      authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
       addToCart, updateCartQty, removeFromCart, clearCart, wishlist, isWishlisted, toggleWishlist,
       cartCount, cartSubtotal, applyPromo,

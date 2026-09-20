@@ -38,12 +38,16 @@ const SupportDrawer = dynamic(
   () => import('@/components/support/support-drawer').then((m) => m.SupportDrawer),
   { ssr: false },
 )
+const ChatBot = dynamic(() => import('@/components/support/chat-bot').then((m) => m.ChatBot), {
+  ssr: false,
+})
 
 /** Fetches the drawer chunks without mounting anything. */
 function warmDrawers() {
   void import('@/components/cart-panel')
   void import('@/components/user-panel')
   void import('@/components/support/support-drawer')
+  void import('@/components/support/chat-bot')
 }
 
 export function GlobalPanels() {
@@ -56,9 +60,11 @@ export function GlobalPanels() {
   const [cartMounted, setCartMounted] = useState(false)
   const [userMounted, setUserMounted] = useState(false)
   const [supportMounted, setSupportMounted] = useState(false)
+  const [chatMounted, setChatMounted] = useState(false)
   if (panel === 'cart' && !cartMounted) setCartMounted(true)
   if (panel === 'user' && !userMounted) setUserMounted(true)
   if (panel === 'support' && !supportMounted) setSupportMounted(true)
+  if (panel === 'chat' && !chatMounted) setChatMounted(true)
 
   useEffect(() => {
     if ('requestIdleCallback' in window) {
@@ -75,6 +81,10 @@ export function GlobalPanels() {
       {cartMounted && <CartPanel />}
       {userMounted && <UserPanel />}
       {supportMounted && <SupportDrawer />}
+      {/* The quick-answers bot, opened by the floating button bottom left.
+          One `panel` value means it and the support drawer can never be open
+          at once. */}
+      {chatMounted && <ChatBot />}
       {/* Tiny and not lazy: it keeps the unread count on the support buttons. */}
       <SupportUnreadWatcher />
       {/* Listens for Supabase's PASSWORD_RECOVERY event, which can fire on any
