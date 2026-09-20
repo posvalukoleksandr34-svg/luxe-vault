@@ -78,17 +78,20 @@ export function Header() {
   const goAbout = () => goSection('about')
   const goReviews = () => goSection('reviews')
 
-  function goSale() {
-    setFilter({ ...filter, sale: true, group: null, category: null })
-    // The filter is store state the homepage grid reads, so the scroll (or the
-    // navigation) has to happen after it is set either way.
-    setTimeout(() => goSection('shop'), 100)
+  /**
+   * New and Sale are views of the CATALOGUE now that the homepage carries no
+   * grid. The filter is set first — it is store state the grid reads on
+   * arrival — and the query string says the same thing, so the link also
+   * works when pasted, shared or opened in a new tab.
+   */
+  function goView(view: 'new' | 'sale') {
+    setFilter({ ...filter, sale: view === 'sale', group: null, category: null })
+    setMobileOpen(false)
+    router.push(`/catalog?view=${view}`)
   }
 
-  function goNew() {
-    setFilter({ ...filter, sale: false, group: null, category: null })
-    setTimeout(() => goSection('shop'), 100)
-  }
+  const goSale = () => goView('sale')
+  const goNew = () => goView('new')
 
   return (
     <header

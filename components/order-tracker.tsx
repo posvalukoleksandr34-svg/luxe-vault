@@ -171,7 +171,7 @@ export function OrderTracker({ order }: { order: Order }) {
                 })
               : t('state.cancelledHint')
           }
-          action={{ label: t('state.goToCatalog'), href: '/#shop' }}
+          action={{ label: t('state.goToCatalog'), href: '/catalog' }}
         />
       ) : (
         <section className="space-y-3">

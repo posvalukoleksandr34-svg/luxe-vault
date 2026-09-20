@@ -39,7 +39,7 @@ export function SharedCapsule({
     <>
       <Breadcrumbs
         trail={[
-          { name: t('nav.shop'), url: '/#shop' },
+          { name: t('nav.shop'), url: '/catalog' },
           { name: t('stylist.title'), url: '/stylist' },
           { name: t('looks.capsule'), url: `/stylist/share/${look.id}` },
         ]}

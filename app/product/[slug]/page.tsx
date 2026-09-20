@@ -187,7 +187,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   // homepage anchor because those routes did not exist and a breadcrumb that
   // 404s is worse than one that lands a level up.
   const trail = [
-    { name: 'Shop', url: '/#shop' },
+    { name: 'Shop', url: '/catalog' },
     ...(product.group
       ? [
           {

@@ -185,7 +185,7 @@ export function StylistExperience({ anchorProductId }: { anchorProductId?: strin
           />
           <StateActionButton
             variant="secondary"
-            action={{ label: t('state.goToCatalog'), href: '/#shop', icon: LayoutGrid }}
+            action={{ label: t('state.goToCatalog'), href: '/catalog', icon: LayoutGrid }}
           />
         </div>
       )}

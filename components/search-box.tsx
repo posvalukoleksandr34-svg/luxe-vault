@@ -500,7 +500,7 @@ export function SearchBox({
                 </div>
               )}
               <Link
-                href="/#shop"
+                href="/catalog"
                 onClick={close}
                 className="mt-1 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
               >

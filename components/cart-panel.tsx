@@ -234,7 +234,7 @@ export function CartPanel() {
               label: t('state.goToCatalog'),
               onClick: () => {
                 setPanel(null)
-                router.push('/#shop')
+                router.push('/catalog')
               },
             }}
           />

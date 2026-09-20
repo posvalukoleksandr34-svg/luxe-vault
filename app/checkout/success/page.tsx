@@ -263,7 +263,7 @@ function SuccessContent() {
             {t('success.trackOrder')}
           </Link>
           <Link
-            href="/#shop"
+            href="/catalog"
             className="flex flex-1 items-center justify-center gap-2 border border-border py-3.5 text-[12px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
           >
             {t('cart.continueShopping')}

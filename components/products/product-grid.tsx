@@ -606,7 +606,7 @@ export function ProductGrid({
                   },
                 }
               : locked
-                ? { label: t('state.goToCatalog'), href: '/#shop' }
+                ? { label: t('state.goToCatalog'), href: '/catalog' }
                 : undefined
           }
         />

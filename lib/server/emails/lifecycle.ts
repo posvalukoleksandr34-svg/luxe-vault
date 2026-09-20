@@ -58,7 +58,7 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
   const textExtra: (string | null)[] = []
   let cta: { label: string; href: string } =
     key === 'cancelled' || key === 'refunded'
-      ? { label: c.shopNow, href: `${getSiteUrl()}/#shop` }
+      ? { label: c.shopNow, href: `${getSiteUrl()}/catalog` }
       : { label: c.trackOrder, href: orderHref(order) }
   let secondaryLink: { label: string; href: string } | undefined
 
@@ -150,7 +150,7 @@ export function lifecycleEmail(order: Order, status: OrderStatus, lang: EmailLan
 export function welcomeEmail(name: string, lang: EmailLang): RenderedEmail {
   const c = copyFor(lang)
   const firstName = name.split(' ')[0] || ''
-  const href = `${getSiteUrl()}/#shop`
+  const href = `${getSiteUrl()}/catalog`
   const html = renderEmail({
     lang,
     subject: c.welcome.subject,

@@ -39,7 +39,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     // Long-press on the installed icon (Android, desktop Chrome/Edge).
     shortcuts: [
-      { name: 'Каталог', short_name: 'Каталог', url: '/#shop', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Каталог', short_name: 'Каталог', url: '/catalog', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Мой аккаунт', short_name: 'Аккаунт', url: '/account', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Поддержка', short_name: 'Поддержка', url: '/support', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
     ],

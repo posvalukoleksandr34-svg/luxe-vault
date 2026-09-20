@@ -290,7 +290,7 @@ export function AccountOrders({
         title={t('user.noOrders')}
         hint={t('state.ordersHint')}
         // From the account drawer: close it on the way to the catalogue.
-        action={{ label: t('state.goToCatalog'), href: '/#shop', onClick: () => setPanel(null) }}
+        action={{ label: t('state.goToCatalog'), href: '/catalog', onClick: () => setPanel(null) }}
       />
     )
   }

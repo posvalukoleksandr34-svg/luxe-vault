@@ -72,7 +72,7 @@ export function PaymentOutcome({ state, orderId }: { state: PaymentOutcomeState;
           ) : (
             <StateActionButton
               variant="secondary"
-              action={{ label: t('state.goToCatalog'), href: '/#shop', icon: LayoutGrid }}
+              action={{ label: t('state.goToCatalog'), href: '/catalog', icon: LayoutGrid }}
             />
           )}
         </div>

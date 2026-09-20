@@ -64,7 +64,7 @@ export default async function CollectionPage({ params }: { params: { collection:
 
   const name = pick(node.name) || node.slug
   const trail = [
-    { name: 'Shop', url: '/#shop' },
+    { name: 'Shop', url: '/catalog' },
     { name, url: `/category/${node.slug}` },
   ]
 

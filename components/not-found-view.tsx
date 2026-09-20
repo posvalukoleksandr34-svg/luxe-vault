@@ -27,7 +27,7 @@ export function NotFoundView({ kind = 'page' }: { kind?: 'page' | 'product' }) {
           icon={product ? PackageX : SearchX}
           title={product ? t('state.discontinuedTitle') : t('state.notFoundTitle')}
           hint={product ? t('state.discontinuedHint') : t('state.notFoundHint')}
-          action={{ label: t('state.goToCatalog'), href: '/#shop' }}
+          action={{ label: t('state.goToCatalog'), href: '/catalog' }}
           secondary={
             cartCount > 0
               ? { label: t('state.openCart'), onClick: () => setPanel('cart'), icon: ShoppingBag }

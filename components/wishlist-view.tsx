@@ -53,7 +53,7 @@ export function WishlistView() {
             {t('wishlist.emptyHint')}
           </p>
           <Link
-            href="/#shop"
+            href="/catalog"
             className="mt-8 inline-flex items-center justify-center border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
           >
             {t('wishlist.browse')}

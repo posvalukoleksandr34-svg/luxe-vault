@@ -101,7 +101,7 @@ export default function OrderTrackingPage() {
             title={t('track.notFound')}
             hint={orderId}
             action={{ label: t('state.myOrders'), onClick: () => openAccount('orders') }}
-            secondary={{ label: t('state.goToCatalog'), href: '/#shop' }}
+            secondary={{ label: t('state.goToCatalog'), href: '/catalog' }}
           />
         )}
       </main>

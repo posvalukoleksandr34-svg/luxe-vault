@@ -53,7 +53,7 @@ export default function CheckoutPage() {
             icon={ShoppingBag}
             title={t('cart.empty')}
             hint={t('state.cartHint')}
-            action={{ label: t('state.goToCatalog'), href: '/#shop' }}
+            action={{ label: t('state.goToCatalog'), href: '/catalog' }}
           />
         </main>
       </>
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
         />
 
         <Link
-          href="/#shop"
+          href="/catalog"
           className="mb-8 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition hover:text-gold"
         >
           <ArrowLeft className="size-3" />

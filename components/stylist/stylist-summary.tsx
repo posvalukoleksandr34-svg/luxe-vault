@@ -162,9 +162,9 @@ export function StylistFallback({
         action={
           onRetry
             ? { label: t('common.retry'), onClick: onRetry, icon: RefreshCw }
-            : { label: t('state.goToCatalog'), href: '/#shop', icon: LayoutGrid }
+            : { label: t('state.goToCatalog'), href: '/catalog', icon: LayoutGrid }
         }
-        secondary={onRetry ? { label: t('state.goToCatalog'), href: '/#shop' } : undefined}
+        secondary={onRetry ? { label: t('state.goToCatalog'), href: '/catalog' } : undefined}
         className="border border-border/60 px-6"
       />
 

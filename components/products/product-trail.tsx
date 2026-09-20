@@ -19,7 +19,7 @@ export function ProductTrail({ product }: { product: Product }) {
 
   const trail = useMemo(
     () => [
-      { name: t('nav.shop'), url: '/#shop' },
+      { name: t('nav.shop'), url: '/catalog' },
       ...(product.group
         ? [
             {
