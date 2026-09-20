@@ -14,6 +14,7 @@ import { SkipLink } from '@/components/skip-link';
 import { BottomNav } from '@/components/bottom-nav';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { DEFAULT_LOCALE } from '@/lib/i18n';
+import { SITE_ORIGIN, siteJsonLd } from '@/lib/seo';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -42,7 +43,7 @@ const FONT_PRELOADS = ['/fonts/bodoni-moda-latin.woff2', '/fonts/inter-latin.wof
 // Must match NEXT_PUBLIC_SITE_URL and the Supabase Site URL exactly — a
 // mismatch produces canonical tags pointing at a domain that redirects, and
 // auth links that land on the wrong origin.
-const SITE_URL = 'https://luxe-vault.store';
+const SITE_URL = SITE_ORIGIN;
 const SITE_NAME = 'LUXE VAULT';
 const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
 
@@ -67,36 +68,14 @@ const SITE_DESCRIPTION_SHORT =
   'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
 
 /**
- * Who publishes the site, as structured data: the seller (with a support
- * contact) and the WebSite. Once, in the root layout, so every page carries
- * it; product pages add their own Product graph on top.
+ * Who publishes the site, as structured data: the seller, the brand and the
+ * WebSite, as one @id-linked graph. Once, in the root layout, so every page
+ * carries it; product and category pages add their own graphs on top and
+ * reference these @ids rather than repeating them.
+ *
+ * Built in lib/seo.ts — see the note there on what is deliberately left out.
  */
-const SITE_JSON_LD = {
-  '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': `${SITE_URL}/#organization`,
-      name: SITE_NAME,
-      url: SITE_URL,
-      contactPoint: {
-        '@type': 'ContactPoint',
-        contactType: 'customer service',
-        email: SUPPORT_EMAIL,
-        availableLanguage: ['Russian', 'English', 'Italian', 'French', 'German'],
-      },
-    },
-    {
-      '@type': 'WebSite',
-      '@id': `${SITE_URL}/#website`,
-      url: SITE_URL,
-      name: SITE_NAME,
-      description: SITE_DESCRIPTION,
-      publisher: { '@id': `${SITE_URL}/#organization` },
-      inLanguage: DEFAULT_LOCALE,
-    },
-  ],
-};
+const SITE_JSON_LD = siteJsonLd(SITE_DESCRIPTION);
 
 /**
  * Without this the layout's catalogue read makes every page fully static and

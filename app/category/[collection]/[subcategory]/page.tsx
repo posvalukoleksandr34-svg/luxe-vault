@@ -7,6 +7,7 @@ import { CategoryView } from '@/components/products/category-view'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
 import { serializeJsonLd } from '@/lib/json-ld'
+import { SITE_ORIGIN, itemListJsonLd } from '@/lib/seo'
 
 /**
  * A subcategory: Hoodies, Sneakers, Caps.
@@ -19,7 +20,7 @@ import { serializeJsonLd } from '@/lib/json-ld'
 export const revalidate = 600
 export const dynamicParams = true
 
-const SITE_URL = 'https://luxe-vault.store'
+const SITE_URL = SITE_ORIGIN
 
 export async function generateStaticParams() {
   const { tree } = await readTaxonomy()
@@ -84,6 +85,12 @@ export default async function SubcategoryPage({
     { name, url: `/category/${found.node.slug}/${found.category.slug}` },
   ]
 
+  // See the collection page: the listing's own contents, for a crawler that
+  // does not run the client-side grid.
+  const { products } = await readTaxonomy()
+  const path = `/category/${found.node.slug}/${found.category.slug}`
+  const listed = products.filter((p) => p.group === found.node.slug && p.category === found.category.slug)
+
   return (
     <>
       <Header />
@@ -98,6 +105,10 @@ export default async function SubcategoryPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd(trail)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(itemListJsonLd(listed, path, name)) }}
       />
     </>
   )

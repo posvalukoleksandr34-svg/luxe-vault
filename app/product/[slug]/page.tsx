@@ -15,6 +15,7 @@ import { getProductBySlug } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
+import { BRAND_ID, ORGANIZATION_ID, SITE_ORIGIN } from '@/lib/seo'
 import { primaryText } from '@/lib/localized-text'
 
 /**
@@ -34,7 +35,7 @@ export const revalidate = 600
 // unknown slugs are rendered on demand.
 export const dynamicParams = true
 
-const SITE_URL = 'https://luxe-vault.store'
+const SITE_URL = SITE_ORIGIN
 
 // `Product.id` IS `products.slug` — rowToProduct maps that column onto the id,
 // so the URL segment and the record key are the same value by construction and
@@ -135,7 +136,10 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
     description: primaryText(product.description),
     sku: slug,
     image: product.images?.length ? product.images : product.image ? [product.image] : undefined,
-    brand: { '@type': 'Brand', name: 'Luxe Vault' },
+    // The shop's own Brand node from the root layout's graph, by @id, so a
+    // crawler reads one brand across the catalogue rather than a separate
+    // anonymous one per product.
+    brand: { '@id': BRAND_ID },
     offers: {
       '@type': 'Offer',
       url: `${SITE_URL}/product/${slug}`,
@@ -147,7 +151,7 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
         ? 'https://schema.org/OutOfStock'
         : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
-      seller: { '@type': 'Organization', name: 'Luxe Vault' },
+      seller: { '@id': ORGANIZATION_ID },
       // Google flags an offer with no validity window as incomplete. A year
       // out is honest for a catalogue that is restocked rather than retired.
       priceValidUntil: new Date(Date.now() + 365 * 86400_000).toISOString().slice(0, 10),

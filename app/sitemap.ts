@@ -1,4 +1,6 @@
 import type { MetadataRoute } from 'next'
+
+import { SITE_ORIGIN } from '@/lib/seo'
 import { listProductSlugs } from '@/lib/server/catalog-store'
 import { readTaxonomy } from '@/lib/server/taxonomy'
 
@@ -15,7 +17,7 @@ import { readTaxonomy } from '@/lib/server/taxonomy'
  * additions here the moment the corresponding routes exist.
  */
 
-const BASE = 'https://luxe-vault.store'
+const BASE = SITE_ORIGIN
 
 /**
  * The catalogue is no longer a single page: every collection and subcategory
@@ -107,6 +109,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'daily',
       priority: 1.0,
+    },
+    // The catalogue's own page. It became a real route when the homepage
+    // stopped carrying a product grid, and was missing here — an indexable
+    // page with its own canonical that Google was never told about.
+    {
+      url: `${BASE}/catalog`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.9,
     },
     // Category pages sit between the homepage and the products: broader than a
     // single item, narrower than the shop.

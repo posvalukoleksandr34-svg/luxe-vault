@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next'
 
+import { SITE_ORIGIN } from '@/lib/seo'
+
 /**
  * robots.txt, served at /robots.txt by the App Router.
  *
@@ -33,7 +35,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/admin', '/auth/', '/order/', '/cart/', '/success', '/checkout/success', '/api/'],
       },
     ],
-    sitemap: 'https://luxe-vault.store/sitemap.xml',
-    host: 'https://luxe-vault.store',
+    sitemap: `${SITE_ORIGIN}/sitemap.xml`,
+    host: SITE_ORIGIN,
   }
 }
