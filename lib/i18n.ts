@@ -589,7 +589,6 @@ export const UI = {
   'sections.women': { ru: 'Женщины', en: 'Women', it: 'Donna', fr: 'Femme', de: 'Damen' },
   'sections.men': { ru: 'Мужчины', en: 'Men', it: 'Uomo', fr: 'Homme', de: 'Herren' },
   'sections.kids': { ru: 'Дети', en: 'Kids', it: 'Bambini', fr: 'Enfants', de: 'Kinder' },
-  'sections.lifestyle': { ru: 'Лайфстайл', en: 'Lifestyle', it: 'Lifestyle', fr: 'Lifestyle', de: 'Lifestyle' },
   // PWA install banner (components/app-promo-banner.tsx).
   'app.promoTitle': { ru: 'Скачайте приложение LUXE VAULT', en: 'Get the LUXE VAULT app', it: 'Scarica l’app LUXE VAULT', fr: 'Téléchargez l’application LUXE VAULT', de: 'Holen Sie sich die LUXE VAULT App' },
   'app.promoSubtitle': { ru: 'Промокод -10% на первый заказ в мобильном приложении', en: 'Promo code: -10% on your first order in the mobile app', it: 'Codice promo: -10% sul primo ordine nell’app', fr: 'Code promo : -10% sur votre première commande dans l’application', de: 'Aktionscode: -10% auf Ihre erste Bestellung in der App' },

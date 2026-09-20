@@ -11,17 +11,16 @@ import { cn } from '@/lib/utils'
 /**
  * "Выберите раздел" — the storefront's top-level departments, directly under
  * the hero. Replaces the old <Collections /> grid (which listed the catalogue's
- * own collections) with the four marketplace departments.
+ * own collections) with the three marketplace departments.
  *
  * Every card points at the shop grid for now: the catalogue has no women /
- * men / kids / lifestyle sections yet. Once those exist as collections in the
- * admin console, change `href` to `/category/<slug>` and nothing else here
- * needs to move.
+ * men / kids sections yet. Once those exist as collections in the admin
+ * console, change `href` to `/category/<slug>` and nothing else here needs to
+ * move.
  *
- * Artwork lives in public/images (women.jpg, men.jpg, kids.jpg,
- * lifestyle.jpg). A file that is missing — or fails to load — leaves the card
- * on its own dark gradient rather than a broken frame, so the grid always
- * looks deliberate.
+ * Artwork lives in public/images (women.jpg, men.jpg, kids.jpg). A file that
+ * is missing — or fails to load — leaves the card on its own dark gradient
+ * rather than a broken frame, so the grid always looks deliberate.
  *
  * Keeps id="collections": the header and footer both scroll to that anchor.
  */
@@ -57,13 +56,6 @@ const SECTIONS: Section[] = [
     href: '/#shop',
     fallback: 'radial-gradient(120% 90% at 30% 100%, #262220 0%, #0b0a09 70%)',
   },
-  {
-    key: 'lifestyle',
-    labelKey: 'sections.lifestyle',
-    image: '/images/lifestyle.jpg',
-    href: '/#shop',
-    fallback: 'radial-gradient(120% 90% at 70% 90%, #1c1e1e 0%, #090a0a 70%)',
-  },
 ]
 
 export function SectionsGrid() {
@@ -82,8 +74,11 @@ export function SectionsGrid() {
           </h2>
         </Reveal>
 
-        {/* One column on a phone, two on a tablet, all four across on desktop. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        {/* One column on a phone, then three equal columns from tablet up —
+            `1fr` each, so the row always fills the container exactly. Two
+            columns at an intermediate width would strand the third card alone
+            on its own row, which is why the jump is straight to three. */}
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
           {SECTIONS.map((section, i) => {
             const label = t(section.labelKey)
             return (
@@ -93,9 +88,10 @@ export function SectionsGrid() {
                   aria-label={label}
                   className={cn(
                     'card-gold product-card group relative block w-full overflow-hidden text-left',
-                    // Tall editorial portrait on desktop; shorter on a phone so
-                    // four stacked cards stay scrollable.
-                    'aspect-[4/3] sm:aspect-[3/4]',
+                    // Tall editorial portrait only once the cards sit three to
+                    // a row; while they are stacked full-width, a landscape
+                    // crop keeps each one from running past a screen height.
+                    'aspect-[4/3] md:aspect-[3/4]',
                   )}
                   style={{ background: section.fallback }}
                 >
