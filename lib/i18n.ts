@@ -123,7 +123,8 @@ export const GROUP_LABELS: Record<string, LocalizedText> = {
 
 export const UI = {
   'nav.shop': { ru: 'Магазин', en: 'Shop', it: 'Negozio', fr: 'Boutique', de: 'Shop' },
-  'nav.collections': { ru: 'Коллекции', en: 'Collections', it: 'Collezioni', fr: 'Collections', de: 'Kollektionen' },
+  // The storefront's top level is the department now (lib/departments.ts).
+  'nav.collections': { ru: 'Разделы', en: 'Departments', it: 'Reparti', fr: 'Rayons', de: 'Bereiche' },
   'nav.about': { ru: 'О нас', en: 'About', it: 'Chi siamo', fr: 'À propos', de: 'Über uns' },
   'nav.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },
   'hero.title': { ru: 'LUXE VAULT', en: 'LUXE VAULT', it: 'LUXE VAULT', fr: 'LUXE VAULT', de: 'LUXE VAULT' },
@@ -523,7 +524,11 @@ export const UI = {
   'user.noOrders': { ru: 'Заказов пока нет', en: 'No orders yet', it: 'Nessun ordine', fr: 'Aucune commande', de: 'Keine Bestellungen' },
   'admin.title': { ru: 'Панель управления', en: 'Admin Panel', it: 'Pannello', fr: 'Panneau', de: 'Verwaltung' },
   'admin.products': { ru: 'Товары', en: 'Products', it: 'Prodotti', fr: 'Produits', de: 'Produkte' },
-  'admin.collections': { ru: 'Коллекции', en: 'Collections', it: 'Collezioni', fr: 'Collections', de: 'Kollektionen' },
+  'admin.collections': { ru: 'Разделы', en: 'Departments', it: 'Reparti', fr: 'Rayons', de: 'Bereiche' },
+  'admin.departmentsHint': { ru: 'Основные разделы магазина и фоновые изображения их карточек на главной. Каждый товар привязан к одному разделу.', en: 'The shop’s main departments and the cover images of their cards on the homepage. Every product belongs to exactly one department.', it: 'I reparti principali del negozio e le immagini delle loro schede in homepage. Ogni prodotto appartiene a un solo reparto.', fr: 'Les rayons principaux de la boutique et les images de leurs cartes sur l’accueil. Chaque produit appartient à un seul rayon.', de: 'Die Hauptbereiche des Shops und die Bilder ihrer Karten auf der Startseite. Jedes Produkt gehört zu genau einem Bereich.' },
+  'admin.departmentCreate': { ru: 'Создать раздел', en: 'Create department', it: 'Crea reparto', fr: 'Créer le rayon', de: 'Bereich erstellen' },
+  'admin.departmentMissing': { ru: 'Этих основных разделов ещё нет в каталоге:', en: 'These core departments do not exist in the catalogue yet:', it: 'Questi reparti principali non esistono ancora nel catalogo:', fr: 'Ces rayons principaux n’existent pas encore dans le catalogue :', de: 'Diese Hauptbereiche gibt es im Katalog noch nicht:' },
+  'admin.department': { ru: 'Раздел', en: 'Department', it: 'Reparto', fr: 'Rayon', de: 'Bereich' },
   'admin.orders': { ru: 'Заказы', en: 'Orders', it: 'Ordini', fr: 'Commandes', de: 'Bestellungen' },
   'admin.promos': { ru: 'Промокоды', en: 'Promo Codes', it: 'Codici Promo', fr: 'Codes Promo', de: 'Promo-Codes' },
   'admin.addProduct': { ru: 'Добавить товар', en: 'Add Product', it: 'Aggiungi Prodotto', fr: 'Ajouter', de: 'Hinzufügen' },

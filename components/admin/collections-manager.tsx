@@ -3,11 +3,69 @@
 import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
+import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useStore } from '@/lib/store'
 import type { CategoryGroupKey } from '@/lib/types'
 
 // Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
 const MAX_FILE_SIZE_MB = 5
+
+/**
+ * The core departments (lib/departments.ts) that do not exist in the catalogue
+ * yet, each with a one-click create.
+ *
+ * Nothing is written to the catalogue on its own: a department appears only
+ * when someone presses the button here, which posts the same payload the
+ * manual form does — so the slug and the five translations are always the ones
+ * the storefront's cards and routes expect (/category/women, …).
+ */
+function MissingDepartments({ onCreated }: { onCreated: () => Promise<void> | void }) {
+  const { collections, pushToast, localize, t } = useStore()
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const missing = CORE_DEPARTMENTS.filter((d) => !collections.some((c) => c.slug === d.slug))
+  if (missing.length === 0) return null
+
+  async function create(slug: string, name: Record<string, string>, sortOrder: number) {
+    if (busy) return
+    setBusy(slug)
+    try {
+      const res = await fetch('/api/admin/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, name, sortOrder }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? 'Не удалось создать раздел')
+      pushToast({ title: 'Раздел создан', variant: 'success' })
+      await onCreated()
+    } catch (e) {
+      pushToast({ title: (e as Error).message, variant: 'default' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="mb-6 border border-gold/30 bg-gold/[0.04] px-4 py-4">
+      <p className="mb-3 text-sm text-foreground">{t('admin.departmentMissing')}</p>
+      <div className="flex flex-wrap gap-2">
+        {missing.map((d) => (
+          <button
+            key={d.slug}
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void create(d.slug, d.name, d.sortOrder)}
+            className="inline-flex items-center gap-2 border border-gold px-4 py-2 text-xs uppercase tracking-wider text-gold transition-colors hover:bg-gold hover:text-gold-foreground disabled:opacity-50"
+          >
+            {busy === d.slug ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+            {t('admin.departmentCreate')} «{localize(d.name)}»
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /** Uploads one collection cover and returns its public URL. Collection covers
  *  went to Storage for the same reason product images did: a base64 cover sat
@@ -40,6 +98,7 @@ export function CollectionsManager() {
     resetCategoryImage,
     localize,
     pushToast,
+    t,
     collections,
     categoryTree,
     groupLabels,
@@ -49,11 +108,12 @@ export function CollectionsManager() {
   return (
     <div>
       <h1 className="mb-2 font-serif text-2xl font-semibold text-foreground">
-        Коллекции
+        {t('admin.collections')}
       </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Коллекции магазина и фоновые изображения их карточек на главной.
-      </p>
+      <p className="mb-6 text-sm text-muted-foreground">{t('admin.departmentsHint')}</p>
+
+      {/* The three core departments, offered until each one exists. */}
+      <MissingDepartments onCreated={reloadCatalog} />
 
       <NewCollectionForm onCreated={reloadCatalog} />
 
@@ -68,7 +128,7 @@ export function CollectionsManager() {
             isCustom={Boolean(categoryImages[group])}
             onChange={(image) => {
               void setCategoryImage(group, image)
-              pushToast({ title: 'Изображение коллекции обновлено', variant: 'success' })
+              pushToast({ title: 'Изображение раздела обновлено', variant: 'success' })
             }}
             onReset={() => {
               void resetCategoryImage(group)
@@ -90,7 +150,7 @@ export function CollectionsManager() {
                       pushToast({ title: data?.error ?? 'Не удалось удалить', variant: 'default' })
                       return
                     }
-                    pushToast({ title: 'Коллекция удалена', variant: 'default' })
+                    pushToast({ title: 'Раздел удалён', variant: 'default' })
                     await reloadCatalog()
                   }
                 : undefined
@@ -212,10 +272,10 @@ function CategorySlot({
             onClick={() => {
               // Deleting a collection is irreversible and only offered when it
               // holds no products, so a single confirm is proportionate.
-              if (confirm(`Удалить коллекцию «${label}»?`)) void onDelete()
+              if (confirm(`Удалить раздел «${label}»?`)) void onDelete()
             }}
             className="flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
-            title="Удалить коллекцию"
+            title="Удалить раздел"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -481,9 +541,9 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error ?? 'Не удалось создать коллекцию')
+      if (!res.ok) throw new Error(data?.error ?? 'Не удалось создать раздел')
 
-      pushToast({ title: 'Коллекция создана', variant: 'success' })
+      pushToast({ title: 'Раздел создан', variant: 'success' })
       setSlug('')
       setNameRu('')
       setNameEn('')
@@ -504,7 +564,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
         className="mb-6 flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/5 px-4 py-2.5 text-sm font-medium text-gold transition hover:bg-gold hover:text-gold-foreground"
       >
         <Plus className="size-4" />
-        Новая коллекция
+        Новый раздел
       </button>
     )
   }

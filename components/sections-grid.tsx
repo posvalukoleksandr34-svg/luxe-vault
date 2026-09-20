@@ -2,8 +2,9 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
+import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useStore } from '@/lib/store'
 import type { UIKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -13,53 +14,48 @@ import { cn } from '@/lib/utils'
  * the hero. Replaces the old <Collections /> grid (which listed the catalogue's
  * own collections) with the three marketplace departments.
  *
- * Every card points at the shop grid for now: the catalogue has no women /
- * men / kids sections yet. Once those exist as collections in the admin
- * console, change `href` to `/category/<slug>` and nothing else here needs to
- * move.
+ * Each card leads to its department's own page — /category/women and so on —
+ * as soon as that department exists in the catalogue (admin → Разделы). Until
+ * then it falls back to the shop grid, so a card never lands on a 404.
  *
- * Artwork lives in public/images (women.jpg, men.jpg, kids.jpg). A file that
- * is missing — or fails to load — leaves the card on its own dark gradient
- * rather than a broken frame, so the grid always looks deliberate.
+ * Artwork: the cover image set in the admin wins, then public/images
+ * (women.jpg, men.jpg, kids.jpg), and a card whose photograph is missing or
+ * fails to load keeps its own dark gradient rather than a broken frame.
  *
  * Keeps id="collections": the header and footer both scroll to that anchor.
  */
 
-type Section = {
-  key: string
-  labelKey: UIKey
-  image: string
-  href: string
-  /** The gradient shown until the photograph loads, and if it never does. */
-  fallback: string
-}
-
-const SECTIONS: Section[] = [
-  {
-    key: 'women',
+/** The look of each department card, keyed by its slug. The departments
+ *  themselves come from lib/departments.ts, so adding one there is all it
+ *  takes for a card to appear (with the gradient below as its cover). */
+const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string }> = {
+  women: {
     labelKey: 'sections.women',
     image: '/images/women.jpg',
-    href: '/#shop',
     fallback: 'radial-gradient(120% 90% at 20% 0%, #232323 0%, #0c0c0c 70%)',
   },
-  {
-    key: 'men',
+  men: {
     labelKey: 'sections.men',
     image: '/images/men.jpg',
-    href: '/#shop',
     fallback: 'radial-gradient(120% 90% at 80% 10%, #1e1e20 0%, #0a0a0a 70%)',
   },
-  {
-    key: 'kids',
+  kids: {
     labelKey: 'sections.kids',
     image: '/images/kids.jpg',
-    href: '/#shop',
     fallback: 'radial-gradient(120% 90% at 30% 100%, #262220 0%, #0b0a09 70%)',
   },
-]
+}
+
+const FALLBACK_GRADIENT = 'radial-gradient(120% 90% at 50% 0%, #1f1f1f 0%, #0a0a0a 70%)'
 
 export function SectionsGrid() {
-  const { t } = useStore()
+  const { t, localize, collections, categoryImages } = useStore()
+
+  // A department that exists in the catalogue gets its own page; one that does
+  // not yet gets the shop grid, so the card always leads somewhere real.
+  const live = useMemo(() => new Set(collections.map((c) => c.slug)), [collections])
+  const coverOf = (slug: string) =>
+    categoryImages[slug] || collections.find((c) => c.slug === slug)?.image || ''
   // Which photographs are missing. Set from <Image onError>, which is also how
   // the product card handles a dead image URL.
   const [failed, setFailed] = useState<Record<string, boolean>>({})
@@ -79,12 +75,17 @@ export function SectionsGrid() {
             columns at an intermediate width would strand the third card alone
             on its own row, which is why the jump is straight to three. */}
         <div className="-mx-4 grid grid-cols-1 gap-px sm:-mx-6 md:mx-0 md:grid-cols-3 md:gap-4">
-          {SECTIONS.map((section, i) => {
-            const label = t(section.labelKey)
+          {CORE_DEPARTMENTS.map((department, i) => {
+            const section = VISUALS[department.slug]
+            // A department with no card art of its own still renders, labelled
+            // from the catalogue rather than from a missing i18n key.
+            const label = section ? t(section.labelKey) : localize(department.name)
+            const href = live.has(department.slug) ? `/category/${department.slug}` : '/#shop'
+            const cover = coverOf(department.slug) || section?.image || ''
             return (
-              <Reveal key={section.key} delay={i * 90}>
+              <Reveal key={department.slug} delay={i * 90}>
                 <Link
-                  href={section.href}
+                  href={href}
                   aria-label={label}
                   className={cn(
                     'card-gold product-card group relative block w-full overflow-hidden text-left',
@@ -93,16 +94,16 @@ export function SectionsGrid() {
                     // crop keeps each one from running past a screen height.
                     'aspect-[4/3] md:aspect-[3/4]',
                   )}
-                  style={{ background: section.fallback }}
+                  style={{ background: section?.fallback ?? FALLBACK_GRADIENT }}
                 >
-                  {!failed[section.key] && (
+                  {cover && !failed[department.slug] && (
                     <Image
-                      src={section.image}
+                      src={cover}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       priority={i === 0}
-                      onError={() => setFailed((prev) => ({ ...prev, [section.key]: true }))}
+                      onError={() => setFailed((prev) => ({ ...prev, [department.slug]: true }))}
                       className="size-full object-cover opacity-80 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-100"
                     />
                   )}

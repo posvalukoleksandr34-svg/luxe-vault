@@ -6,6 +6,7 @@ import { AVAILABILITY_STATUSES, withDerivedAvailability } from '@/lib/availabili
 import { STYLIST_FIT_LABELS, STYLIST_OCCASION_LABELS, STYLIST_STYLE_LABELS } from '@/lib/i18n'
 import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags } from '@/lib/stylist/types'
 import { DEFAULT_DELIVERY_DAYS, isDeliveryDays } from '@/lib/fulfilment'
+import { byDepartmentOrder } from '@/lib/departments'
 import { useStore } from '@/lib/store'
 import type { Color, Locale, LocalizedText, Product, SizeMeasurement, StatusKey } from '@/lib/types'
 
@@ -96,7 +97,7 @@ export function ProductForm({
   product: Product | null
   onClose: () => void
 }) {
-  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels, localize } =
+  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels, localize, t } =
     useStore()
   const [saving, setSaving] = useState(false)
   const editing = Boolean(product)
@@ -642,7 +643,7 @@ export function ProductForm({
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
-                Группа
+                {t('admin.department')}
               </span>
               <select
                 value={form.group}
@@ -654,11 +655,16 @@ export function ProductForm({
                 }}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
               >
-                {categoryTree.map((n) => (
-                  <option key={n.group} value={n.group}>
-                    {localize(groupLabels[n.group] ?? {}) || n.group}
-                  </option>
-                ))}
+                {/* Core departments first (lib/departments.ts), so a new
+                    product always opens on a real one even while older
+                    collections are still being emptied. */}
+                {[...categoryTree]
+                  .sort((a, b) => byDepartmentOrder(a.group, b.group))
+                  .map((n) => (
+                    <option key={n.group} value={n.group}>
+                      {localize(groupLabels[n.group] ?? {}) || n.group}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="block">
