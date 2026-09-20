@@ -27,7 +27,7 @@ export function CategoryView({ group, category }: { group: string; category?: st
 
   const trail = useMemo(
     () => [
-      { name: t('nav.shop'), url: '/#shop' },
+      { name: t('nav.shop'), url: '/catalog' },
       { name: groupLabel, url: `/category/${group}` },
       ...(category ? [{ name: categoryLabel, url: `/category/${group}/${category}` }] : []),
     ],

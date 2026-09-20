@@ -25,7 +25,8 @@ export function CategoryNav({
   group,
   category,
 }: {
-  group: string
+  /** Undefined on /catalog, where no department is chosen yet. */
+  group?: string
   /** Undefined on a collection page; a category slug on a subcategory page. */
   category?: string
 }) {
@@ -132,13 +133,39 @@ export function CategoryNav({
         </ul>
       </nav>
 
-      {/* Mobile / tablet: the current collection's subcategories as a rail.
+      {/* Mobile / tablet: no sidebar, a rail. Inside a department it carries
+          that department's categories; on /catalog, where none is chosen yet,
+          it carries the departments — otherwise a phone would have no way to
+          filter at all.
+
+          Sticky under the header so the filter stays reachable while the grid
+          scrolls, which is what makes it feel like an app rather than a page.
           `-mx-4 px-4` lets it bleed to the screen edge so the last chip is
           visibly cut off — the cue that the row scrolls. */}
+      {!active && tree.length > 0 && (
+        <nav
+          aria-label={t('nav.collections')}
+          className="sticky top-[56px] z-20 -mx-4 mb-8 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <ul className="flex w-max items-center gap-x-5">
+            {tree.map((node) => (
+              <li key={node.slug}>
+                <Link
+                  href={`/category/${node.slug}`}
+                  className="whitespace-nowrap pb-1 text-[12px] uppercase tracking-[0.1em] text-muted-foreground/70 transition-colors duration-200 hover:text-foreground"
+                >
+                  {node.label} <span className="text-muted-foreground/40">· {node.count}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
       {active && active.items.length > 0 && (
         <nav
           aria-label={t('filter.categoryLabel')}
-          className="-mx-4 mb-8 overflow-x-auto px-4 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="sticky top-[56px] z-20 -mx-4 mb-8 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <ul className="flex w-max items-center gap-x-5">
             <li>

@@ -15,8 +15,9 @@ import { cn } from '@/lib/utils'
  * own collections) with the three marketplace departments.
  *
  * Each card leads to its department's own page — /category/women and so on —
- * as soon as that department exists in the catalogue (admin → Разделы). Until
- * then it falls back to the shop grid, so a card never lands on a 404.
+ * as soon as that department exists in the catalogue (admin → Разделы), and to
+ * the full catalogue (/catalog) until then. Never to the homepage's own shop
+ * section: choosing a department should open the catalogue, not scroll to it.
  *
  * Artwork: the cover image set in the admin wins, then public/images
  * (women.jpg, men.jpg, kids.jpg), and a card whose photograph is missing or
@@ -52,7 +53,7 @@ export function SectionsGrid() {
   const { t, localize, collections, categoryImages } = useStore()
 
   // A department that exists in the catalogue gets its own page; one that does
-  // not yet gets the shop grid, so the card always leads somewhere real.
+  // not yet gets /catalog, so the card always leads somewhere real.
   const live = useMemo(() => new Set(collections.map((c) => c.slug)), [collections])
   const coverOf = (slug: string) =>
     categoryImages[slug] || collections.find((c) => c.slug === slug)?.image || ''
@@ -80,7 +81,10 @@ export function SectionsGrid() {
             // A department with no card art of its own still renders, labelled
             // from the catalogue rather than from a missing i18n key.
             const label = section ? t(section.labelKey) : localize(department.name)
-            const href = live.has(department.slug) ? `/category/${department.slug}` : '/#shop'
+            // Its own department page when that department exists, the full
+            // catalogue when it does not — never the homepage's shop section,
+            // which was a stop on the way rather than a destination.
+            const href = live.has(department.slug) ? `/category/${department.slug}` : '/catalog'
             const cover = coverOf(department.slug) || section?.image || ''
             return (
               <Reveal key={department.slug} delay={i * 90}>

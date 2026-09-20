@@ -34,7 +34,13 @@ type Tab = {
 
 const TABS: Tab[] = [
   { key: 'home', labelKey: 'tab.home', icon: Home, href: '/', active: (p) => p === '/' },
-  { key: 'catalog', labelKey: 'tab.catalog', icon: LayoutGrid, href: '/#shop', active: (p) => p.startsWith('/category') },
+  {
+    key: 'catalog',
+    labelKey: 'tab.catalog',
+    icon: LayoutGrid,
+    href: '/catalog',
+    active: (p) => p === '/catalog' || p.startsWith('/category'),
+  },
   { key: 'wishlist', labelKey: 'tab.wishlist', icon: Heart, href: '/wishlist', active: (p) => p === '/wishlist' },
   { key: 'cart', labelKey: 'tab.cart', icon: ShoppingBag, active: () => false },
   { key: 'profile', labelKey: 'tab.profile', icon: User, active: (p) => p.startsWith('/account') },

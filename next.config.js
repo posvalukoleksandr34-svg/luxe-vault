@@ -177,7 +177,6 @@ const nextConfig = {
    */
   async redirects() {
     return [
-      { source: '/catalog', destination: '/#shop', permanent: false },
       { source: '/new-arrivals', destination: '/?view=new#shop', permanent: false },
       { source: '/sale', destination: '/?view=sale#shop', permanent: false },
       { source: '/about', destination: '/#about', permanent: false },

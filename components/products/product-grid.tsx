@@ -37,6 +37,7 @@ export function ProductGrid({
   lockedCategory,
   wrap = true,
   eagerCount = 0,
+  hideTaxonomyChips = false,
 }: {
   /**
    * Pins the grid to one collection — and optionally to one category — from
@@ -58,6 +59,9 @@ export function ProductGrid({
    * already has a page shell around it, so it opts out of the outer padding.
    */
   wrap?: boolean
+  /** /catalog carries the same taxonomy in its sidebar; two copies of one
+   *  filter on one screen is one too many. */
+  hideTaxonomyChips?: boolean
   /**
    * How many leading cards load their photo with `priority`. A category page
    * opens on the grid, so its first row is the LCP; on the homepage the grid
@@ -385,7 +389,7 @@ export function ProductGrid({
             the URL and the sidebar are, so these are dropped there rather than
             duplicated — two controls for one piece of state is how a filter
             and a route end up disagreeing. */}
-        {!locked && (
+        {!locked && !hideTaxonomyChips && (
           <>
             <FilterLink
               active={!filter.group && !filter.sale}
@@ -555,7 +559,7 @@ export function ProductGrid({
         )}
       </div>
 
-      {!locked && categories.length > 0 && (
+      {!locked && !hideTaxonomyChips && categories.length > 0 && (
         <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <span className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
             <SlidersHorizontal className="size-3" />
