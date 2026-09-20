@@ -153,11 +153,11 @@ export function Header() {
           </NavLink>
         </nav>
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            className="tap-safe flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:hidden"
+            className="tap-safe flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9 sm:hidden"
             aria-label="Search"
           >
             <Search className="size-[18px]" />
@@ -198,7 +198,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setPanel('cart')}
-            className="tap-safe relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+            className="tap-safe relative flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
             aria-label={t('cart.title')}
           >
             <ShoppingBag className="size-[18px]" />

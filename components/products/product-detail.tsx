@@ -388,8 +388,10 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
-      {/* Gallery */}
-      <div>
+      {/* Gallery — full-bleed on a phone (the negative margin cancels the
+          page's gutter), padded again from md up where the layout is two
+          columns and an edge-to-edge photo would fight the text beside it. */}
+      <div className="-mx-4 sm:-mx-6 md:mx-0">
         <div
           className="card-gold group relative aspect-[3/4] overflow-hidden"
           onTouchStart={handleTouchStart}

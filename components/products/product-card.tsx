@@ -126,7 +126,10 @@ export function ProductCard({
           )}
         </div>
 
-        <div className="mt-3 flex flex-col gap-0.5">
+        {/* The photograph is edge to edge on a phone; its text is not —
+            type against the bezel reads as clipped. Aligned with the grid's
+            own gutter again from md up. */}
+        <div className="mt-3 flex flex-col gap-0.5 px-2.5 md:px-0">
           {/* Brand above the name when the product has one, category when it
               does not. One line either way, so a catalogue where only some
               products are branded does not render as a ragged grid — and no

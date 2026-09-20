@@ -608,7 +608,12 @@ export function ProductGrid({
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-12 transition-all duration-300 sm:gap-x-7 md:grid-cols-3 xl:grid-cols-4">
+          {/* Full-bleed on a phone: the negative margin cancels the section's
+              own gutter (px-4, then px-6 at sm) so the photographs run to both
+              edges with a hairline between the columns, and the grid returns to
+              the padded layout at md, where the header's gutter is the design.
+              Card TEXT keeps its own inset — see ProductCard. */}
+          <div className="-mx-4 grid grid-cols-2 gap-x-px gap-y-8 transition-all duration-300 sm:-mx-6 sm:gap-y-12 md:mx-0 md:gap-x-7 md:grid-cols-3 xl:grid-cols-4">
             {shown.map((product, i) => (
               <Reveal key={product.id} delay={(i % 8) * 70}>
                 <ProductCard product={product} priority={i < eagerCount} />

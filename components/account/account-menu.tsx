@@ -24,7 +24,7 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false)
 
   const triggerClass =
-    'tap-safe relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground'
+    'tap-safe relative flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9'
 
   if (!currentUser) {
     return (

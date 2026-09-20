@@ -61,7 +61,7 @@ export function WishlistView() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4">
+          <div className="-mx-4 grid grid-cols-2 gap-x-px gap-y-8 sm:-mx-6 md:mx-0 md:grid-cols-3 md:gap-x-4 xl:grid-cols-4">
             {saved.map((product, i) => (
               <ProductCard key={product.id} product={product} priority={i < 2} />
             ))}
