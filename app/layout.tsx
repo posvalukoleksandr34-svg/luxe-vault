@@ -187,6 +187,20 @@ export const metadata: Metadata = {
 
   category: 'shopping',
 
+  /**
+   * Zoom is disabled, for the app-like feel: no pinch, no double-tap scale.
+   * Written as the literal string so what ships is exactly this policy.
+   *
+   * Two things to know about it:
+   *  - iOS Safari has deliberately IGNORED user-scalable/maximum-scale in the
+   *    browser since iOS 10, on accessibility grounds. It is honoured in a
+   *    home-screen (standalone) launch. The touch-action rule in globals.css
+   *    is what enforces the same policy in Chrome, Edge and Android.
+   *  - It stops anyone magnifying the page, so small type and the checkout's
+   *    figures cannot be enlarged. Removing `maximum-scale=1, user-scalable=0`
+   *    is all it takes to hand zoom back.
+   */
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
   // The browser chrome on mobile in the storefront's black.
   themeColor: '#000000',
   // iOS otherwise turns sizes, prices and article numbers that look like

@@ -256,6 +256,24 @@
 html {
   scroll-behavior: smooth;
 
+  /* Zoom off, for the app-like feel — the enforcement half of the viewport
+     policy in app/layout.tsx.
+
+     `pan-x pan-y` allows exactly the two gestures a page needs (vertical and
+     horizontal panning) and nothing else, which removes pinch-to-zoom in
+     Chromium and double-tap-to-zoom everywhere, including iOS Safari — where
+     the viewport meta's user-scalable is ignored on purpose. Scrolling,
+     flicking, swiping a drawer and dragging a slider are all unaffected.
+
+     A descendant that needs pinch back (a future map or image inspector) sets
+     `touch-action: auto` on itself; this is the page default, not a lock. */
+  touch-action: pan-x pan-y;
+
+  /* iOS otherwise inflates body text when a phone is turned to landscape,
+     which re-flows the whole layout mid-scroll. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
   /* The site is dark only: native scrollbars, form controls, date pickers and
      autofill render in their dark variants instead of flashing light ones. */
   color-scheme: dark;
