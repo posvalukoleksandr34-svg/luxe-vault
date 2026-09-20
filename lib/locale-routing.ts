@@ -58,6 +58,24 @@ export const UNLOCALIZED_SEGMENTS = [
   'images',
 ]
 
+/**
+ * Paths that HAVE a localised twin under app/[locale], as prefixes.
+ *
+ * The sitemap multiplies a path by the languages only when it appears here.
+ * A sitemap that claims /it/contact before app/[locale]/contact exists is
+ * submitting a 404, which Search Console reports as "Submitted URL not found"
+ * and which costs more than the missing entry ever would.
+ *
+ * Add a path the moment its route file lands — the two belong together, and
+ * this list is the checklist for the migration.
+ */
+export const LOCALIZED_PATHS = ['/catalog']
+
+/** True when this bare path is served in every language, not just the default. */
+export function hasLocalizedRoute(path: string): boolean {
+  return LOCALIZED_PATHS.some((p) => path === p || path.startsWith(`${p}/`))
+}
+
 /** The path prefix for a language: nothing for the default, `/xx` otherwise. */
 export function localePrefix(locale: StorefrontLocale): string {
   return locale === DEFAULT_LOCALE ? '' : `/${locale}`

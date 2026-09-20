@@ -1014,6 +1014,46 @@ export const UI = {
   'turnstile.wait': { ru: 'Идёт проверка безопасности…', en: 'Security check in progress…', it: 'Controllo di sicurezza in corso…', fr: 'Vérification de sécurité en cours…', de: 'Sicherheitsprüfung läuft…' },
   'turnstile.required': { ru: 'Дождитесь завершения проверки безопасности.', en: 'Wait for the security check to finish.', it: 'Attendi il completamento del controllo di sicurezza.', fr: 'Attendez la fin de la vérification de sécurité.', de: 'Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist.' },
   'auth.or': { ru: 'или', en: 'or', it: 'oppure', fr: 'ou', de: 'oder' },
+  // Page titles and meta descriptions. These are the <title> and
+  // <meta name="description"> a search result shows, so they are written for
+  // that column of text rather than lifted from the headings on the page.
+  'seo.home.description': {
+    ru: 'LUXE VAULT — премиальная одежда, обувь и аксессуары. Ограниченные дропы, доставка из Швейцарии.',
+    en: 'Designer-inspired apparel, footwear and accessories. Limited drops, meticulous craftsmanship, shipped from Switzerland.',
+    it: 'Abbigliamento, calzature e accessori di ispirazione designer. Drop limitati, cura artigianale, spedizione dalla Svizzera.',
+    fr: 'Vêtements, chaussures et accessoires d’inspiration créateur. Séries limitées, finitions soignées, expédiés de Suisse.',
+    de: 'Designer-inspirierte Kleidung, Schuhe und Accessoires. Limitierte Drops, sorgfältige Verarbeitung, Versand aus der Schweiz.',
+  },
+  'seo.catalog.title': { ru: 'Каталог', en: 'Catalogue', it: 'Catalogo', fr: 'Catalogue', de: 'Katalog' },
+  'seo.catalog.description': {
+    ru: 'Весь каталог LUXE VAULT: одежда, обувь и аксессуары, с фильтрами по разделам и категориям.',
+    en: 'The full LUXE VAULT catalogue: apparel, footwear and accessories, filtered by department and category.',
+    it: 'Il catalogo completo LUXE VAULT: abbigliamento, calzature e accessori, filtrabili per reparto e categoria.',
+    fr: 'Le catalogue complet LUXE VAULT : vêtements, chaussures et accessoires, filtrables par rayon et catégorie.',
+    de: 'Der vollständige LUXE-VAULT-Katalog: Kleidung, Schuhe und Accessoires, nach Abteilung und Kategorie gefiltert.',
+  },
+  'seo.wishlist.title': { ru: 'Избранное', en: 'Wishlist', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
+  'seo.category.description': {
+    ru: '{name} — {items}. Доставка из Швейцарии.',
+    en: '{name} — {items}. Shipped from Switzerland.',
+    it: '{name} — {items}. Spedizione dalla Svizzera.',
+    fr: '{name} — {items}. Expédié de Suisse.',
+    de: '{name} — {items}. Versand aus der Schweiz.',
+  },
+  'seo.category.plain': {
+    ru: '{name} — доставка из Швейцарии.',
+    en: '{name} — shipped from Switzerland.',
+    it: '{name} — spedizione dalla Svizzera.',
+    fr: '{name} — expédié de Suisse.',
+    de: '{name} — Versand aus der Schweiz.',
+  },
+  'seo.product.fallback': {
+    ru: '{name} — ограниченный дроп, доставка из Швейцарии.',
+    en: '{name} — designer-inspired, limited drops, shipped from Switzerland.',
+    it: '{name} — ispirazione designer, drop limitati, spedizione dalla Svizzera.',
+    fr: '{name} — inspiration créateur, séries limitées, expédié de Suisse.',
+    de: '{name} — designer-inspiriert, limitierte Drops, Versand aus der Schweiz.',
+  },
   'auth.resent': { ru: 'Письмо отправлено повторно', en: 'Email sent again', it: 'Email inviata di nuovo', fr: 'E-mail renvoyé', de: 'E-Mail erneut gesendet' },
   'auth.resendFailed': { ru: 'Не удалось отправить письмо', en: 'The email could not be sent', it: 'Non è stato possibile inviare l’email', fr: 'L’e-mail n’a pas pu être envoyé', de: 'Die E-Mail konnte nicht gesendet werden' },
   'auth.alreadyRegistered': { ru: 'Этот email уже зарегистрирован. Войдите в аккаунт или восстановите пароль.', en: 'This email is already registered. Sign in, or reset your password.', it: 'Questa email è già registrata. Accedi o reimposta la password.', fr: 'Cet e-mail est déjà enregistré. Connectez-vous ou réinitialisez votre mot de passe.', de: 'Diese E-Mail ist bereits registriert. Melden Sie sich an oder setzen Sie Ihr Passwort zurück.' },
