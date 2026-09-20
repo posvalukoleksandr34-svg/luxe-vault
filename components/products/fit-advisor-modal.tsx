@@ -26,9 +26,7 @@ import {
   round1,
   sizeFromChest,
   toCm,
-  toInches,
   toKg,
-  toLb,
   type AreaVerdict,
   type BodyType,
   type FitPreference,
@@ -38,7 +36,6 @@ import {
   type LetterSize,
   type ProductFit,
   type ShoeFit,
-  type UnitSystem,
 } from '@/lib/fit-advisor'
 import { STYLIST_FIT_LABELS } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
@@ -117,7 +114,6 @@ export function FitAdvisorModal({
   const [weight, setWeight] = useState('')
   const [usual, setUsual] = useState<LetterSize | null>(null)
   const [preference, setPreference] = useState<FitPreference>('regular')
-  const [units, setUnits] = useState<UnitSystem>('metric')
   const [gender, setGender] = useState<Gender>('unspecified')
   const [bodyType, setBodyType] = useState<BodyType>('average')
   const [chest, setChest] = useState('')
@@ -139,13 +135,18 @@ export function FitAdvisorModal({
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
       if (saved && typeof saved === 'object') {
-        if (typeof saved.height === 'string') setHeight(saved.height)
-        if (typeof saved.weight === 'string') setWeight(saved.weight)
+        // The finder briefly offered inches and pounds. A payload saved in
+        // those units would otherwise be read back as centimetres — 71.5 cm
+        // tall — so it is converted once, on the way in.
+        const legacyImperial = saved.units === 'imperial'
+        const len = (v: string) => (legacyImperial ? String(round1(toCm(Number(v.replace(',', '.'))))) : v)
+        const mass = (v: string) => (legacyImperial ? String(Math.round(toKg(Number(v.replace(',', '.'))))) : v)
+        if (typeof saved.height === 'string') setHeight(len(saved.height))
+        if (typeof saved.weight === 'string') setWeight(mass(saved.weight))
         if ((LETTER_SIZES as readonly string[]).indexOf(saved.usual) !== -1) setUsual(saved.usual)
         if (PREFERENCES.indexOf(saved.preference) !== -1) setPreference(saved.preference)
         // Everything below was added with the advanced finder; an older saved
         // payload simply has none of it.
-        if (saved.units === 'imperial' || saved.units === 'metric') setUnits(saved.units)
         if (GENDERS.indexOf(saved.gender) !== -1) setGender(saved.gender)
         if (BODY_TYPES.indexOf(saved.bodyType) !== -1) setBodyType(saved.bodyType)
         if (FOOT_WIDTHS.indexOf(saved.footWidth) !== -1) setFootWidth(saved.footWidth)
@@ -156,7 +157,7 @@ export function FitAdvisorModal({
           ['inseam', setInseam],
           ['foot', setFoot],
         ] as const) {
-          if (typeof saved[key] === 'string') set(saved[key])
+          if (typeof saved[key] === 'string') set(len(saved[key]))
         }
         if (saved.chest || saved.waist || saved.hips || saved.inseam) setShowMore(true)
         setSavedNote(true)
@@ -192,41 +193,16 @@ export function FitAdvisorModal({
   if (!shoeMode && !isLetterSizeRun(sizes)) return null
 
   const hasChart = Boolean(sizeChart?.length)
-  const imperial = units === 'imperial'
-  /** Reads a typed number in the CURRENT unit and returns centimetres. */
-  const lengthCm = (v: string) => {
+  /**
+   * Every measurement in this component is metric. A comma decimal ("72,5")
+   * is how half this site's locales type numbers, so it is accepted too.
+   */
+  const num = (v: string) => {
     const n = v.trim() ? Number(v.trim().replace(',', '.')) : undefined
-    if (n === undefined || Number.isNaN(n)) return undefined
-    return imperial ? toCm(n) : n
+    return n === undefined || Number.isNaN(n) ? undefined : n
   }
-  const massKg = (v: string) => {
-    const n = v.trim() ? Number(v.trim().replace(',', '.')) : undefined
-    if (n === undefined || Number.isNaN(n)) return undefined
-    return imperial ? toKg(n) : n
-  }
-
-  /** Switching units rewrites what is already typed, so the numbers keep
-   *  meaning the same body rather than silently becoming a different one. */
-  function switchUnits(next: UnitSystem) {
-    if (next === units) return
-    const conv = (v: string, kind: 'len' | 'mass') => {
-      const n = v.trim() ? Number(v.trim().replace(',', '.')) : NaN
-      if (Number.isNaN(n)) return v
-      const out =
-        kind === 'len' ? (next === 'imperial' ? toInches(n) : toCm(n)) : next === 'imperial' ? toLb(n) : toKg(n)
-      return String(round1(out))
-    }
-    setHeight((v) => conv(v, 'len'))
-    setWeight((v) => conv(v, 'mass'))
-    setChest((v) => conv(v, 'len'))
-    setWaist((v) => conv(v, 'len'))
-    setHips((v) => conv(v, 'len'))
-    setInseam((v) => conv(v, 'len'))
-    setFoot((v) => conv(v, 'len'))
-    setUnits(next)
-    setResult(null)
-    setShoe(null)
-  }
+  const lengthCm = num
+  const massKg = num
 
   // Any change to the inputs invalidates a previous answer rather than leaving
   // a recommendation on screen that no longer matches what is typed.
@@ -323,7 +299,7 @@ export function FitAdvisorModal({
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          height, weight, usual, preference, units, gender, bodyType,
+          height, weight, usual, preference, gender, bodyType,
           chest, waist, hips, inseam, foot, footWidth,
         }),
       )
@@ -405,37 +381,11 @@ export function FitAdvisorModal({
           }}
           className="space-y-4"
         >
-          {/* Units. Switching rewrites what is typed, so the numbers always
-              describe the same body. */}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-              {t('fit.units.label')}
-            </span>
-            <div className="flex">
-              {(['metric', 'imperial'] as const).map((u) => (
-                <button
-                  key={u}
-                  type="button"
-                  onClick={() => switchUnits(u)}
-                  aria-pressed={units === u}
-                  className={cn(
-                    'border px-3 py-1.5 text-[11px] transition-colors duration-200',
-                    units === u
-                      ? 'border-gold bg-gold/5 text-gold'
-                      : 'border-border text-foreground/60 hover:text-foreground',
-                  )}
-                >
-                  {t(`fit.units.${u}` as Parameters<typeof t>[0])}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {shoeMode ? (
             <>
               <label className="block">
                 <span className={labelClass}>
-                  {t('fit.footLength')}, {imperial ? 'in' : t('sizeGuide.cm')}
+                  {t('fit.footLength')}, {t('sizeGuide.cm')}
                 </span>
                 <input
                   id="fit-foot"
@@ -444,7 +394,7 @@ export function FitAdvisorModal({
                   inputMode="decimal"
                   value={foot}
                   onChange={(e) => edit(() => setFoot(e.target.value))}
-                  placeholder={imperial ? '10.5' : '26.5'}
+                  placeholder="26.5"
                   className={inputClass}
                 />
                 <span className="mt-1.5 block text-[11px] font-light leading-relaxed text-muted-foreground/80">
@@ -476,7 +426,7 @@ export function FitAdvisorModal({
           ) : (
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className={labelClass}>{imperial ? t('fit.heightImperial') : t('fit.height')}</span>
+              <span className={labelClass}>{t('fit.height')}</span>
               <input
                 ref={heightRef}
                 id="fit-height"
@@ -487,12 +437,12 @@ export function FitAdvisorModal({
                 aria-describedby={error ? 'fit-error' : undefined}
                 value={height}
                 onChange={(e) => edit(() => setHeight(e.target.value))}
-                placeholder={imperial ? '70' : '178'}
+                placeholder="178"
                 className={inputClass}
               />
             </label>
             <label className="block">
-              <span className={labelClass}>{imperial ? t('fit.weightImperial') : t('fit.weight')}</span>
+              <span className={labelClass}>{t('fit.weight')}</span>
               <input
                 ref={weightRef}
                 id="fit-weight"
@@ -503,7 +453,7 @@ export function FitAdvisorModal({
                 aria-describedby={error ? 'fit-error' : undefined}
                 value={weight}
                 onChange={(e) => edit(() => setWeight(e.target.value))}
-                placeholder={imperial ? '159' : '72'}
+                placeholder="72"
                 className={inputClass}
               />
             </label>
@@ -611,7 +561,7 @@ export function FitAdvisorModal({
                     .map(([key, value, set]) => (
                       <label key={key} className="block">
                         <span className={labelClass}>
-                          {t(`fit.${key}` as Parameters<typeof t>[0])}, {imperial ? 'in' : t('sizeGuide.cm')}
+                          {t(`fit.${key}` as Parameters<typeof t>[0])}, {t('sizeGuide.cm')}
                         </span>
                         <input
                           name={key}

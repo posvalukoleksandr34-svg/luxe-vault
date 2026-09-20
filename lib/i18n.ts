@@ -806,11 +806,6 @@ export const UI = {
   "fit.measurements": { ru: "Замеры размера {size}", en: "Size {size} measures", it: "Misure della taglia {size}", fr: "Mesures de la taille {size}", de: "Maße in Größe {size}" },
   "fit.noChart": { ru: "Для этой модели ещё нет таблицы замеров, поэтому рекомендация основана на стандартной размерной сетке.", en: "This piece has no measurement chart yet, so the recommendation uses standard sizing.", it: "Questo capo non ha ancora una tabella delle misure: la raccomandazione si basa sulle taglie standard.", fr: "Cette pièce n’a pas encore de tableau de mesures : la recommandation se base sur les tailles standard.", de: "Für dieses Teil gibt es noch keine Maßtabelle, daher beruht die Empfehlung auf Standardgrößen." },
   // Fit finder — units, morphology, optional measurements, verdicts.
-  "fit.heightImperial": { ru: 'Рост, дюймы', en: 'Height, in', it: 'Altezza, in', fr: 'Taille, po', de: 'Größe, in' },
-  "fit.weightImperial": { ru: 'Вес, фунты', en: 'Weight, lb', it: 'Peso, lb', fr: 'Poids, lb', de: 'Gewicht, lb' },
-  'fit.units.metric': { ru: 'см / кг', en: 'cm / kg', it: 'cm / kg', fr: 'cm / kg', de: 'cm / kg' },
-  'fit.units.imperial': { ru: 'дюймы / фунты', en: 'in / lb', it: 'in / lb', fr: 'po / lb', de: 'in / lb' },
-  'fit.units.label': { ru: 'Единицы измерения', en: 'Units', it: 'Unità', fr: 'Unités', de: 'Einheiten' },
   'fit.gender': { ru: 'Пол', en: 'Gender', it: 'Genere', fr: 'Genre', de: 'Geschlecht' },
   'fit.gender.female': { ru: 'Женский', en: 'Female', it: 'Donna', fr: 'Femme', de: 'Weiblich' },
   'fit.gender.male': { ru: 'Мужской', en: 'Male', it: 'Uomo', fr: 'Homme', de: 'Männlich' },

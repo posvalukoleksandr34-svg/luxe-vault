@@ -32,8 +32,6 @@ export type Gender = 'female' | 'male' | 'unspecified'
  *  because two people of one height and weight do not wear one size. */
 export type BodyType = 'slim' | 'average' | 'athletic' | 'broad'
 
-export type UnitSystem = 'metric' | 'imperial'
-
 /** Foot width, for the shoe run. */
 export type FootWidth = 'narrow' | 'regular' | 'wide'
 
@@ -67,10 +65,13 @@ export type FitInput = {
 export const CM_PER_INCH = 2.54
 export const KG_PER_LB = 0.45359237
 
+/**
+ * The finder works in centimetres and kilograms only. These two remain for
+ * one job: converting a measurement saved while the component briefly offered
+ * inches and pounds, so an old payload is read back as the body it described.
+ */
 export const toCm = (inches: number): number => inches * CM_PER_INCH
-export const toInches = (cm: number): number => cm / CM_PER_INCH
 export const toKg = (lb: number): number => lb * KG_PER_LB
-export const toLb = (kg: number): number => kg / KG_PER_LB
 
 /** Rounds for display: lengths to the nearest half unit, weights to whole. */
 export const round1 = (n: number): number => Math.round(n * 2) / 2
