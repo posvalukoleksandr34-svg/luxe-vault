@@ -134,7 +134,12 @@ export function AppPromoBanner() {
   return (
     <section aria-labelledby="app-promo-title" className="border-t border-border px-4 py-14 sm:px-6 lg:px-10">
       <Reveal>
-        <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden border border-border bg-[linear-gradient(135deg,#1a1a1a_0%,#121110_45%,#0a0a0a_100%)] px-6 py-10 text-foreground sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
+        {/* The panel is the page's own warm near-black (--background, hsl(36
+            8% 7%)) lifted a few points to --card and back down — a shade that
+            separates it from the page without becoming a black box. Built from
+            the tokens rather than hex, so it tracks the theme; deliberately
+            never #000000, which is colder than anything else on the page. */}
+        <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden border border-border/70 bg-[linear-gradient(135deg,hsl(36_8%_11%)_0%,hsl(var(--card))_45%,hsl(36_8%_8.5%)_100%)] px-6 py-10 text-foreground sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
           {/* A single gold pool behind the artwork, and a hairline along the
               top edge — the same two devices the rest of the storefront uses
               to lift a dark panel off a dark page. */}
