@@ -183,9 +183,10 @@ export function Header() {
               button when a reply is waiting). */}
           <button
             type="button"
-            // The written request, not the bot: the floating button on the
-            // left is the bot's entry point.
-            onClick={() => openSupport({ view: 'new' })}
+            // The support centre's own front page — the topics, then the
+            // request form for whoever needs it. The bot is the other entry
+            // point, on the floating button to the left.
+            onClick={() => openSupport()}
             className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:flex"
             aria-label={supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')}
           >
@@ -250,7 +251,7 @@ export function Header() {
             <button
               onClick={() => {
                 setMobileOpen(false)
-                openSupport({ view: 'new' })
+                openSupport()
               }}
               className="flex min-h-[44px] items-center justify-between px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground sm:hidden"
             >

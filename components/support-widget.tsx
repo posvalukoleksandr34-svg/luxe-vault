@@ -11,9 +11,9 @@ import { useStore } from '@/lib/store'
  * a panel is still focusable and still reachable by a screen reader.
  *
  * The other entry point — the header's icon, top right — opens the support
- * centre itself, where a request is written by hand. Two buttons, two jobs:
- * this one is for "how long is delivery", that one is for "my parcel is
- * missing". The gold count is replies from the team the customer has not read
+ * centre on its own front page: the topics, and from there the form where a
+ * request is written by hand. Two buttons, two jobs: this one is for "how long
+ * is delivery", that one is for "my parcel is missing". The gold count is replies from the team the customer has not read
  * yet, which live in the support centre, so a waiting reply sends them there
  * rather than into the bot.
  */
