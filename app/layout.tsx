@@ -11,6 +11,8 @@ import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
+import { BottomNav } from '@/components/bottom-nav';
+import { WelcomeModal } from '@/components/welcome-modal';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
@@ -272,7 +274,12 @@ export default async function RootLayout({
           {/* The skip link (see the note above), in the visitor's language —
               still first in the tab order: nothing before it is focusable. */}
           <SkipLink />
-          <PageTransition>{children}</PageTransition>
+          {/* The page itself, with room at the foot of a phone screen for the
+              tab bar below — without it, the last button on every page would
+              sit under the bar. `md:pb-0` because the bar is phones only. */}
+          <div className="pb-20 md:pb-0">
+            <PageTransition>{children}</PageTransition>
+          </div>
           {/* Cart / checkout / account drawers. Mounted here, not per page: a
               page that renders a trigger but not its panel is a dead end. */}
           <GlobalPanels />
@@ -281,6 +288,11 @@ export default async function RootLayout({
               renders nothing until mounted, so it cannot flash for visitors
               who already answered. */}
           <CookieConsentLazy />
+          {/* First-launch welcome: waits for the cookie banner to be answered
+              and never appears for a signed-in or returning visitor. */}
+          <WelcomeModal />
+          {/* The app-style tab bar. Phones only; hidden on /admin. */}
+          <BottomNav />
         </StoreProvider>
       </body>
     </html>

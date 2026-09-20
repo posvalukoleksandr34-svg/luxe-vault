@@ -585,6 +585,27 @@ export const UI = {
   'collections.title': { ru: 'Коллекции', en: 'Collections', it: 'Collezioni', fr: 'Collections', de: 'Kollektionen' },
   // Homepage departments (components/sections-grid.tsx). Rendered uppercase by
   // the card, so the labels are stored in their natural case.
+  // Wishlist (lib/wishlist.ts, components/products/wishlist-button.tsx).
+  'wishlist.title': { ru: 'Избранное', en: 'Wishlist', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
+  'wishlist.add': { ru: 'Добавить «{name}» в избранное', en: 'Add “{name}” to your wishlist', it: 'Aggiungi «{name}» ai preferiti', fr: 'Ajouter « {name} » aux favoris', de: '„{name}" zur Merkliste hinzufügen' },
+  'wishlist.remove': { ru: 'Убрать «{name}» из избранного', en: 'Remove “{name}” from your wishlist', it: 'Rimuovi «{name}» dai preferiti', fr: 'Retirer « {name} » des favoris', de: '„{name}" von der Merkliste entfernen' },
+  'wishlist.empty': { ru: 'В избранном пока пусто', en: 'Your wishlist is empty', it: 'I tuoi preferiti sono vuoti', fr: 'Vos favoris sont vides', de: 'Ihre Merkliste ist leer' },
+  'wishlist.emptyHint': { ru: 'Нажмите на сердечко на любой карточке товара — он сохранится здесь, на этом устройстве.', en: 'Tap the heart on any product and it is kept here, on this device.', it: 'Tocca il cuore su un prodotto: resterà qui, su questo dispositivo.', fr: 'Touchez le cœur sur un produit : il sera conservé ici, sur cet appareil.', de: 'Tippen Sie bei einem Produkt auf das Herz — es bleibt hier auf diesem Gerät.' },
+  'wishlist.browse': { ru: 'Перейти в каталог', en: 'Browse the shop', it: 'Vai al negozio', fr: 'Voir la boutique', de: 'Zum Shop' },
+  'wishlist.count': { ru: '{n} в избранном', en: '{n} saved', it: '{n} salvati', fr: '{n} enregistrés', de: '{n} gemerkt' },
+  'wishlist.gone': { ru: 'Часть сохранённого больше не продаётся и не показана.', en: 'Some saved items are no longer available and are not shown.', it: 'Alcuni articoli salvati non sono più disponibili e non sono mostrati.', fr: 'Certains articles enregistrés ne sont plus disponibles et ne sont pas affichés.', de: 'Einige gemerkte Artikel sind nicht mehr verfügbar und werden nicht angezeigt.' },
+  // Mobile bottom bar (components/bottom-nav.tsx).
+  'tab.home': { ru: 'Главная', en: 'Home', it: 'Home', fr: 'Accueil', de: 'Start' },
+  'tab.catalog': { ru: 'Каталог', en: 'Catalog', it: 'Catalogo', fr: 'Catalogue', de: 'Katalog' },
+  'tab.wishlist': { ru: 'Избранное', en: 'Saved', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
+  'tab.cart': { ru: 'Корзина', en: 'Cart', it: 'Carrello', fr: 'Panier', de: 'Warenkorb' },
+  'tab.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },
+  'tab.nav': { ru: 'Основная навигация', en: 'Main navigation', it: 'Navigazione principale', fr: 'Navigation principale', de: 'Hauptnavigation' },
+  // First-launch welcome (components/welcome-modal.tsx).
+  'welcome.title': { ru: 'Добро пожаловать в LUXE VAULT', en: 'Welcome to LUXE VAULT', it: 'Benvenuti da LUXE VAULT', fr: 'Bienvenue chez LUXE VAULT', de: 'Willkommen bei LUXE VAULT' },
+  'welcome.subtitle': { ru: 'Эксклюзивный доступ к коллекциям премиальных брендов', en: 'Exclusive access to premium brand collections', it: 'Accesso esclusivo alle collezioni dei brand premium', fr: 'Accès exclusif aux collections de marques premium', de: 'Exklusiver Zugang zu Premium-Markenkollektionen' },
+  'welcome.signIn': { ru: 'Войти или зарегистрироваться', en: 'Sign in or register', it: 'Accedi o registrati', fr: 'Se connecter ou s’inscrire', de: 'Anmelden oder registrieren' },
+  'welcome.guest': { ru: 'Продолжить как гость', en: 'Continue as a guest', it: 'Continua come ospite', fr: 'Continuer en tant qu’invité', de: 'Als Gast fortfahren' },
   'sections.title': { ru: 'Выберите раздел', en: 'Choose a section', it: 'Scegli una sezione', fr: 'Choisissez une section', de: 'Bereich wählen' },
   'sections.women': { ru: 'Женщины', en: 'Women', it: 'Donna', fr: 'Femme', de: 'Damen' },
   'sections.men': { ru: 'Мужчины', en: 'Men', it: 'Uomo', fr: 'Homme', de: 'Herren' },

@@ -15,6 +15,7 @@ import type { Session } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
+import { readWishlist, subscribeToWishlist, toggleWishlistItem } from '@/lib/wishlist'
 import {
   BASE_CURRENCY,
   CURRENCY_STORAGE_KEY,
@@ -211,6 +212,11 @@ type StoreContextValue = {
   setSupportUnread: (n: number) => void
   removeFromCart: (key: string) => void
   clearCart: () => void
+  /** Saved product ids, newest first (lib/wishlist.ts). */
+  wishlist: string[]
+  wishlistCount: number
+  isWishlisted: (productId: string) => boolean
+  toggleWishlist: (productId: string) => void
   cartCount: number
   cartSubtotal: number
   applyPromo: (code: string) => Promise<Promo | null>
@@ -569,6 +575,27 @@ function maybeSendWelcome() {
       cancelled = true
     }
   }, [])
+
+  /**
+   * Saved products. Hydrated after mount (the server has no localStorage, and
+   * reading it during render would mismatch the first paint) and kept in step
+   * with every other tab.
+   */
+  const [wishlist, setWishlist] = useState<string[]>([])
+
+  useEffect(() => {
+    setWishlist(readWishlist())
+    return subscribeToWishlist(setWishlist)
+  }, [])
+
+  const toggleWishlist = useCallback((productId: string) => {
+    if (!productId) return
+    // The module writes and broadcasts; the subscription above is what puts
+    // the new list into state, so every open tab agrees.
+    setWishlist(toggleWishlistItem(productId))
+  }, [])
+
+  const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
 
   const setCurrency = useCallback((next: CurrencyCode) => {
     // The module value first, so every formatPrice() in the re-render this
@@ -1513,6 +1540,10 @@ function maybeSendWelcome() {
       updateCartQty,
       removeFromCart,
       clearCart,
+      wishlist,
+      wishlistCount: wishlist.length,
+      isWishlisted,
+      toggleWishlist,
       cartCount,
       cartSubtotal,
       applyPromo,
@@ -1539,7 +1570,8 @@ function maybeSendWelcome() {
       setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
-      addToCart, updateCartQty, removeFromCart, clearCart, cartCount, cartSubtotal, applyPromo,
+      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, isWishlisted, toggleWishlist,
+      cartCount, cartSubtotal, applyPromo,
       login, register, resendConfirmation, verifySignupCode, signInWithGoogle,
       requestRecoveryCode, verifyRecoveryCode, updatePassword, logout, addProduct,
       updateProduct, deleteProduct, addPromo, removePromo,
