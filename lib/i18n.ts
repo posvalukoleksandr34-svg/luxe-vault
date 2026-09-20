@@ -583,6 +583,21 @@ export const UI = {
   'toast.promoApplied': { ru: 'Промокод применён', en: 'Promo applied', it: 'Promo applicato', fr: 'Promo appliqué', de: 'Promo angewendet' },
   'toast.promoInvalid': { ru: 'Неверный промокод', en: 'Invalid promo code', it: 'Codice non valido', fr: 'Code invalide', de: 'Ungültiger Code' },
   'collections.title': { ru: 'Коллекции', en: 'Collections', it: 'Collezioni', fr: 'Collections', de: 'Kollektionen' },
+  // Homepage departments (components/sections-grid.tsx). Rendered uppercase by
+  // the card, so the labels are stored in their natural case.
+  'sections.title': { ru: 'Выберите раздел', en: 'Choose a section', it: 'Scegli una sezione', fr: 'Choisissez une section', de: 'Bereich wählen' },
+  'sections.women': { ru: 'Женщины', en: 'Women', it: 'Donna', fr: 'Femme', de: 'Damen' },
+  'sections.men': { ru: 'Мужчины', en: 'Men', it: 'Uomo', fr: 'Homme', de: 'Herren' },
+  'sections.kids': { ru: 'Дети', en: 'Kids', it: 'Bambini', fr: 'Enfants', de: 'Kinder' },
+  'sections.lifestyle': { ru: 'Лайфстайл', en: 'Lifestyle', it: 'Lifestyle', fr: 'Lifestyle', de: 'Lifestyle' },
+  // PWA install banner (components/app-promo-banner.tsx).
+  'app.promoTitle': { ru: 'Скачайте приложение LUXE VAULT', en: 'Get the LUXE VAULT app', it: 'Scarica l’app LUXE VAULT', fr: 'Téléchargez l’application LUXE VAULT', de: 'Holen Sie sich die LUXE VAULT App' },
+  'app.promoSubtitle': { ru: 'Промокод -10% на первый заказ в мобильном приложении', en: 'Promo code: -10% on your first order in the mobile app', it: 'Codice promo: -10% sul primo ordine nell’app', fr: 'Code promo : -10% sur votre première commande dans l’application', de: 'Aktionscode: -10% auf Ihre erste Bestellung in der App' },
+  'app.install': { ru: 'Установить приложение', en: 'Install app', it: 'Installa l’app', fr: 'Installer l’application', de: 'App installieren' },
+  'app.installHint': { ru: 'Без App Store — приложение устанавливается прямо из браузера', en: 'No App Store needed — it installs straight from your browser', it: 'Senza App Store: si installa direttamente dal browser', fr: 'Sans App Store : l’installation se fait depuis le navigateur', de: 'Kein App Store nötig — die Installation erfolgt direkt im Browser' },
+  'app.iosHint': { ru: 'В Safari нажмите «Поделиться», затем «На экран «Домой»».', en: 'In Safari, tap Share, then "Add to Home Screen".', it: 'In Safari tocca Condividi, poi «Aggiungi a Home».', fr: 'Dans Safari, appuyez sur Partager, puis « Sur l’écran d’accueil ».', de: 'Tippen Sie in Safari auf Teilen und dann auf „Zum Home-Bildschirm".' },
+  'app.qrHint': { ru: 'Наведите камеру телефона, чтобы открыть магазин и установить приложение', en: 'Point your phone camera here to open the shop and install the app', it: 'Inquadra con la fotocamera per aprire il negozio e installare l’app', fr: 'Scannez avec votre téléphone pour ouvrir la boutique et installer l’application', de: 'Scannen Sie den Code, um den Shop zu öffnen und die App zu installieren' },
+  'app.qrAlt': { ru: 'QR-код со ссылкой на магазин', en: 'QR code linking to the shop', it: 'Codice QR con il link al negozio', fr: 'QR code vers la boutique', de: 'QR-Code zum Shop' },
   'collections.subtitle': { ru: 'Тщательно отобранные капсулы для искушённых', en: 'Curated capsules for the discerning', it: 'Capsule curate per intenditori', fr: 'Capsules sélectionnées pour connaisseurs', de: 'Kuratierte Kapseln für Kenner' },
   'collections.clothing': { ru: 'Одежда', en: 'Clothing', it: 'Abbigliamento', fr: 'Vêtements', de: 'Kleidung' },
   'collections.shoes': { ru: 'Обувь', en: 'Footwear', it: 'Calzature', fr: 'Chaussures', de: 'Schuhwerk' },

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { About } from '@/components/about'
-import { Collections } from '@/components/collections'
+import { AppPromoBanner } from '@/components/app-promo-banner'
 import { Footer } from '@/components/footer'
 import { HashScroll } from '@/components/hash-scroll'
 import { Header } from '@/components/header'
 import { Hero } from '@/components/hero'
 import { ProductGrid } from '@/components/products/product-grid'
 import { Reviews } from '@/components/reviews'
+import { SectionsGrid } from '@/components/sections-grid'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 
 // The homepage's own canonical. It used to sit in the root layout, where every
@@ -26,10 +27,11 @@ export default function Home() {
 
       <main id="main">
         <Hero />
-        <Collections />
+        <SectionsGrid />
         <ProductGrid />
         <About />
         <Reviews />
+        <AppPromoBanner />
         <Footer />
       </main>
 
