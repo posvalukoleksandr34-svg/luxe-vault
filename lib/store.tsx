@@ -38,6 +38,7 @@ import {
   validateShippingSettings,
   type ShippingSettings,
 } from '@/config/shipping'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   CATEGORY_LABELS,
   GROUP_LABELS,
@@ -48,6 +49,7 @@ import {
   translate,
   type UIKey,
 } from './i18n'
+import { isUnlocalizedPath, localizedPath, splitLocale } from './locale-routing'
 import type {
   CartItem,
   CategoryKey,
@@ -376,7 +378,33 @@ export function StoreProvider({
   const [authLoading, setAuthLoading] = useState(true)
   const [metadataLanguage, setMetadataLanguage] = useState<string | null>(null)
 
-  const [locale, setLocaleState] = useState<StorefrontLocale>(DEFAULT_LOCALE)
+  /**
+   * The language of the URL being rendered.
+   *
+   * `usePathname()` is available while this client component is rendered on
+   * the SERVER, which is the whole point: /it/catalog must arrive in the
+   * browser already in Italian rather than flipping to it after hydration.
+   * A crawler that does not run scripts, and a visitor on a slow connection,
+   * both see the language the URL promised.
+   *
+   * It also makes the URL the single source of truth for a localised page:
+   * a stored preference cannot contradict the address bar.
+   */
+  const pathname = usePathname() ?? '/'
+  const router = useRouter()
+  const { locale: pathLocale, path: barePath } = splitLocale(pathname)
+  // Checkout, the account and the transactional pages have no language in
+  // their URL, so on those the visitor's stored preference is all there is.
+  const urlCarriesLocale = !isUnlocalizedPath(pathname)
+
+  const [locale, setLocaleState] = useState<StorefrontLocale>(pathLocale)
+
+  // A localised URL is the truth while it is on screen. Navigating from /it to
+  // an English page has to move the language with it, or the drawer the
+  // visitor left open would keep speaking the previous page's language.
+  useEffect(() => {
+    if (urlCarriesLocale) setLocaleState(pathLocale)
+  }, [urlCarriesLocale, pathLocale])
 
 /**
  * Asks the server to send the welcome email.
@@ -528,6 +556,11 @@ function maybeSendWelcome() {
 
   useEffect(() => {
     try {
+      // Only where the URL does not already say. On a storefront page the
+      // address is the language — restoring a stored preference over it would
+      // serve Italian at an English URL, which is the exact mismatch the
+      // per-language URLs exist to end.
+      if (urlCarriesLocale) return
       // A visitor who chose Russian before the storefront stopped offering it
       // still has 'ru' in this browser. Ignore it rather than honour it — they
       // land on the default, and their next choice overwrites the stale value.
@@ -538,7 +571,7 @@ function maybeSendWelcome() {
     } catch {
       // localStorage unavailable
     }
-  }, [])
+  }, [urlCarriesLocale])
 
   /**
    * The display currency — restored after mount, exactly like the language,
@@ -694,6 +727,16 @@ function maybeSendWelcome() {
         // ignore write errors
       }
 
+      // On a storefront page the language is part of the address, so choosing
+      // one is a navigation to the same page in that language — not a state
+      // flip that would leave /it showing English, or English showing at /it.
+      // The stored preference above still matters: it is what the pages
+      // WITHOUT a language in their URL (checkout, the account) read.
+      if (urlCarriesLocale) {
+        const next = localizedPath(barePath, l)
+        if (next !== pathname) router.replace(next, { scroll: false })
+      }
+
       // Mirror the choice into auth metadata so transactional emails follow
       // the customer's current language rather than the one they happened to
       // sign up in. Only possible while signed in — updateUser needs a
@@ -706,7 +749,7 @@ function maybeSendWelcome() {
           // Cosmetic sync; a failure here must never block a language switch.
         })
     },
-    [currentUserId],
+    [currentUserId, urlCarriesLocale, barePath, pathname, router],
   )
 
   const tf = useCallback(
