@@ -29,20 +29,37 @@ import { cn } from '@/lib/utils'
 /** The look of each department card, keyed by its slug. The departments
  *  themselves come from lib/departments.ts, so adding one there is all it
  *  takes for a card to appear (with the gradient below as its cover). */
+/**
+ * Card art. Each URL is an Unsplash photograph chosen for this grid: dark,
+ * tailored, editorial. `w=1400&q=80&auto=format` asks Unsplash's own CDN for a
+ * card-sized, modern-format file — the source files are 4000px and would
+ * otherwise be downloaded in full.
+ *
+ * These are DEFAULTS. A cover set in the admin (Разделы → card image) wins, and
+ * a file dropped at the /images path below wins over the remote one only if
+ * you change `image` to point at it. Unsplash is allowed by both the CSP and
+ * next.config's remotePatterns.
+ */
 const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string }> = {
   women: {
     labelKey: 'sections.women',
-    image: '/images/women.jpg',
+    image:
+      'https://images.unsplash.com/photo-1759873911531-f6ea6a178378?w=1400&q=80&auto=format&fit=crop',
     fallback: 'radial-gradient(120% 90% at 20% 0%, #232323 0%, #0c0c0c 70%)',
   },
   men: {
     labelKey: 'sections.men',
-    image: '/images/men.jpg',
+    image:
+      'https://images.unsplash.com/photo-1764698072732-ea0230fc5d8e?w=1400&q=80&auto=format&fit=crop',
     fallback: 'radial-gradient(120% 90% at 80% 10%, #1e1e20 0%, #0a0a0a 70%)',
   },
   kids: {
     labelKey: 'sections.kids',
-    image: '/images/kids.jpg',
+    image:
+      // `sat=-100` (an imgix transform Unsplash's CDN honours) puts this one in
+      // black and white like the other two — it is the only colour shot of the
+      // three, and side by side the difference read as a mistake.
+      'https://images.unsplash.com/photo-1775322124421-19ba223a107c?w=1400&q=80&auto=format&fit=crop&sat=-100',
     fallback: 'radial-gradient(120% 90% at 30% 100%, #262220 0%, #0b0a09 70%)',
   },
 }
