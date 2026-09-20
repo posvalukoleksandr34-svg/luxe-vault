@@ -601,11 +601,6 @@ export const UI = {
   'tab.cart': { ru: 'Корзина', en: 'Cart', it: 'Carrello', fr: 'Panier', de: 'Warenkorb' },
   'tab.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },
   'tab.nav': { ru: 'Основная навигация', en: 'Main navigation', it: 'Navigazione principale', fr: 'Navigation principale', de: 'Hauptnavigation' },
-  // First-launch welcome (components/welcome-modal.tsx).
-  'welcome.title': { ru: 'Добро пожаловать в LUXE VAULT', en: 'Welcome to LUXE VAULT', it: 'Benvenuti da LUXE VAULT', fr: 'Bienvenue chez LUXE VAULT', de: 'Willkommen bei LUXE VAULT' },
-  'welcome.subtitle': { ru: 'Эксклюзивный доступ к коллекциям премиальных брендов', en: 'Exclusive access to premium brand collections', it: 'Accesso esclusivo alle collezioni dei brand premium', fr: 'Accès exclusif aux collections de marques premium', de: 'Exklusiver Zugang zu Premium-Markenkollektionen' },
-  'welcome.signIn': { ru: 'Войти или зарегистрироваться', en: 'Sign in or register', it: 'Accedi o registrati', fr: 'Se connecter ou s’inscrire', de: 'Anmelden oder registrieren' },
-  'welcome.guest': { ru: 'Продолжить как гость', en: 'Continue as a guest', it: 'Continua come ospite', fr: 'Continuer en tant qu’invité', de: 'Als Gast fortfahren' },
   'sections.title': { ru: 'Выберите раздел', en: 'Choose a section', it: 'Scegli una sezione', fr: 'Choisissez une section', de: 'Bereich wählen' },
   'sections.women': { ru: 'Женщины', en: 'Women', it: 'Donna', fr: 'Femme', de: 'Damen' },
   'sections.men': { ru: 'Мужчины', en: 'Men', it: 'Uomo', fr: 'Homme', de: 'Herren' },

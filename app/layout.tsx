@@ -12,7 +12,6 @@ import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
 import { BottomNav } from '@/components/bottom-nav';
-import { WelcomeModal } from '@/components/welcome-modal';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
@@ -302,9 +301,6 @@ export default async function RootLayout({
               renders nothing until mounted, so it cannot flash for visitors
               who already answered. */}
           <CookieConsentLazy />
-          {/* First-launch welcome: waits for the cookie banner to be answered
-              and never appears for a signed-in or returning visitor. */}
-          <WelcomeModal />
           {/* The app-style tab bar. Phones only; hidden on /admin. */}
           <BottomNav />
         </StoreProvider>
