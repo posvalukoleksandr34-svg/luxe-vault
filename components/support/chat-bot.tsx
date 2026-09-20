@@ -24,9 +24,11 @@ import { cn } from '@/lib/utils'
  * pretend: anything it has no answer for goes straight to a human, by handing
  * over to the ticket form — the other support entry point, in the header.
  *
- * It sits on the RIGHT, mirroring the button that opens it on the left, and
- * shares the single `panel` value with every other drawer, so opening it
- * closes the cart, the account or the support centre rather than stacking.
+ * It opens on the LEFT, over the button that opens it — which hides itself
+ * while the bot is up (components/support-widget.tsx), so the panel is never
+ * sitting on top of its own trigger. It shares the single `panel` value with
+ * every other drawer, so opening it closes the cart, the account or the
+ * support centre rather than stacking.
  */
 
 type Message =
@@ -166,7 +168,7 @@ export function ChatBot() {
       role="dialog"
       aria-modal="false"
       aria-label={t('chat.title')}
-      className="hide-with-keyboard animate-slide-in-right fixed bottom-0 right-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-l border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:right-5 sm:h-[560px] sm:w-[380px] sm:border"
+      className="hide-with-keyboard animate-slide-in-left fixed bottom-0 left-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-r border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:left-5 sm:h-[560px] sm:w-[380px] sm:border"
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">

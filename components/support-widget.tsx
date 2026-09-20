@@ -5,7 +5,10 @@ import { useStore } from '@/lib/store'
 
 /**
  * Floating launcher, bottom left: opens the QUICK-ANSWERS BOT
- * (components/support/chat-bot.tsx) on the right.
+ * (components/support/chat-bot.tsx), which takes over this same bottom-left
+ * corner — so while the bot is open this button is gone, and it comes back the
+ * moment the bot is closed. Unmounted rather than hidden: a button underneath
+ * a panel is still focusable and still reachable by a screen reader.
  *
  * The other entry point — the header's icon, top right — opens the support
  * centre itself, where a request is written by hand. Two buttons, two jobs:
@@ -15,8 +18,10 @@ import { useStore } from '@/lib/store'
  * rather than into the bot.
  */
 export function SupportWidget() {
-  const { t, openChat, openSupport, supportUnread } = useStore()
+  const { t, openChat, openSupport, panel, supportUnread } = useStore()
   const label = supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')
+
+  if (panel === 'chat') return null
 
   return (
     <button

@@ -106,6 +106,10 @@ const config: Config = {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'slide-in-left': {
+          from: { transform: 'translateX(-100%)' },
+          to: { transform: 'translateX(0)' },
+        },
         'shimmer': {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
@@ -129,6 +133,7 @@ const config: Config = {
         'fade-up': 'fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
         'fade-in': 'fade-in 0.4s ease-out',
         'slide-in-right': 'slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-in-left': 'slide-in-left 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         'shimmer': 'shimmer 2s linear infinite',
         'scale-in': 'scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         'reveal-up': 'reveal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
