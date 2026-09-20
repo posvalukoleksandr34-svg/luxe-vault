@@ -25,12 +25,12 @@ import { SavedCards } from '@/components/saved-cards'
 import { SoundToggle } from '@/components/sound-toggle'
 import { openCookieSettings } from '@/lib/cookie-settings'
 import { CURRENCY_CODES, CURRENCY_NAME_KEY } from '@/lib/currency'
-import { LOCALES } from '@/lib/i18n'
+import { STOREFRONT_LOCALES } from '@/lib/i18n'
 import { loadMyOrders } from '@/lib/order-registry'
 import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CurrencyCode } from '@/lib/currency'
-import type { Locale, Order } from '@/lib/types'
+import type { Order, StorefrontLocale } from '@/lib/types'
 
 /**
  * The account.
@@ -348,8 +348,8 @@ function SettingsSection() {
   return (
     <div className="max-w-xl divide-y divide-white/10 border-y border-white/10">
       <SettingRow label={t('acct.language')} htmlFor="pref-language">
-        <SelectField id="pref-language" value={locale} onChange={(v) => setLocale(v as Locale)}>
-          {LOCALES.map((l) => (
+        <SelectField id="pref-language" value={locale} onChange={(v) => setLocale(v as StorefrontLocale)}>
+          {STOREFRONT_LOCALES.map((l) => (
             <option key={l.code} value={l.code} className="bg-background text-foreground">
               {l.label}
             </option>

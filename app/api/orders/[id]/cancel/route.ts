@@ -52,7 +52,7 @@ export async function POST(
   }
   if (order.paymentStatus === 'paid') {
     return NextResponse.json(
-      { error: 'Оплаченный заказ нельзя отменить — оформите возврат.' },
+      { error: 'A paid order cannot be cancelled — request a refund instead.' },
       { status: 409 },
     )
   }
@@ -60,7 +60,7 @@ export async function POST(
   // or we would cancel a row that is about to be marked paid.
   if (order.paymentStatus === 'confirming') {
     return NextResponse.json(
-      { error: 'Платёж обрабатывается. Повторите попытку через несколько минут.' },
+      { error: 'The payment is still being processed. Try again in a few minutes.' },
       { status: 409 },
     )
   }
@@ -73,14 +73,14 @@ export async function POST(
         // Stripe knows about money our row did not. Refuse, and let the
         // webhook reconcile the payment status rather than guessing here.
         return NextResponse.json(
-          { error: 'Платёж уже прошёл. Оформите возврат вместо отмены.' },
+          { error: 'The payment already went through. Request a refund rather than a cancellation.' },
           { status: 409 },
         )
       }
       // The provider's own wording stays in the logs, not in front of the customer.
       console.error('[orders/cancel] Stripe cancel failed:', order.id, result.message)
       return NextResponse.json(
-        { error: 'Не удалось отменить платёж. Повторите попытку позже.' },
+        { error: 'The payment could not be cancelled. Please try again later.' },
         { status: 502 },
       )
     }
@@ -90,7 +90,7 @@ export async function POST(
   if (conflict) {
     // The guarded UPDATE rejected it — something changed underneath us.
     return NextResponse.json(
-      { error: 'Статус заказа изменился. Обновите страницу.' },
+      { error: 'The order’s status has changed. Refresh the page.' },
       { status: 409 },
     )
   }

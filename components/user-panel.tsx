@@ -155,12 +155,12 @@ export function UserPanel() {
     setResending(false)
     if (ok) {
       setResendCooldown(60)
-      pushToast({ title: 'Письмо отправлено повторно', variant: 'success' })
+      pushToast({ title: t('auth.resent'), variant: 'success' })
     } else {
       // A 429 here means the previous email is still within the rate window —
       // start the cooldown anyway so the button stops inviting another try.
       if (message && /rate limit|429|too many/i.test(message)) setResendCooldown(60)
-      pushToast({ title: message ?? 'Не удалось отправить письмо', variant: 'default' })
+      pushToast({ title: message ?? t('auth.resendFailed'), variant: 'default' })
     }
   }
 
@@ -237,9 +237,7 @@ export function UserPanel() {
         } else if (alreadyRegistered) {
           // Keep the email in the field: the next thing they will almost
           // certainly do is sign in with it.
-          setAuthError(
-            'Этот email уже зарегистрирован. Войдите в аккаунт или восстановите пароль.',
-          )
+          setAuthError(t('auth.alreadyRegistered'))
           setPendingEmail(null)
           setForm((f) => ({ ...f, password: '' }))
         } else if (message) {

@@ -4,7 +4,7 @@ import { Header } from '@/components/header'
 import { WishlistView } from '@/components/wishlist-view'
 
 export const metadata: Metadata = {
-  title: 'Избранное',
+  title: 'Wishlist',
   // The contents live in one browser's localStorage, so there is nothing here
   // for a crawler to index and nothing that would be the same for two people.
   robots: { index: false, follow: true },

@@ -1,5 +1,20 @@
 export type Locale = 'ru' | 'en' | 'it' | 'fr' | 'de'
 
+/**
+ * The languages the shop can be READ in.
+ *
+ * Russian is deliberately absent. It is still a `Locale` — the catalogue is
+ * written in it, the admin console runs in it, and old rows carry it — but no
+ * visitor to the storefront can select it and nothing public renders it. The
+ * two are separate settings that happen to share an alphabet of codes:
+ * lib/i18n.ts holds the storefront's (DEFAULT_LOCALE, STOREFRONT_LOCALES) and
+ * the console's (ADMIN_LOCALE), and neither can reach the other.
+ *
+ * Typing storefront state as this rather than `Locale` is what makes that
+ * structural instead of a convention: `setLocale('ru')` does not compile.
+ */
+export type StorefrontLocale = Exclude<Locale, 'ru'>
+
 export type LocalizedText = Record<Locale, string>
 
 /**

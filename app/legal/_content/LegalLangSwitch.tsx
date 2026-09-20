@@ -1,6 +1,6 @@
 'use client'
 
-import { LOCALES } from '@/lib/i18n'
+import { STOREFRONT_LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
  * shared URL has no control to change language and would be stuck with
  * whatever the store defaulted to.
  *
- * A flat row of codes rather than the header's dropdown — there are five, they
+ * A flat row of codes rather than the header's dropdown — there are four, they
  * are two characters each, and a document page should not need a popover to
  * change one setting.
  */
@@ -21,7 +21,7 @@ export function LegalLangSwitch() {
 
   return (
     <nav aria-label="Language" className="not-prose flex flex-wrap items-center gap-1">
-      {LOCALES.map((l) => (
+      {STOREFRONT_LOCALES.map((l) => (
         <button
           key={l.code}
           type="button"

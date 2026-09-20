@@ -2,6 +2,7 @@
 
 import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useStore } from '@/lib/store'
@@ -20,7 +21,7 @@ const MAX_FILE_SIZE_MB = 5
  * the storefront's cards and routes expect (/category/women, …).
  */
 function MissingDepartments({ onCreated }: { onCreated: () => Promise<void> | void }) {
-  const { collections, pushToast, localize, t } = useStore()
+  const { collections, pushToast } = useStore()
   const [busy, setBusy] = useState<string | null>(null)
 
   const missing = CORE_DEPARTMENTS.filter((d) => !collections.some((c) => c.slug === d.slug))
@@ -98,7 +99,6 @@ export function CollectionsManager() {
     resetCategoryImage,
     localize,
     pushToast,
-    t,
     collections,
     categoryTree,
     groupLabels,
@@ -293,7 +293,7 @@ function CategorySlot({
  * DELETE RESTRICT).
  */
 function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void }) {
-  const { categoryTree, groupLabels, categoryLabels, localize, products, collections, categories, pushToast } =
+  const { categoryTree, groupLabels, categoryLabels, products, collections, categories, pushToast } =
     useStore()
   const [addingTo, setAddingTo] = useState<string | null>(null)
 

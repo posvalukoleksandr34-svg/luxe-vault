@@ -2,14 +2,12 @@
 // only writer, used by /api/newsletter.
 import 'server-only'
 
+import { toStorefrontLocale } from '@/lib/i18n'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Locale } from '@/lib/types'
 import { isValidEmail } from '@/lib/validation'
 
 export type NewsletterError = 'INVALID_EMAIL' | 'UNAVAILABLE' | 'FAILED'
 export type NewsletterOutcome = { ok: true; already: boolean } | { ok: false; error: NewsletterError }
-
-const LOCALES: Locale[] = ['ru', 'en', 'it', 'fr', 'de']
 
 // Postgres "undefined table" and PostgREST "not in the schema cache": the
 // migration has not been applied yet. Reported as UNAVAILABLE so the form can
@@ -30,7 +28,9 @@ export async function subscribeToNewsletter(input: {
   const email = input.email.trim().toLowerCase()
   if (!isValidEmail(email) || email.length > 254) return { ok: false, error: 'INVALID_EMAIL' }
 
-  const locale = LOCALES.indexOf(input.locale as Locale) !== -1 ? (input.locale as Locale) : 'ru'
+  // Storefront languages only: a subscriber can no longer be signed up in
+  // Russian, and anything unrecognised becomes the storefront's default.
+  const locale = toStorefrontLocale(input.locale)
   const source = (input.source ?? 'contact').slice(0, 40)
   const supabase = createAdminClient()
 

@@ -45,7 +45,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(request: NextRequest) {
   if (!isStripeConfigured()) {
-    return NextResponse.json({ error: 'Оплата картой временно недоступна' }, { status: 503 })
+    return NextResponse.json({ error: 'Card payments are temporarily unavailable' }, { status: 503 })
   }
 
   const limited = await enforceLimit('payment.start', request)
@@ -66,13 +66,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
   if (order.paymentStatus === 'paid') {
-    return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
+    return NextResponse.json({ error: 'This order is already paid' }, { status: 409 })
   }
   // A cancelled or refunded order has given its units back to stock; taking
   // money for it now could sell something another customer already bought.
   if (order.status === 'cancelled' || order.status === 'refunded') {
     return NextResponse.json(
-      { error: 'Заказ отменён, и его товары вернулись в продажу. Оформите, пожалуйста, новый заказ.' },
+      { error: 'This order was cancelled and its pieces went back on sale. Please place a new order.' },
       { status: 409 },
     )
   }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     if (!prepared.ok) {
       // Stripe already holds, or is settling, money for this order.
-      return NextResponse.json({ error: 'Заказ уже оплачен' }, { status: 409 })
+      return NextResponse.json({ error: 'This order is already paid' }, { status: 409 })
     }
 
     const { intent } = prepared

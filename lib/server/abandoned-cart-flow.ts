@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { primaryText } from '@/lib/localized-text'
+import { translate } from '@/lib/i18n'
 import { captureAbandonedCart, claimDueCarts } from '@/lib/server/abandoned-carts'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { sendAbandonedCartEmail } from '@/lib/server/emails/abandoned-cart'
@@ -51,6 +51,9 @@ export async function captureCheckoutCart(input: {
   try {
     const { products } = await readCatalog()
     const byId = new Map(products.map((p) => [p.id, p]))
+    // The email's own language, so the pieces in it are named the way the
+    // customer saw them on the site rather than in the catalogue's source.
+    const lang = emailLang(input.locale)
     const items: CartItem[] = []
     for (const entry of raw) {
       const line = (entry ?? {}) as Record<string, unknown>
@@ -64,7 +67,7 @@ export async function captureCheckoutCart(input: {
       items.push({
         key: `${product.id}-${size}-${color}`,
         productId: product.id,
-        name: primaryText(product.name, product.id),
+        name: translate(product.name, lang) || product.id,
         image: typeof line.image === 'string' && gallery.indexOf(line.image) !== -1 ? line.image : product.image,
         price: product.price,
         size,
@@ -73,7 +76,7 @@ export async function captureCheckoutCart(input: {
       })
     }
     if (items.length === 0) return 'ignored'
-    return (await captureAbandonedCart(email, items, emailLang(input.locale))) ? 'captured' : 'ignored'
+    return (await captureAbandonedCart(email, items, lang)) ? 'captured' : 'ignored'
   } catch (e) {
     console.warn('[abandoned-carts] capture failed:', (e as Error).message)
     return 'ignored'

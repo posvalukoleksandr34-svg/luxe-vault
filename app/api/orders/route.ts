@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   } catch {
     if (!declaredGuest) {
       return NextResponse.json(
-        { error: 'Не удалось подтвердить сессию. Повторите попытку.' },
+        { error: 'We could not confirm your session. Please try again.' },
         { status: 503 },
       )
     }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // typically one that expired mid-checkout. Say so; never file it as a
     // guest order behind the customer's back.
     return NextResponse.json(
-      { error: 'Сессия истекла. Войдите снова или оформите заказ без регистрации.' },
+      { error: 'Your session has expired. Sign in again, or order without an account.' },
       { status: 401 },
     )
   }

@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { CURRENCY_CODES, CURRENCY_NAME_KEY } from '@/lib/currency'
-import { LOCALES } from '@/lib/i18n'
+import { STOREFRONT_LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import type { Locale } from '@/lib/types'
+import type { StorefrontLocale } from '@/lib/types'
 
-/** Italian, English, German, French first, as the brief lists them — and
- *  Russian kept after them: it is the site's DEFAULT language, and removing
- *  it from the only language switch would strand everyone who lands in it. */
-const LANGUAGE_ORDER: Locale[] = ['it', 'en', 'de', 'fr', 'ru']
+/** Italian, English, German, French, as the brief lists them. Russian is not
+ *  missing by oversight — the storefront does not offer it, and the type now
+ *  refuses it here. The admin console has its own, fixed (lib/admin-i18n.ts). */
+const LANGUAGE_ORDER: StorefrontLocale[] = ['it', 'en', 'de', 'fr']
 
 /**
  * Language and currency, in one place — `IT · CHF` in the header, a small
@@ -25,7 +25,7 @@ const LANGUAGE_ORDER: Locale[] = ['it', 'en', 'de', 'fr', 'ru']
 export function LocaleCurrencyMenu() {
   const { locale, setLocale, currency, setCurrency, t } = useStore()
   const [open, setOpen] = useState(false)
-  const current = LOCALES.find((l) => l.code === locale)
+  const current = STOREFRONT_LOCALES.find((l) => l.code === locale)
 
   useEffect(() => {
     if (!open) return
@@ -67,7 +67,7 @@ export function LocaleCurrencyMenu() {
               {t('header.language')}
             </p>
             {LANGUAGE_ORDER.map((code) => {
-              const l = LOCALES.find((x) => x.code === code)
+              const l = STOREFRONT_LOCALES.find((x) => x.code === code)
               if (!l) return null
               return (
                 <Option key={code} active={code === locale} onClick={() => setLocale(code)}>

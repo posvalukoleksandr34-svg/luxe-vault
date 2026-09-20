@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { COURIER_NAMES } from '@/lib/fulfilment'
 import { formatCharged, orderCharge, orderChargeRate } from '@/lib/currency'
@@ -97,8 +98,6 @@ export function AdminPanel() {
     addPromo,
     removePromo,
     pushToast,
-    t,
-    localize,
     categoryLabels,
   } = useStore()
 

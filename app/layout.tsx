@@ -13,6 +13,7 @@ import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
 import { BottomNav } from '@/components/bottom-nav';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
+import { DEFAULT_LOCALE } from '@/lib/i18n';
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot';
 import { SUPPORT_EMAIL } from '@/lib/data';
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -92,7 +93,7 @@ const SITE_JSON_LD = {
       name: SITE_NAME,
       description: SITE_DESCRIPTION,
       publisher: { '@id': `${SITE_URL}/#organization` },
-      inLanguage: 'ru',
+      inLanguage: DEFAULT_LOCALE,
     },
   ],
 };
@@ -158,11 +159,12 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION_SHORT,
-    // Matches <html lang="ru"> — the page still renders Russian by default, so
-    // declaring en_US here would misreport the document to crawlers. See the
-    // note in the handover about aligning these.
-    locale: 'ru_RU',
-    alternateLocale: ['en_US', 'it_IT', 'fr_FR', 'de_DE'],
+    // Matches <html lang> below, which is the storefront's default language.
+    // Misreporting it here would tell a crawler the document is in a language
+    // it is not — the bug this pair used to have while the site defaulted to
+    // Russian and declared English.
+    locale: 'en_US',
+    alternateLocale: ['it_IT', 'fr_FR', 'de_DE'],
   },
 
   // Twitter Card — часть мессенджеров и соцсетей (в т.ч. X/Twitter) читают
@@ -232,7 +234,11 @@ export default async function RootLayout({
   // config/shipping.ts when the database cannot be read.
   const shipping = await getShippingSettings()
   return (
-    <html lang="ru" className="dark" suppressHydrationWarning>
+    // The storefront's default language. The document is server-rendered
+    // before anyone's stored choice is known, so this is what a crawler and a
+    // screen reader get; the client updates nothing, because every language
+    // the switcher offers is written in the same Latin script.
+    <html lang={DEFAULT_LOCALE} className="dark" suppressHydrationWarning>
       <head>
         {/* Before first paint: a visitor who chose "reduce animations" must
             not see a single frame of the entrance animations. See

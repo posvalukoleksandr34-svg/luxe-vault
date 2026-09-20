@@ -3,7 +3,7 @@
 import './globals.css'
 
 import { useEffect } from 'react'
-import { UI } from '@/lib/i18n'
+import { DEFAULT_LOCALE, UI } from '@/lib/i18n'
 
 /**
  * Last-resort boundary for an error thrown by the ROOT LAYOUT itself — its
@@ -12,9 +12,9 @@ import { UI } from '@/lib/i18n'
  * unstyled error page.
  *
  * It replaces the whole document, so it brings its own <html>/<body> and has
- * no StoreProvider: the copy is the storefront's own Russian (the site
- * default, <html lang="ru">) read straight from the i18n table, and the look
- * mirrors components/catalog-unavailable.tsx. "Try again" is a full reload,
+ * no StoreProvider — which means no visitor's chosen language either. The copy
+ * is the storefront's DEFAULT language, read straight from the i18n table, and
+ * the look mirrors components/catalog-unavailable.tsx. "Try again" is a full reload,
  * because the layout that failed is server-rendered and reset() alone would
  * replay the same failed payload.
  */
@@ -24,7 +24,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
   }, [error])
 
   return (
-    <html lang="ru" className="dark">
+    <html lang={DEFAULT_LOCALE} className="dark">
       <body className="font-sans">
         <main
           id="main"
@@ -33,10 +33,10 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
           <div role="alert" className="flex max-w-md flex-col items-center text-center">
             <span aria-hidden className="h-px w-12 bg-[#D4AF37]/60" />
             <h1 className="mt-6 font-serif text-2xl tracking-wide text-[#CCCCCC] sm:text-3xl">
-              {UI['state.catalogUnavailableTitle'].ru}
+              {UI['state.catalogUnavailableTitle'][DEFAULT_LOCALE]}
             </h1>
             <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-[#CCCCCC]">
-              {UI['state.catalogUnavailableHint'].ru}
+              {UI['state.catalogUnavailableHint'][DEFAULT_LOCALE]}
             </p>
             <button
               type="button"

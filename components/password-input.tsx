@@ -31,8 +31,11 @@ export function PasswordInput({
   inputClassName,
   labelClassName,
   error,
-  showLabel = 'Показать пароль',
-  hideLabel = 'Скрыть пароль',
+  // Defaults for a caller that passes none. Every caller inside the shop
+  // passes a translated one; these are the storefront's default language, not
+  // a language of their own.
+  showLabel = 'Show password',
+  hideLabel = 'Hide password',
 }: {
   label?: string
   value: string

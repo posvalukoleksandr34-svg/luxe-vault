@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   if (!isConfigured()) {
     return NextResponse.json(
-      { error: 'Оплата криптовалютой временно недоступна', code: 'CRYPTO_UNAVAILABLE' },
+      { error: 'Paying in crypto is temporarily unavailable', code: 'CRYPTO_UNAVAILABLE' },
       { status: 503 },
     )
   }
@@ -59,17 +59,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })
   }
   if (order.paymentStatus === 'paid') {
-    return NextResponse.json({ error: 'Заказ уже оплачен', code: 'ALREADY_PAID' }, { status: 409 })
+    return NextResponse.json({ error: 'This order is already paid', code: 'ALREADY_PAID' }, { status: 409 })
   }
   if (order.status === 'cancelled') {
-    return NextResponse.json({ error: 'Заказ отменён', code: 'CANCELLED' }, { status: 409 })
+    return NextResponse.json({ error: 'This order was cancelled', code: 'CANCELLED' }, { status: 409 })
   }
 
   const tickers = await fetchAvailableTickers()
   const option = findResolvedOption(resolveAvailableOptions(tickers), optionId, ticker)
   if (!option) {
     return NextResponse.json(
-      { error: 'Выбранная сеть недоступна', code: 'NETWORK_UNAVAILABLE' },
+      { error: 'That network is unavailable', code: 'NETWORK_UNAVAILABLE' },
       { status: 400 },
     )
   }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     orderId: order.id,
     amount: order.total,
     payCurrency: option.ticker,
-    description: `LUXE VAULT — заказ ${order.id}`,
+    description: `LUXE VAULT — order ${order.id}`,
     callbackUrl,
   })
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   }
   if (!payment.data.pay_address || !payment.data.pay_amount) {
     return NextResponse.json(
-      { error: 'Платёжный провайдер вернул неполные данные', code: 'PROVIDER_ERROR' },
+      { error: 'The payment provider returned an incomplete response', code: 'PROVIDER_ERROR' },
       { status: 502 },
     )
   }

@@ -43,8 +43,8 @@ import {
   GROUP_LABELS,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
-  LOCALES,
   UI,
+  isStorefrontLocale,
   translate,
   type UIKey,
 } from './i18n'
@@ -56,6 +56,7 @@ import type {
   CategoryGroupKey,
   Locale,
   LocalizedText,
+  StorefrontLocale,
   Order,
   Product,
   Promo,
@@ -157,8 +158,10 @@ type StoreContextValue = {
    *  avoid flashing a signed-out state to an already-signed-in visitor. */
   authLoading: boolean
 
-  locale: Locale
-  setLocale: (l: Locale) => void
+  /** The STOREFRONT's language. Never Russian — the type says so, and the
+   *  admin console does not read this at all (lib/admin-i18n.ts). */
+  locale: StorefrontLocale
+  setLocale: (l: StorefrontLocale) => void
   /** The chosen currency. Prices are stored in CHF; this changes how
    *  formatPrice() shows them and what a card is charged in. See
    *  lib/currency.ts. */
@@ -373,7 +376,7 @@ export function StoreProvider({
   const [authLoading, setAuthLoading] = useState(true)
   const [metadataLanguage, setMetadataLanguage] = useState<string | null>(null)
 
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
+  const [locale, setLocaleState] = useState<StorefrontLocale>(DEFAULT_LOCALE)
 
 /**
  * Asks the server to send the welcome email.
@@ -525,8 +528,11 @@ function maybeSendWelcome() {
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null
-      if (saved && LOCALES.some((l) => l.code === saved)) {
+      // A visitor who chose Russian before the storefront stopped offering it
+      // still has 'ru' in this browser. Ignore it rather than honour it — they
+      // land on the default, and their next choice overwrites the stale value.
+      const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+      if (isStorefrontLocale(saved)) {
         setLocaleState(saved)
       }
     } catch {
@@ -680,7 +686,7 @@ function maybeSendWelcome() {
   }, [collections])
 
   const setLocale = useCallback(
-    (l: Locale) => {
+    (l: StorefrontLocale) => {
       setLocaleState(l)
       try {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, l)

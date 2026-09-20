@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next'
 
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+
 /**
  * The web app manifest, served at /manifest.webmanifest and linked from every
  * page by Next's file-based metadata. It is what Android and desktop Chrome
@@ -23,7 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
-    lang: 'ru',
+    lang: DEFAULT_LOCALE,
     dir: 'ltr',
     prefer_related_applications: false,
     orientation: 'portrait',
@@ -39,9 +41,12 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     // Long-press on the installed icon (Android, desktop Chrome/Edge).
     shortcuts: [
-      { name: 'Каталог', short_name: 'Каталог', url: '/catalog', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
-      { name: 'Мой аккаунт', short_name: 'Аккаунт', url: '/account', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
-      { name: 'Поддержка', short_name: 'Поддержка', url: '/support', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      // A manifest is one static file for every visitor, so these cannot
+      // follow the language switch — they are in `lang` above, the
+      // storefront's default.
+      { name: 'Catalogue', short_name: 'Catalogue', url: '/catalog', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'My account', short_name: 'Account', url: '/account', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Support', short_name: 'Support', url: '/support', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
     ],
   }
 }

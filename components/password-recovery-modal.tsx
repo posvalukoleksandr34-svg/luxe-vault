@@ -172,6 +172,8 @@ export function PasswordRecoveryModal() {
                 minLength={MIN_PASSWORD_LENGTH}
                 autoComplete="new-password"
                 error={tooShort}
+                showLabel={t('auth.showPassword')}
+                hideLabel={t('auth.hidePassword')}
               />
 
               <PasswordInput
@@ -180,6 +182,8 @@ export function PasswordRecoveryModal() {
                 onChange={setConfirm}
                 required
                 autoComplete="new-password"
+                showLabel={t('auth.showPassword')}
+                hideLabel={t('auth.hidePassword')}
                 error={mismatch}
               />
 

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
   if (throttled(`${ip}:${email}`)) {
     return NextResponse.json(
-      { error: 'Слишком много запросов. Попробуйте через несколько минут.' },
+      { error: 'Too many requests. Try again in a few minutes.' },
       { status: 429 },
     )
   }

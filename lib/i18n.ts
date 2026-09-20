@@ -1,6 +1,25 @@
-import type { CategoryKey, Locale, LocalizedText, StatusKey } from './types'
+import type { CategoryKey, Locale, LocalizedText, StatusKey, StorefrontLocale } from './types'
 import type { ColorFamily, Fit, Occasion, StyleKey } from './stylist/types'
 
+/**
+ * TWO LANGUAGE SETTINGS, ONE DICTIONARY.
+ *
+ * The storefront and the admin console are localised independently, and this
+ * module is the only place the two meet:
+ *
+ *   STOREFRONT_LOCALES / DEFAULT_LOCALE — what a visitor can choose and what
+ *     they get before they choose. Russian is not among them and cannot be:
+ *     storefront state is typed `StorefrontLocale`, which excludes it.
+ *   ADMIN_LOCALE — the console, always Russian, whatever the storefront is
+ *     set to. lib/admin-i18n.ts binds the dictionary to it; the console never
+ *     reads the store's `locale`.
+ *
+ * The `ru` entries below therefore stay. They are not dead copy — they are the
+ * console's entire interface, and the catalogue is authored in them. What
+ * changed is that nothing public can reach them: see `translate()`.
+ */
+
+/** Every language the DICTIONARY carries, storefront and console alike. */
 export const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: 'ru', label: 'Русский', flag: 'RU' },
   { code: 'en', label: 'English', flag: 'EN' },
@@ -9,14 +28,49 @@ export const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: 'de', label: 'Deutsch', flag: 'DE' },
 ]
 
-export const DEFAULT_LOCALE: Locale = 'ru'
+/** What the storefront's language pickers offer — LOCALES minus Russian. */
+export const STOREFRONT_LOCALES = LOCALES.filter(
+  (l): l is { code: StorefrontLocale; label: string; flag: string } => l.code !== 'ru',
+)
+
+/** The storefront before anyone chooses: English, the one language every
+ *  translation in this file is guaranteed to have. */
+export const DEFAULT_LOCALE: StorefrontLocale = 'en'
+
+/** The admin console, fixed. Not a default and not a preference: the console
+ *  is written in Russian and has no language picker. */
+export const ADMIN_LOCALE: Locale = 'ru'
+
 export const LOCALE_STORAGE_KEY = 'luxe-vault-locale'
 
+export function isStorefrontLocale(value: unknown): value is StorefrontLocale {
+  return STOREFRONT_LOCALES.some((l) => l.code === value)
+}
+
 /**
- * Text in `locale`, or the best fallback: English for a non-Russian visitor
- * (more readable than Russian for most of them), then Russian, then whatever
- * exists. An EMPTY string counts as missing — `??` alone let a blank
- * translation through and printed nothing.
+ * Anything arriving from outside — localStorage, a database column, an email
+ * preference stored years ago — narrowed to a language the storefront may
+ * actually show. A stored 'ru' becomes the default rather than an error: the
+ * visitor keeps their session, they just stop being shown Russian.
+ */
+export function toStorefrontLocale(value: unknown): StorefrontLocale {
+  return isStorefrontLocale(value) ? value : DEFAULT_LOCALE
+}
+
+/**
+ * Text in `locale`, or the best fallback. An EMPTY string counts as missing —
+ * `??` alone let a blank translation through and printed nothing.
+ *
+ * The chain for a storefront locale never reaches Russian, even as a last
+ * resort. It used to: English, then Russian, then the rest — which meant one
+ * untranslated product or one missed key printed Cyrillic at an Italian
+ * customer. A gap now shows the nearest European language, and an entry that
+ * exists ONLY in Russian shows nothing at all on the storefront, which is the
+ * intended outcome: an empty label is a bug someone fixes, whereas Cyrillic in
+ * an Italian page is a bug everyone lives with.
+ *
+ * Russian is reachable on one path only — asking for it by name, which just
+ * `ADMIN_LOCALE` does.
  */
 export function translate(
   text: LocalizedText | Partial<LocalizedText> | null | undefined,
@@ -24,7 +78,8 @@ export function translate(
 ): string {
   if (!text) return ''
   const has = (l: Locale) => typeof text[l] === 'string' && (text[l] as string).trim() !== ''
-  const order: Locale[] = locale === 'ru' ? ['ru', 'en', 'it', 'fr', 'de'] : [locale, 'en', 'ru', 'it', 'fr', 'de']
+  const order: Locale[] =
+    locale === 'ru' ? ['ru', 'en', 'it', 'fr', 'de'] : [locale, 'en', 'it', 'fr', 'de']
   for (const l of order) if (has(l)) return text[l] as string
   return ''
 }
@@ -959,6 +1014,9 @@ export const UI = {
   'turnstile.wait': { ru: 'Идёт проверка безопасности…', en: 'Security check in progress…', it: 'Controllo di sicurezza in corso…', fr: 'Vérification de sécurité en cours…', de: 'Sicherheitsprüfung läuft…' },
   'turnstile.required': { ru: 'Дождитесь завершения проверки безопасности.', en: 'Wait for the security check to finish.', it: 'Attendi il completamento del controllo di sicurezza.', fr: 'Attendez la fin de la vérification de sécurité.', de: 'Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist.' },
   'auth.or': { ru: 'или', en: 'or', it: 'oppure', fr: 'ou', de: 'oder' },
+  'auth.resent': { ru: 'Письмо отправлено повторно', en: 'Email sent again', it: 'Email inviata di nuovo', fr: 'E-mail renvoyé', de: 'E-Mail erneut gesendet' },
+  'auth.resendFailed': { ru: 'Не удалось отправить письмо', en: 'The email could not be sent', it: 'Non è stato possibile inviare l’email', fr: 'L’e-mail n’a pas pu être envoyé', de: 'Die E-Mail konnte nicht gesendet werden' },
+  'auth.alreadyRegistered': { ru: 'Этот email уже зарегистрирован. Войдите в аккаунт или восстановите пароль.', en: 'This email is already registered. Sign in, or reset your password.', it: 'Questa email è già registrata. Accedi o reimposta la password.', fr: 'Cet e-mail est déjà enregistré. Connectez-vous ou réinitialisez votre mot de passe.', de: 'Diese E-Mail ist bereits registriert. Melden Sie sich an oder setzen Sie Ihr Passwort zurück.' },
   'auth.googleFailed': { ru: 'Не удалось войти через Google', en: 'Google sign-in failed', it: 'Accesso con Google non riuscito', fr: 'La connexion Google a échoué', de: 'Google-Anmeldung fehlgeschlagen' },
 
   'signup.verify.title': { ru: 'Подтвердите email', en: 'Confirm your email', it: 'Conferma la tua email', fr: 'Confirmez votre e-mail', de: 'E-Mail bestätigen' },

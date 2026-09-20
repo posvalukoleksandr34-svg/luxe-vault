@@ -1,14 +1,17 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { LegalDocument } from '../_content/LegalDocument'
 import { REFUNDS } from '../_content/refunds'
 import { DraftNotice, Footer } from '../_shared'
 
 // Metadata is emitted at build time and cannot read the client-side locale, so
-// it stays in the authoritative language. The visible page is localised by
-// <LegalDocument>, which reads the store.
+// it stays in the storefront's DEFAULT language — which is what a crawler and
+// a shared link get. It used to be the authoritative Russian, which put
+// Cyrillic in the browser tab of a page whose body was in Italian. The visible
+// page is localised by <LegalDocument>, which reads the store.
 export const metadata: Metadata = {
-  title: REFUNDS.ru!.title,
-  description: REFUNDS.ru!.description,
+  title: REFUNDS[DEFAULT_LOCALE]!.title,
+  description: REFUNDS[DEFAULT_LOCALE]!.description,
   alternates: { canonical: '/legal/refunds' },
 }
 

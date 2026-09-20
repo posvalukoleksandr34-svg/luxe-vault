@@ -4,9 +4,9 @@ import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 
 export const metadata: Metadata = {
-  title: 'Каталог',
+  title: 'Catalogue',
   description:
-    'Весь каталог LUXE VAULT: одежда, обувь и аксессуары. Фильтры по разделам и категориям.',
+    'The full LUXE VAULT catalogue: apparel, footwear and accessories, filtered by department and category.',
   alternates: { canonical: '/catalog' },
 }
 

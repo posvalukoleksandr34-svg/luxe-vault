@@ -39,7 +39,7 @@ export async function POST(
 
   if (order.paymentStatus !== 'paid') {
     return NextResponse.json(
-      { error: 'Возврат возможен только для оплаченного заказа' },
+      { error: 'Only a paid order can be refunded' },
       { status: 409 },
     )
   }
@@ -49,7 +49,7 @@ export async function POST(
 
   const { order: updated, conflict } = await requestRefund(params.id, reason)
   if (conflict) {
-    return NextResponse.json({ error: 'Запрос уже отправлен' }, { status: 409 })
+    return NextResponse.json({ error: 'That request has already been sent' }, { status: 409 })
   }
 
   return NextResponse.json({ order: updated })

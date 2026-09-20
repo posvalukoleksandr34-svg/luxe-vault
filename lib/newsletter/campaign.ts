@@ -8,6 +8,8 @@
 // lib/server/emails/layout.ts (the transactional emails), so a campaign sits
 // beside an order confirmation in the same inbox as the same brand.
 
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+
 export type CampaignContent = {
   subject: string
   preheader: string
@@ -110,8 +112,17 @@ const FOOTER: Record<NewsletterLang, { why: string; unsubscribe: string }> = {
   de: { why: 'Sie erhalten diese E-Mail, weil Sie den LUXE VAULT Newsletter abonniert haben.', unsubscribe: 'Abmelden' },
 }
 
+/**
+ * A campaign language from a stored subscriber locale.
+ *
+ * Falls back to the storefront's default rather than to Russian, and turns a
+ * stored 'ru' into that default too: a subscriber who signed up when the shop
+ * still offered Russian now reads it in the language the shop actually
+ * publishes in. The Russian FOOTER entry above stays for the archive's sake —
+ * `NewsletterLang` still admits it — but nothing reaches it any more.
+ */
 export function newsletterLang(value: unknown): NewsletterLang {
-  return value === 'en' || value === 'it' || value === 'fr' || value === 'de' ? value : 'ru'
+  return value === 'en' || value === 'it' || value === 'fr' || value === 'de' ? value : DEFAULT_LOCALE
 }
 
 /** A relative CTA link ("/category/clothing") made absolute to the shop. */
@@ -137,7 +148,7 @@ export function renderCampaignEmail(
   content: CampaignContent,
   options: { siteUrl: string; unsubscribeUrl: string; lang?: NewsletterLang },
 ): { html: string; text: string } {
-  const lang = options.lang ?? 'ru'
+  const lang = options.lang ?? DEFAULT_LOCALE
   const f = FOOTER[lang]
   const site = options.siteUrl.replace(/\/$/, '')
   const ctaHref = content.ctaLabel && content.ctaUrl ? absoluteUrl(content.ctaUrl, site) : ''

@@ -1,9 +1,11 @@
 import 'server-only'
 
 import { FULFILMENT, describeBusinessDays } from '@/lib/fulfilment'
+import { toStorefrontLocale } from '@/lib/i18n'
+import { getOrderLocale } from '@/lib/server/order-locale'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Notification, NotificationType } from '@/lib/types'
+import type { Notification, NotificationType, StorefrontLocale } from '@/lib/types'
 
 /**
  * Notification triggers.
@@ -56,6 +58,120 @@ async function insert(n: NewNotification): Promise<boolean> {
 }
 
 /**
+ * Notification copy, in the four languages the storefront can be read in.
+ *
+ * These were Russian literals, which put Cyrillic in the bell panel of a shop
+ * that shows Russian nowhere else. They are written into the database as text,
+ * so there is no re-rendering them later in another language — the language is
+ * chosen once, here, from the order the notification is about.
+ *
+ * Russian is absent deliberately, including for an order placed back when the
+ * storefront still offered it: `localeOf` clamps that away. The admin console
+ * reads orders, not notifications, so nothing here needs the console's Russian.
+ */
+type NotificationCopy = {
+  paymentFailedTitle: (id: string) => string
+  paymentFailedBody: string
+  trackingPrefix: (tracking: string) => string
+  statusTitles: Record<string, (id: string) => string>
+  /** `{span}` is the admin's delivery timeframe, filled in at send time. */
+  statusBodies: Record<string, string>
+}
+
+const COPY: Record<StorefrontLocale, NotificationCopy> = {
+  en: {
+    paymentFailedTitle: (id) => `Payment for order ${id} did not go through`,
+    paymentFailedBody:
+      'The charge did not complete. Your order is saved — you can pay for it again from your account.',
+    trackingPrefix: (tracking) => `Tracking number: ${tracking}. `,
+    statusTitles: {
+      processing: (id) => `Order ${id} is being prepared`,
+      shipped: (id) => `Order ${id} has shipped`,
+      delivered: (id) => `Order ${id} was delivered`,
+      cancelled: (id) => `Order ${id} was cancelled`,
+      refunded: (id) => `Order ${id} has been refunded`,
+    },
+    statusBodies: {
+      processing:
+        'Your piece has been ordered from the supplier and is going through quality control. Delivery usually takes {span}.',
+      shipped: 'The parcel is with Swiss Post. The tracking number is on the order page.',
+      delivered: `The parcel has been handed over. You have ${FULFILMENT.returnWindowDays} days from now to return it.`,
+      cancelled: 'The order was cancelled. If you were charged, the money comes back automatically.',
+      refunded: `The refund is on its way to your bank. It usually takes ${FULFILMENT.refund.min}–${FULFILMENT.refund.max} business days to appear.`,
+    },
+  },
+  it: {
+    paymentFailedTitle: (id) => `Il pagamento dell’ordine ${id} non è andato a buon fine`,
+    paymentFailedBody:
+      'L’addebito non è riuscito. Il tuo ordine è salvato: puoi pagarlo di nuovo dal tuo account.',
+    trackingPrefix: (tracking) => `Numero di tracciamento: ${tracking}. `,
+    statusTitles: {
+      processing: (id) => `L’ordine ${id} è in preparazione`,
+      shipped: (id) => `L’ordine ${id} è stato spedito`,
+      delivered: (id) => `L’ordine ${id} è stato consegnato`,
+      cancelled: (id) => `L’ordine ${id} è stato annullato`,
+      refunded: (id) => `L’ordine ${id} è stato rimborsato`,
+    },
+    statusBodies: {
+      processing:
+        'Il capo è stato ordinato al fornitore ed è in controllo qualità. La consegna richiede di solito {span}.',
+      shipped: 'Il pacco è stato affidato a Swiss Post. Il numero di tracciamento è nella pagina dell’ordine.',
+      delivered: `Il pacco è stato consegnato. Da questo momento hai ${FULFILMENT.returnWindowDays} giorni per il reso.`,
+      cancelled: 'L’ordine è stato annullato. Se c’è stato un addebito, l’importo torna automaticamente.',
+      refunded: `Il rimborso è stato inviato alla banca. Di solito servono ${FULFILMENT.refund.min}–${FULFILMENT.refund.max} giorni lavorativi.`,
+    },
+  },
+  fr: {
+    paymentFailedTitle: (id) => `Le paiement de la commande ${id} n’a pas abouti`,
+    paymentFailedBody:
+      'Le débit n’a pas abouti. Votre commande est conservée : vous pouvez la régler à nouveau depuis votre compte.',
+    trackingPrefix: (tracking) => `Numéro de suivi : ${tracking}. `,
+    statusTitles: {
+      processing: (id) => `La commande ${id} est en préparation`,
+      shipped: (id) => `La commande ${id} a été expédiée`,
+      delivered: (id) => `La commande ${id} a été livrée`,
+      cancelled: (id) => `La commande ${id} a été annulée`,
+      refunded: (id) => `La commande ${id} a été remboursée`,
+    },
+    statusBodies: {
+      processing:
+        'La pièce a été commandée auprès du fournisseur et passe le contrôle qualité. La livraison prend généralement {span}.',
+      shipped: 'Le colis a été remis à la Poste suisse. Le numéro de suivi figure sur la page de la commande.',
+      delivered: `Le colis a été remis. Vous avez ${FULFILMENT.returnWindowDays} jours à partir de maintenant pour le retourner.`,
+      cancelled: 'La commande a été annulée. Si un débit a eu lieu, le montant est restitué automatiquement.',
+      refunded: `Le remboursement a été envoyé à votre banque. Il faut généralement ${FULFILMENT.refund.min} à ${FULFILMENT.refund.max} jours ouvrables.`,
+    },
+  },
+  de: {
+    paymentFailedTitle: (id) => `Die Zahlung für Bestellung ${id} ist fehlgeschlagen`,
+    paymentFailedBody:
+      'Die Abbuchung kam nicht zustande. Ihre Bestellung bleibt bestehen — Sie können sie aus Ihrem Konto erneut bezahlen.',
+    trackingPrefix: (tracking) => `Sendungsnummer: ${tracking}. `,
+    statusTitles: {
+      processing: (id) => `Bestellung ${id} wird vorbereitet`,
+      shipped: (id) => `Bestellung ${id} wurde versandt`,
+      delivered: (id) => `Bestellung ${id} wurde zugestellt`,
+      cancelled: (id) => `Bestellung ${id} wurde storniert`,
+      refunded: (id) => `Bestellung ${id} wurde erstattet`,
+    },
+    statusBodies: {
+      processing:
+        'Das Stück ist beim Lieferanten bestellt und wird geprüft. Die Lieferung dauert üblicherweise {span}.',
+      shipped: 'Das Paket ist bei der Schweizerischen Post. Die Sendungsnummer steht auf der Bestellseite.',
+      delivered: `Das Paket wurde übergeben. Ab jetzt haben Sie ${FULFILMENT.returnWindowDays} Tage für eine Rückgabe.`,
+      cancelled: 'Die Bestellung wurde storniert. Falls abgebucht wurde, kommt der Betrag automatisch zurück.',
+      refunded: `Die Erstattung ist auf dem Weg zu Ihrer Bank. Üblicherweise dauert die Gutschrift ${FULFILMENT.refund.min}–${FULFILMENT.refund.max} Werktage.`,
+    },
+  },
+}
+
+/** The language to write a notification about this order in: the one the order
+ *  was placed in, clamped to what the storefront can still show. */
+async function localeOf(orderId: string): Promise<StorefrontLocale> {
+  return toStorefrontLocale(await getOrderLocale(orderId))
+}
+
+/**
  * A payment attempt failed.
  *
  * Called from the Stripe webhook on `payment_intent.payment_failed`. The order
@@ -68,34 +184,17 @@ export async function notifyPaymentFailed(params: {
   /** Stripe's customer-facing decline message, when it gave one. */
   reason?: string
 }): Promise<boolean> {
+  const copy = COPY[await localeOf(params.orderId)]
   return insert({
     userId: params.userId,
     type: 'payment_failed',
-    title: `Платёж по заказу ${params.orderId} не прошёл`,
-    body:
-      params.reason?.trim() ||
-      'Списание не состоялось. Заказ сохранён — его можно оплатить повторно из личного кабинета.',
+    // Stripe's own decline message when it gave one: already in the
+    // customer's language, and more specific than anything written here.
+    title: copy.paymentFailedTitle(params.orderId),
+    body: params.reason?.trim() || copy.paymentFailedBody,
     actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
     orderId: params.orderId,
   })
-}
-
-/** Human-readable fulfilment states, matching the storefront's own labels. */
-const STATUS_TITLES: Record<string, string> = {
-  processing: 'Заказ {id} принят в обработку',
-  shipped: 'Заказ {id} отправлен',
-  delivered: 'Заказ {id} доставлен',
-  cancelled: 'Заказ {id} отменён',
-  refunded: 'По заказу {id} оформлен возврат',
-}
-
-const STATUS_BODIES: Record<string, string> = {
-  // {span}: the admin's delivery timeframe, filled in at send time.
-  processing: 'Позиция заказана у поставщика и проходит проверку качества. Обычно доставка занимает {span}.',
-  shipped: 'Посылка передана Швейцарской почте. Трек-номер доступен на странице заказа.',
-  delivered: `Посылка вручена. С этого момента у вас есть ${FULFILMENT.returnWindowDays} дней на возврат.`,
-  cancelled: 'Заказ отменён. Если списание было — средства вернутся автоматически.',
-  refunded: `Возврат отправлен в банк. Обычно зачисление занимает ${FULFILMENT.refund.min}–${FULFILMENT.refund.max} рабочих дней.`,
 }
 
 /**
@@ -111,22 +210,24 @@ export async function notifyStatusUpdate(params: {
   status: string
   trackingNumber?: string | null
 }): Promise<boolean> {
-  const template = STATUS_TITLES[params.status]
-  if (!template) return false
+  const locale = await localeOf(params.orderId)
+  const copy = COPY[locale]
+  const title = copy.statusTitles[params.status]
+  if (!title) return false
 
   let body =
     params.status === 'shipped' && params.trackingNumber
-      ? `Трек-номер: ${params.trackingNumber}. ${STATUS_BODIES.shipped}`
-      : STATUS_BODIES[params.status]
+      ? `${copy.trackingPrefix(params.trackingNumber)}${copy.statusBodies.shipped}`
+      : copy.statusBodies[params.status]
   if (body.includes('{span}')) {
     const { deliveryTimeframe } = await getShippingSettings()
-    body = body.replace('{span}', describeBusinessDays(deliveryTimeframe, 'ru'))
+    body = body.replace('{span}', describeBusinessDays(deliveryTimeframe, locale))
   }
 
   return insert({
     userId: params.userId,
     type: 'status_update',
-    title: template.replace('{id}', params.orderId),
+    title: title(params.orderId),
     body,
     actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
     orderId: params.orderId,

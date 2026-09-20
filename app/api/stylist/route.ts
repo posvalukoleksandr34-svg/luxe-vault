@@ -8,6 +8,7 @@ import {
   STYLIST_LANGUAGES,
   type StylistLocale,
 } from '@/lib/server/stylist/rationale'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { COLOR_FAMILIES, OCCASIONS, STYLES } from '@/lib/stylist/types'
 import type { ColorFamily, Occasion, Refinement, StyleKey, StylistBrief } from '@/lib/stylist/types'
@@ -124,10 +125,11 @@ export async function POST(request: NextRequest) {
   const seed = Number.isFinite(seedRaw) ? Math.max(0, Math.min(50, Math.trunc(seedRaw))) : 0
 
   // The language the customer is reading the site in. Whitelisted: it ends
-  // up inside a model prompt. Russian is the site's default locale. It is
-  // also the language of the fallback copy when no model answers, so the
-  // text under a look is never English on a page that is not.
-  const locale: StylistLocale = isStylistLocale(payload.locale) ? payload.locale : 'ru'
+  // up inside a model prompt. It is also the language of the fallback copy
+  // when no model answers, so the text under a look is never in a language
+  // the rest of the page is not — which is why the default is the
+  // storefront's own, never Russian.
+  const locale: StylistLocale = isStylistLocale(payload.locale) ? payload.locale : DEFAULT_LOCALE
   const directive = languageDirective(locale, Boolean(customerWords(brief.notes)))
 
   try {

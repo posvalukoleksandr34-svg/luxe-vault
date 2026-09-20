@@ -25,9 +25,9 @@ export type TaxonomyNode = {
 
 /**
  * The catalogue's localised text is per-locale; metadata and JSON-LD are a
- * single string. Russian is the site default and the authoritative content, so
- * it is the source for both — matching <html lang="ru"> and the identical
- * `pick()` on the product page.
+ * single string. That single string is the storefront's default language —
+ * matching <html lang> and the identical `pick()` on the product page — and
+ * never the catalogue's Russian source.
  */
 /** Kept under its old name for the category routes; see lib/localized-text.ts. */
 export const pick = (text: LocalizedText | undefined): string => primaryText(text)

@@ -2,6 +2,7 @@
 
 import { ImagePlus, Languages, Loader2, Lock, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { AVAILABILITY_STATUSES, withDerivedAvailability } from '@/lib/availability'
 import { STYLIST_FIT_LABELS, STYLIST_OCCASION_LABELS, STYLIST_STYLE_LABELS } from '@/lib/i18n'
 import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags } from '@/lib/stylist/types'
@@ -97,8 +98,7 @@ export function ProductForm({
   product: Product | null
   onClose: () => void
 }) {
-  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels, localize, t } =
-    useStore()
+  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels } = useStore()
   const [saving, setSaving] = useState(false)
   const editing = Boolean(product)
   const fileInputRef = useRef<HTMLInputElement>(null)

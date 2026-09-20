@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { DEFAULT_LOCALE, isStorefrontLocale } from '@/lib/i18n'
 import type { Locale } from '@/lib/types'
 
 /**
@@ -14,11 +15,19 @@ export type EmailLang = Locale
 
 export const EMAIL_LANGS: EmailLang[] = ['ru', 'en', 'it', 'fr', 'de']
 
-/** A usable language from anything (a stored locale, user metadata, a request
- *  field). English when there is nothing to go on. */
+/**
+ * A usable language from anything (a stored locale, user metadata, a request
+ * field). The storefront's default when there is nothing to go on.
+ *
+ * Russian never comes back, even when it is what was stored: these are emails
+ * TO CUSTOMERS, and the storefront they arrive from is not published in
+ * Russian. An account created or an order placed while it still was gets the
+ * default instead. The `ru` column of the dictionary below is kept for the
+ * admin's email preview and for the archive of what was sent.
+ */
 export function emailLang(raw: unknown): EmailLang {
   const v = String(raw ?? '').toLowerCase().slice(0, 2)
-  return (EMAIL_LANGS as string[]).indexOf(v) !== -1 ? (v as EmailLang) : 'en'
+  return isStorefrontLocale(v) ? v : DEFAULT_LOCALE
 }
 
 type Status = { subject: (id: string) => string; heading: string; body: string }
