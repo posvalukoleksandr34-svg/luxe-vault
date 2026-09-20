@@ -17,6 +17,26 @@ export type LetterSize = (typeof LETTER_SIZES)[number]
 export type FitPreference = 'slim' | 'regular' | 'oversized'
 export type Confidence = 'high' | 'medium' | 'low'
 
+/** Which measurements matter, and which run the product is sold in. */
+export type FitCategory = 'tops' | 'bottoms' | 'shoes'
+
+/**
+ * Used to weigh the optional measurements, not to shift the size on its own.
+ * Nudging every woman a size in one direction would be guesswork about a
+ * garment whose own cut we already read from `productCut`; what gender does
+ * change is which measurement leads on bottoms — hips or waist.
+ */
+export type Gender = 'female' | 'male' | 'unspecified'
+
+/** Morphology, as the shopper describes it. Shifts the size by a fraction,
+ *  because two people of one height and weight do not wear one size. */
+export type BodyType = 'slim' | 'average' | 'athletic' | 'broad'
+
+export type UnitSystem = 'metric' | 'imperial'
+
+/** Foot width, for the shoe run. */
+export type FootWidth = 'narrow' | 'regular' | 'wide'
+
 export type FitInput = {
   heightCm?: number
   weightKg?: number
@@ -26,6 +46,46 @@ export type FitInput = {
   /** How THIS product is cut — the admin's fit tag, or read from its name
    *  (lib/stylist/tagging.ts). Regular when unknown. */
   productCut?: FitPreference
+
+  // --- optional, and worth more than height and weight when present -------
+  gender?: Gender
+  bodyType?: BodyType
+  /** Body measurements in CENTIMETRES, always: the imperial toggle converts
+   *  on the way in, so everything below this line is one unit. */
+  chestCm?: number
+  waistCm?: number
+  hipsCm?: number
+  /** Bottoms. */
+  inseamCm?: number
+  /** Shoes. */
+  footLengthCm?: number
+  footWidth?: FootWidth
+}
+
+// ------------------------------------------------------------------ units --
+
+export const CM_PER_INCH = 2.54
+export const KG_PER_LB = 0.45359237
+
+export const toCm = (inches: number): number => inches * CM_PER_INCH
+export const toInches = (cm: number): number => cm / CM_PER_INCH
+export const toKg = (lb: number): number => lb * KG_PER_LB
+export const toLb = (kg: number): number => kg / KG_PER_LB
+
+/** Rounds for display: lengths to the nearest half unit, weights to whole. */
+export const round1 = (n: number): number => Math.round(n * 2) / 2
+
+/**
+ * Which fields to ask for, from the product's own place in the catalogue.
+ * Anything else — a cap, a bag — gets no advisor at all.
+ */
+export function fitCategoryOf(group: string | undefined, category: string | undefined): FitCategory | null {
+  const g = (group ?? '').toLowerCase()
+  const c = (category ?? '').toLowerCase()
+  if (g === 'shoes' || /sneaker|boot|loafer|sandal|shoe/.test(c)) return 'shoes'
+  if (/pant|trouser|jean|short|skirt|legging|chino/.test(c)) return 'bottoms'
+  if (g === 'clothing' || /hoodie|shirt|jacket|coat|sweater|dress|top/.test(c)) return 'tops'
+  return null
 }
 
 export type FitRecommendation = {
@@ -140,6 +200,11 @@ export function recommendSize(input: FitInput): FitRecommendation {
     if (input.heightCm >= 180) body += Math.min(1, (input.heightCm - 180) / 16)
     else if (input.heightCm <= 166) body -= Math.min(1, (166 - input.heightCm) / 16)
   }
+  // Morphology: the same height and weight sit on different frames. Held to
+  // well under a size, because it is a self-description, not a measurement.
+  const MORPHOLOGY: Record<BodyType, number> = { slim: -0.3, average: 0, athletic: 0.3, broad: 0.6 }
+  if (body !== null && input.bodyType) body += MORPHOLOGY[input.bodyType]
+
   const usual = input.usualSize ? indexOf(input.usualSize) : null
 
   const basis: FitRecommendation['basis'] = body !== null && usual !== null ? 'both' : body !== null ? 'body' : 'usual'
@@ -214,4 +279,145 @@ export function fitToProduct(
 
   if (!buyable.length) return { kind: 'none', ideal }
   return { kind: exact ? 'sold_out' : 'not_carried', size: buyable[0], ideal }
+}
+
+// ------------------------------------------- measurements vs. the garment --
+
+/**
+ * Wearing ease: how much room a piece needs BEYOND the body to hang the way
+ * the shopper wants it to. A slim tee sits close; an oversized hoodie carries
+ * a hand's width of air. Centimetres of chest circumference.
+ */
+const EASE_CM: Record<FitPreference, number> = { slim: 5, regular: 10, oversized: 18 }
+
+/**
+ * The size whose chest measurement best matches a measured chest.
+ *
+ * This is the one signal that beats height and weight, because it compares
+ * like with like: the garment's own number against the body's. Returns null
+ * when the product publishes no chart, which is most of them.
+ */
+export function sizeFromChest(
+  chestCm: number,
+  chart: { size: string; chest: number }[],
+  preference: FitPreference,
+): { size: string; ease: number } | null {
+  const usable = chart.filter((row) => row.chest > 0)
+  if (!usable.length) return null
+  const target = chestCm + EASE_CM[preference]
+  // The smallest size that still clears the target, else the largest made.
+  const sorted = [...usable].sort((a, b) => a.chest - b.chest)
+  const found = sorted.find((row) => row.chest >= target) ?? sorted[sorted.length - 1]
+  return { size: found.size, ease: found.chest - chestCm }
+}
+
+/** How one area of the garment sits on this body. */
+export type AreaVerdict = {
+  /** 'chest' | 'waist' | 'hips' | 'length' | 'inseam' | 'foot' */
+  area: string
+  /** -2 tight … 0 perfect … +2 loose. */
+  level: -2 | -1 | 0 | 1 | 2
+  /** Centimetres of room (negative: short of the body). */
+  slackCm?: number
+}
+
+function levelFromEase(slack: number, wanted: number): AreaVerdict['level'] {
+  const delta = slack - wanted
+  if (delta < -4) return -2
+  if (delta < -1.5) return -1
+  if (delta > 8) return 2
+  if (delta > 3) return 1
+  return 0
+}
+
+/**
+ * The detailed reading behind the recommended size: one verdict per area the
+ * shopper actually measured, compared against that size's own numbers.
+ *
+ * Areas nobody measured produce nothing. A fit finder that announces
+ * "perfect in the shoulders" without having been told a shoulder measurement
+ * is inventing the part the shopper is most likely to check.
+ */
+export function fitBreakdown(
+  input: FitInput,
+  row: { size: string; chest?: number; length?: number } | null,
+  preference: FitPreference,
+): AreaVerdict[] {
+  const out: AreaVerdict[] = []
+  if (!row) return out
+
+  if (given(input.chestCm) && (row.chest ?? 0) > 0) {
+    const slack = (row.chest as number) - input.chestCm
+    out.push({ area: 'chest', level: levelFromEase(slack, EASE_CM[preference]), slackCm: Math.round(slack) })
+  }
+  // NO LENGTH VERDICT. Garment length was briefly derived from height (~39%
+  // of it), which reads plausibly and is wrong: a cropped jacket and a long
+  // coat on one body are both correct, and the proxy called a normal 65 cm
+  // puffer on a 182 cm frame "noticeably tight". An area is only judged from
+  // a measurement the shopper actually gave.
+  return out
+}
+
+// ----------------------------------------------------------------- shoes --
+
+/**
+ * EU shoe size from a measured foot length.
+ *
+ * The Paris point: one size is ⅔ cm of LAST length, and a last runs about
+ * 1.5 cm longer than the foot it is built for. So EU ≈ (foot + 1.5) × 1.5.
+ * Brands vary by up to a full size, which is why the result carries the same
+ * "estimate" framing as everything else here.
+ */
+export function euSizeFromFootLength(footLengthCm: number): number {
+  return (footLengthCm + 1.5) * 1.5
+}
+
+export type ShoeFit = {
+  /** The size from the product's own run, as the catalogue writes it. */
+  size: string
+  /** What the foot asked for, before rounding onto the run. */
+  euExact: number
+  /** Whether a wide or narrow foot should size differently. */
+  widthNote: 'none' | 'wide' | 'narrow'
+}
+
+/** Picks the nearest size the product actually sells, rounding UP on a tie —
+ *  a shoe half a size large is wearable, half a size small is a return. */
+export function fitShoeToProduct(
+  footLengthCm: number,
+  sizes: string[],
+  isAvailable: (size: string) => boolean,
+  width: FootWidth = 'regular',
+): ShoeFit | null {
+  const euExact = euSizeFromFootLength(footLengthCm)
+  // A wide foot takes the volume out of the length: half a size up.
+  const target = euExact + (width === 'wide' ? 0.5 : width === 'narrow' ? -0.25 : 0)
+
+  const numeric = sizes
+    .map((s) => ({ size: s, value: Number.parseFloat(s.replace(',', '.')) }))
+    .filter((s) => Number.isFinite(s.value))
+  if (!numeric.length) return null
+
+  const buyable = numeric.filter((s) => isAvailable(s.size))
+  const pool = buyable.length ? buyable : numeric
+  const best = pool.sort((a, b) => {
+    const da = Math.abs(a.value - target)
+    const db = Math.abs(b.value - target)
+    return da - db || b.value - a.value
+  })[0]
+
+  return {
+    size: best.size,
+    euExact,
+    widthNote: width === 'regular' ? 'none' : width,
+  }
+}
+
+/** True when the run looks like shoe sizes (39, 40, 41…). */
+export function isNumericSizeRun(sizes: string[]): boolean {
+  if (!sizes.length) return false
+  return sizes.every((s) => {
+    const n = Number.parseFloat(s.replace(',', '.'))
+    return Number.isFinite(n) && n >= 15 && n <= 60
+  })
 }

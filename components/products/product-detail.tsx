@@ -617,6 +617,13 @@ export function ProductDetail({ product }: { product: Product }) {
                 onApply={setSize}
                 productCut={resolveTags(p).fit}
                 sizeChart={p.sizeChart}
+                productId={p.id}
+                // Decides which measurements the finder asks for: a chest for
+                // a jacket, a foot length for sneakers.
+                group={p.group}
+                category={p.category}
+                // The printed chart lives on this page; the finder links to it.
+                onOpenSizeChart={sizeChart.length > 0 ? () => setShowGuide(true) : undefined}
               />
               {/* Hidden entirely when the product has no measurements — an
                   empty guide is worse than no guide. */}
