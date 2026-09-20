@@ -8,6 +8,7 @@ import {
 } from '@/lib/server/emails/password-recovery'
 import { isMailConfigured, sendEmail, SUPPORT_FROM_ADDRESS } from '@/lib/server/resend'
 import { readJsonObject } from '@/lib/server/http'
+import { verifyTurnstileToken } from '@/lib/server/turnstile'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('auth.recovery', request)
   if (limited) return limited
 
-  const body = await readJsonObject<{ email?: string }>(request)
+  const body = await readJsonObject<{ email?: string; captchaToken?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -71,6 +72,20 @@ export async function POST(request: NextRequest) {
   const email = (body.email ?? '').trim().toLowerCase()
   if (!email || !email.includes('@')) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
+  }
+
+  // Cloudflare Turnstile. This endpoint sends mail to whatever address is
+  // handed to it, which is exactly what a script wants; the check is skipped
+  // only when no secret is configured (lib/server/turnstile.ts).
+  const captcha = await verifyTurnstileToken(
+    body.captchaToken,
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+  )
+  if (!captcha.ok) {
+    return NextResponse.json(
+      { error: 'CAPTCHA_FAILED' },
+      { status: captcha.reason === 'unavailable' ? 503 : 400 },
+    )
   }
 
   // Throttle on IP + email so one address cannot be spammed and one client

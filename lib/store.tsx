@@ -221,11 +221,12 @@ type StoreContextValue = {
   cartSubtotal: number
   applyPromo: (code: string) => Promise<Promo | null>
 
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string, captchaToken?: string) => Promise<boolean>
   register: (
     name: string,
     email: string,
     password: string,
+    captchaToken?: string,
   ) => Promise<{
     ok: boolean
     needsConfirmation: boolean
@@ -239,7 +240,7 @@ type StoreContextValue = {
     token: string,
   ) => Promise<{ ok: boolean; message?: string }>
   signInWithGoogle: () => Promise<{ ok: boolean; message?: string }>
-  requestRecoveryCode: (email: string) => Promise<{ ok: boolean; message?: string }>
+  requestRecoveryCode: (email: string, captchaToken?: string) => Promise<{ ok: boolean; message?: string }>
   verifyRecoveryCode: (
     email: string,
     token: string,
@@ -1121,13 +1122,18 @@ function maybeSendWelcome() {
    * and the middleware keeps it refreshed on both sides.
    */
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, captchaToken?: string) => {
       let error
       try {
         error = (
           await createClient().auth.signInWithPassword({
             email: email.trim().toLowerCase(),
             password,
+            // Verified by SUPABASE, not by us: this request never touches our
+            // own server. Turn it on in the dashboard (Authentication →
+            // Attack Protection → CAPTCHA, provider Turnstile) and paste the
+            // same secret there, or the token is accepted and ignored.
+            ...(captchaToken ? { options: { captchaToken } } : {}),
           })
         ).error
       } catch (e) {
@@ -1150,7 +1156,7 @@ function maybeSendWelcome() {
   )
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string, password: string, captchaToken?: string) => {
       const normalized = email.trim().toLowerCase()
       let data, error
       try {
@@ -1171,6 +1177,8 @@ function maybeSendWelcome() {
             // at their own machine. /auth/callback exchanges the code for a
             // session and then forwards to the homepage.
             emailRedirectTo: authCallbackUrl('/'),
+            // See the note in login(): Supabase does the verifying.
+            ...(captchaToken ? { captchaToken } : {}),
           },
         }))
       } catch (e) {
@@ -1265,7 +1273,7 @@ function maybeSendWelcome() {
    * asks for a reset they are signed out, so there is no session to attach
    * metadata with — it has to already be on the row.
    */
-  const requestRecoveryCode = useCallback(async (email: string) => {
+  const requestRecoveryCode = useCallback(async (email: string, captchaToken?: string) => {
     try {
       // Server route, not supabase.auth.resetPasswordForEmail().
       //
@@ -1282,7 +1290,8 @@ function maybeSendWelcome() {
       const res = await fetch('/api/auth/recovery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({
+          ...(captchaToken ? { captchaToken } : {}), email: email.trim().toLowerCase() }),
       })
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}))

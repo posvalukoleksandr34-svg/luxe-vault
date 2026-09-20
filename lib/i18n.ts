@@ -906,6 +906,10 @@ export const UI = {
   // ---------------------------------------------------------------------
   // Google OAuth + email verification during registration
   'auth.google': { ru: 'Войти через Google', en: 'Continue with Google', it: 'Continua con Google', fr: 'Continuer avec Google', de: 'Weiter mit Google' },
+  // Cloudflare Turnstile (components/turnstile-field.tsx).
+  'turnstile.failed': { ru: 'Проверка не пройдена. Попробуйте ещё раз.', en: 'Verification failed. Please try again.', it: 'Verifica non riuscita. Riprova.', fr: 'Échec de la vérification. Réessayez.', de: 'Überprüfung fehlgeschlagen. Bitte erneut versuchen.' },
+  'turnstile.wait': { ru: 'Идёт проверка безопасности…', en: 'Security check in progress…', it: 'Controllo di sicurezza in corso…', fr: 'Vérification de sécurité en cours…', de: 'Sicherheitsprüfung läuft…' },
+  'turnstile.required': { ru: 'Дождитесь завершения проверки безопасности.', en: 'Wait for the security check to finish.', it: 'Attendi il completamento del controllo di sicurezza.', fr: 'Attendez la fin de la vérification de sécurité.', de: 'Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist.' },
   'auth.or': { ru: 'или', en: 'or', it: 'oppure', fr: 'ou', de: 'oder' },
   'auth.googleFailed': { ru: 'Не удалось войти через Google', en: 'Google sign-in failed', it: 'Accesso con Google non riuscito', fr: 'La connexion Google a échoué', de: 'Google-Anmeldung fehlgeschlagen' },
 

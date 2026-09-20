@@ -7,6 +7,8 @@ import { PasswordInput } from '@/components/password-input'
 import { MIN_PASSWORD_LENGTH, RESEND_COOLDOWN_SECONDS } from '@/lib/auth-config'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { TurnstileField, type TurnstileFieldHandle } from '@/components/turnstile-field'
+import { isTurnstileEnabled } from '@/lib/turnstile'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -109,6 +111,11 @@ export function PasswordResetModal({
     [t],
   )
 
+  /** Single-use Turnstile token for the next send or resend. */
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captcha = useRef<TurnstileFieldHandle>(null)
+  const captchaPending = isTurnstileEnabled() && !captchaToken
+
   async function handleRequestCode(e: React.FormEvent) {
     e.preventDefault()
     // Validated before taking the lock so a bad address does not spend it.
@@ -118,7 +125,8 @@ export function PasswordResetModal({
     }
     await runExclusive(async () => {
       setError(null)
-      const { ok, message } = await requestRecoveryCode(email)
+      const { ok, message } = await requestRecoveryCode(email, captchaToken ?? undefined)
+      captcha.current?.reset()
       if (!ok) {
         setError(localizeError(message))
         return
@@ -134,7 +142,8 @@ export function PasswordResetModal({
     if (cooldown > 0) return
     await runExclusive(async () => {
       setError(null)
-      const { ok, message } = await requestRecoveryCode(email)
+      const { ok, message } = await requestRecoveryCode(email, captchaToken ?? undefined)
+      captcha.current?.reset()
       if (ok) {
         setCooldown(RESEND_COOLDOWN_SECONDS)
         pushToast({ title: t('otp.step2.resent'), variant: 'success' })
@@ -270,7 +279,9 @@ export function PasswordResetModal({
 
             {error && <p className="text-[12px] text-destructive">{error}</p>}
 
-            <SubmitButton busy={busy} disabled={!email.trim()}>
+            <TurnstileField ref={captcha} onToken={setCaptchaToken} action="password-reset" />
+
+            <SubmitButton busy={busy} disabled={!email.trim() || captchaPending}>
               {t('otp.step1.submit')}
             </SubmitButton>
           </form>
@@ -292,6 +303,10 @@ export function PasswordResetModal({
             <SubmitButton busy={busy} disabled={!isOtpComplete(code)}>
               {t('otp.step2.submit')}
             </SubmitButton>
+
+            {/* Kept mounted on this step for the resend below, which calls the
+                same endpoint and therefore needs its own fresh token. */}
+            <TurnstileField ref={captcha} onToken={setCaptchaToken} action="password-reset" />
 
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               {cooldown > 0 ? (

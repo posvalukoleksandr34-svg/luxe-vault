@@ -44,6 +44,8 @@ const CSP_DIRECTIVES = {
     // (lib/analytics-vendors.ts).
     'https://www.googletagmanager.com',
     'https://connect.facebook.net',
+    // Cloudflare Turnstile's loader (components/turnstile-field.tsx).
+    'https://challenges.cloudflare.com',
   ],
   'style-src': ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
   'img-src': [
@@ -73,9 +75,17 @@ const CSP_DIRECTIVES = {
     'https://www.googletagmanager.com',
     'https://www.facebook.com',
     'https://connect.facebook.net',
+    // The widget posts its challenge results back to Cloudflare.
+    'https://challenges.cloudflare.com',
     ...(isDev ? ['ws:'] : []),
   ],
-  'frame-src': ['https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com'],
+  // Turnstile renders its challenge in an iframe of its own.
+  'frame-src': [
+    'https://js.stripe.com',
+    'https://*.js.stripe.com',
+    'https://hooks.stripe.com',
+    'https://challenges.cloudflare.com',
+  ],
   'object-src': ["'none'"],
   // Stops injected <base href> re-pointing every relative URL on the page.
   'base-uri': ["'self'"],

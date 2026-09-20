@@ -9,7 +9,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
 import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
@@ -19,6 +19,8 @@ import { SavedCards } from '@/components/saved-cards'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
 import { PasswordResetModal } from '@/components/password-reset-modal'
+import { TurnstileField, type TurnstileFieldHandle } from '@/components/turnstile-field'
+import { isTurnstileEnabled } from '@/lib/turnstile'
 import { loadMyOrders } from '@/lib/order-registry'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -64,6 +66,14 @@ export function UserPanel() {
   }, [panel, authMode])
   const [authBusy, setAuthBusy] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
+  /**
+   * The Turnstile token for the next submit. Null until the challenge passes,
+   * and null again after every attempt — a token is single use, so the widget
+   * is reset rather than replayed.
+   */
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captcha = useRef<TurnstileFieldHandle>(null)
+  const captchaPending = isTurnstileEnabled() && !captchaToken
   // Set after a successful sign-up that still needs email confirmation. Held
   // in state (rather than shown as a toast) so the explanation stays on screen
   // for as long as the customer needs it.
@@ -194,11 +204,17 @@ export function UserPanel() {
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
     if (authBusy) return
+    // Held until Cloudflare has issued a token. The button is disabled too;
+    // this covers a submit from the keyboard.
+    if (captchaPending) {
+      setAuthError(t('turnstile.required'))
+      return
+    }
     setAuthBusy(true)
     try {
       setAuthError(null)
       if (mode === 'login') {
-        const ok = await login(form.email, form.password)
+        const ok = await login(form.email, form.password, captchaToken ?? undefined)
         // Only wipe the fields on success — clearing them after a failed
         // attempt forces the customer to retype an email that was probably
         // correct.
@@ -208,6 +224,7 @@ export function UserPanel() {
           form.name,
           form.email,
           form.password,
+          captchaToken ?? undefined,
         )
         if (ok) {
           if (needsConfirmation) {
@@ -229,6 +246,8 @@ export function UserPanel() {
       }
     } finally {
       setAuthBusy(false)
+      // The token is spent, whatever the outcome — a retry needs a fresh one.
+      captcha.current?.reset()
     }
   }
 
@@ -432,14 +451,28 @@ export function UserPanel() {
                 </div>
               )}
 
+              {/* Cloudflare Turnstile, directly above the action it guards.
+                  Renders nothing when no site key is configured. */}
+              <TurnstileField
+                ref={captcha}
+                onToken={setCaptchaToken}
+                action={mode === 'login' ? 'login' : 'register'}
+              />
+
               <button
                 type="submit"
-                disabled={authBusy}
+                disabled={authBusy || captchaPending}
+                aria-describedby={captchaPending ? 'auth-captcha-wait' : undefined}
                 className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
               >
                 {authBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {mode === 'login' ? t('user.login') : t('user.register')}
               </button>
+              {captchaPending && (
+                <p id="auth-captcha-wait" className="text-center text-[11px] font-light text-muted-foreground">
+                  {t('turnstile.wait')}
+                </p>
+              )}
 
               {mode === 'login' && (
                 <button
