@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CategoryNav } from '@/components/products/category-nav'
+import { FilterUrlSync } from '@/components/products/filter-url-sync'
 import { ProductGrid } from '@/components/products/product-grid'
 import { useStore } from '@/lib/store'
 
@@ -36,6 +37,12 @@ export function CategoryView({ group, category }: { group: string; category?: st
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
+      {/* See catalog-view: the filter is URL state, read inside a
+          boundary of its own. */}
+      <Suspense fallback={null}>
+        <FilterUrlSync />
+      </Suspense>
+
       <Breadcrumbs trail={trail} />
 
       <h1 className="mb-10 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">

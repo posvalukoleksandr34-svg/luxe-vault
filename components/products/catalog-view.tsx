@@ -1,6 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { FilterUrlSync } from '@/components/products/filter-url-sync'
 import { CategoryNav } from '@/components/products/category-nav'
 import { ProductGrid } from '@/components/products/product-grid'
 import { useStore } from '@/lib/store'
@@ -24,6 +26,13 @@ export function CatalogView() {
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
+      {/* The filter lives in the address bar. Suspended because it reads
+          searchParams, which would otherwise opt this whole route out of
+          static rendering — see the note in the component. */}
+      <Suspense fallback={null}>
+        <FilterUrlSync />
+      </Suspense>
+
       <Breadcrumbs trail={[{ name: t('tab.catalog'), url: '/catalog' }]} />
 
       <h1 className="mb-10 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
