@@ -222,7 +222,43 @@ export type PaymentStatus =
   | 'partially_refunded'
 
 /** Mirrors the public.return_status enum. */
-export type ReturnStatus = 'none' | 'requested' | 'approved' | 'refunded'
+/** The ORDER's return state — one order, one state. The request itself, with
+ *  its reason, photographs and decision, is a ReturnRequest. */
+export type ReturnStatus = 'none' | 'requested' | 'approved' | 'refunded' | 'rejected'
+
+/** Why the customer is sending it back. */
+export const RETURN_REASONS = [
+  'wrong_size',
+  'not_as_described',
+  'defective',
+  'changed_mind',
+  'other',
+] as const
+export type ReturnReason = (typeof RETURN_REASONS)[number]
+
+/** Where a request has got to. `approved` means a manager said yes but the
+ *  money has not moved; `completed` means the refund went through. Keeping
+ *  them apart is what makes a failed Stripe call recoverable — the request
+ *  stays approved and can be retried, rather than claiming to be done. */
+export const RETURN_REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'completed'] as const
+export type ReturnRequestStatus = (typeof RETURN_REQUEST_STATUSES)[number]
+
+export type ReturnRequest = {
+  id: string
+  /** The order's LV-XXXXXX number, not its uuid: this is what the rest of the
+   *  application speaks in, and what a manager reads. */
+  orderNumber: string
+  userId?: string
+  reason: ReturnReason
+  comment: string
+  /** Object paths in the private 'returns' bucket. Signed into URLs for
+   *  display; never stored as URLs, which would expire. */
+  images: string[]
+  status: ReturnRequestStatus
+  adminNotes?: string
+  createdAt: number
+  decidedAt?: number
+}
 
 export type Order = {
   id: string
