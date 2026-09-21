@@ -451,23 +451,77 @@ export async function findOrderByPaymentId(paymentId: string): Promise<Order | n
 }
 
 /**
- * Advances a crypto order's payment lifecycle. Only ever called from the
- * signature-verified webhook handler — never trust a client-supplied payment
- * status.
+ * Money that has arrived. None of these may be walked back by an event that
+ * only says the payment is on its way.
+ */
+const SETTLED_PAYMENT_STATUSES: PaymentStatus[] = ['paid', 'refunded', 'partially_refunded']
+
+/**
+ * Statuses that describe a payment still in flight. Writing one over a settled
+ * order is always an out-of-order delivery, never news.
+ */
+const IN_FLIGHT_PAYMENT_STATUSES: PaymentStatus[] = ['pending_payment', 'confirming']
+
+/**
+ * Advances an order's payment lifecycle. Only ever called from a
+ * signature-verified webhook handler (Stripe and NOWPayments) — never trust a
+ * client-supplied payment status.
+ *
+ * MONOTONIC WHERE IT MATTERS. Neither provider guarantees the ORDER in which
+ * events arrive, and asynchronous methods make that concrete: Klarna and
+ * Amazon Pay authorise, emit `payment_intent.processing`, then settle and emit
+ * `payment_intent.succeeded`. A retry or a slow delivery can land the
+ * `processing` event after the `succeeded` one, and the unguarded update wrote
+ * whatever arrived last — turning a paid order back into `confirming`, where
+ * it would sit unfulfilled while the customer's money was already taken.
+ *
+ * So an in-flight status is refused against an order whose money has settled.
+ * The check rides IN the UPDATE's own WHERE clause rather than a read followed
+ * by a write, because two deliveries can be in flight at once and a
+ * read-then-write would let the loser overwrite the winner.
+ *
+ * Deliberately NOT guarded: `failed` and `expired`. For crypto they are a real
+ * late transition — NOWPayments maps a reversed payment to `failed` — so
+ * refusing them would strand a reversed order at `paid`. The Stripe webhook,
+ * where a late `failed` IS an ordering artefact, skips the call itself.
  */
 export async function setPaymentStatus(
   paymentId: string,
   paymentStatus: PaymentStatus,
 ): Promise<Order | null> {
-  const { data, error } = await createAdminClient()
+  const guarded = IN_FLIGHT_PAYMENT_STATUSES.indexOf(paymentStatus) !== -1
+
+  let update = createAdminClient()
     .from('orders')
     .update({ payment_status: paymentStatus })
     .eq('payment_id', paymentId)
-    .select(await resolveOrderSelect())
-    .maybeSingle()
+
+  if (guarded) {
+    // `not.in` alone would also reject a row whose payment_status is NULL —
+    // SQL's NOT IN is unknown against NULL, and an order that has not reached
+    // a status yet is exactly the one this write is for.
+    update = update.or(
+      `payment_status.is.null,payment_status.not.in.(${SETTLED_PAYMENT_STATUSES.join(',')})`,
+    )
+  }
+
+  const { data, error } = await update.select(await resolveOrderSelect()).maybeSingle()
 
   if (error) throw new Error(`Failed to set payment status: ${error.message}`)
-  if (!data) return null
+  if (!data) {
+    // Nothing was written. Either no order carries this payment id, or the
+    // guard refused a late in-flight event — worth saying which, because the
+    // second is a real delivery that the caller must NOT treat as progress.
+    if (guarded) {
+      const current = await findOrderByPaymentId(paymentId)
+      if (current) {
+        console.warn(
+          `[orders] ignored late '${paymentStatus}' for ${current.id}: already ${current.paymentStatus}`,
+        )
+      }
+    }
+    return null
+  }
 
   const order = rowToOrder(asRow(data))
   // A referred friend's first order: paid credits the referrer; expired

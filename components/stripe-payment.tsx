@@ -278,8 +278,19 @@ function CheckoutForm({
 
     void stripe.retrievePaymentIntent(secret).then(({ paymentIntent }) => {
       if (paymentIntent?.status === 'succeeded') onPaid()
+      // Klarna and Amazon Pay authorise on their own site and settle
+      // afterwards, so a customer coming back mid-settlement finds the intent
+      // `processing`, not `succeeded`. That is a completed checkout from their
+      // side — the same path as a card, which lands on a page that reads the
+      // order's real status and says "processing" until the webhook writes
+      // `paid`. Left unhandled, this fell through and redrew the payment form
+      // as though they had never paid.
+      else if (paymentIntent?.status === 'processing') onPaid()
       else if (paymentIntent?.status === 'requires_payment_method') setError({ kind: 'declined' })
       else if (paymentIntent?.status === 'canceled') setError({ kind: 'incomplete' })
+      // Came back without finishing the redirect (closed Klarna's tab, backed
+      // out of Amazon's sign-in). Nothing was taken; the order is still payable.
+      else if (paymentIntent?.status === 'requires_action') setError({ kind: 'incomplete' })
     })
   }, [stripe, onPaid, t])
 

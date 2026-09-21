@@ -199,8 +199,16 @@ async function chargeIn(
     ) {
       const intent = await stripe.paymentIntents.update(existing.id, {
         ...priced,
+        // Scoped to the card, never intent-wide — see the note on create.
         // '' clears a "remember this card" chosen on an earlier attempt.
-        setup_future_usage: saveCard ? 'off_session' : '',
+        payment_method_options: {
+          card: { setup_future_usage: saveCard ? 'off_session' : '' },
+        },
+        // Clears an intent-wide value left by an intent minted BEFORE the move
+        // to per-method scoping. Without this, an order that was already
+        // waiting to be paid would keep showing a card-only Element for the
+        // rest of its life.
+        setup_future_usage: '',
       })
       return { ok: true, intent, currency, amount, rate }
     }
@@ -224,7 +232,17 @@ async function chargeIn(
     ...(options.customerId ? { customer: options.customerId } : {}),
     // "Remember this card" — Stripe keeps the PaymentMethod on the Customer
     // once the payment succeeds. Requires a customer, hence the guard.
-    ...(saveCard ? { setup_future_usage: 'off_session' as const } : {}),
+    //
+    // Scoped to the CARD rather than set intent-wide, which is what the
+    // top-level `setup_future_usage` would do. An intent-wide value marks the
+    // whole payment as non-one-time, and Stripe then filters the Element down
+    // to methods that can be saved: Klarna's instalment plans disappear (its
+    // docs say so outright), and the tab strip can lose Klarna and Amazon Pay
+    // entirely. Per-method, ticking "remember this card" changes the card and
+    // nothing else.
+    ...(saveCard
+      ? { payment_method_options: { card: { setup_future_usage: 'off_session' as const } } }
+      : {}),
   })
   return { ok: true, intent, currency, amount, rate }
 }

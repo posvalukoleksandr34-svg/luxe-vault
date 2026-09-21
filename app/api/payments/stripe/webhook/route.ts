@@ -34,11 +34,21 @@ export const runtime = 'nodejs'
  */
 const HANDLED = [
   'payment_intent.succeeded',
+  // Klarna and Amazon Pay authorise on the provider's own site and settle
+  // afterwards, so this is the event that says "the customer has paid, the
+  // money is on its way". It is what keeps an async order out of limbo
+  // between the redirect back and the settlement.
   'payment_intent.processing',
   'payment_intent.payment_failed',
   'payment_intent.canceled',
   'charge.refunded',
 ]
+
+/**
+ * Money states an order cannot be talked out of by a later event. Compared
+ * against the order's CURRENT status, not the event's.
+ */
+const SETTLED: PaymentStatus[] = ['paid', 'refunded', 'partially_refunded']
 
 /**
  * Public by necessity — Stripe calls this directly, with no session of ours to
@@ -122,6 +132,27 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
             : null
 
   if (!intent?.id || !next) return NextResponse.json({ received: true })
+
+  // A failure that arrives AFTER the money did.
+  //
+  // One PaymentIntent can carry several attempts: a card declined by 3-D
+  // Secure, then Klarna, then a card that works. Each failed attempt emits
+  // `payment_intent.payment_failed`, and Stripe does not promise to deliver
+  // those before the `succeeded` that follows — a retried delivery can be
+  // hours late. Writing `failed` then would un-pay a paid order, email the
+  // customer that their payment did not go through, and leave the piece
+  // unfulfilled with their money taken.
+  //
+  // Read-then-skip rather than a guard inside setPaymentStatus: for the crypto
+  // webhook a late `failed` is a REAL reversal (see that function), so the
+  // asymmetry belongs here, on the provider that has attempts.
+  if (next === 'failed' || next === 'expired') {
+    const current = await findOrderByPaymentId(intent.id)
+    if (current && SETTLED.indexOf(current.paymentStatus ?? 'pending_payment') !== -1) {
+      console.warn(`[stripe] ignored late '${next}' for ${current.id}: already ${current.paymentStatus}`)
+      return NextResponse.json({ received: true, order: current.id, ignored: 'already settled' })
+    }
+  }
 
   // Keyed on the PaymentIntent id, which the intent route stored as the
   // order's payment_id. Writing the same status twice is a no-op.
