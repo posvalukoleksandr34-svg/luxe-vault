@@ -1,6 +1,7 @@
 'use client'
 
 import { LifeBuoy, Mail, Send } from 'lucide-react'
+import { Link } from '@/components/locale-link'
 import {
   Accordion,
   AccordionContent,
@@ -161,12 +162,12 @@ export function Footer() {
                 <FooterSupportLink />
               </li>
               <li>
-                <a
+                <Link
                   href="/contact"
                   className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground"
                 >
                   {t('footer.contactPage')}
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -177,15 +178,15 @@ export function Footer() {
               and app stores check for them, and GDPR requires the privacy
               notice to be reachable from anywhere. */}
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <a href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <Link href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.terms')}
-            </a>
-            <a href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            </Link>
+            <Link href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.privacy')}
-            </a>
-            <a href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            </Link>
+            <Link href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
               {t('footer.refunds')}
-            </a>
+            </Link>
             {/* Consent must be withdrawable as easily as it was given, which
                 means a permanent entry point rather than a one-off banner. */}
             <button

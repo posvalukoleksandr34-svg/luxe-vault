@@ -1,7 +1,7 @@
 'use client'
 
 import { Heart, Home, LayoutGrid, ShoppingBag, User, type LucideIcon } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { usePathname } from 'next/navigation'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'

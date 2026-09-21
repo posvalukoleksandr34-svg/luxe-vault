@@ -69,11 +69,22 @@ export const UNLOCALIZED_SEGMENTS = [
  * Add a path the moment its route file lands — the two belong together, and
  * this list is the checklist for the migration.
  */
-export const LOCALIZED_PATHS = ['/catalog']
+export const LOCALIZED_PATHS = [
+  '/',
+  '/catalog',
+  '/category',
+  '/product',
+  '/contact',
+  '/support',
+  '/stylist',
+  '/wishlist',
+  '/legal',
+]
 
 /** True when this bare path is served in every language, not just the default. */
 export function hasLocalizedRoute(path: string): boolean {
-  return LOCALIZED_PATHS.some((p) => path === p || path.startsWith(`${p}/`))
+  // '/' would match everything as a prefix, so it is only ever an exact match.
+  return LOCALIZED_PATHS.some((p) => (p === '/' ? path === '/' : path === p || path.startsWith(`${p}/`)))
 }
 
 /** The path prefix for a language: nothing for the default, `/xx` otherwise. */

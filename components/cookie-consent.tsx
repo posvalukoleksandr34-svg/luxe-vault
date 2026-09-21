@@ -1,5 +1,6 @@
 'use client'
 
+import { Link } from '@/components/locale-link'
 import { Cookie, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -87,9 +88,9 @@ export function CookieConsent() {
               <p className="text-[13px] font-medium text-foreground">{t('cookies.title')}</p>
               <p className="mt-1.5 max-w-3xl text-[12px] font-light leading-relaxed text-muted-foreground">
                 {t('cookies.body')}{' '}
-                <a href="/legal/privacy" className="tap-safe text-gold underline-offset-2 hover:underline">
+                <Link href="/legal/privacy" className="tap-safe text-gold underline-offset-2 hover:underline">
                   {t('cookies.privacyLink')}
-                </a>
+                </Link>
               </p>
 
               {customising && (

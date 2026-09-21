@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { Link } from '@/components/locale-link'
+import { usePathname } from 'next/navigation'
+import { useLocaleRouter } from '@/components/locale-link'
 import { LifeBuoy, Menu, Search, ShoppingBag, X } from 'lucide-react'
 import { AccountMenu } from '@/components/account/account-menu'
 import { SearchBox } from '@/components/search-box'
@@ -32,7 +33,7 @@ export function Header() {
     supportUnread,
   } = useStore()
 
-  const router = useRouter()
+  const router = useLocaleRouter()
   const pathname = usePathname()
 
   const [mobileOpen, setMobileOpen] = useState(false)

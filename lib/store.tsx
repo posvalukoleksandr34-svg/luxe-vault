@@ -406,6 +406,23 @@ export function StoreProvider({
     if (urlCarriesLocale) setLocaleState(pathLocale)
   }, [urlCarriesLocale, pathLocale])
 
+  /**
+   * <html lang>, kept in step with what is being read.
+   *
+   * The [locale] layout's inline script gets the FIRST paint right — before
+   * hydration, before a screen reader starts. This keeps it right afterwards:
+   * a client-side move from /it/catalog to /de/catalog re-renders the tree
+   * without re-running that script, and leaving the prefix altogether
+   * (/de/catalog to /checkout) has no script to run at all.
+   *
+   * It lives in the provider because the provider is what owns the language.
+   * UiEnvironment, which writes the document's other flags, renders ABOVE this
+   * provider and cannot read it.
+   */
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
+
 /**
  * Asks the server to send the welcome email.
  *

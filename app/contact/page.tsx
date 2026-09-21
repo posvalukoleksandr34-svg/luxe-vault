@@ -1,12 +1,9 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { contactMetadata } from '@/lib/page-seo'
 import { ContactPage } from '@/components/contact/contact-page'
 
-export const metadata: Metadata = {
-  title: 'Help & contact',
-  description:
-    'Contact the Luxe Vault team by email, form or Telegram, and sign up for new arrivals and limited editions.',
-  alternates: { canonical: '/contact' },
-}
+export const metadata: Metadata = contactMetadata(DEFAULT_LOCALE)
 
 export default function Page() {
   return <ContactPage />

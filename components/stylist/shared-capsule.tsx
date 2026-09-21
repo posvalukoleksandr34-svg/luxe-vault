@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LookBlock } from '@/components/stylist/look-view'
 import { useStore } from '@/lib/store'

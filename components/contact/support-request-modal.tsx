@@ -3,7 +3,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { getCountries } from 'libphonenumber-js'
 import { Check, ChevronDown, Loader2, Paperclip, X } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ERROR_TEXT, FIELD, LABEL, PRIMARY_BUTTON } from '@/components/contact/fields'
 import { fillCopy, type ContactCopy, type ContactMethod } from '@/lib/contact-copy'

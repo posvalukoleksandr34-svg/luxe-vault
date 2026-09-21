@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useState } from 'react'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
 import { HurryDot } from '@/components/products/hurry-dot'

@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowRight, ChevronDown, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'

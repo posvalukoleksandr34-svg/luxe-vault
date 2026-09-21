@@ -6,7 +6,9 @@ import { Header } from '@/components/header'
 import { CategoryView } from '@/components/products/category-view'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { serializeJsonLd } from '@/lib/json-ld'
+import { collectionMetadataFor } from '@/lib/page-seo'
 import { SITE_ORIGIN, itemListJsonLd } from '@/lib/seo'
 
 /**
@@ -39,24 +41,7 @@ export async function generateMetadata({
 }: {
   params: { collection: string }
 }): Promise<Metadata> {
-  const node = await findCollection(params.collection)
-  if (!node) return { title: 'Not Found' }
-
-  const name = pick(node.name) || node.slug
-  const subcategories = node.categories.map((c) => pick(c.name)).filter(Boolean).join(', ')
-
-  return {
-    title: name,
-    description: subcategories
-      ? `${name} — ${subcategories}. Shipped from Switzerland.`
-      : `${name} — shipped from Switzerland.`,
-    alternates: { canonical: `/category/${node.slug}` },
-    openGraph: {
-      title: `${name} — LUXE VAULT`,
-      url: `${SITE_URL}/category/${node.slug}`,
-      type: 'website',
-    },
-  }
+  return collectionMetadataFor(params.collection, DEFAULT_LOCALE)
 }
 
 export default async function CollectionPage({ params }: { params: { collection: string } }) {

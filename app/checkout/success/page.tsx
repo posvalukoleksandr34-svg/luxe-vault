@@ -2,7 +2,7 @@
 
 import { ArrowRight, CheckCircle2, Loader2, MapPin, Package, SearchX, Truck } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { Header } from '@/components/header'

@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, Bell, Check, Loader2, Package } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'

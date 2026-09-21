@@ -1,7 +1,7 @@
 'use client'
 
 import { Heart } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useMemo } from 'react'
 import { ProductCard } from '@/components/products/product-card'
 import { useStore } from '@/lib/store'

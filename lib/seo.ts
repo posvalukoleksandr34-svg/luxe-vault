@@ -171,16 +171,27 @@ export function pageMetadata(options: {
   description?: string
   titleKey?: UIKey
   descriptionKey?: UIKey
+  /**
+   * A page that must not be indexed. It still gets a canonical in its own
+   * language — links to it should not lose the prefix — but no hreflang set:
+   * pairing four URLs as translations is a request to index them, and asking
+   * for that on a page marked noindex is a contradiction a crawler resolves
+   * by trusting neither.
+   */
+  noindex?: boolean
 }): Metadata {
   const { path, locale } = options
   const title = options.title ?? (options.titleKey ? translate(UI[options.titleKey], locale) : undefined)
   const description =
     options.description ?? (options.descriptionKey ? translate(UI[options.descriptionKey], locale) : undefined)
 
+  const { canonical, languages } = alternatesFor(path, locale)
+
   return {
     title,
     description,
-    alternates: alternatesFor(path, locale),
+    robots: options.noindex ? { index: false, follow: true } : undefined,
+    alternates: options.noindex ? { canonical } : { canonical, languages },
     openGraph: {
       type: 'website',
       url: `${SITE_ORIGIN}${localizedPath(path, locale)}`,

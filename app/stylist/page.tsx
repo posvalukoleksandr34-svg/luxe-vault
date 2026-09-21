@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { stylistMetadata } from '@/lib/page-seo'
 import { LocalizedBreadcrumbs } from '@/components/localized-breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
@@ -15,15 +17,7 @@ import { SupportWidgetLazy } from '@/components/support-widget-lazy'
  * account and the collections exactly as from anywhere else.
  */
 
-export const metadata: Metadata = {
-  title: 'Stylist',
-  description:
-    'A short consultation and a complete look, assembled from what is actually in stock at Luxe Vault.',
-  alternates: { canonical: '/stylist' },
-  // Deliberately not indexed as a landing page: it is an interactive tool
-  // whose output differs per visitor, so there is no stable content to rank.
-  robots: { index: false, follow: true },
-}
+export const metadata: Metadata = stylistMetadata(DEFAULT_LOCALE)
 
 export default function StylistPage({
   searchParams,

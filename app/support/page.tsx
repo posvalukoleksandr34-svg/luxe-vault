@@ -1,12 +1,9 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { supportMetadata } from '@/lib/page-seo'
 import { SupportPage } from '@/components/support/support-page'
 
-export const metadata: Metadata = {
-  title: 'Support',
-  description:
-    'Help with orders, payment, shipping, returns and sizes — and a direct line to the Luxe Vault team.',
-  alternates: { canonical: '/support' },
-}
+export const metadata: Metadata = supportMetadata(DEFAULT_LOCALE)
 
 /** Order numbers are LV- plus characters; anything else is ignored rather than
  *  carried into the form. Mirrors orderNumber() in lib/server/support-input.ts. */

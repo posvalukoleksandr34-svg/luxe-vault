@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
