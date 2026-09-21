@@ -122,7 +122,16 @@ export function SectionsGrid() {
                       src={cover}
                       alt=""
                       fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      // Must match the grid above, or the browser picks the
+                      // wrong candidate from the srcset. It did at three of
+                      // four breakpoints: one column until md (not two, so
+                      // 50vw between 640 and 768 fetched a half-width file for
+                      // a full-width card), and three columns after it (~33vw,
+                      // not the 25vw declared, which fetched a quarter-width
+                      // file for a third-width card). Under-fetching is the
+                      // expensive kind of wrong: the card renders soft on
+                      // exactly the large screens this artwork is for.
+                      sizes="(max-width: 767px) 100vw, 33vw"
                       priority={i === 0}
                       onError={() => setFailed((prev) => ({ ...prev, [department.slug]: true }))}
                       className="size-full object-cover opacity-80 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-100"
