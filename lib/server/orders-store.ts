@@ -532,6 +532,44 @@ export async function setPaymentStatus(
   return order
 }
 
+/**
+ * Sets an order's payment status by the ORDER's own id, and adopts the
+ * PaymentIntent that reported it.
+ *
+ * The webhook's normal path is setPaymentStatus(), keyed on payment_id, which
+ * the intent route stores before the browser can confirm. This is the repair
+ * path for when that write did not land — a database blip, or an order that
+ * predates it. Stripe still knows which order it is, because the intent route
+ * puts the order id in the PaymentIntent's metadata, so the money is never
+ * actually orphaned; without this the webhook simply could not act on it.
+ *
+ * Writing payment_id back is the point: the NEXT event for this payment
+ * (processing → succeeded, or a later refund) then matches on the fast path
+ * like any other, so one missed write cannot strand an order forever.
+ */
+export async function adoptPaymentIntent(
+  orderId: string,
+  paymentId: string,
+  paymentStatus: PaymentStatus,
+): Promise<Order | null> {
+  const { data, error } = await createAdminClient()
+    .from('orders')
+    .update({ payment_status: paymentStatus, payment_provider: 'stripe', payment_id: paymentId })
+    .eq('order_number', orderId)
+    .select(await resolveOrderSelect())
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to adopt payment intent: ${error.message}`)
+  if (!data) return null
+
+  const order = rowToOrder(asRow(data))
+  // Same side effects as setPaymentStatus: this is the same transition, found
+  // by a different key, and a referral must not depend on which path found it.
+  if (paymentStatus === 'paid') await grantReferralReward(order.id)
+  else if (paymentStatus === 'expired') await reverseReferralReward(order.id)
+  return order
+}
+
 export async function setOrderStatus(
   id: string,
   status: OrderStatus,

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type Stripe from 'stripe'
 import { fromMinorUnits, orderChargeRate, roundMinor } from '@/lib/currency'
 import {
+  adoptPaymentIntent,
   claimReceiptSend,
   ensurePaidOrderStock,
   findOrderByPaymentId,
@@ -156,10 +157,45 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
 
   // Keyed on the PaymentIntent id, which the intent route stored as the
   // order's payment_id. Writing the same status twice is a no-op.
-  const order = await setPaymentStatus(intent.id, next)
+  let order = await setPaymentStatus(intent.id, next)
+
+  if (!order) {
+    // TWO KEYS, because one of them can be missing.
+    //
+    // payment_id is written by the intent route before the browser is given
+    // the client secret, so it is there for every payment that went through
+    // the checkout. When it is NOT — the write failed, the row was restored
+    // from a backup, the intent was made outside that route — the money is
+    // still not orphaned: preparePaymentIntent() puts the order id in the
+    // PaymentIntent's metadata, and Stripe echoes it on every event.
+    //
+    // Without this the handler answered 200 with `matched: false` and the
+    // order sat at pending_payment forever, while the customer had been
+    // charged. Silent, and invisible in the Stripe dashboard, which only sees
+    // a 200. Anything found this way also has its payment_id written back
+    // (adoptPaymentIntent), so the next event for the same payment matches on
+    // the fast path.
+    const metadataOrderId = typeof intent.metadata?.orderId === 'string' ? intent.metadata.orderId.trim() : ''
+    if (metadataOrderId) {
+      order = await adoptPaymentIntent(metadataOrderId, intent.id, next)
+      if (order) {
+        console.warn(
+          `[stripe] ${intent.id} had no payment_id on any order; matched ${order.id} by metadata and repaired it`,
+        )
+      }
+    }
+  }
+
   if (!order) {
     // 200, not 404: a missing order is not something Stripe can fix by
-    // retrying, and a non-2xx would have it retry for days.
+    // retrying, and a non-2xx would have it retry for days. Reported, though —
+    // a payment whose order cannot be found by EITHER key is a real incident,
+    // and the whole point of the fallback above is that this should not
+    // happen for a payment the shop itself created.
+    await reportCriticalError(
+      'Stripe payment matched no order',
+      `${event.type} for ${intent.id} (metadata.orderId=${intent.metadata?.orderId ?? 'unset'})`,
+    )
     return NextResponse.json({ received: true, matched: false })
   }
 

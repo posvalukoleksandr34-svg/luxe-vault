@@ -14,10 +14,19 @@ const ADMIN_PUBLIC_PATHS = new Set([
 
 /**
  * Server-to-server endpoints that must not pay for a Supabase auth round-trip.
- * The NOWPayments IPN is called by their infrastructure and authenticates
- * itself with an HMAC signature, so there is never a user session to refresh.
+ * Both payment webhooks are called by the provider's infrastructure and
+ * authenticate themselves — NOWPayments with an HMAC signature, Stripe with a
+ * signed timestamp — so there is never a user session to refresh.
+ *
+ * It is not only waste: the refresh is a network call, and a slow or
+ * unreachable Supabase would add its latency to every webhook delivery, which
+ * is how a provider starts seeing timeouts and retrying payments that already
+ * succeeded.
  */
-const SESSION_REFRESH_EXEMPT = new Set(['/api/payments/crypto/webhook'])
+const SESSION_REFRESH_EXEMPT = new Set([
+  '/api/payments/crypto/webhook',
+  '/api/payments/stripe/webhook',
+])
 
 function isAdminPath(pathname: string) {
   return (
