@@ -1,7 +1,7 @@
 'use client'
 
 import * as Popover from '@radix-ui/react-popover'
-import { ChevronRight, User, X } from 'lucide-react'
+import { ChevronRight, Heart, User, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { ACCOUNT_SECTIONS, accountHref } from '@/components/account/sections'
@@ -20,7 +20,7 @@ import { useStore } from '@/lib/store'
  * only one-click way out of the account.
  */
 export function AccountMenu() {
-  const { currentUser, openAccount, logout, t } = useStore()
+  const { currentUser, openAccount, logout, t, wishlistCount } = useStore()
   const [open, setOpen] = useState(false)
 
   const triggerClass =
@@ -79,6 +79,32 @@ export function AccountMenu() {
                   </Link>
                 </li>
               ))}
+
+              {/* Saved items. Not an ACCOUNT_SECTIONS entry: those are
+                  /account/… routes, and the wishlist is its own page that
+                  guests reach too. Listed here because this menu is where a
+                  signed-in customer looks for their own things. */}
+              <li>
+                <Link
+                  href="/wishlist"
+                  onClick={() => setOpen(false)}
+                  className="group flex min-h-[46px] items-center justify-between gap-3 px-6 text-[14px] font-light text-foreground/75 transition-colors hover:bg-white/[0.03] hover:text-foreground focus-visible:bg-white/[0.04] focus-visible:text-foreground"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Heart className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                    {t('wishlist.title')}
+                  </span>
+                  {wishlistCount > 0 ? (
+                    <span className="shrink-0 text-[12px] tabular-nums text-foreground/40">{wishlistCount}</span>
+                  ) : (
+                    <ChevronRight
+                      className="size-3.5 shrink-0 text-foreground/0 transition-colors group-hover:text-foreground/50 group-focus-visible:text-foreground/50"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                  )}
+                </Link>
+              </li>
             </ul>
           </nav>
 

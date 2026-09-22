@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LifeBuoy, Menu, Search, ShoppingBag, X } from 'lucide-react'
+import { Heart, LifeBuoy, Menu, Search, ShoppingBag, X } from 'lucide-react'
 import { AccountMenu } from '@/components/account/account-menu'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
@@ -30,6 +30,7 @@ export function Header() {
     filter,
     openSupport,
     supportUnread,
+    wishlistCount,
   } = useStore()
 
   const router = useRouter()
@@ -200,6 +201,31 @@ export function Header() {
 
           {/* Signed in: the account menu. Signed out: the drawer's sign-in. */}
           <AccountMenu />
+
+          {/* Saved items. A real link, not a drawer: the wishlist is a page
+              with its own address, which is also what the bottom bar's tab
+              points at.
+
+              `hidden md:flex` complements that bar exactly — it is `md:hidden`,
+              so a phone gets the tab and a desktop gets this, and no screen
+              ever shows both routes to the same page. */}
+          <Link
+            href="/wishlist"
+            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
+            aria-label={
+              wishlistCount > 0 ? `${t('wishlist.title')} (${wishlistCount})` : t('wishlist.title')
+            }
+          >
+            <Heart className="size-[18px]" />
+            {wishlistCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold tabular-nums text-gold-foreground">
+                {/* lib/wishlist.ts caps the list at 200, so three digits is
+                    reachable by design and would burst a size-4 circle. Same
+                    treatment as the bottom bar's badge. */}
+                {wishlistCount > 99 ? '99+' : wishlistCount}
+              </span>
+            )}
+          </Link>
 
           <button
             type="button"
