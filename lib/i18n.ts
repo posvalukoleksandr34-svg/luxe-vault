@@ -85,6 +85,13 @@ export function translate(
 }
 
 export const CATEGORY_LABELS: Record<CategoryKey, LocalizedText> = {
+  // The product types, which are CATEGORIES under a department since 0040.
+  // The fine-grained entries below them are kept: they are still what a
+  // product is tagged with today, and they are what the stylist and the
+  // search read.
+  clothing: { ru: 'Одежда', en: 'Clothing', it: 'Abbigliamento', fr: 'Vêtements', de: 'Kleidung' },
+  shoes: { ru: 'Обувь', en: 'Shoes', it: 'Scarpe', fr: 'Chaussures', de: 'Schuhe' },
+  accessories: { ru: 'Аксессуары', en: 'Accessories', it: 'Accessori', fr: 'Accessoires', de: 'Accessoires' },
   // Clothing
   hoodies: { ru: 'Худи', en: 'Hoodies', it: 'Felpe', fr: 'Sweats', de: 'Hoodies' },
   tshirts: { ru: 'Футболки', en: 'T-Shirts', it: 'T-Shirt', fr: 'T-Shirts', de: 'T-Shirts' },
@@ -170,7 +177,22 @@ export const STYLIST_FIT_LABELS: Record<Fit, LocalizedText> = {
   slim: { ru: "Приталенный", en: "Slim fit", it: "Slim", fr: "Coupe ajustée", de: "Slim Fit" },
 }
 
+/**
+ * Fallback labels for a DEPARTMENT — the catalogue's top level.
+ *
+ * Only a fallback: `collections.name` carries the real, admin-editable
+ * translations, and the store prefers those. These cover the moment before
+ * the catalogue has loaded, and a department that reaches the storefront
+ * without a name of its own.
+ *
+ * Women/Men/Kids are the departments from migration 0040. The three product
+ * types below them stayed here as well, because a catalogue mid-migration has
+ * both, and a label that disappears is worse than one that is redundant.
+ */
 export const GROUP_LABELS: Record<string, LocalizedText> = {
+  women: { ru: 'Женщины', en: 'Women', it: 'Donna', fr: 'Femme', de: 'Damen' },
+  men: { ru: 'Мужчины', en: 'Men', it: 'Uomo', fr: 'Homme', de: 'Herren' },
+  kids: { ru: 'Дети', en: 'Kids', it: 'Bambini', fr: 'Enfants', de: 'Kinder' },
   clothing: { ru: 'Одежда', en: 'Clothing', it: 'Abbigliamento', fr: 'Vêtements', de: 'Kleidung' },
   shoes: { ru: 'Обувь', en: 'Shoes', it: 'Scarpe', fr: 'Chaussures', de: 'Schuhe' },
   accessories: { ru: 'Аксессуары', en: 'Accessories', it: 'Accessori', fr: 'Accessoires', de: 'Accessoires' },
