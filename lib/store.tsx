@@ -15,7 +15,8 @@ import type { Session } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
-import { readWishlist, subscribeToWishlist, toggleWishlistItem } from '@/lib/wishlist'
+import { fetchWishlist, mergeWishlist, toggleWishlist as toggleWishlistOnServer } from '@/app/actions/wishlist'
+import { clearWishlist, readWishlist, subscribeToWishlist, toggleWishlistItem } from '@/lib/wishlist'
 import {
   BASE_CURRENCY,
   CURRENCY_STORAGE_KEY,
@@ -593,17 +594,101 @@ function maybeSendWelcome() {
    */
   const [wishlist, setWishlist] = useState<string[]>([])
 
+  // Whose list is in `wishlist` — the account's, or this browser's. It decides
+  // where a toggle is written, and it must not be inferred from currentUser
+  // alone: between signing in and the merge finishing, the account is known
+  // and its list is not yet loaded.
+  const [wishlistOwner, setWishlistOwner] = useState<'guest' | 'account'>('guest')
+
+  // The guest list: this browser's, hydrated after mount (the server has no
+  // localStorage) and kept in step with every other tab.
   useEffect(() => {
+    if (wishlistOwner === 'account') return
     setWishlist(readWishlist())
     return subscribeToWishlist(setWishlist)
-  }, [])
+  }, [wishlistOwner])
 
-  const toggleWishlist = useCallback((productId: string) => {
-    if (!productId) return
-    // The module writes and broadcasts; the subscription above is what puts
-    // the new list into state, so every open tab agrees.
-    setWishlist(toggleWishlistItem(productId))
-  }, [])
+  /**
+   * Sign-in folds this browser's saved items into the account, once.
+   *
+   * ADDITIVE: the coat saved on a phone last week and the bag saved on this
+   * laptop five minutes ago both survive — see mergeWishlist. The local list
+   * is then CLEARED, deliberately. It has been copied to the account, so
+   * keeping it would only matter on the next sign-out, and the thing it would
+   * do there is show a stranger on a shared computer what the previous person
+   * had been saving.
+   *
+   * A failure leaves the local list exactly as it was and the owner as
+   * 'guest', so the customer keeps their saved items and the next sign-in
+   * tries again. A wishlist must never be the reason a sign-in looks broken.
+   */
+  useEffect(() => {
+    if (!currentUserId) {
+      // Signed out: back to whatever this browser holds, which is nothing
+      // immediately after a merge.
+      setWishlistOwner('guest')
+      return
+    }
+    if (wishlistOwner === 'account') return
+
+    let active = true
+    void (async () => {
+      const local = readWishlist()
+      const result = local.length > 0 ? await mergeWishlist({ ids: local }) : await fetchWishlist()
+      if (!active) return
+      if (!result.ok) {
+        if (result.reason !== 'signedOut') {
+          console.warn(`[wishlist] could not load the account's list (${result.reason})`)
+        }
+        return
+      }
+      if (local.length > 0) clearWishlist()
+      setWishlist(result.wishlist)
+      setWishlistOwner('account')
+    })()
+
+    return () => {
+      active = false
+    }
+  }, [currentUserId, wishlistOwner])
+
+  /**
+   * Optimistic either way: the heart fills on the tap, not on the round trip.
+   *
+   * For a guest the local module writes and broadcasts, and the subscription
+   * above puts the new list into state so every open tab agrees. For an
+   * account the state moves first and the server's answer replaces it — which
+   * also reconciles a double tap, or the same product saved on another device
+   * a moment earlier. A failure puts the previous list back rather than
+   * leaving a heart that lies about what was saved.
+   */
+  const toggleWishlist = useCallback(
+    (productId: string) => {
+      if (!productId) return
+
+      if (wishlistOwner === 'guest') {
+        setWishlist(toggleWishlistItem(productId))
+        return
+      }
+
+      const previous = wishlist
+      const optimistic =
+        previous.indexOf(productId) === -1
+          ? [productId, ...previous]
+          : previous.filter((id) => id !== productId)
+      setWishlist(optimistic)
+
+      void toggleWishlistOnServer({ productId }).then((result) => {
+        if (result.ok) {
+          setWishlist(result.wishlist)
+          return
+        }
+        console.warn(`[wishlist] could not save (${result.reason})`)
+        setWishlist(previous)
+      })
+    },
+    [wishlistOwner, wishlist],
+  )
 
   const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
 

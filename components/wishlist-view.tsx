@@ -9,10 +9,12 @@ import { useStore } from '@/lib/store'
 /**
  * The saved-products screen behind the bottom bar's "Избранное".
  *
- * The list is ids in this browser (lib/wishlist.ts); the products themselves
- * come from the catalogue the store already holds, so every card shows today's
- * price and availability. An id whose product has since been withdrawn simply
- * does not render — and the count of those is disclosed rather than silently
+ * The list is ids — this browser's while signed out (lib/wishlist.ts), the
+ * account's once signed in (app/actions/wishlist.ts), folded together at
+ * sign-in so nothing saved before the account existed is lost. The products
+ * themselves come from the catalogue the store already holds, so every card
+ * shows today's price and availability. An id whose product has since been
+ * withdrawn simply does not render — and the count of those is disclosed rather than silently
  * swallowed, so a list that looks shorter than expected explains itself.
  *
  * Deliberately available to guests: saving something is how a first-time

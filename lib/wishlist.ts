@@ -68,6 +68,18 @@ export function writeWishlist(ids: string[]): void {
 }
 
 /** Adds or removes one id, newest first, and returns the new list. */
+/**
+ * Empties this browser's list.
+ *
+ * Called once, after a sign-in has copied it into the account: the items are
+ * safe on the server, and a copy left here would surface on the next sign-out
+ * — which on a shared computer means showing a stranger what the previous
+ * person had been saving.
+ */
+export function clearWishlist(): void {
+  writeWishlist([])
+}
+
 export function toggleWishlistItem(id: string): string[] {
   const current = readWishlist()
   const next = current.indexOf(id) === -1 ? [id].concat(current) : current.filter((entry) => entry !== id)
