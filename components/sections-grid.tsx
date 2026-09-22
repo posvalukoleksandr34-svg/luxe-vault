@@ -122,10 +122,31 @@ export function SectionsGrid() {
                       src={cover}
                       alt=""
                       fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      // Must match the grid: one column until md, three after
+                      // it. The old value claimed two columns between 640 and
+                      // 768 and a quarter of the viewport above 1024, so the
+                      // browser fetched a file narrower than the card it had
+                      // to fill.
+                      sizes="(max-width: 767px) 100vw, 33vw"
                       priority={i === 0}
                       onError={() => setFailed((prev) => ({ ...prev, [department.slug]: true }))}
-                      className="size-full object-cover opacity-80 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-100"
+                      className={cn(
+                        'size-full object-cover opacity-80 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:opacity-100',
+                        // WHERE THE CROP FALLS. These are portrait photographs
+                        // (375x562) in a LANDSCAPE box until md — 375x281 on a
+                        // phone. `cover` scales to fill the width and then has
+                        // 281px of height spare, and the default 50% centre
+                        // takes half of that off the top: 140px, which on an
+                        // editorial portrait is exactly the head. Every card
+                        // was decapitated on a phone, Kids most obviously.
+                        //
+                        // 20% takes 56px off the top instead, keeping faces in
+                        // frame while still trimming the empty space above
+                        // them. From md the card is portrait itself (3/4) and
+                        // close to the image's own ratio, so the crop is
+                        // horizontal and slight, and centre is right again.
+                        'object-[50%_20%] md:object-center',
+                      )}
                     />
                   )}
 

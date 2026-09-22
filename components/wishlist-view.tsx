@@ -21,7 +21,7 @@ import { useStore } from '@/lib/store'
  * visitor keeps track, and demanding an account first is what loses them.
  */
 export function WishlistView() {
-  const { wishlist, products, t, tf, catalogLoading } = useStore()
+  const { wishlist, wishlistCount, products, t, tf, catalogLoading } = useStore()
 
   const saved = useMemo(() => {
     const byId = new Map(products.map((p) => [p.id, p]))
@@ -36,9 +36,12 @@ export function WishlistView() {
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {t('wishlist.title')}
         </h1>
-        {wishlist.length > 0 && (
+        {wishlistCount > 0 && (
           <p className="mt-2 text-[12px] uppercase tracking-[0.2em] text-muted-foreground">
-            {tf('wishlist.count', { n: wishlist.length })}
+            {/* The same count the header's badge shows — resolvable products,
+                not saved ids. The two disagreeing is what made a "2 SAVED"
+                heading sit above an empty grid. */}
+            {tf('wishlist.count', { n: wishlistCount })}
           </p>
         )}
       </header>

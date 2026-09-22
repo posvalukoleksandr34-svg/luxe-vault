@@ -692,6 +692,33 @@ function maybeSendWelcome() {
 
   const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
 
+  /**
+   * How many saved items there actually are to look at.
+   *
+   * NOT `wishlist.length`. That counts saved IDS, and an id outlives the
+   * product it points at: withdraw something from the catalogue and every
+   * customer who saved it keeps a badge that will never correspond to
+   * anything. The page has always resolved ids against the catalogue and
+   * rendered what survives, so the badge counting the other thing meant a
+   * header reading "2" above a page reading "Your wishlist is empty".
+   *
+   * WHILE THE CATALOGUE IS UNKNOWN, THE RAW COUNT STANDS. Resolving against an
+   * empty or still-loading catalogue would answer nought, so every navigation
+   * would blink the badge out and back, and a failed catalogue read would
+   * quietly claim the wishlist is empty when it is only unreadable.
+   *
+   * The ids themselves are deliberately NOT pruned. A product can leave the
+   * catalogue and come back — unpublished for a photoshoot, out of stock for a
+   * season — and deleting the row or the local entry would throw away the
+   * customer's intent permanently to tidy a number. The page already says how
+   * many are no longer available.
+   */
+  const wishlistCount = useMemo(() => {
+    if (catalogLoading || products.length === 0) return wishlist.length
+    const live = new Set(products.map((p) => p.id))
+    return wishlist.reduce((n, id) => (live.has(id) ? n + 1 : n), 0)
+  }, [wishlist, products, catalogLoading])
+
   const setCurrency = useCallback((next: CurrencyCode) => {
     // The module value first, so every formatPrice() in the re-render this
     // state change triggers already reads the new currency.
@@ -1654,7 +1681,7 @@ function maybeSendWelcome() {
       removeFromCart,
       clearCart,
       wishlist,
-      wishlistCount: wishlist.length,
+      wishlistCount,
       isWishlisted,
       toggleWishlist,
       cartCount,
@@ -1683,7 +1710,7 @@ function maybeSendWelcome() {
       setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
-      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, isWishlisted, toggleWishlist,
+      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, isWishlisted, toggleWishlist,
       cartCount, cartSubtotal, applyPromo,
       login, register, resendConfirmation, verifySignupCode, signInWithGoogle,
       requestRecoveryCode, verifyRecoveryCode, updatePassword, logout, addProduct,
