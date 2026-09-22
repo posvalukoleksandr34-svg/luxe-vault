@@ -5,6 +5,7 @@ import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { safeEqual } from '@/lib/server/secure-compare'
+import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
 
 export const dynamic = 'force-dynamic'
@@ -137,6 +138,10 @@ export async function POST(request: NextRequest) {
       fellBack: prepared.fellBack,
     })
   } catch (error) {
+    // The customer is at the payment sheet and cannot pay. Stripe being down,
+    // a key rotated, a currency refused — all of it is worth knowing within
+    // minutes rather than from a drop in the day's orders.
+    void reportServerError('Checkout · Stripe intent', error, request.url)
     const message = error instanceof Error ? error.message : 'Stripe error'
     return NextResponse.json({ error: message }, { status: 502 })
   }

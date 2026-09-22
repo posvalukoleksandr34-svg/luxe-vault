@@ -38,6 +38,13 @@ const LIMITS = {
   /** Order lookup. The enumeration surface: LV- plus six characters. */
   'order.lookup': { max: 20, windowSeconds: 600 },
 
+  /** Crash reports from the browser (/api/monitoring/report). Unauthenticated
+   *  by necessity — a crash in the root layout means there is no session — so
+   *  this is what stops a route that relays text into the operators' chat from
+   *  being a spam pipe. Ten is far more than one broken page needs and far
+   *  fewer than an abuser wants. */
+  'monitoring.report': { max: 10, windowSeconds: 600 },
+
   /** Password recovery. Sends mail, so this is also spend control. */
   'auth.recovery': { max: 5, windowSeconds: 900 },
 

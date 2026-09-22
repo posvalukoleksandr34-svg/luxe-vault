@@ -13,6 +13,7 @@ import 'server-only'
 
 import { sendOrderStatusEmail } from '@/lib/server/emails/send-lifecycle'
 import { grantReferralReward, reverseReferralReward } from '@/lib/server/referrals'
+import { reportServerError } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
 
@@ -435,7 +436,13 @@ export async function setOrderPaymentSession(
     .select(await resolveOrderSelect())
     .maybeSingle()
 
-  if (error) throw new Error(`Failed to attach payment session: ${error.message}`)
+  if (error) {
+    // Without this write the webhook cannot find the order by payment_id and
+    // falls back to the intent's metadata (see the Stripe webhook). Worth
+    // knowing that the fallback is carrying the traffic.
+    void reportServerError('Supabase · payment session not attached', error.message)
+    throw new Error(`Failed to attach payment session: ${error.message}`)
+  }
   return data ? rowToOrder(asRow(data)) : null
 }
 
@@ -507,7 +514,13 @@ export async function setPaymentStatus(
 
   const { data, error } = await update.select(await resolveOrderSelect()).maybeSingle()
 
-  if (error) throw new Error(`Failed to set payment status: ${error.message}`)
+  if (error) {
+    // The money has moved and the order cannot be told. The webhook's own
+    // catch will release its claim and answer 500 so Stripe retries, but a
+    // retry that keeps failing is silent without this.
+    void reportServerError('Supabase · payment status not written', error.message)
+    throw new Error(`Failed to set payment status: ${error.message}`)
+  }
   if (!data) {
     // Nothing was written. Either no order carries this payment id, or the
     // guard refused a late in-flight event — worth saying which, because the

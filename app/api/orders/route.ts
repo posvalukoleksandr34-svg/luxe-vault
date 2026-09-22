@@ -13,6 +13,7 @@ import { setOrderLocale } from '@/lib/server/order-locale'
 import { markCartRecovered } from '@/lib/server/abandoned-carts'
 import { attachReferralOrder } from '@/lib/server/referrals'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
 import { notifyNewOrder } from '@/lib/telegram'
 
@@ -114,6 +115,10 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       )
     }
+    // Anything else is a customer who tried to buy and could not. Reported
+    // before rethrowing, because by the time this surfaces as a 500 the
+    // basket is gone and nobody knows it happened.
+    void reportServerError('Checkout · order not created', e, request.url)
     throw e
   }
 

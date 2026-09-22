@@ -4,6 +4,7 @@ import './globals.css'
 
 import { useEffect } from 'react'
 import { DEFAULT_LOCALE, UI } from '@/lib/i18n'
+import { reportError } from '@/lib/monitoring/reportError'
 
 /**
  * Last-resort boundary for an error thrown by the ROOT LAYOUT itself — its
@@ -21,6 +22,15 @@ import { DEFAULT_LOCALE, UI } from '@/lib/i18n'
 export default function GlobalError({ error }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error('[global error]', error.digest ?? '', error.message)
+    // The most serious crash the app has: the ROOT LAYOUT failed, so there is
+    // no store, no chrome and no other boundary above this one. Reported under
+    // its own context because it means every page is down, not one.
+    reportError({
+      context: 'Root layout crash',
+      message: error.message,
+      stack: error.stack,
+      digest: error.digest,
+    })
   }, [error])
 
   return (
