@@ -1,7 +1,15 @@
+import type { Metadata } from 'next'
+
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
-import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { DEFAULT_LOCALE, UI, translate, type UIKey } from '@/lib/i18n'
+import {
+  INDEXED_LOCALES,
+  OG_LOCALE,
+  alternatesFor,
+  localizedPath,
+} from '@/lib/locale-routing'
 import { primaryText } from '@/lib/localized-text'
-import type { Product } from '@/lib/types'
+import type { Product, StorefrontLocale } from '@/lib/types'
 
 /**
  * Everything a search engine is told about who publishes this shop.
@@ -137,5 +145,69 @@ export function itemListJsonLd(products: Product[], path: string, name: string) 
       url: `${SITE_ORIGIN}/product/${encodeURIComponent(product.id)}`,
       name: primaryText(product.name, product.id),
     })),
+  }
+}
+
+/**
+ * A storefront page's metadata, in one language.
+ *
+ * Server components cannot call the store's `t()` — it is a client hook — so
+ * the copy is read straight from the dictionary with `translate`, which is
+ * pure and has no provider. That is also what lets this run during static
+ * generation, so a localised page stays prerendered rather than becoming a
+ * per-request render.
+ *
+ * It always emits `alternates`: the canonical for this language and the
+ * hreflang set for all of them. Emitting one without the other is the
+ * classic way to get three of four languages dropped as duplicates.
+ */
+export function pageMetadata(options: {
+  /** The bare, unprefixed path — the route's own name. */
+  path: string
+  locale: StorefrontLocale
+  /** Read from the dictionary; or pass ready-made strings for a page whose
+   *  title comes from the catalogue (a product, a category). */
+  title?: string
+  description?: string
+  titleKey?: UIKey
+  descriptionKey?: UIKey
+  /**
+   * A page that must not be indexed. It still gets a canonical in its own
+   * language — links to it should not lose the prefix — but no hreflang set:
+   * pairing four URLs as translations is a request to index them, and asking
+   * for that on a page marked noindex is a contradiction a crawler resolves
+   * by trusting neither.
+   */
+  noindex?: boolean
+}): Metadata {
+  const { path, locale } = options
+  const title = options.title ?? (options.titleKey ? translate(UI[options.titleKey], locale) : undefined)
+  const description =
+    options.description ?? (options.descriptionKey ? translate(UI[options.descriptionKey], locale) : undefined)
+
+  const { canonical, languages } = alternatesFor(path, locale)
+
+  return {
+    title,
+    description,
+    robots: options.noindex ? { index: false, follow: true } : undefined,
+    alternates: options.noindex ? { canonical } : { canonical, languages },
+    openGraph: {
+      type: 'website',
+      url: `${SITE_ORIGIN}${localizedPath(path, locale)}`,
+      siteName: SITE_NAME,
+      title: title ? `${title} \u2014 ${SITE_NAME}` : undefined,
+      description,
+      locale: OG_LOCALE[locale],
+      alternateLocale: INDEXED_LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l]),
+    },
+    // Without these the root layout's site-wide card wins, and every page in
+    // every language shares one title on X and in the messengers that read
+    // these rather than og:*.
+    twitter: {
+      card: 'summary_large_image',
+      title: title ? `${title} — ${SITE_NAME}` : undefined,
+      description,
+    },
   }
 }

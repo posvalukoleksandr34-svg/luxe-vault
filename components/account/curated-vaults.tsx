@@ -2,7 +2,7 @@
 
 import { Bookmark, Sparkles, Trash2 } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useState } from 'react'
 import { LoadError } from '@/components/load-error'
 import { Skeleton } from '@/components/ui/skeleton'

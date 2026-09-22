@@ -1,7 +1,7 @@
 'use client'
 
 import { Sparkles } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useStore } from '@/lib/store'
 import type { Product } from '@/lib/types'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowLeft, Loader2, MailCheck } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'

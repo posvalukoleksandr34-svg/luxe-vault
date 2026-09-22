@@ -15,6 +15,8 @@ import { getProductBySlug } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { productMetadataFor } from '@/lib/page-seo'
 import { BRAND_ID, ORGANIZATION_ID, SITE_ORIGIN } from '@/lib/seo'
 import { primaryText } from '@/lib/localized-text'
 
@@ -60,54 +62,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string }
 }): Promise<Metadata> {
-  let product: Product | null = null
-  try {
-    product = await getProductBySlug(params.slug)
-  } catch {
-    // A database blip must not fail the build or the request; the page itself
-    // handles the same error below.
-  }
-
-  if (!product) {
-    // noindex, so a transient lookup failure cannot get an empty page indexed.
-    return { title: 'Product not found', robots: { index: false, follow: true } }
-  }
-
-  const name = primaryText(product.name)
-  // The fallback is only reached for a product with no description at all.
-  // It leads with the product's own brand when it has one, so the sentence
-  // says something specific rather than repeating boilerplate.
-  const description =
-    truncate(primaryText(product.description)) ||
-    [product.brand, `${name} — designer-inspired, limited drops, shipped from Switzerland.`]
-      .filter(Boolean)
-      .join(' · ')
-  const url = `${SITE_URL}/product/${product.id}`
-
-  return {
-    // The root layout's template appends " — LUXE VAULT", giving exactly the
-    // "{ProductName} | LUXE VAULT" shape asked for, with one separator style
-    // across the whole site rather than two.
-    title: name,
-    description,
-    alternates: { canonical: `/product/${product.id}` },
-    openGraph: {
-      type: 'website',
-      url,
-      siteName: 'LUXE VAULT',
-      title: `${name} — LUXE VAULT`,
-      description,
-      // og:image is the generated preview card in ./opengraph-image.tsx — the
-      // photo, name and price on the brand's black — not the bare photo.
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${name} — LUXE VAULT`,
-      description,
-      // No image of its own: X uses og:image (the generated card) for a
-      // summary_large_image card.
-    },
-  }
+  return productMetadataFor(params.slug, DEFAULT_LOCALE)
 }
 
 /**

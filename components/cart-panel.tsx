@@ -1,8 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { Link } from '@/components/locale-link'
+import { useLocaleRouter } from '@/components/locale-link'
 import { useEffect, useRef, useState } from 'react'
 
 import { Check, Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react'
@@ -35,7 +35,7 @@ function prefersLessMotion(): boolean {
  * scroll.
  */
 export function CartPanel() {
-  const router = useRouter()
+  const router = useLocaleRouter()
   const {
     cart,
     cartCount,

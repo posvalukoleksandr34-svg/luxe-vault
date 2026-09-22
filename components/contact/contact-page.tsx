@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useEffect, useState } from 'react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ContactMethods } from '@/components/contact/contact-methods'

@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowDown } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/lib/store'
 

@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useState } from 'react'
 import { CheckoutFlow } from '@/components/checkout-flow'
 import { Breadcrumbs } from '@/components/breadcrumbs'

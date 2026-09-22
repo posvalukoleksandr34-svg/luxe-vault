@@ -5,14 +5,11 @@ import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { itemListJsonLd } from '@/lib/seo'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { catalogMetadata } from '@/lib/page-seo'
 import { readCatalog } from '@/lib/server/catalog-store'
 
-export const metadata: Metadata = {
-  title: 'Catalogue',
-  description:
-    'The full LUXE VAULT catalogue: apparel, footwear and accessories, filtered by department and category.',
-  alternates: { canonical: '/catalog' },
-}
+export const metadata: Metadata = catalogMetadata(DEFAULT_LOCALE)
 
 /**
  * The catalogue as a page of its own.

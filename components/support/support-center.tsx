@@ -12,7 +12,7 @@ import {
   Send,
   X,
 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
 import { FULFILMENT, courierTrackingUrl, describeBusinessDays } from '@/lib/fulfilment'

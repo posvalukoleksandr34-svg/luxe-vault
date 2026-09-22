@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { homeMetadata } from '@/lib/page-seo'
 import { About } from '@/components/about'
 import { AppPromoBanner } from '@/components/app-promo-banner'
 import { Footer } from '@/components/footer'
@@ -9,12 +11,12 @@ import { Reviews } from '@/components/reviews'
 import { SectionsGrid } from '@/components/sections-grid'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 
-// The homepage's own canonical. It used to sit in the root layout, where every
-// page without one of its own inherited it — see the note there. Title,
-// description and Open Graph come from the layout's defaults.
-export const metadata: Metadata = {
-  alternates: { canonical: '/' },
-}
+// The homepage's own canonical, description and hreflang. The canonical used
+// to sit in the root layout, where every page without one of its own inherited
+// it — see the note there. The TITLE still comes from the layout's default:
+// it is the brand line, and a search for the shop's own name should return it
+// rather than a section heading.
+export const metadata: Metadata = homeMetadata(DEFAULT_LOCALE)
 
 /**
  * A Server Component: it only arranges sections and holds no state or handlers

@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'

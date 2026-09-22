@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'

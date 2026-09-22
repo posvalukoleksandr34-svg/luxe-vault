@@ -1,7 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { cn } from '@/lib/utils'
 
 /**

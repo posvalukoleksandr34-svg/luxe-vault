@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
+import { useLocaleRouter } from '@/components/locale-link'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
@@ -87,7 +87,7 @@ export function CheckoutFlow({
     t,
   } = useStore()
 
-  const router = useRouter()
+  const router = useLocaleRouter()
 
   const [form, setForm] = useState({
     name: '',

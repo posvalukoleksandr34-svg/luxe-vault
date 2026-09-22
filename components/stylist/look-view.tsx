@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useState } from 'react'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
 import { LookActions } from '@/components/stylist/look-actions'

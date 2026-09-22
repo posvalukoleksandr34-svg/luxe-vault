@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useMemo, useState } from 'react'
 import { Reveal } from '@/components/reveal'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
@@ -122,11 +122,15 @@ export function SectionsGrid() {
                       src={cover}
                       alt=""
                       fill
-                      // Must match the grid: one column until md, three after
-                      // it. The old value claimed two columns between 640 and
-                      // 768 and a quarter of the viewport above 1024, so the
-                      // browser fetched a file narrower than the card it had
-                      // to fill.
+                      // Must match the grid above, or the browser picks the
+                      // wrong candidate from the srcset. It did at three of
+                      // four breakpoints: one column until md (not two, so
+                      // 50vw between 640 and 768 fetched a half-width file for
+                      // a full-width card), and three columns after it (~33vw,
+                      // not the 25vw declared, which fetched a quarter-width
+                      // file for a third-width card). Under-fetching is the
+                      // expensive kind of wrong: the card renders soft on
+                      // exactly the large screens this artwork is for.
                       sizes="(max-width: 767px) 100vw, 33vw"
                       priority={i === 0}
                       onError={() => setFailed((prev) => ({ ...prev, [department.slug]: true }))}

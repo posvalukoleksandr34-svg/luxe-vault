@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next'
 
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { INDEXED_LOCALES, hasLocalizedRoute, localizedPath } from '@/lib/locale-routing'
 import { SITE_ORIGIN } from '@/lib/seo'
 import { listProductSlugs } from '@/lib/server/catalog-store'
 import { readTaxonomy } from '@/lib/server/taxonomy'
@@ -54,6 +56,35 @@ const SECTIONS_ARE_ANCHORS = true
 /** The legal documents' stated effective date, which is their real lastModified. */
 const LEGAL_UPDATED = new Date('2026-09-06T00:00:00.000Z')
 
+/**
+ * One entry per language for a storefront path, each declaring the others as
+ * its alternates.
+ *
+ * Submitting only the default language would leave the other three to be found
+ * by luck. What pairs them as translations is the `hreflang` set in each
+ * page's own <head> (lib/locale-routing.ts) — NOT anything here: Next 13.5
+ * accepts `alternates` on a sitemap entry and emits nothing for it, no
+ * xmlns:xhtml and no <xhtml:link>, so writing them here would look like a
+ * guarantee while delivering nothing. Per-page hreflang is authoritative for
+ * Google either way; revisit this if the sitemap route ever gains support.
+ *
+ * Paths here are BARE — `/catalog`, not `/it/catalog`. The prefix is this
+ * function's business.
+ */
+function localized(
+  path: string,
+  entry: { lastModified: Date; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']; priority: number },
+): MetadataRoute.Sitemap {
+  // Only the paths that actually have a localised route. Everything else is
+  // still served — in the default language, at its bare URL — and is listed
+  // once, which is the truth about it.
+  const locales = hasLocalizedRoute(path) ? INDEXED_LOCALES : [DEFAULT_LOCALE]
+  return locales.map((code) => ({
+    url: `${BASE}${localizedPath(path, code)}`,
+    ...entry,
+  }))
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Build time. The storefront's content changes when the catalogue is
   // redeployed, so this is an honest signal rather than a hardcoded date that
@@ -83,20 +114,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { tree } = await readTaxonomy()
     for (const node of tree) {
       if (node.count === 0) continue
-      categoryUrls.push({
-        url: `${BASE}/category/${encodeURIComponent(node.slug)}`,
-        lastModified: now,
-        changeFrequency: 'daily',
-        priority: 0.8,
-      })
-      for (const category of node.categories) {
-        if (category.count === 0) continue
-        categoryUrls.push({
-          url: `${BASE}/category/${encodeURIComponent(node.slug)}/${encodeURIComponent(category.slug)}`,
+      categoryUrls.push(
+        ...localized(`/category/${encodeURIComponent(node.slug)}`, {
           lastModified: now,
           changeFrequency: 'daily',
-          priority: 0.7,
-        })
+          priority: 0.8,
+        }),
+      )
+      for (const category of node.categories) {
+        if (category.count === 0) continue
+        categoryUrls.push(
+          ...localized(
+            `/category/${encodeURIComponent(node.slug)}/${encodeURIComponent(category.slug)}`,
+            { lastModified: now, changeFrequency: 'daily', priority: 0.7 },
+          ),
+        )
       }
     }
   } catch (error) {
@@ -104,63 +136,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return [
-    {
-      url: `${BASE}/`,
-      lastModified: now,
-      changeFrequency: 'daily',
-      priority: 1.0,
-    },
+    ...localized('/', { lastModified: now, changeFrequency: 'daily', priority: 1.0 }),
     // The catalogue's own page. It became a real route when the homepage
-    // stopped carrying a product grid, and was missing here — an indexable
-    // page with its own canonical that Google was never told about.
-    {
-      url: `${BASE}/catalog`,
-      lastModified: now,
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    },
+    // stopped carrying a grid, and was missing here — an indexable page with
+    // its own canonical that Google was never told about.
+    ...localized('/catalog', { lastModified: now, changeFrequency: 'daily', priority: 0.9 }),
     // Category pages sit between the homepage and the products: broader than a
     // single item, narrower than the shop.
     ...categoryUrls,
     // Help & contact: how to reach the team, and the newsletter.
-    {
-      url: `${BASE}/contact`,
-      lastModified: now,
-      changeFrequency: 'monthly' as const,
-      priority: 0.4,
-    },
-    // The AI stylist: a standing landing page with its own canonical.
-    {
-      url: `${BASE}/stylist`,
-      lastModified: now,
-      changeFrequency: 'weekly' as const,
-      priority: 0.6,
-    },
+    ...localized('/contact', { lastModified: now, changeFrequency: 'monthly', priority: 0.4 }),
+    // The help centre: the FAQ is real, stable content and the one page that
+    // can rank for "luxe vault returns" and the like.
+    ...localized('/support', { lastModified: now, changeFrequency: 'monthly', priority: 0.5 }),
+    // NOT /stylist and NOT /wishlist. Both declare noindex — the stylist's
+    // output differs per visitor, the wishlist lives in one browser — and
+    // submitting a page that asks not to be indexed is a contradiction a
+    // crawler resolves by trusting neither signal. They keep their URLs in
+    // every language for the visitor's sake; they are simply not claims.
     // Product pages rank for the queries that actually convert, so they carry
     // the highest priority after the homepage.
-    ...products.map((p) => ({
-      url: `${BASE}/product/${encodeURIComponent(p.slug)}`,
-      lastModified: p.updatedAt,
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
-    })),
-    {
-      url: `${BASE}/legal/terms`,
-      lastModified: LEGAL_UPDATED,
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-    {
-      url: `${BASE}/legal/privacy`,
-      lastModified: LEGAL_UPDATED,
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-    {
-      url: `${BASE}/legal/refunds`,
-      lastModified: LEGAL_UPDATED,
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
+    ...products.flatMap((p) =>
+      localized(`/product/${encodeURIComponent(p.slug)}`, {
+        lastModified: p.updatedAt,
+        changeFrequency: 'daily',
+        priority: 0.9,
+      }),
+    ),
+    ...localized('/legal/terms', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
+    ...localized('/legal/privacy', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
+    ...localized('/legal/refunds', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
   ]
 }

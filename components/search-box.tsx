@@ -2,7 +2,7 @@
 
 import { Clock, Loader2, Search, SearchX, TrendingUp, X } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useEffect, useRef, useState } from 'react'
 import { trackSearch } from '@/lib/analytics'
 import { isProductBuyable } from '@/lib/availability'

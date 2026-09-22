@@ -2,7 +2,7 @@
 
 import * as Popover from '@radix-ui/react-popover'
 import { ChevronRight, User, X } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/components/locale-link'
 import { useState } from 'react'
 import { ACCOUNT_SECTIONS, accountHref } from '@/components/account/sections'
 import { useStore } from '@/lib/store'
