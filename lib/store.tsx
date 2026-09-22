@@ -652,43 +652,6 @@ function maybeSendWelcome() {
     }
   }, [currentUserId, wishlistOwner])
 
-  /**
-   * Optimistic either way: the heart fills on the tap, not on the round trip.
-   *
-   * For a guest the local module writes and broadcasts, and the subscription
-   * above puts the new list into state so every open tab agrees. For an
-   * account the state moves first and the server's answer replaces it — which
-   * also reconciles a double tap, or the same product saved on another device
-   * a moment earlier. A failure puts the previous list back rather than
-   * leaving a heart that lies about what was saved.
-   */
-  const toggleWishlist = useCallback(
-    (productId: string) => {
-      if (!productId) return
-
-      if (wishlistOwner === 'guest') {
-        setWishlist(toggleWishlistItem(productId))
-        return
-      }
-
-      const previous = wishlist
-      const optimistic =
-        previous.indexOf(productId) === -1
-          ? [productId, ...previous]
-          : previous.filter((id) => id !== productId)
-      setWishlist(optimistic)
-
-      void toggleWishlistOnServer({ productId }).then((result) => {
-        if (result.ok) {
-          setWishlist(result.wishlist)
-          return
-        }
-        console.warn(`[wishlist] could not save (${result.reason})`)
-        setWishlist(previous)
-      })
-    },
-    [wishlistOwner, wishlist],
-  )
 
   const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
 
@@ -904,6 +867,64 @@ function maybeSendWelcome() {
       setTimeout(() => dismissToast(id), 3200)
     },
     [dismissToast],
+  )
+
+  // Declared here, below pushToast and t, because it announces what it did
+  // and both are block-scoped: moving the message into the toggle meant
+  // moving the toggle to where the message could be built.
+  /**
+   * Optimistic either way: the heart fills on the tap, not on the round trip.
+   *
+   * For a guest the local module writes and broadcasts, and the subscription
+   * above puts the new list into state so every open tab agrees. For an
+   * account the state moves first and the server's answer replaces it — which
+   * also reconciles a double tap, or the same product saved on another device
+   * a moment earlier. A failure puts the previous list back rather than
+   * leaving a heart that lies about what was saved.
+   */
+  const toggleWishlist = useCallback(
+    (productId: string) => {
+      if (!productId) return
+
+      // Which way this tap goes, decided before anything moves, so the
+      // message matches the action even when the server later disagrees and
+      // the list is rolled back.
+      const saving = wishlist.indexOf(productId) === -1
+      const announce = () =>
+        pushToast({
+          title: saving ? t('toast.savedToWishlist') : t('toast.removedFromWishlist'),
+          variant: saving ? 'gold' : 'default',
+        })
+
+      if (wishlistOwner === 'guest') {
+        setWishlist(toggleWishlistItem(productId))
+        announce()
+        return
+      }
+
+      const previous = wishlist
+      const optimistic =
+        previous.indexOf(productId) === -1
+          ? [productId, ...previous]
+          : previous.filter((id) => id !== productId)
+      setWishlist(optimistic)
+
+      announce()
+
+      void toggleWishlistOnServer({ productId }).then((result) => {
+        if (result.ok) {
+          setWishlist(result.wishlist)
+          return
+        }
+        // The optimistic change is undone, so the message that went with it
+        // has to be corrected too — a "Saved" toast above an unfilled heart
+        // is worse than no toast at all.
+        console.warn(`[wishlist] could not save (${result.reason})`)
+        setWishlist(previous)
+        pushToast({ title: t('toast.wishlistFailed'), variant: 'default' })
+      })
+    },
+    [wishlistOwner, wishlist, pushToast, t],
   )
 
   const setCategoryImage = useCallback(

@@ -1,8 +1,9 @@
 'use client'
 
-import { DatabaseZap, RefreshCw } from 'lucide-react'
+import { DatabaseZap, LifeBuoy, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useTransition } from 'react'
+import { SUPPORT_EMAIL } from '@/lib/data'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -75,6 +76,19 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
           />
           {t('common.retry')}
         </button>
+
+        {/* A way out that does not depend on this page working.
+            A plain <a href="mailto:">, deliberately: the support centre is a
+            drawer inside the app, and the app is what just failed — offering a
+            button that needs the same runtime would be offering nothing. This
+            reaches a person even when the page cannot render at all. */}
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="tap-safe mt-6 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[#CCCCCC]/60 underline-offset-4 transition-colors duration-300 hover:text-[#D4AF37] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#000000]"
+        >
+          <LifeBuoy aria-hidden strokeWidth={1.5} className="size-3.5" />
+          {t('state.contactSupport')}
+        </a>
       </div>
     </main>
   )

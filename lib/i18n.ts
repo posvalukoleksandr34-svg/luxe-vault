@@ -617,6 +617,12 @@ export const UI = {
   'admin.totalOrders': { ru: 'Всего заказов', en: 'Total Orders', it: 'Ordini totali', fr: 'Commandes', de: 'Bestellungen' },
   'admin.totalProducts': { ru: 'Товаров', en: 'Products', it: 'Prodotti', fr: 'Produits', de: 'Produkte' },
   'admin.avgCheck': { ru: 'Средний чек', en: 'Avg. Order', it: 'Scontrino medio', fr: 'Panier moyen', de: 'Ø Bestellung' },
+  'toast.savedToWishlist': { ru: 'Сохранено в избранное', en: 'Saved to wishlist', it: 'Salvato nei preferiti', fr: 'Ajouté aux favoris', de: 'Zur Merkliste hinzugefügt' },
+  'toast.removedFromWishlist': { ru: 'Удалено из избранного', en: 'Removed from wishlist', it: 'Rimosso dai preferiti', fr: 'Retiré des favoris', de: 'Von der Merkliste entfernt' },
+  'toast.wishlistFailed': { ru: 'Не удалось сохранить. Попробуйте ещё раз.', en: 'Could not save. Please try again.', it: 'Impossibile salvare. Riprova.', fr: 'Enregistrement impossible. Réessayez.', de: 'Konnte nicht gespeichert werden. Bitte erneut versuchen.' },
+  'state.contactSupport': { ru: 'Написать в поддержку', en: 'Contact support', it: 'Contatta l’assistenza', fr: 'Contacter le support', de: 'Support kontaktieren' },
+  'state.loadingCatalog': { ru: 'Загрузка каталога', en: 'Loading the catalogue', it: 'Caricamento del catalogo', fr: 'Chargement du catalogue', de: 'Katalog wird geladen' },
+  'state.loadingProduct': { ru: 'Загрузка товара', en: 'Loading the product', it: 'Caricamento del prodotto', fr: 'Chargement du produit', de: 'Produkt wird geladen' },
   'toast.addedToCart': { ru: 'Добавлено в корзину', en: 'Added to cart', it: 'Aggiunto al carrello', fr: 'Ajouté au panier', de: 'Zum Warenkorb hinzugefügt' },
 
   // Header: language and currency.

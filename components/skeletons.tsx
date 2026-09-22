@@ -146,3 +146,57 @@ export function OrderDetailSkeleton({ label }: { label: string }) {
     </Region>
   )
 }
+
+/**
+ * The product page: gallery on the left, the buying column on the right.
+ *
+ * Shaped to the real thing closely enough that nothing jumps when it arrives —
+ * the same `lg:grid-cols-2`, the same 3/4 gallery, the same rhythm of title,
+ * price, swatches and the two buttons. A skeleton whose shape is wrong buys
+ * nothing over a spinner; it just moves the jank later.
+ */
+export function ProductDetailSkeleton({ label }: { label: string }) {
+  return (
+    <Region label={label} className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+      <div>
+        <Skeleton className="aspect-[3/4] w-full" />
+        <div className="mt-3 flex gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="size-16 shrink-0" />
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <Skeleton className="h-2.5 w-24" />
+        <Skeleton className="mt-5 h-7 w-4/5" />
+        <Skeleton className="mt-3 h-7 w-3/5" />
+        <Skeleton className="mt-7 h-5 w-32" />
+
+        {/* Colours, then sizes — the two rows a visitor reaches for first. */}
+        <Skeleton className="mt-10 h-2.5 w-16" />
+        <div className="mt-3 flex gap-2.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="size-8 rounded-full" />
+          ))}
+        </div>
+
+        <Skeleton className="mt-8 h-2.5 w-16" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-14" />
+          ))}
+        </div>
+
+        <Skeleton className="mt-10 h-12 w-full" />
+        <Skeleton className="mt-3 h-12 w-full" />
+
+        <div className="mt-10 space-y-2.5">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-11/12" />
+          <Skeleton className="h-3 w-3/4" />
+        </div>
+      </div>
+    </Region>
+  )
+}
