@@ -3,6 +3,8 @@
 import {
   Boxes,
   ChevronLeft,
+  ClipboardList,
+  FileDown,
   ChevronRight,
   Edit2,
   Images,
@@ -691,6 +693,29 @@ export function AdminPanel() {
                       <p className="text-xs text-muted-foreground">{order.customer.name}</p>
                       <p className="text-xs text-muted-foreground">{order.customer.phone}</p>
                       <p className="text-xs text-muted-foreground">{order.customer.address}</p>
+                    </div>
+
+                    {/* Plain links, not fetch: the browser sends the admin
+                        cookie and saves the file under the name the route
+                        gives it. The documents are in English — they go to
+                        the customer and into the parcel. */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a
+                        href={`/api/admin/orders/${encodeURIComponent(order.id)}/invoice`}
+                        download
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground transition hover:border-gold/50 hover:text-gold"
+                      >
+                        <FileDown className="size-3.5" />
+                        Скачать счёт (PDF)
+                      </a>
+                      <a
+                        href={`/api/admin/orders/${encodeURIComponent(order.id)}/invoice?type=packing`}
+                        download
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground transition hover:border-gold/50 hover:text-gold"
+                      >
+                        <ClipboardList className="size-3.5" />
+                        Упаковочный лист
+                      </a>
                     </div>
 
                     <div className="mt-3 space-y-2">

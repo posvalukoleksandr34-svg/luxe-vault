@@ -135,7 +135,11 @@ const nextConfig = {
     // a try/catch. Node handles that; webpack cannot, and printed a pair of
     // "Module not found" warnings on every compile of /api/stylist. Harmless,
     // but noise like that is how a real build warning gets scrolled past.
-    serverComponentsExternalPackages: ['@google/genai'],
+    // pdfkit (the admin's PDF invoices) finds its own files at runtime
+    // relative to where it is installed; bundled by webpack, those paths point
+    // nowhere and the first invoice fails with ENOENT. Left external it runs
+    // from node_modules as published.
+    serverComponentsExternalPackages: ['@google/genai', 'pdfkit'],
   },
   images: {
     // Product and collection imagery lives in Supabase Storage, so the
