@@ -7,11 +7,13 @@ import { hasBearerSecret } from '@/lib/server/secure-compare'
 import { sourceText } from '@/lib/localized-text'
 import { reportCriticalError } from '@/lib/telegram'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
+import { sweepOrphanedReturnPhotos } from '@/lib/server/returns-cleanup'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * The scheduled sweep: unpaid-order reminders and back-in-stock alerts.
+ * The scheduled sweep: unpaid-order reminders, back-in-stock alerts, and
+ * the removal of return photographs no request points at.
  *
  * Both jobs claim their work in the database before doing it (see 0019), so
  * this endpoint is safe to call more often than necessary, and safe to have
@@ -44,7 +46,13 @@ async function runSweep(request: NextRequest) {
   }
 
   const supabase = createAdminClient()
-  const result = { recovery: 0, restock: 0, abandonedCarts: 0, errors: [] as string[] }
+  const result = {
+    recovery: 0,
+    restock: 0,
+    abandonedCarts: 0,
+    orphanedReturnPhotos: 0,
+    errors: [] as string[],
+  }
 
   // ------------------------------------------------ unpaid-order reminders --
   try {
@@ -106,6 +114,18 @@ async function runSweep(request: NextRequest) {
     if ('sent' in run) result.abandonedCarts = run.sent
   } catch (e) {
     result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+  }
+
+  // -------------------------------------------- orphaned return photos --
+  // Last, and in its own block: it deletes, so a failure in it must not stop
+  // the jobs above, and a failure above must not be the reason it runs on a
+  // half-read database. See lib/server/returns-cleanup.ts for why it aborts
+  // before deleting anything if it cannot read every request.
+  try {
+    const cleanup = await sweepOrphanedReturnPhotos()
+    result.orphanedReturnPhotos = cleanup.deleted
+  } catch (e) {
+    result.errors.push(`return-photos: ${(e as Error).message}`)
   }
 
   if (result.errors.length > 0) await reportCriticalError('Nightly sweep', result.errors.join('; '))
