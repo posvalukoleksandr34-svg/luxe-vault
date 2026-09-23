@@ -51,6 +51,15 @@ export async function POST(
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
+  // Photographs must be ones THIS customer uploaded. The upload route keys
+  // every object under returns/<their id>/, so a path under anyone else's id
+  // is a path copied from somewhere — attaching it would put another
+  // customer's pictures in front of a manager as evidence for this order.
+  const ownPrefix = `returns/${user.id}/`
+  if (parsed.data.images.some((path) => !path.startsWith(ownPrefix))) {
+    return NextResponse.json({ error: 'Invalid photo' }, { status: 400 })
+  }
+
   if (order.paymentStatus !== 'paid') {
     return NextResponse.json(
       { error: 'Only a paid order can be returned' },

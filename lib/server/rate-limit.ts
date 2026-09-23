@@ -45,6 +45,11 @@ const LIMITS = {
    *  fewer than an abuser wants. */
   'monitoring.report': { max: 10, windowSeconds: 600 },
 
+  /** Photographs for a return request. Six are allowed per request, and a
+   *  customer may remove and re-add a few; beyond this a route that accepts
+   *  files is being used as free storage. */
+  'returns.upload': { max: 20, windowSeconds: 600 },
+
   /** Password recovery. Sends mail, so this is also spend control. */
   'auth.recovery': { max: 5, windowSeconds: 900 },
 
