@@ -261,6 +261,47 @@ export function notifyReturnRequested(
   )
 }
 
+/** One size-and-colour of a product, and what is left of it. */
+export type LowStockVariant = {
+  productName: string
+  category: string
+  size: string
+  color: string
+  stock: number
+}
+
+/**
+ * A purchase took a variant to its last few pieces.
+ *
+ * One message per order, listing every variant that crossed the line, rather
+ * than one per variant: an order of three low items is one event and should
+ * read as one. Nought is said as SOLD OUT, because "0 left" is easy to skim
+ * past and it is the one that needs acting on today.
+ *
+ * No customer data — this is about stock, and a Telegram chat is a third party.
+ */
+export function notifyLowStock(orderId: string, variants: LowStockVariant[]): Promise<boolean> {
+  return dispatch(
+    () =>
+      [
+        '⚠️ <b>LOW STOCK WARNING</b>',
+        ...variants.map((v) => {
+          const left =
+            v.stock <= 0
+              ? '<b>SOLD OUT</b>'
+              : `Only <b>${v.stock}</b> ${v.stock === 1 ? 'item' : 'items'} left in stock!`
+          return [
+            `\n<b>${esc(v.productName)}</b>`,
+            `${esc(v.category)} · ${esc(v.size)} · ${esc(v.color)}`,
+            left,
+          ].join('\n')
+        }),
+        `\nAfter order ${esc(orderId)} · <a href="${esc(adminLink())}">Manage inventory</a>`,
+      ].join('\n'),
+    'stock',
+  )
+}
+
 /** A paid order whose stock had meanwhile been sold: needs a refund. */
 export function notifyStockConflict(order: Order): Promise<boolean> {
   return dispatch(() =>

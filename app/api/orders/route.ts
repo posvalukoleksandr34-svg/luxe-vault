@@ -16,6 +16,7 @@ import { getCurrentUser } from '@/lib/supabase/server'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
 import { notifyNewOrder } from '@/lib/telegram'
+import { warnIfLowStock } from '@/lib/server/low-stock'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,8 +161,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Operations chat. Never throws, and gives up within seconds.
-  await notifyNewOrder(order)
+  // Operations chat: the new order, and — in parallel, so checkout waits no
+  // longer than it already did — whether it took any variant to its last few
+  // pieces. Neither throws, and both give up within seconds; allSettled so
+  // that even an unexpected rejection cannot turn a placed order into an
+  // error the customer sees and retries.
+  await Promise.allSettled([notifyNewOrder(order), warnIfLowStock(order)])
 
   // `orderId` at the top level is what the checkout handler redirects with;
   // the full order is kept for the existing callers.
