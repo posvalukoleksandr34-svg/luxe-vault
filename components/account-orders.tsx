@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loa
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { ReturnRequestModal } from '@/components/account/return-request-modal'
 import { LoadError } from '@/components/load-error'
 import { EmptyState } from '@/components/state-view'
 import { OrderListSkeleton } from '@/components/skeletons'
@@ -101,7 +102,8 @@ export function AccountOrders({
   // show a spinner when only one request is in flight.
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<{ id: string; message: string } | null>(null)
-  const [refunding, setRefunding] = useState<string | null>(null)
+  /** The order whose return form is open, if any. */
+  const [returning, setReturning] = useState<string | null>(null)
   // The order awaiting confirmation. window.confirm() was replaced because it
   // is unstyled, unlocalisable beyond its button labels, and on mobile Safari
   // renders as a jarring system sheet over a dark luxury UI.
@@ -194,28 +196,17 @@ export function AccountOrders({
     setPaying({ order, token })
   }
 
-  async function askRefund(order: Order) {
-    if (refunding) return
-    setRefunding(order.id)
+  /**
+   * Opens the return form. It no longer files anything by itself.
+   *
+   * The request needs a reason, the customer's own words and their
+   * confirmation that the piece is unworn — none of which a button can
+   * collect, and all of which a manager needs before deciding. The filing is
+   * the modal's (components/account/return-request-modal.tsx).
+   */
+  function askRefund(order: Order) {
     setCancelError(null)
-    try {
-      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/refund-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setCancelError({ id: order.id, message: data.error || t('orders.cancelFailed') })
-        return
-      }
-      pushToast({ title: t('orders.refundRequested'), description: order.id, variant: 'success' })
-      load()
-    } catch {
-      setCancelError({ id: order.id, message: t('orders.cancelFailed') })
-    } finally {
-      setRefunding(null)
-    }
+    setReturning(order.id)
   }
 
   if (paying) {
@@ -379,25 +370,34 @@ export function AccountOrders({
                 order={order}
                 locale={locale}
                 action={
-                  // Refunds are requested here and executed by an admin — a
+                  // Returns are REQUESTED here and executed by an admin. No
+                  // money moves from this screen and none ever has: a
                   // one-click self-refund would let a customer keep the goods
-                  // and take the money back before anyone reviewed it.
+                  // and take the money back before anyone reviewed it. The
+                  // button opens a form; the form files a request.
                   order.paymentStatus === 'paid' &&
                   (!order.returnStatus || order.returnStatus === 'none') ? (
                     <div className="flex flex-col items-end gap-2">
                       <button
                         type="button"
-                        onClick={() => void askRefund(order)}
-                        disabled={refunding === order.id}
-                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/40 hover:text-gold disabled:opacity-40"
+                        onClick={() => askRefund(order)}
+                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/40 hover:text-gold"
                       >
-                        {refunding === order.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <RotateCcw className="size-3.5" />
-                        )}
+                        <RotateCcw className="size-3.5" />
                         {t('orders.requestRefund')}
                       </button>
+
+                      {/* One dialog per order, mounted only while it is the
+                          one being returned, so its fields start empty each
+                          time rather than remembering the last order's. */}
+                      {returning === order.id && (
+                        <ReturnRequestModal
+                          orderId={order.id}
+                          open
+                          onOpenChange={(next: boolean) => setReturning(next ? order.id : null)}
+                          onSubmitted={load}
+                        />
+                      )}
                       {cancelError?.id === order.id && (
                         <p className="flex items-start gap-1.5 text-right text-[11px] font-light leading-snug text-destructive">
                           <AlertCircle className="mt-px size-3 shrink-0" />
@@ -406,8 +406,11 @@ export function AccountOrders({
                       )}
                     </div>
                   ) : order.returnStatus === 'requested' ? (
+                    // The button is gone rather than disabled: there is
+                    // nothing to press twice, and a greyed-out control invites
+                    // a second try. The badge says what state it is in.
                     <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
-                      {t('orders.refundPending')}
+                      {t('rma.pending')}
                     </span>
                   ) : undefined
                 }

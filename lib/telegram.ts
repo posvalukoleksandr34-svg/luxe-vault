@@ -167,6 +167,34 @@ export function notifyOrderStatus(order: Order, by: 'admin' | 'customer'): Promi
   })
 }
 
+/**
+ * A customer has asked to send something back.
+ *
+ * It is a REQUEST, not a refund: nothing has moved, and nothing will until a
+ * manager approves it. This message exists so the queue is discovered within
+ * minutes rather than whenever somebody next opens the admin panel — a return
+ * nobody looks at becomes a support ticket, and then a chargeback.
+ */
+export function notifyReturnRequested(
+  order: Order,
+  reason: string,
+  comment: string,
+): Promise<boolean> {
+  return dispatch(() =>
+    [
+      `↩️ <b>Return requested</b> · ${esc(order.id)}`,
+      ...orderLines(order),
+      `Reason: <b>${esc(reason)}</b>`,
+      // Bounded: a customer can write at length, and a chat message that runs
+      // to three screens is one nobody reads.
+      comment ? `“${esc(comment.slice(0, 400))}”` : '',
+      'Review it in the admin before refunding.',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  )
+}
+
 /** A paid order whose stock had meanwhile been sold: needs a refund. */
 export function notifyStockConflict(order: Order): Promise<boolean> {
   return dispatch(() =>

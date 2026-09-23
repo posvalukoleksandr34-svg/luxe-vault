@@ -52,6 +52,14 @@ export const createReturnRequestSchema = z.object({
   reason: returnReasonSchema,
   comment: z.string().trim().max(COMMENT_MAX).default(''),
   images: z.array(returnImagePathSchema).max(RETURN_IMAGE_MAX).default([]),
+  /**
+   * The customer's confirmation that the piece is unworn and still tagged.
+   *
+   * `literal(true)` rather than a boolean: an unticked box must fail
+   * validation, not arrive as `false` for the server to remember to check.
+   * It is the condition the return is granted on, so it is a schema rule.
+   */
+  agreed: z.literal(true),
 })
 export type CreateReturnRequestInput = z.infer<typeof createReturnRequestSchema>
 

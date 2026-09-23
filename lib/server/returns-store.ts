@@ -80,8 +80,11 @@ export type CreateResult =
  * a check and then both insert.
  */
 export async function createReturnRequest(input: {
+  /** The LV-XXXXXX number. The uuid the row is keyed on is resolved here
+   *  rather than being carried through the application: `Order.id` is the
+   *  number everywhere else, and widening that type for one insert would put
+   *  a second identifier into every order the shop touches. */
   orderNumber: string
-  orderUuid: string
   userId?: string
   reason: ReturnReason
   comment: string
@@ -90,10 +93,20 @@ export async function createReturnRequest(input: {
   if (tableMissing) return { ok: false, reason: 'unavailable' }
   const admin = createAdminClient()
 
+  const { data: orderRow, error: lookupError } = await admin
+    .from('orders')
+    .select('id')
+    .eq('order_number', input.orderNumber)
+    .maybeSingle()
+
+  if (lookupError) throw new Error(`Failed to find the order: ${lookupError.message}`)
+  if (!orderRow) return { ok: false, reason: 'no_order' }
+  const orderUuid = (orderRow as { id: string }).id
+
   const { data, error } = await admin
     .from('return_requests')
     .insert({
-      order_id: input.orderUuid,
+      order_id: orderUuid,
       user_id: input.userId ?? null,
       reason: input.reason,
       comment: input.comment,
@@ -124,7 +137,7 @@ export async function createReturnRequest(input: {
       return_reason: input.reason,
       return_requested_at: new Date().toISOString(),
     })
-    .eq('id', input.orderUuid)
+    .eq('id', orderUuid)
 
   if (orderError) {
     // The request is filed and is the record that matters; the summary can be
