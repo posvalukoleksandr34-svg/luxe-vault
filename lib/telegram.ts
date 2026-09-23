@@ -13,6 +13,14 @@ import type { Order, OrderStatus } from '@/lib/types'
  *   TELEGRAM_CHAT_ID     the chat, group or channel to post into (the bot must
  *                        be a member; a group id starts with "-100")
  *
+ * Optional — a forum group's TOPICS, one per kind of alert:
+ *   TELEGRAM_THREAD_ORDERS    new orders, payments, status changes
+ *   TELEGRAM_THREAD_ERRORS    crashes and failed jobs
+ *   TELEGRAM_THREAD_STOCK     low stock, paid-but-sold-out
+ *   TELEGRAM_THREAD_RETURNS   return requests
+ * Each is the number at the end of a topic's link (t.me/c/<chat>/<THREAD>).
+ * Unset, that kind of alert goes to the chat itself, exactly as before.
+ *
  * PRIVACY: a Telegram chat is a third party. Messages carry order numbers,
  * amounts, payment method and destination country — never the customer's
  * name, email, phone or address. Staff open the order in the admin console
@@ -41,6 +49,41 @@ export function isTelegramConfigured(): boolean {
   return config() !== null
 }
 
+/** Which forum topic an alert belongs in. */
+export type TelegramTopic = 'orders' | 'errors' | 'stock' | 'returns'
+
+const TOPIC_ENV: Record<TelegramTopic, string> = {
+  orders: 'TELEGRAM_THREAD_ORDERS',
+  errors: 'TELEGRAM_THREAD_ERRORS',
+  stock: 'TELEGRAM_THREAD_STOCK',
+  returns: 'TELEGRAM_THREAD_RETURNS',
+}
+
+const warnedBadThread = new Set<string>()
+
+/**
+ * The topic's thread id, or undefined to post to the chat itself.
+ *
+ * Read on every call rather than once at start-up, so a topic added in the
+ * hosting dashboard takes effect without a redeploy. Anything that is not a
+ * positive whole number — a pasted link, a stray space, "abc" — is ignored
+ * with one warning, and the alert goes to the main chat: a mistyped variable
+ * must cost a tidy chat, never an alert.
+ */
+function threadFor(topic: TelegramTopic | undefined): number | undefined {
+  if (!topic) return undefined
+  const name = TOPIC_ENV[topic]
+  const raw = process.env[name]?.trim()
+  if (!raw) return undefined
+  const id = Number(raw)
+  if (Number.isInteger(id) && id > 0) return id
+  if (!warnedBadThread.has(name)) {
+    warnedBadThread.add(name)
+    console.warn(`[telegram] ${name} is not a thread number; posting ${topic} alerts to the main chat`)
+  }
+  return undefined
+}
+
 /** Escapes text for Telegram's HTML parse mode (only these three matter). */
 export function escapeTelegramHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -50,16 +93,19 @@ export function escapeTelegramHtml(value: string): string {
  * Posts one message. `html` must already be escaped wherever it interpolates
  * data (use escapeTelegramHtml). Returns whether Telegram accepted it.
  */
-export async function sendTelegramMessage(html: string): Promise<boolean> {
+export async function sendTelegramMessage(html: string, topic?: TelegramTopic): Promise<boolean> {
   const cfg = config()
   if (!cfg) return false
   const text = html.length > MAX_MESSAGE_LENGTH ? `${html.slice(0, MAX_MESSAGE_LENGTH - 1)}…` : html
-  try {
-    const res = await fetch(`${API_BASE}/bot${cfg.token}/sendMessage`, {
+  const thread = threadFor(topic)
+
+  const post = (threadId: number | undefined) =>
+    fetch(`${API_BASE}/bot${cfg.token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: cfg.chatId,
+        ...(threadId ? { message_thread_id: threadId } : {}),
         text,
         parse_mode: 'HTML',
         disable_web_page_preview: true,
@@ -67,6 +113,24 @@ export async function sendTelegramMessage(html: string): Promise<boolean> {
       cache: 'no-store',
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     })
+
+  try {
+    let res = await post(thread)
+
+    // A thread id that is SET but WRONG — the topic was deleted, the number
+    // mistyped, the group is not a forum, or it names the General topic
+    // (which Telegram only accepts WITHOUT a thread id). Telegram answers 400,
+    // and without this the alert would simply be lost. One retry to the main
+    // chat, so a stale variable costs the chat's tidiness and never the
+    // message.
+    if (!res.ok && thread && res.status === 400) {
+      const detail = await res.text().catch(() => '')
+      console.warn(
+        `[telegram] ${topic} thread ${thread} refused (${detail.slice(0, 120)}); sending to the main chat instead`,
+      )
+      res = await post(undefined)
+    }
+
     if (!res.ok) {
       // The body names the problem ("chat not found", "bot was kicked");
       // the URL carries the token, so it is never logged.
@@ -91,7 +155,7 @@ const esc = escapeTelegramHtml
  * into a logged `false` — the promise that nothing here throws covers the
  * message building too, not only the network call.
  */
-async function dispatch(build: () => string): Promise<boolean> {
+async function dispatch(build: () => string, topic: TelegramTopic): Promise<boolean> {
   if (!config()) return false
   let html: string
   try {
@@ -100,7 +164,7 @@ async function dispatch(build: () => string): Promise<boolean> {
     console.warn('[telegram] could not format message:', (e as Error).message)
     return false
   }
-  return sendTelegramMessage(html)
+  return sendTelegramMessage(html, topic)
 }
 
 function adminLink(): string {
@@ -123,6 +187,7 @@ function orderLines(order: Order): string[] {
 export function notifyNewOrder(order: Order): Promise<boolean> {
   return dispatch(() =>
     ['🛍 <b>New order</b>', ...orderLines(order), `<a href="${esc(adminLink())}">Open admin</a>`].join('\n'),
+    'orders',
   )
 }
 
@@ -147,7 +212,7 @@ export function notifyPaymentConfirmed(
     return [`✅ <b>Payment confirmed</b> · ${via}`, ...orderLines(order).map((l, i) => (i === 0 ? l + paid : l))].join(
       '\n',
     )
-  })
+  }, 'orders')
 }
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -164,7 +229,7 @@ export function notifyOrderStatus(order: Order, by: 'admin' | 'customer'): Promi
   return dispatch(() => {
     const tracking = order.trackingNumber ? `\nTracking: <code>${esc(order.trackingNumber)}</code>` : ''
     return `📦 <b>${esc(order.id)}</b> → ${STATUS_LABEL[order.status] ?? esc(String(order.status))} <i>(by ${by})</i>${tracking}`
-  })
+  }, 'orders')
 }
 
 /**
@@ -192,6 +257,7 @@ export function notifyReturnRequested(
     ]
       .filter(Boolean)
       .join('\n'),
+    'returns',
   )
 }
 
@@ -199,6 +265,9 @@ export function notifyReturnRequested(
 export function notifyStockConflict(order: Order): Promise<boolean> {
   return dispatch(() =>
     [`⚠️ <b>Paid but out of stock</b>`, ...orderLines(order), 'Refund or restock needed.'].join('\n'),
+    // A stock problem first and an order problem second: it is the stock
+    // topic's watchers who can restock, and the refund follows from there.
+    'stock',
   )
 }
 
@@ -224,5 +293,5 @@ export async function reportCriticalError(context: string, error: unknown): Prom
       if (now - at >= ERROR_DEDUPE_MS) lastReported.delete(k)
     })
   }
-  return sendTelegramMessage(`🚨 <b>${esc(context)}</b>\n<code>${esc(message.slice(0, 1500))}</code>`)
+  return sendTelegramMessage(`🚨 <b>${esc(context)}</b>\n<code>${esc(message.slice(0, 1500))}</code>`, 'errors')
 }
