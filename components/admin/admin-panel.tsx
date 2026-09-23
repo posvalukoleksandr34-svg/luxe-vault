@@ -18,6 +18,7 @@ import {
   Truck,
   Users,
   Mail,
+  RotateCcw,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -332,6 +333,16 @@ export function AdminPanel() {
               >
                 <Mail className="size-4" />
                 Рассылка
+              </Link>
+              {/* Its own page (app/admin/returns): the queue is read fresh on
+                  every visit, because a decision made by a colleague a minute
+                  ago must not still look pending here. */}
+              <Link
+                href="/admin/returns"
+                className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <RotateCcw className="size-4" />
+                Возвраты
               </Link>
             </nav>
 

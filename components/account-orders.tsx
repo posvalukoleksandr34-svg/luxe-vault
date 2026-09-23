@@ -376,7 +376,11 @@ export function AccountOrders({
                   // and take the money back before anyone reviewed it. The
                   // button opens a form; the form files a request.
                   order.paymentStatus === 'paid' &&
-                  (!order.returnStatus || order.returnStatus === 'none') ? (
+                  // A REJECTED return may be asked for again — the database's
+                  // one-open-request index allows it — so the button comes
+                  // back. The reason it was declined is in the customer's
+                  // notifications.
+                  (!order.returnStatus || order.returnStatus === 'none' || order.returnStatus === 'rejected') ? (
                     <div className="flex flex-col items-end gap-2">
                       <button
                         type="button"
@@ -411,6 +415,17 @@ export function AccountOrders({
                     // a second try. The badge says what state it is in.
                     <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
                       {t('rma.pending')}
+                    </span>
+                  ) : order.returnStatus === 'approved' ? (
+                    // Decided, money not yet back — a hand-refunded payment,
+                    // or a card refund being retried. Said as such, so the
+                    // customer does not read "approved" as "paid".
+                    <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
+                      {t('rma.approved')}
+                    </span>
+                  ) : order.returnStatus === 'refunded' ? (
+                    <span className="border border-emerald-400/30 bg-emerald-400/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-emerald-300/90">
+                      {t('orders.refunded')}
                     </span>
                   ) : undefined
                 }

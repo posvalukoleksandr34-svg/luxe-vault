@@ -83,6 +83,16 @@ export const decideReturnRequestSchema = z.discriminatedUnion('decision', [
     id: z.string().uuid(),
     adminNotes: z.string().trim().min(1, 'A rejection needs a reason').max(COMMENT_MAX),
   }),
+  /**
+   * An approved return whose money went back BY HAND — a crypto payment, which
+   * has no refund API to call. The manager returns it, then says so here, and
+   * only then does the request close and the customer hear it is done.
+   */
+  z.object({
+    decision: z.literal('complete'),
+    id: z.string().uuid(),
+    adminNotes: z.string().trim().max(COMMENT_MAX).optional(),
+  }),
 ])
 export type DecideReturnRequestInput = z.infer<typeof decideReturnRequestSchema>
 

@@ -754,7 +754,11 @@ async function restoreStock(orderNumber: string): Promise<void> {
  */
 export async function recordRefund(
   id: string,
-  params: { refundedAmount: number; fully: boolean; refundId: string },
+  /** `refundId` is Stripe's, and absent for money returned BY HAND — a
+   *  crypto payment refunded outside any API. Writing a made-up id into a
+   *  column named stripe_refund_id would be a lie a reconciliation would
+   *  eventually believe. */
+  params: { refundedAmount: number; fully: boolean; refundId?: string },
 ): Promise<Order | null> {
   const { data, error } = await createAdminClient()
     .from('orders')
@@ -765,7 +769,7 @@ export async function recordRefund(
       ...(params.fully ? { status: 'refunded' } : {}),
       refunded_amount: params.refundedAmount,
       refunded_at: new Date().toISOString(),
-      stripe_refund_id: params.refundId,
+      stripe_refund_id: params.refundId ?? null,
     })
     .eq('order_number', id)
     .select(await resolveOrderSelect())

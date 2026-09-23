@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { orderChargeRate } from '@/lib/currency'
-import { getOrderById, recordRefund } from '@/lib/server/orders-store'
-import { isStripeConfigured, refundPayment } from '@/lib/server/stripe'
+import { getOrderById } from '@/lib/server/orders-store'
+import { refundOrder } from '@/lib/server/refund-order'
+import { isStripeConfigured } from '@/lib/server/stripe'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { readJsonObject } from '@/lib/server/http'
 
@@ -56,44 +56,23 @@ export async function POST(
   const order = await getOrderById(params.id)
   if (!order) return NextResponse.json({ error: 'Заказ не найден' }, { status: 404 })
 
-  if (order.paymentProvider !== 'stripe' || !order.paymentId) {
-    return NextResponse.json(
-      { error: 'Возврат через Stripe недоступен для этого заказа' },
-      { status: 400 },
-    )
-  }
-  if (order.paymentStatus !== 'paid' && order.paymentStatus !== 'partially_refunded') {
-    return NextResponse.json(
-      { error: 'Возврат возможен только для оплаченного заказа' },
-      { status: 409 },
-    )
-  }
-
-  const result = await refundPayment(order.paymentId, amount, orderChargeRate(order))
+  // The refund itself — Stripe call, currency rate, cumulative recording — is
+  // lib/server/refund-order.ts, shared with approving a return so the two
+  // cannot drift. What stays here is this route's own contract: its status
+  // codes and its response shape, unchanged.
+  const result = await refundOrder(order, amount)
   if (!result.ok) {
-    return NextResponse.json({ error: result.message }, { status: 400 })
+    const status = result.reason === 'manual' ? 400 : result.reason === 'not_paid' ? 409 : result.reason === 'unconfigured' ? 503 : 400
+    const error =
+      result.reason === 'manual' ? 'Возврат через Stripe недоступен для этого заказа' : result.message
+    return NextResponse.json({ error }, { status })
   }
-
-  // Cumulative, not incremental: adding to the stored value would double count
-  // if this route were retried after Stripe succeeded but before we wrote.
-  // A full refund records the whole total, so converting back from another
-  // currency can never leave a stray cent looking unrefunded.
-  const cumulative = result.fullyRefunded
-    ? order.total
-    : Math.min(order.total, Number(((order.refundedAmount ?? 0) + result.amountRefunded).toFixed(2)))
-
-  const updated = await recordRefund(params.id, {
-    refundedAmount: cumulative,
-    // Trust Stripe's view of whether anything is left, not our arithmetic.
-    fully: result.fullyRefunded,
-    refundId: result.refundId,
-  })
 
   return NextResponse.json({
-    order: updated,
+    order: result.order,
     refundId: result.refundId,
-    refunded: result.amountRefunded,
-    totalRefunded: cumulative,
+    refunded: result.refunded,
+    totalRefunded: result.totalRefunded,
     fullyRefunded: result.fullyRefunded,
   })
 }

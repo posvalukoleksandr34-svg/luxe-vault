@@ -234,6 +234,71 @@ export async function notifyStatusUpdate(params: {
   })
 }
 
+/**
+ * The outcome of a return request, told to the customer who filed it.
+ *
+ * A REJECTION CARRIES ITS REASON, verbatim from the manager. "Your return was
+ * declined" with nothing after it is precisely the message that turns into a
+ * support ticket — or a chargeback, which is the customer asking their bank
+ * the question we did not answer. The schema already refuses a rejection
+ * without a note; this is where that note reaches the person it is for.
+ *
+ * `refunded` is sent when the money has actually gone back — on a Stripe
+ * approval immediately, on a hand-refunded one when the manager marks it done
+ * — never on approval alone. "Approved" followed by no money is worse than
+ * silence.
+ */
+const RETURN_COPY: Record<
+  StorefrontLocale,
+  { refundedTitle: (id: string) => string; refundedBody: string; rejectedTitle: (id: string) => string; rejectedBody: string }
+> = {
+  en: {
+    refundedTitle: (id) => `Your return for ${id} is approved`,
+    refundedBody: 'The refund is on its way to your original payment method.',
+    rejectedTitle: (id) => `Your return for ${id} was declined`,
+    rejectedBody: 'Our team reviewed it and could not accept it:',
+  },
+  it: {
+    refundedTitle: (id) => `Il reso dell’ordine ${id} è stato approvato`,
+    refundedBody: 'Il rimborso è in arrivo sul metodo di pagamento originale.',
+    rejectedTitle: (id) => `Il reso dell’ordine ${id} non è stato accettato`,
+    rejectedBody: 'Il nostro team l’ha esaminato e non ha potuto accettarlo:',
+  },
+  fr: {
+    refundedTitle: (id) => `Votre retour pour ${id} est approuvé`,
+    refundedBody: 'Le remboursement est en route vers votre moyen de paiement d’origine.',
+    rejectedTitle: (id) => `Votre retour pour ${id} a été refusé`,
+    rejectedBody: 'Notre équipe l’a examiné et n’a pas pu l’accepter :',
+  },
+  de: {
+    refundedTitle: (id) => `Ihre Rückgabe für ${id} ist genehmigt`,
+    refundedBody: 'Die Erstattung ist auf dem Weg zu Ihrer ursprünglichen Zahlungsmethode.',
+    rejectedTitle: (id) => `Ihre Rückgabe für ${id} wurde abgelehnt`,
+    rejectedBody: 'Unser Team hat sie geprüft und konnte sie nicht annehmen:',
+  },
+}
+
+export async function notifyReturnDecision(params: {
+  userId: string
+  orderId: string
+  outcome: 'refunded' | 'rejected'
+  /** Required in practice for a rejection; the schema enforces it upstream. */
+  note?: string
+}): Promise<boolean> {
+  const copy = RETURN_COPY[await localeOf(params.orderId)]
+  const refunded = params.outcome === 'refunded'
+  return insert({
+    userId: params.userId,
+    type: 'status_update',
+    title: refunded ? copy.refundedTitle(params.orderId) : copy.rejectedTitle(params.orderId),
+    body: refunded
+      ? copy.refundedBody
+      : `${copy.rejectedBody} ${(params.note ?? '').trim().slice(0, 600)}`.trim(),
+    actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
+    orderId: params.orderId,
+  })
+}
+
 // ---------------------------------------------------------------------- read
 
 function rowToNotification(row: Record<string, unknown>): Notification {
