@@ -71,14 +71,6 @@ export function Hero() {
     }
   }, [])
 
-  function scrollToShop() {
-    const el = document.getElementById('shop')
-    if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 72
-      window.scrollTo({ top, behavior: 'smooth' })
-    }
-  }
-
   return (
     <section className="hero relative flex min-h-[92vh] items-center justify-center overflow-hidden">
       {/* 1. Cool floor wash — the ground the warm light falls onto. Without a
@@ -115,13 +107,19 @@ export function Hero() {
         </p>
 
         <div className="animate-reveal-up mt-14 flex flex-col items-center gap-4 sm:flex-row">
-          <button
-            onClick={scrollToShop}
+          {/* Down to the departments block, the same place the header's
+              "Departments" item goes. A real link rather than a scripted
+              scroll: the section's scroll-margin clears the sticky header, the
+              page's smooth scrolling (off under reduced motion) animates it,
+              and the address can be copied. The hero only renders on the
+              homepage, where #collections always exists. */}
+          <a
+            href="#collections"
             className="hero__cta t-cta group inline-flex items-center gap-3 border border-foreground/20 px-9 py-4 text-foreground/90"
           >
-            {t('hero.cta')}
+            {t('nav.collections')}
             <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />
-          </button>
+          </a>
 
           {/* Secondary, not competing with the primary CTA: someone who knows
               what they want browses; someone who does not asks the stylist. */}

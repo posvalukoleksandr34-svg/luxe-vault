@@ -207,7 +207,6 @@ export const UI = {
   'hero.title': { ru: 'LUXE VAULT', en: 'LUXE VAULT', it: 'LUXE VAULT', fr: 'LUXE VAULT', de: 'LUXE VAULT' },
   'hero.subtitle': { ru: 'Премиальная одежда и аксессуары', en: 'Premium apparel & accessories', it: 'Abbigliamento e accessori premium', fr: 'Vêtements et accessoires premium', de: 'Premium-Bekleidung & Accessoires' },
   'hero.eyebrow': { ru: 'Коллекция 2026', en: 'Collection 2026', it: 'Collezione 2026', fr: 'Collection 2026', de: 'Kollektion 2026' },
-  'hero.cta': { ru: 'Смотреть коллекцию', en: 'View Collection', it: 'Vedi Collezione', fr: 'Voir la Collection', de: 'Kollektion ansehen' },
   'filter.all': { ru: 'Все', en: 'All', it: 'Tutti', fr: 'Tout', de: 'Alle' },
   'filter.sale': { ru: 'Распродажа', en: 'Sale', it: 'Saldi', fr: 'Solde', de: 'Sale' },
   'filter.new': { ru: 'Новинки', en: 'New', it: 'Novità', fr: 'Nouveau', de: 'Neu' },

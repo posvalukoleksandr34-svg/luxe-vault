@@ -1,8 +1,9 @@
 'use client'
 
 import { Check, ChevronDown, Search } from 'lucide-react'
-import { AsYouType, getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js'
+import { AsYouType, getCountryCallingCode, type CountryCode } from 'libphonenumber-js'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildCountryOptions, searchCountries } from '@/lib/country-search'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -55,33 +56,17 @@ export function PhoneInput({
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const countries = useMemo(() => {
-    let displayNames: Intl.DisplayNames | null = null
-    try {
-      displayNames = new Intl.DisplayNames([locale], { type: 'region' })
-    } catch {
-      displayNames = null
-    }
-    return getCountries()
-      .map((code) => ({
-        code,
-        name: displayNames?.of(code) ?? code,
-        dial: `+${getCountryCallingCode(code)}`,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, locale))
-  }, [locale])
+  // Names in the page's language, English and Russian, so "Укр", "Ukr" and
+  // "380" all find Ukraine — see lib/country-search.ts.
+  const countries = useMemo(() => buildCountryOptions(locale), [locale])
+  const filtered = useMemo(() => searchCountries(countries, search), [countries, search])
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return countries
-    return countries.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        c.dial.includes(q.replace(/^\+?/, '+')) ||
-        c.dial.replace('+', '').startsWith(q.replace(/\D/g, '')),
-    )
-  }, [countries, search])
+  function choose(code: CountryCode) {
+    onCountryChange(code)
+    // Re-run the mask for the newly selected country.
+    onChange(formatAsYouType(value, code))
+    setOpen(false)
+  }
 
   // Close on outside click so the dropdown never traps the checkout flow.
   useEffect(() => {
@@ -137,8 +122,20 @@ export function PhoneInput({
               type="text"
               autoFocus
               aria-label={t('filter.search')}
+              placeholder={t('filter.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                // "Каз" then Enter picks the best match without reaching for
+                // the mouse. Enter must not submit the checkout form.
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (filtered[0]) choose(filtered[0].code)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setOpen(false)
+                }
+              }}
               className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/50"
             />
           </div>
@@ -147,12 +144,7 @@ export function PhoneInput({
               <button
                 key={c.code}
                 type="button"
-                onClick={() => {
-                  onCountryChange(c.code)
-                  // Re-run the mask for the newly selected country.
-                  onChange(formatAsYouType(value, c.code))
-                  setOpen(false)
-                }}
+                onClick={() => choose(c.code)}
                 className={cn(
                   'flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition hover:bg-accent',
                   c.code === country ? 'text-gold' : 'text-foreground',
