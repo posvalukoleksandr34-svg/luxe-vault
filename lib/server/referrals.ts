@@ -7,10 +7,9 @@ import 'server-only'
 import { randomInt } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
+import { getReferralSettings } from '@/lib/server/referral-settings'
 import {
   REFERRAL_CODE_RE,
-  REFERRAL_DISCOUNT_PERCENT,
-  REFERRAL_REWARD_AMOUNT,
   type ReferralHistoryRow,
   type ReferralOverview,
   type ReferralStatus,
@@ -163,7 +162,11 @@ export async function checkReferralCode(
     }
   }
 
-  return { ok: true, referrerId, discount: Math.round(subtotal * REFERRAL_DISCOUNT_PERCENT) / 100 }
+  // The percentage as the admin set it NOW (/admin/referrals). The cart
+  // preview and the order both come through here, so they agree unless the
+  // setting changes in between — and then the order uses the new one.
+  const { friendDiscountPercent } = await getReferralSettings()
+  return { ok: true, referrerId, discount: Math.round(subtotal * friendDiscountPercent) / 100 }
 }
 
 /**
@@ -218,12 +221,15 @@ export async function attachReferralOrder(input: {
   if (error) console.error(`[referrals] attach to ${input.orderNumber} failed:`, error.message)
 }
 
-/** The friend's order was paid: credit the referrer. Idempotent; never throws. */
+/** The friend's order was paid: credit the referrer. Idempotent; never throws.
+ *  The amount is the reward in force at the moment of payment, and is stored
+ *  on the referral — a later change of the setting does not touch it. */
 export async function grantReferralReward(orderNumber: string): Promise<void> {
   try {
+    const { referrerRewardAmount } = await getReferralSettings()
     const { error } = await createAdminClient().rpc('grant_referral_reward', {
       p_order_number: orderNumber,
-      p_amount: REFERRAL_REWARD_AMOUNT,
+      p_amount: referrerRewardAmount,
     })
     if (error && !isMissing(error)) console.error(`[referrals] reward for ${orderNumber} failed:`, error.message)
   } catch (e) {
@@ -266,7 +272,7 @@ export async function referralOverview(userId: string): Promise<ReferralOverview
   if (!code) return { available: false }
 
   const supabase = createAdminClient()
-  const [referrals, clicks, credits] = await Promise.all([
+  const [referrals, clicks, credits, settings] = await Promise.all([
     supabase
       .from('referrals')
       .select('id, created_at, referee_email, status, reward_amount')
@@ -275,6 +281,7 @@ export async function referralOverview(userId: string): Promise<ReferralOverview
       .limit(200),
     supabase.from('referral_clicks').select('id', { count: 'exact', head: true }).eq('referrer_id', userId),
     supabase.from('account_credits').select('amount, reason').eq('user_id', userId),
+    getReferralSettings(),
   ])
 
   if (referrals.error || clicks.error || credits.error) {
@@ -301,8 +308,8 @@ export async function referralOverview(userId: string): Promise<ReferralOverview
     available: true,
     code,
     link: referralLink(code),
-    discountPercent: REFERRAL_DISCOUNT_PERCENT,
-    rewardAmount: REFERRAL_REWARD_AMOUNT,
+    discountPercent: settings.friendDiscountPercent,
+    rewardAmount: settings.referrerRewardAmount,
     stats: {
       invited: rows.length,
       clicks: clicks.count ?? 0,

@@ -1,5 +1,7 @@
 // The referral programme's terms, shared by the account page, checkout and the
-// server. Configurable per deployment; the defaults are the launch offer.
+// server. Since migration 0041 the admin sets them in /admin/referrals
+// (lib/server/referral-settings.ts); these env vars are the fallback until
+// that table exists. The defaults are the launch offer.
 //
 //   NEXT_PUBLIC_REFERRAL_DISCOUNT_PERCENT  the friend's discount on their first
 //                                          order (whole percent, 1–50)
@@ -21,6 +23,11 @@ export const REFERRAL_DISCOUNT_PERCENT = Math.round(
 
 export const REFERRAL_REWARD_AMOUNT =
   Math.round(numberFrom(process.env.NEXT_PUBLIC_REFERRAL_REWARD, 50, 0, 1000) * 100) / 100
+
+/** What /admin/referrals accepts for the two numbers — the same bounds the
+ *  env vars are clamped to, and the ones migration 0041 enforces. */
+export const REFERRAL_DISCOUNT_RANGE = { min: 1, max: 50 } as const
+export const REFERRAL_REWARD_RANGE = { min: 0, max: 1000 } as const
 
 /** Set by /r/<code>; read at checkout to pre-fill the friend's code. Not
  *  httpOnly on purpose — it holds only the public code. */

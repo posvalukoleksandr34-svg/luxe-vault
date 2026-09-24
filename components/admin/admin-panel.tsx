@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ClipboardList,
   FileDown,
+  Gift,
   ChevronRight,
   Edit2,
   Images,
@@ -25,6 +26,7 @@ import {
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
+import { ORDER_STATUS_LABELS_RU, PAYMENT_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { STATUS_LABELS } from '@/lib/i18n'
 import { COURIER_NAMES } from '@/lib/fulfilment'
 import { formatCharged, orderCharge, orderChargeRate } from '@/lib/currency'
@@ -62,24 +64,8 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 
 /** Russian labels for the admin console, which is internal and Russian-only.
  *  The stored values are the English enum. */
-const STATUS_LABELS_RU: Record<OrderStatus, string> = {
-  pending: 'Ожидает',
-  processing: 'В обработке',
-  shipped: 'Отправлен',
-  delivered: 'Доставлен',
-  cancelled: 'Отменён',
-  refunded: 'Возврат',
-}
-
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending_payment: 'Ожидает оплаты',
-  confirming: 'Подтверждается',
-  paid: 'Оплачено',
-  failed: 'Платёж не прошёл',
-  expired: 'Истёк',
-  refunded: 'Возвращено',
-  partially_refunded: 'Частичный возврат',
-}
+const STATUS_LABELS_RU = ORDER_STATUS_LABELS_RU
+const PAYMENT_STATUS_LABELS = PAYMENT_STATUS_LABELS_RU
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   pending_payment: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
@@ -346,6 +332,13 @@ export function AdminPanel() {
                 <RotateCcw className="size-4" />
                 Возвраты
               </Link>
+              <Link
+                href="/admin/referrals"
+                className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <Gift className="size-4" />
+                Рефералы
+              </Link>
             </nav>
 
             <button
@@ -403,6 +396,20 @@ export function AdminPanel() {
             >
               <Mail className="size-4" />
               Рассылка
+            </Link>
+            <Link
+              href="/admin/returns"
+              className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <RotateCcw className="size-4" />
+              Возвраты
+            </Link>
+            <Link
+              href="/admin/referrals"
+              className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <Gift className="size-4" />
+              Рефералы
             </Link>
             <button
               type="button"
