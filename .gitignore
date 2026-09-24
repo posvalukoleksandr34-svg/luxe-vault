@@ -51,3 +51,7 @@ skills/
 
 .vercel
 .env*
+
+# .env.example holds only placeholder keys, documenting what a deploy needs
+# — safe, and useful, to keep in git.
+!.env.example
