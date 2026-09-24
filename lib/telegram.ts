@@ -183,6 +183,12 @@ function buyerName(order: Order): string {
   return (firstName && lastName ? `${firstName} ${lastName}` : name ?? '').trim()
 }
 
+/** The first name typed at checkout, or the first word of an older order's
+ *  full name. */
+function firstNameOf(order: Order): string {
+  return order.customer.firstName?.trim() || (order.customer.name ?? '').trim().split(/\s+/)[0] || 'the customer'
+}
+
 function orderLines(order: Order): string[] {
   const units = (order.items ?? []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0)
   const buyer = buyerName(order)
@@ -237,6 +243,16 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 /** An order changed status (admin action, customer cancellation). */
 export function notifyOrderStatus(order: Order, by: 'admin' | 'customer'): Promise<boolean> {
   return dispatch(() => {
+    // Shipping is the change staff act on together — the parcel has left —
+    // so it gets its own sentence, worded as the shop asked. Sent again when
+    // the tracking number is corrected: the latest one is the right one.
+    if (order.status === 'shipped') {
+      const courier = order.courierName ? ` (${esc(order.courierName)})` : ''
+      const tracking = order.trackingNumber
+        ? ` Tracking: <code>${esc(order.trackingNumber)}</code>${courier}`
+        : ' No tracking number.'
+      return `📦 Order <b>${esc(order.id)}</b> for ${esc(firstNameOf(order))} has been <b>SHIPPED</b>!${tracking}`
+    }
     const tracking = order.trackingNumber ? `\nTracking: <code>${esc(order.trackingNumber)}</code>` : ''
     return `📦 <b>${esc(order.id)}</b> → ${STATUS_LABEL[order.status] ?? esc(String(order.status))} <i>(by ${by})</i>${tracking}`
   }, 'orders')
