@@ -24,7 +24,11 @@
 const STORAGE_KEY = 'lv.checkout.profile.v1'
 
 export type SavedProfile = {
+  /** The full name. Kept so a record written before the split still reads. */
   name: string
+  /** Since checkout asks for them separately; absent on older records. */
+  firstName?: string
+  lastName?: string
   email: string
   phone: string
   phoneCountry: string

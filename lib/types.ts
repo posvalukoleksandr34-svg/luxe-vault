@@ -264,7 +264,12 @@ export type Order = {
   id: string
   createdAt: number
   customer: {
+    /** The full name, "First Last". Always present; what every reader shows. */
     name: string
+    /** The two halves as the customer typed them (migration 0042). Absent on
+     *  orders placed before checkout asked for them separately. */
+    firstName?: string
+    lastName?: string
     phone: string
     address: string
     email?: string

@@ -113,3 +113,37 @@ export function isValidName(value: string): boolean {
   const trimmed = value.trim()
   return trimmed.length >= 2 && trimmed.length <= 80 && !looksLikeGibberish(trimmed)
 }
+
+/**
+ * One half of a name: a first name or a surname, as checkout asks for them.
+ *
+ * Deliberately NOT looksLikeGibberish(), which wants three different letters:
+ * a real name is often shorter than that — Li, Wu, Bo, Ng, Al. Instead:
+ * 2–50 characters, starting with a letter, containing only letters and the
+ * joiners names actually use (space, hyphen, apostrophe, full stop), and no
+ * letter four times in a row.
+ */
+export function isValidNamePart(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed.length < 2 || trimmed.length > 50) return false
+  if (!/^\p{L}[\p{L}\p{M} '’.-]*$/u.test(trimmed)) return false
+  if ((trimmed.match(/\p{L}/gu) ?? []).length < 2) return false
+  return !/(.)\1{3,}/u.test(trimmed.toLowerCase())
+}
+
+/** "First Last" from the two halves, with runs of spaces collapsed. */
+export function joinName(firstName: string, lastName: string): string {
+  return `${firstName.trim()} ${lastName.trim()}`.replace(/\s+/g, ' ')
+}
+
+/**
+ * A best guess at the two halves of a single stored name — for pre-filling
+ * the checkout from an address saved before it asked for them separately.
+ * The first word is the first name and the rest the surname; the customer
+ * sees both fields and can correct a guess before ordering.
+ */
+export function splitFullName(full: string | undefined | null): { firstName: string; lastName: string } {
+  const words = (full ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return { firstName: '', lastName: '' }
+  return { firstName: words[0], lastName: words.slice(1).join(' ') }
+}

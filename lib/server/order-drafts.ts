@@ -15,11 +15,23 @@ import { readCatalog } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import { applyCoupon } from '@/lib/server/coupons'
 import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
-import { composeAddress, isValidEmail, isValidName, isValidPhone, validateAddress } from '@/lib/validation'
+import {
+  composeAddress,
+  isValidEmail,
+  isValidName,
+  isValidNamePart,
+  isValidPhone,
+  joinName,
+  validateAddress,
+} from '@/lib/validation'
 import type { CartItem, Order, Product } from '@/lib/types'
 
 export type OrderDraftBody = {
   customer?: {
+    /** Checkout sends the two halves. `name` alone is still accepted from an
+     *  older client, and is ignored when both halves are present. */
+    firstName?: string
+    lastName?: string
     name?: string
     phone?: string
     email?: string
@@ -86,11 +98,24 @@ export function validateOrderDraft(
   const c = body.customer
   if (!c) return { ok: false, error: 'Missing customer' }
 
-  const name = (c.name ?? '').trim()
   const phone = (c.phone ?? '').trim()
   const email = (c.email ?? '').trim()
 
-  if (!isValidName(name)) return { ok: false, error: 'Invalid name' }
+  // First and last name, each required and checked on its own. The full name
+  // is composed from them, so it can never disagree with the halves.
+  let name: string
+  let firstName: string | undefined
+  let lastName: string | undefined
+  if (typeof c.firstName === 'string' || typeof c.lastName === 'string') {
+    firstName = (c.firstName ?? '').trim().replace(/\s+/g, ' ')
+    lastName = (c.lastName ?? '').trim().replace(/\s+/g, ' ')
+    if (!isValidNamePart(firstName)) return { ok: false, error: 'Invalid first name' }
+    if (!isValidNamePart(lastName)) return { ok: false, error: 'Invalid last name' }
+    name = joinName(firstName, lastName)
+  } else {
+    name = (c.name ?? '').trim()
+    if (!isValidName(name)) return { ok: false, error: 'Invalid name' }
+  }
   if (!isValidPhone(phone)) return { ok: false, error: 'Invalid phone number' }
   if (!isValidEmail(email)) return { ok: false, error: 'Invalid email address' }
 
@@ -143,7 +168,7 @@ export function validateOrderDraft(
   return {
     ok: true,
     draft: {
-      customer: { name, phone, email, address, street, postalCode, city, country },
+      customer: { name, firstName, lastName, phone, email, address, street, postalCode, city, country },
       items,
       // Placeholders. The caller replaces all three with catalogue-derived
       // figures before the order is built; they are never persisted as-is.

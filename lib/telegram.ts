@@ -21,10 +21,11 @@ import type { Order, OrderStatus } from '@/lib/types'
  * Each is the number at the end of a topic's link (t.me/c/<chat>/<THREAD>).
  * Unset, that kind of alert goes to the chat itself, exactly as before.
  *
- * PRIVACY: a Telegram chat is a third party. Messages carry order numbers,
- * amounts, payment method and destination country — never the customer's
- * name, email, phone or address. Staff open the order in the admin console
- * for those.
+ * PRIVACY: a Telegram chat is a third party. Order alerts carry the order
+ * number, amount, payment method, destination country and the buyer's full
+ * name (the shop's decision: staff recognise an order by who placed it). They
+ * never carry the email, phone or address; staff open the order in the admin
+ * console for those.
  *
  * RESILIENCE: nothing here throws, and every call gives up after a few
  * seconds. An alert failing must never fail the order, payment or webhook
@@ -175,10 +176,19 @@ function chf(amount: number): string {
   return formatCharged(amount, 'CHF')
 }
 
+/** "First Last" from the two fields when the order has them, else the stored
+ *  full name — orders from before checkout asked for them separately. */
+function buyerName(order: Order): string {
+  const { firstName, lastName, name } = order.customer
+  return (firstName && lastName ? `${firstName} ${lastName}` : name ?? '').trim()
+}
+
 function orderLines(order: Order): string[] {
   const units = (order.items ?? []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0)
+  const buyer = buyerName(order)
   return [
     `<b>${esc(order.id)}</b> · ${esc(chf(order.total))}`,
+    ...(buyer ? [`👤 ${esc(buyer)}`] : []),
     `${units} ${units === 1 ? 'item' : 'items'} · ${esc(order.payment)}${order.customer.country ? ` · ${esc(order.customer.country)}` : ''}`,
   ]
 }

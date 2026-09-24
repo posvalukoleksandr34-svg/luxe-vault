@@ -31,7 +31,25 @@ import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '
  */
 const MONEY_COLUMNS = 'shipping_cost, tax, coupon_id,'
 
+/** The buyer's first and last name (migration 0042), probed the same way. */
+const NAME_COLUMNS = 'customer_first_name, customer_last_name,'
+
 let orderSelectCache: string | null = null
+/** Whether 0042 is applied — also decides whether saveCustomerNames() writes. */
+let nameColumnsPresent: boolean | null = null
+
+async function probeNameColumns(): Promise<boolean> {
+  if (nameColumnsPresent !== null) return nameColumnsPresent
+  const { error } = await createAdminClient().from('orders').select('customer_first_name, customer_last_name').limit(1)
+  if (error) {
+    console.warn(
+      '[orders] customer_first_name/customer_last_name are missing — orders keep ' +
+        'only the full name. Apply migration 0042.',
+    )
+  }
+  nameColumnsPresent = !error
+  return nameColumnsPresent
+}
 
 async function resolveOrderSelect(): Promise<string> {
   if (orderSelectCache) return orderSelectCache
@@ -41,15 +59,16 @@ async function resolveOrderSelect(): Promise<string> {
     .select('shipping_cost, tax, coupon_id')
     .limit(1)
 
+  let select = ORDER_SELECT_TEMPLATE
   if (error) {
     console.error(
       '[orders] shipping_cost/tax/coupon_id are missing — orders will read ' +
         'without them. Apply migrations 0014 and 0015.',
     )
-    orderSelectCache = ORDER_SELECT_TEMPLATE.replace(MONEY_COLUMNS, '')
-  } else {
-    orderSelectCache = ORDER_SELECT_TEMPLATE
+    select = select.replace(MONEY_COLUMNS, '')
   }
+  if (!(await probeNameColumns())) select = select.replace(NAME_COLUMNS, '')
+  orderSelectCache = select
 
   return orderSelectCache
 }
@@ -58,7 +77,7 @@ async function resolveOrderSelect(): Promise<string> {
 const ORDER_SELECT_TEMPLATE = `
   id, order_number, created_at, user_id, lookup_token, status, tracking_number,
   processing_at, shipped_at, delivered_at, cancelled_at,
-  customer_name, customer_email, customer_phone,
+  customer_name, ${NAME_COLUMNS} customer_email, customer_phone,
   address_line, street, postal_code, city, country,
   subtotal, discount, ${MONEY_COLUMNS} total, promo, payment,
   payment_status, payment_provider, payment_id, payment_currency,
@@ -119,6 +138,8 @@ function rowToOrder(row: Record<string, unknown>): Order {
     userId: (row.user_id as string | null) ?? undefined,
     customer: {
       name: row.customer_name as string,
+      firstName: (row.customer_first_name as string | null | undefined) ?? undefined,
+      lastName: (row.customer_last_name as string | null | undefined) ?? undefined,
       phone: row.customer_phone as string,
       address: row.address_line as string,
       email: (row.customer_email as string | null) ?? undefined,
@@ -247,7 +268,10 @@ export async function addOrder(order: Order): Promise<void> {
     })),
   })
 
-  if (!rpcError && rpcId) return
+  if (!rpcError && rpcId) {
+    await saveCustomerNames(order)
+    return
+  }
 
   if (rpcError) {
     if (rpcError.message.includes('INSUFFICIENT_STOCK')) {
@@ -273,6 +297,32 @@ export async function addOrder(order: Order): Promise<void> {
   }
 
   await addOrderLegacy(order, supabase)
+  await saveCustomerNames(order)
+}
+
+/**
+ * The first and last name, written straight after the order is created.
+ *
+ * A separate UPDATE rather than a change to place_order(), so the function
+ * every checkout runs through stays exactly as migrations 0012–0015 define
+ * it. The order already carries the full name in customer_name; these two
+ * columns add the split. So a failure here — or migration 0042 not being
+ * applied yet — costs only that split. It never fails the order, and is
+ * logged instead.
+ */
+async function saveCustomerNames(order: Order): Promise<void> {
+  const { firstName, lastName } = order.customer
+  if (!firstName || !lastName) return
+  try {
+    if (!(await probeNameColumns())) return
+    const { error } = await createAdminClient()
+      .from('orders')
+      .update({ customer_first_name: firstName, customer_last_name: lastName })
+      .eq('order_number', order.id)
+    if (error) console.error(`[orders] could not save the name split for ${order.id}:`, error.message)
+  } catch (e) {
+    console.error(`[orders] could not save the name split for ${order.id}:`, (e as Error).message)
+  }
 }
 
 /**

@@ -173,6 +173,14 @@ async function chargeIn(
       baseCurrency: BASE_CURRENCY,
       baseAmount: order.total.toFixed(2),
       fxRate: String(rate),
+      // Who is paying, as typed at checkout, so the Stripe dashboard shows the
+      // buyer next to the charge. An order placed before checkout asked for the
+      // two halves separately has only the full name; the keys are then left
+      // out rather than guessed. The order in Postgres stays the source of
+      // truth — the webhook reads the name from there, not from here.
+      ...(order.customer.firstName && order.customer.lastName
+        ? { firstName: order.customer.firstName, lastName: order.customer.lastName }
+        : { customerName: order.customer.name }),
     },
     description: `LUXE VAULT ${order.id}`,
   }

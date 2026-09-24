@@ -47,14 +47,16 @@ import { cn } from '@/lib/utils'
 import {
   formatPhone,
   isValidEmail,
-  isValidName,
+  isValidNamePart,
   isValidPhone,
+  joinName,
+  splitFullName,
   validateAddress,
 } from '@/lib/validation'
 import type { Order } from '@/lib/types'
 import { logAbandonedCheckout } from '@/actions/abandoned-cart'
 
-type FieldKey = 'name' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
+type FieldKey = 'firstName' | 'lastName' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
 export function CheckoutFlow({
   onOrderCreated,
@@ -90,7 +92,8 @@ export function CheckoutFlow({
   const router = useLocaleRouter()
 
   const [form, setForm] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     phoneCountry: DEFAULT_COUNTRY as CountryCode,
     email: '',
@@ -226,11 +229,13 @@ export function CheckoutFlow({
         const preferred = data.addresses.find((a: { isDefault: boolean }) => a.isDefault)
         if (!preferred) return
         setForm((prev) =>
-          prev.name || prev.street
+          prev.firstName || prev.lastName || prev.street
             ? prev
             : {
                 ...prev,
-                name: preferred.name ?? '',
+                // The address book stores one name; split as a starting point
+                // the customer can correct (see splitFullName).
+                ...splitFullName(preferred.name),
                 phone: preferred.phone ?? '',
                 street: preferred.street ?? '',
                 postalCode: preferred.postalCode ?? '',
@@ -291,8 +296,11 @@ export function CheckoutFlow({
   function validate() {
     const next: Partial<Record<FieldKey, string>> = {}
 
-    if (!form.name.trim()) next.name = t('checkout.fieldRequired')
-    else if (!isValidName(form.name)) next.name = t('checkout.errName')
+    if (!form.firstName.trim()) next.firstName = t('checkout.fieldRequired')
+    else if (!isValidNamePart(form.firstName)) next.firstName = t('checkout.errFirstName')
+
+    if (!form.lastName.trim()) next.lastName = t('checkout.fieldRequired')
+    else if (!isValidNamePart(form.lastName)) next.lastName = t('checkout.errLastName')
 
     if (!form.phone.trim()) next.phone = t('checkout.fieldRequired')
     else if (!isValidPhone(form.phone, form.phoneCountry)) next.phone = t('checkout.errPhone')
@@ -317,7 +325,8 @@ export function CheckoutFlow({
     if (Object.keys(next).length > 0) return null
 
     return {
-      name: form.name.trim(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       phone: formatPhone(form.phone, form.phoneCountry) ?? form.phone.trim(),
       email: form.email.trim(),
       street: form.street.trim(),
@@ -399,7 +408,9 @@ export function CheckoutFlow({
       // form would remember an address the server already refused.
       if (saveDetails) {
         writeSavedProfile({
-          name: form.name.trim(),
+          name: joinName(form.firstName, form.lastName),
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
           phoneCountry: form.phoneCountry,
@@ -527,7 +538,9 @@ export function CheckoutFlow({
     if (!saved) return
     setForm((prev) => ({
       ...prev,
-      name: saved.name,
+      ...(saved.firstName && saved.lastName
+        ? { firstName: saved.firstName, lastName: saved.lastName }
+        : splitFullName(saved.name)),
       email: saved.email,
       phone: saved.phone,
       phoneCountry: saved.phoneCountry as CountryCode,
@@ -727,14 +740,27 @@ export function CheckoutFlow({
                 </div>
               )}
 
-              <Field
-                label={t('checkout.name')}
-                value={form.name}
-                onChange={(v) => update('name', v)}
-                required
-                error={errors.name}
-                autoComplete="name"
-              />
+              {/* Two fields, as on a parcel label: the carrier and the
+                  invoice need the surname on its own. Side by side from
+                  small tablets up, stacked on a phone. */}
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  label={t('checkout.firstName')}
+                  value={form.firstName}
+                  onChange={(v) => update('firstName', v)}
+                  required
+                  error={errors.firstName}
+                  autoComplete="given-name"
+                />
+                <Field
+                  label={t('checkout.lastName')}
+                  value={form.lastName}
+                  onChange={(v) => update('lastName', v)}
+                  required
+                  error={errors.lastName}
+                  autoComplete="family-name"
+                />
+              </div>
 
               <FieldShell label={t('checkout.phone')} htmlFor="checkout-phone" required error={errors.phone}>
                 <PhoneInput
