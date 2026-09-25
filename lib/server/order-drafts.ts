@@ -13,7 +13,7 @@ import {
 } from '@/lib/fulfilment'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
-import { applyCoupon } from '@/lib/server/coupons'
+import { applyCoupon, releaseCouponUse } from '@/lib/server/coupons'
 import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
 import {
   composeAddress,
@@ -332,7 +332,12 @@ export async function repriceItems(
   // Goods must be worth something; a basket that is only a delivery charge is
   // not a sale. Checked on the discounted subtotal rather than the total so a
   // shipping charge cannot mask a zeroed-out basket.
-  if (discounted <= 0) return { ok: false, error: 'Invalid totals' }
+  if (discounted <= 0) {
+    // The coupon's use was already taken above, for an order that will not
+    // be created: give it back.
+    if (couponId) await releaseCouponUse(couponId)
+    return { ok: false, error: 'Invalid totals' }
+  }
 
   if (draft.claimedTotal !== undefined && Math.abs(draft.claimedTotal - total) > 0.01) {
     // Usually a stale cart or a race with a price edit; occasionally an

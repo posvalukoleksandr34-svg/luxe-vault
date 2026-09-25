@@ -15,6 +15,14 @@ const MAX_RESULTS = 24
 const MAX_POPULAR = 6
 
 /**
+ * Search answers depend only on the address (q, cur, ai), never on who asks,
+ * so the CDN may answer a repeated query for a minute. It spares the database
+ * and — for `ai=1` — a paid model call per keystroke-settled phrase. Not set on
+ * a degraded answer (the database search failed), which should be retried.
+ */
+const CACHED = { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+
+/**
  * Catalogue search.
  *
  * Two readings of one box:
@@ -50,7 +58,7 @@ export async function GET(request: NextRequest) {
   // Below two characters every query matches almost everything, so the answer
   // is popular searches rather than a result set.
   if (query.length < 2) {
-    return NextResponse.json({ results: [], fuzzy: false, popular: await popular() })
+    return NextResponse.json({ results: [], fuzzy: false, popular: await popular() }, CACHED)
   }
 
   const catalog = await readCatalog()
@@ -75,14 +83,17 @@ export async function GET(request: NextRequest) {
     const keyword = await keywordSearch(query.slice(0, 60), catalog.products)
     if (keyword.results.length > 0 || (reading.filters.length === 0 && !aiEligible(query, reading))) {
       if (keyword.results.length > 0) recordSearch(query)
-      return NextResponse.json({
-        results: keyword.results,
-        total: keyword.results.length,
-        fuzzy: keyword.fuzzy,
-        degraded: keyword.degraded || undefined,
-        mode: 'keyword',
-        popular: keyword.results.length === 0 ? await popular() : [],
-      })
+      return NextResponse.json(
+        {
+          results: keyword.results,
+          total: keyword.results.length,
+          fuzzy: keyword.fuzzy,
+          degraded: keyword.degraded || undefined,
+          mode: 'keyword',
+          popular: keyword.results.length === 0 ? await popular() : [],
+        },
+        keyword.degraded ? undefined : CACHED,
+      )
     }
   }
 
@@ -110,7 +121,7 @@ export async function GET(request: NextRequest) {
     // only once typing has settled, so typing never waits on it.
     aiEligible: !wantAi && eligible,
     popular: results.length === 0 ? await popular() : [],
-  })
+  }, CACHED)
 }
 
 /** Worth a model's reading: configured, a phrase rather than a word, and

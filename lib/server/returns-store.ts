@@ -266,26 +266,26 @@ export async function setOrderReturnStatus(
 }
 
 /**
- * Short-lived URLs for a request's photographs.
+ * Short-lived URLs for return photographs: path → signed URL, for a whole
+ * page of requests in ONE storage call. A path that could not be signed — one
+ * that no longer exists, say — is absent rather than a broken image.
  *
  * The bucket is private, so there is no public URL to store. Signing at read
  * time also means a link copied out of the admin panel stops working, which is
  * the point: these are pictures of a customer's property.
  */
-export async function signReturnImages(paths: string[], seconds = 600): Promise<string[]> {
-  if (paths.length === 0) return []
-  const { data, error } = await createAdminClient()
-    .storage.from('returns')
-    .createSignedUrls(paths, seconds)
+export async function signReturnImagesByPath(paths: string[], seconds = 600): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(paths.filter(Boolean)))
+  const signed = new Map<string, string>()
+  if (unique.length === 0) return signed
 
+  const { data, error } = await createAdminClient().storage.from('returns').createSignedUrls(unique, seconds)
   if (error) {
     console.warn(`[returns] could not sign images: ${error.message}`)
-    return []
+    return signed
   }
-  // An entry can carry an error instead of a URL — a path that no longer
-  // exists, say — so the nulls are dropped rather than rendered as broken
-  // images in the manager's view.
-  return (data ?? [])
-    .map((entry) => entry.signedUrl)
-    .filter((url): url is string => typeof url === 'string' && url.length > 0)
+  for (const entry of data ?? []) {
+    if (entry.path && typeof entry.signedUrl === 'string' && entry.signedUrl.length > 0) signed.set(entry.path, entry.signedUrl)
+  }
+  return signed
 }

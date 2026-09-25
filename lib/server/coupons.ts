@@ -76,3 +76,21 @@ export async function applyCoupon(
     code: normalised,
   }
 }
+
+/**
+ * Gives back a use taken by applyCoupon(commit: true) for an order that was
+ * then NOT created (out of stock, a failed insert). The redemption and the
+ * order are two separate calls, so without this every failed checkout would
+ * cost a limited code one of its uses — in a rush on the last pieces, many.
+ *
+ * Never throws. Before migration 0044 the function is missing and this only
+ * logs, which is the previous behaviour.
+ */
+export async function releaseCouponUse(couponId: string): Promise<void> {
+  try {
+    const { error } = await createAdminClient().rpc('release_coupon_use', { p_coupon_id: couponId })
+    if (error) console.error(`[coupons] could not give back a use of ${couponId}:`, error.message)
+  } catch (e) {
+    console.error(`[coupons] could not give back a use of ${couponId}:`, e)
+  }
+}

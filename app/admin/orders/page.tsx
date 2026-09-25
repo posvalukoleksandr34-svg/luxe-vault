@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { OrdersManager } from '@/components/admin/orders-manager'
 import { isAdminRequest } from '@/lib/server/admin-guard'
-import { readOrders } from '@/lib/server/orders-store'
+import { ADMIN_ORDERS_LIMIT, readOrders } from '@/lib/server/orders-store'
 
 // Always the live list: statuses are changed here, and a cached render would
 // show a colleague's shipped order as still waiting.
@@ -36,5 +36,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const requested = typeof searchParams.order === 'string' ? searchParams.order.trim().toUpperCase() : ''
   const initialOrderId = orders.some((o) => o.id === requested) ? requested : null
 
-  return <OrdersManager initialOrders={orders} initialOrderId={initialOrderId} loadError={loadError} />
+  return (
+    <OrdersManager
+      initialOrders={orders}
+      initialOrderId={initialOrderId}
+      loadError={loadError}
+      cappedAt={orders.length >= ADMIN_ORDERS_LIMIT ? ADMIN_ORDERS_LIMIT : null}
+    />
+  )
 }

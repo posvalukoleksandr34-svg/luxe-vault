@@ -71,6 +71,9 @@ export function AdminPanel() {
   // fetched fresh here for the dashboard's figures and recent orders. They
   // are MANAGED at /admin/orders (status, tracking, refunds, deletion).
   const [orders, setOrders] = useState<Order[]>([])
+  // True when only the newest orders came back (see readOrders): the figures
+  // below then cover those, and say so.
+  const [ordersCapped, setOrdersCapped] = useState<number | null>(null)
   const [ordersLoading, setOrdersLoading] = useState(true)
 
   useEffect(() => {
@@ -78,7 +81,9 @@ export function AdminPanel() {
     fetch('/api/admin/orders')
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setOrders(data.orders ?? [])
+        if (cancelled) return
+        setOrders(data.orders ?? [])
+        setOrdersCapped(data.capped ? Number(data.limit) || null : null)
       })
       .catch(() => {})
       .finally(() => {
@@ -321,6 +326,11 @@ export function AdminPanel() {
                   icon={<TrendingUp className="size-5 text-gold" />}
                 />
               </div>
+              {ordersCapped && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Выручка и средний чек посчитаны по последним {ordersCapped} заказам.
+                </p>
+              )}
 
               <div className="mt-8 grid gap-6 lg:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-card p-5">

@@ -59,10 +59,13 @@ export function OrdersManager({
   initialOrders,
   initialOrderId,
   loadError,
+  cappedAt,
 }: {
   initialOrders: Order[]
   initialOrderId: string | null
   loadError: boolean
+  /** Set when only the newest N orders were loaded (see readOrders). */
+  cappedAt: number | null
 }) {
   const { pushToast } = useStore()
   const [orders, setOrders] = useState<Order[]>(initialOrders)
@@ -217,6 +220,13 @@ export function OrdersManager({
             </p>
           </div>
         </div>
+
+        {cappedAt && (
+          <p className="mb-6 rounded-xl border border-gold/30 p-4 text-xs leading-relaxed text-muted-foreground">
+            Показаны последние {cappedAt} заказов — более старые здесь не загружаются. Найти старый заказ можно по номеру
+            на его странице заказа.
+          </p>
+        )}
 
         {loadError && (
           <p role="alert" className="mb-6 rounded-xl border border-destructive/40 p-4 text-sm text-destructive">

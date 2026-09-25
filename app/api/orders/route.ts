@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { enforceLimit } from '@/lib/server/rate-limit'
+import { releaseCouponUse } from '@/lib/server/coupons'
 import { addOrder, InsufficientStockError } from '@/lib/server/orders-store'
 import {
   buildOrder,
@@ -106,6 +107,10 @@ export async function POST(request: NextRequest) {
   try {
     await addOrder(order)
   } catch (e) {
+    // The coupon's use was taken in repriceItems(), before this; the order it
+    // was taken for does not exist, so it goes back (lib/server/coupons.ts).
+    if (order.couponId) await releaseCouponUse(order.couponId)
+
     // Running out between adding to the cart and paying is an ordinary race,
     // not a server fault. 409 with the item named lets the cart say which line
     // to change instead of showing a generic failure.

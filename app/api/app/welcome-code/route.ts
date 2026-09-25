@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { AppCodeView } from '@/lib/promo-codes'
 import { appCodeFor } from '@/lib/server/promo-codes'
+import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,8 @@ async function answer(issue: boolean) {
   try {
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ status: 'signed_out' } satisfies AppCodeView, { headers: NO_STORE })
+    const limited = await enforceUserLimit('app.code', user.id)
+    if (limited) return limited
     return NextResponse.json(await appCodeFor(user.id, { issue }), { headers: NO_STORE })
   } catch (e) {
     console.error('[app/welcome-code] failed:', e)

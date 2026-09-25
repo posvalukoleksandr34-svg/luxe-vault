@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { sendRecoveryEmail, sendRestockEmail } from '@/lib/server/emails/campaigns'
-import { getOrderById } from '@/lib/server/orders-store'
+import { getOrdersByNumbers } from '@/lib/server/orders-store'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
@@ -54,6 +54,7 @@ async function runSweep(request: NextRequest) {
     abandonedCarts: 0,
     orphanedReturnPhotos: 0,
     promoUsesReleased: 0,
+    stripeEventsPruned: 0,
     errors: [] as string[],
   }
 
@@ -63,8 +64,10 @@ async function runSweep(request: NextRequest) {
     if (error) throw new Error(error.message)
 
     const numbers = (data ?? []) as string[]
+    // One read for the batch, not one per order.
+    const orders = await getOrdersByNumbers(numbers)
     for (const number of numbers) {
-      const order = await getOrderById(number)
+      const order = orders.get(number)
       // The claim already stamped recovery_sent_at, so a send that fails here
       // is not retried. That is the intended trade: one missed reminder costs
       // far less than a customer receiving the same nudge every hour because
@@ -127,6 +130,20 @@ async function runSweep(request: NextRequest) {
     result.promoUsesReleased = await releaseStaleCouponHolds()
   } catch (e) {
     result.errors.push(`promo-uses: ${(e as Error).message}`)
+  }
+
+  // ------------------------------------------------ stripe event ledger --
+  // stripe_events (0027) is what makes every webhook exactly-once. Stripe
+  // retries a delivery for at most three days, so a row older than 90 days
+  // can never be needed again; without pruning the table grows by a few rows
+  // per order forever.
+  try {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    const { data, error } = await supabase.from('stripe_events').delete().lt('received_at', cutoff).select('id')
+    if (error) throw new Error(error.message)
+    result.stripeEventsPruned = data?.length ?? 0
+  } catch (e) {
+    result.errors.push(`stripe-events: ${(e as Error).message}`)
   }
 
   // -------------------------------------------- orphaned return photos --

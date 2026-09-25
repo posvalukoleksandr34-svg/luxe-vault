@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation'
 import { ReturnsManager, type ReturnRow } from '@/components/admin/returns-manager'
 import { returnsFilterSchema } from '@/lib/returns/schema'
 import { isAdminRequest } from '@/lib/server/admin-guard'
-import { getOrderById } from '@/lib/server/orders-store'
-import { listReturnRequests, signReturnImages } from '@/lib/server/returns-store'
-import type { ReturnRequestStatus } from '@/lib/types'
+import { getOrdersByNumbers } from '@/lib/server/orders-store'
+import { listReturnRequests, signReturnImagesByPath } from '@/lib/server/returns-store'
+import type { Order, ReturnRequestStatus } from '@/lib/types'
 
 // Always the live queue: this is where decisions are made, and a cached render
 // would show a request as pending after a colleague had already decided it.
@@ -58,42 +58,45 @@ export default async function AdminReturnsPage({
 
   const visible = filter === 'all' ? all : all.filter((r) => r.status === filter)
 
-  // The order behind each request, and its photographs. In parallel — each is
-  // independent — and per row rather than batched, because the store already
-  // has getOrderById and the queue is short.
-  const rows: ReturnRow[] = await Promise.all(
-    visible.map(async (request) => {
-      const [order, imageUrls] = await Promise.all([
-        getOrderById(request.orderNumber).catch(() => null),
-        signReturnImages(request.images),
-      ])
-      return {
-        request,
-        imageUrls,
-        order: order
-          ? {
-              id: order.id,
-              createdAt: order.createdAt,
-              customerName: order.customer.name,
-              customerEmail: order.customer.email ?? '',
-              total: order.total,
-              refundedAmount: order.refundedAmount ?? 0,
-              paymentProvider: order.paymentProvider ?? '',
-              paymentStatus: order.paymentStatus ?? '',
-              items: order.items.map((item) => ({
-                key: item.key,
-                name: item.name,
-                image: item.image,
-                size: item.size,
-                color: item.color,
-                qty: item.qty,
-                price: item.price,
-              })),
-            }
-          : null,
-      }
+  // The orders behind the requests and all their photographs: one orders
+  // query (per 100) and one signing call for the whole page, instead of two
+  // round trips per request — up to a thousand for a full queue.
+  const [orders, signed] = await Promise.all([
+    getOrdersByNumbers(visible.map((r) => r.orderNumber)).catch((e) => {
+      console.error('[admin/returns] orders read failed:', e)
+      return new Map<string, Order>()
     }),
-  )
+    signReturnImagesByPath(visible.flatMap((r) => r.images)),
+  ])
+
+  const rows: ReturnRow[] = visible.map((request) => {
+    const order = orders.get(request.orderNumber) ?? null
+    return {
+      request,
+      imageUrls: request.images.map((path) => signed.get(path)).filter((url): url is string => Boolean(url)),
+      order: order
+        ? {
+            id: order.id,
+            createdAt: order.createdAt,
+            customerName: order.customer.name,
+            customerEmail: order.customer.email ?? '',
+            total: order.total,
+            refundedAmount: order.refundedAmount ?? 0,
+            paymentProvider: order.paymentProvider ?? '',
+            paymentStatus: order.paymentStatus ?? '',
+            items: order.items.map((item) => ({
+              key: item.key,
+              name: item.name,
+              image: item.image,
+              size: item.size,
+              color: item.color,
+              qty: item.qty,
+              price: item.price,
+            })),
+          }
+        : null,
+    }
+  })
 
   return <ReturnsManager filter={filter} counts={counts} rows={rows} />
 }

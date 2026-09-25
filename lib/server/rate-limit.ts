@@ -122,6 +122,10 @@ const LIMITS = {
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */
   'coupon.validate': { max: 15, windowSeconds: 600 },
+  /** The installed app's personal code (/api/app/welcome-code). One code per
+   *  account whatever happens, so this only keeps a script from turning the
+   *  endpoint into a database load. */
+  'app.code': { max: 30, windowSeconds: 600 },
 
   /** Admin login. Replaces the in-memory throttle this module supersedes. */
   'admin.login': { max: 8, windowSeconds: 300 },

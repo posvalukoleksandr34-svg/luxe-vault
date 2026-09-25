@@ -196,14 +196,47 @@ function rowToOrder(row: Record<string, unknown>): Order {
   }
 }
 
-export async function readOrders(): Promise<Order[]> {
+/**
+ * The newest orders, with their items, for the admin console.
+ *
+ * Capped: the table and its items come back in one response, and an unbounded
+ * read grows with every order the shop ever takes — at some thousands it is a
+ * multi-megabyte response and a function near its time limit. The newest
+ * `limit` is what the console works from; callers can tell they hit the cap
+ * by `orders.length === limit`.
+ */
+export const ADMIN_ORDERS_LIMIT = 2000
+
+export async function readOrders(limit: number = ADMIN_ORDERS_LIMIT): Promise<Order[]> {
   const { data, error } = await createAdminClient()
     .from('orders')
     .select(await resolveOrderSelect())
     .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) throw new Error(`Failed to read orders: ${error.message}`)
   return asRows(data).map(rowToOrder)
+}
+
+/**
+ * Several orders by number in ONE query per 100 — for pages and jobs that
+ * would otherwise call getOrderById() once per row (the returns queue, the
+ * unpaid-order reminders). Missing numbers are simply absent from the map.
+ */
+export async function getOrdersByNumbers(numbers: string[]): Promise<Map<string, Order>> {
+  const unique = Array.from(new Set(numbers.filter(Boolean)))
+  const found = new Map<string, Order>()
+  if (unique.length === 0) return found
+
+  const select = await resolveOrderSelect()
+  const supabase = createAdminClient()
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100)
+    const { data, error } = await supabase.from('orders').select(select).in('order_number', chunk)
+    if (error) throw new Error(`Failed to read orders: ${error.message}`)
+    for (const order of asRows(data).map(rowToOrder)) found.set(order.id, order)
+  }
+  return found
 }
 
 /**
