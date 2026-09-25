@@ -46,6 +46,7 @@ export default function manifest(): MetadataRoute.Manifest {
       // storefront's default.
       { name: 'Catalogue', short_name: 'Catalogue', url: '/catalog', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'My account', short_name: 'Account', url: '/account', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'My app code', short_name: 'App code', url: '/account?section=app', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Support', short_name: 'Support', url: '/support', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
     ],
   }

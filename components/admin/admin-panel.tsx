@@ -47,7 +47,6 @@ type AdminTab =
   | 'customers'
   | 'reviews'
   | 'support'
-  | 'promos'
 
 /** Russian labels for the admin console, which is internal and Russian-only.
  *  The stored values are the English enum. */
@@ -56,10 +55,7 @@ const STATUS_LABELS_RU = ORDER_STATUS_LABELS_RU
 export function AdminPanel() {
   const {
     products,
-    promos,
     deleteProduct,
-    addPromo,
-    removePromo,
     pushToast,
     categoryLabels,
   } = useStore()
@@ -70,7 +66,6 @@ export function AdminPanel() {
   const [search, setSearch] = useState('')
   // Only the products an admin still needs to fill in — see lib/product-gaps.
   const [gapsOnly, setGapsOnly] = useState(false)
-  const [newPromo, setNewPromo] = useState({ code: '', percent: '' })
 
   // Orders are the durable, server-side record (see /api/admin/orders) —
   // fetched fresh here for the dashboard's figures and recent orders. They
@@ -129,17 +124,6 @@ export function AdminPanel() {
     setShowForm(true)
   }
 
-  function handleAddPromo(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newPromo.code || !newPromo.percent) return
-    addPromo({
-      code: newPromo.code.toUpperCase(),
-      percent: Number(newPromo.percent),
-      active: true,
-    })
-    setNewPromo({ code: '', percent: '' })
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl gap-0">
@@ -185,9 +169,12 @@ export function AdminPanel() {
               <NavButton active={tab === 'support'} onClick={() => setTab('support')} icon={<LifeBuoy className="size-4" />}>
                 {t('support.title')}
               </NavButton>
-              <NavButton active={tab === 'promos'} onClick={() => setTab('promos')} icon={<Tag className="size-4" />}>
+              {/* Its own page: codes live in the database (coupons), with limits,
+                  expiry and the app's personal code. */}
+              <Link href="/admin/promocodes" className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground">
+                <Tag className="size-4" />
                 {t('admin.promos')}
-              </NavButton>
+              </Link>
               {/* Its own page (app/admin/settings), not a tab: the values are
                   read fresh from the database on every visit. */}
               <Link
@@ -266,9 +253,10 @@ export function AdminPanel() {
             <NavButton active={tab === 'support'} onClick={() => setTab('support')} icon={<LifeBuoy className="size-4" />}>
               {t('support.title')}
             </NavButton>
-            <NavButton active={tab === 'promos'} onClick={() => setTab('promos')} icon={<Tag className="size-4" />}>
+            <Link href="/admin/promocodes" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground">
+              <Tag className="size-4" />
               {t('admin.promos')}
-            </NavButton>
+            </Link>
             <Link
               href="/admin/settings"
               className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
@@ -533,91 +521,6 @@ export function AdminPanel() {
           {tab === 'reviews' && <ReviewsManager />}
 
           {tab === 'support' && <SupportManager />}
-
-          {tab === 'promos' && (
-            <div>
-              <h1 className="mb-6 font-serif text-2xl font-semibold text-foreground">
-                {t('admin.promos')}
-              </h1>
-
-              <form onSubmit={handleAddPromo} className="mb-6 flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  value={newPromo.code}
-                  onChange={(e) => setNewPromo({ ...newPromo, code: e.target.value })}
-                  placeholder="Код"
-                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
-                />
-                <input
-                  type="number"
-                  value={newPromo.percent}
-                  onChange={(e) => setNewPromo({ ...newPromo, percent: e.target.value })}
-                  placeholder="%"
-                  className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
-                />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-                >
-                  <Plus className="size-4" />
-                  Добавить
-                </button>
-              </form>
-
-              <div className="overflow-x-auto rounded-2xl border border-border">
-                <table className="w-full">
-                  <thead className="bg-card/50">
-                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 font-medium">Код</th>
-                      <th className="px-4 py-3 font-medium">Скидка</th>
-                      <th className="px-4 py-3 font-medium">Статус</th>
-                      <th className="px-4 py-3 text-right font-medium">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {promos.map((promo) => (
-                      <tr key={promo.code} className="transition hover:bg-card/30">
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-sm font-medium text-gold">{promo.code}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-foreground">{promo.percent}%</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={cn(
-                            'rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
-                            promo.active
-                              ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30'
-                              : 'text-muted-foreground bg-muted border-border',
-                          )}>
-                            {promo.active ? 'Активен' : 'Выключен'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => addPromo({ ...promo, active: !promo.active })}
-                              className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
-                            >
-                              {promo.active ? 'Выкл' : 'Вкл'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removePromo(promo.code)}
-                              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-destructive"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </main>
       </div>
 

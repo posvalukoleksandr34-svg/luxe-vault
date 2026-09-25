@@ -7,13 +7,15 @@ import { hasBearerSecret } from '@/lib/server/secure-compare'
 import { sourceText } from '@/lib/localized-text'
 import { reportCriticalError } from '@/lib/telegram'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
+import { releaseStaleCouponHolds } from '@/lib/server/promo-codes'
 import { sweepOrphanedReturnPhotos } from '@/lib/server/returns-cleanup'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * The scheduled sweep: unpaid-order reminders, back-in-stock alerts, and
- * the removal of return photographs no request points at.
+ * The scheduled sweep: unpaid-order reminders, back-in-stock alerts, promo
+ * code uses returned by orders never paid, and the removal of return
+ * photographs no request points at.
  *
  * Both jobs claim their work in the database before doing it (see 0019), so
  * this endpoint is safe to call more often than necessary, and safe to have
@@ -51,6 +53,7 @@ async function runSweep(request: NextRequest) {
     restock: 0,
     abandonedCarts: 0,
     orphanedReturnPhotos: 0,
+    promoUsesReleased: 0,
     errors: [] as string[],
   }
 
@@ -114,6 +117,16 @@ async function runSweep(request: NextRequest) {
     if ('sent' in run) result.abandonedCarts = run.sent
   } catch (e) {
     result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+  }
+
+  // ------------------------------------------- promo-code uses that return --
+  // An order still unpaid after 48 hours gives back the use of its promo code,
+  // so an abandoned checkout cannot hold one of a code's limited uses forever.
+  // Paid later after all, it takes the use again (see migration 0043).
+  try {
+    result.promoUsesReleased = await releaseStaleCouponHolds()
+  } catch (e) {
+    result.errors.push(`promo-uses: ${(e as Error).message}`)
   }
 
   // -------------------------------------------- orphaned return photos --

@@ -33,7 +33,7 @@ import {
 import { createClient } from './supabase/client'
 import { readReferralCookie } from './referral-program'
 import { isSupabaseConfigured } from './supabase/env'
-import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS, SEED_PROMOS } from './data'
+import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS } from './data'
 import {
   DEFAULT_SHIPPING_SETTINGS,
   validateShippingSettings,
@@ -155,7 +155,6 @@ type StoreContextValue = {
   setCategoryImage: (group: CategoryGroupKey, image: string) => Promise<void>
   resetCategoryImage: (group: CategoryGroupKey) => Promise<void>
   cart: CartItem[]
-  promos: Promo[]
   currentUser: User | null
   /** True until the initial Supabase session lookup settles, so the UI can
    *  avoid flashing a signed-out state to an already-signed-in visitor. */
@@ -260,8 +259,6 @@ type StoreContextValue = {
   addProduct: (p: Product) => Promise<boolean>
   updateProduct: (p: Product) => Promise<boolean>
   deleteProduct: (id: string) => Promise<boolean>
-  addPromo: (p: Promo) => void
-  removePromo: (code: string) => void
 
   paymentMethods: string[]
 }
@@ -374,7 +371,6 @@ export function StoreProvider({
   )
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [cart, setCart] = useState<CartItem[]>([])
-  const [promos, setPromos] = useState<Promo[]>(SEED_PROMOS)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [metadataLanguage, setMetadataLanguage] = useState<string | null>(null)
@@ -1687,25 +1683,6 @@ function maybeSendWelcome() {
     [products, pushToast, t],
   )
 
-  const addPromo = useCallback(
-    (p: Promo) => {
-      setPromos((prev) => {
-        if (prev.some((x) => x.code.toUpperCase() === p.code.toUpperCase())) {
-          return prev.map((x) =>
-            x.code.toUpperCase() === p.code.toUpperCase() ? p : x,
-          )
-        }
-        return [...prev, p]
-      })
-      pushToast({ title: t('toast.promoSaved'), variant: 'success' })
-    },
-    [pushToast, t],
-  )
-
-  const removePromo = useCallback((code: string) => {
-    setPromos((prev) => prev.filter((x) => x.code !== code))
-  }, [])
-
   // Memoised so a change to provider state that is NOT part of the context
   // (the server stock snapshot, hydration and metadata flags) no longer
   // re-renders every useStore() consumer on the page. Every member is itself
@@ -1726,7 +1703,6 @@ function maybeSendWelcome() {
       setCategoryImage,
       resetCategoryImage,
       cart,
-      promos,
       currentUser,
       authLoading,
       locale,
@@ -1780,14 +1756,12 @@ function maybeSendWelcome() {
       addProduct,
       updateProduct,
       deleteProduct,
-      addPromo,
-      removePromo,
       paymentMethods: PAYMENT_METHODS,
     }),
     [
       products, collections, categories, categoryTree, groupLabels, categoryLabels,
       catalogLoading, loadCatalog, shipping, categoryImages, setCategoryImage,
-      resetCategoryImage, cart, promos, currentUser, authLoading, locale, setLocale, currency,
+      resetCategoryImage, cart, currentUser, authLoading, locale, setLocale, currency,
       setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
@@ -1795,7 +1769,7 @@ function maybeSendWelcome() {
       cartCount, cartSubtotal, applyPromo,
       login, register, resendConfirmation, verifySignupCode, signInWithGoogle,
       requestRecoveryCode, verifyRecoveryCode, updatePassword, logout, addProduct,
-      updateProduct, deleteProduct, addPromo, removePromo,
+      updateProduct, deleteProduct,
     ],
   )
 

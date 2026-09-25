@@ -12,6 +12,7 @@
 import 'server-only'
 
 import { sendOrderStatusEmail } from '@/lib/server/emails/send-lifecycle'
+import { reclaimOrderCoupon, releaseOrderCoupon } from '@/lib/server/promo-codes'
 import { grantReferralReward, reverseReferralReward } from '@/lib/server/referrals'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -590,8 +591,16 @@ export async function setPaymentStatus(
   // A referred friend's first order: paid credits the referrer; expired
   // unpaid frees the friend's code for a real first order. Both idempotent,
   // so a replayed webhook changes nothing. Neither throws.
-  if (paymentStatus === 'paid') await grantReferralReward(order.id)
-  else if (paymentStatus === 'expired') await reverseReferralReward(order.id)
+  // The promo code's use follows the same line: an unpaid order that expires
+  // gives it back, and one paid after its use was given back takes it again
+  // (migration 0043). Both idempotent; neither throws.
+  if (paymentStatus === 'paid') {
+    await grantReferralReward(order.id)
+    await reclaimOrderCoupon(order.id)
+  } else if (paymentStatus === 'expired') {
+    await reverseReferralReward(order.id)
+    await releaseOrderCoupon(order.id)
+  }
   return order
 }
 
@@ -628,8 +637,16 @@ export async function adoptPaymentIntent(
   const order = rowToOrder(asRow(data))
   // Same side effects as setPaymentStatus: this is the same transition, found
   // by a different key, and a referral must not depend on which path found it.
-  if (paymentStatus === 'paid') await grantReferralReward(order.id)
-  else if (paymentStatus === 'expired') await reverseReferralReward(order.id)
+  // The promo code's use follows the same line: an unpaid order that expires
+  // gives it back, and one paid after its use was given back takes it again
+  // (migration 0043). Both idempotent; neither throws.
+  if (paymentStatus === 'paid') {
+    await grantReferralReward(order.id)
+    await reclaimOrderCoupon(order.id)
+  } else if (paymentStatus === 'expired') {
+    await reverseReferralReward(order.id)
+    await releaseOrderCoupon(order.id)
+  }
   return order
 }
 
@@ -678,7 +695,11 @@ export async function setOrderStatus(
 
   // Cancelled by the team: a referral on this order is released or, if it
   // had been rewarded, reversed.
-  if (status === 'cancelled' && prev?.status !== 'cancelled') await reverseReferralReward(id)
+  if (status === 'cancelled' && prev?.status !== 'cancelled') {
+    await reverseReferralReward(id)
+    // A cancelled order did not use its promo code; the use comes back.
+    await releaseOrderCoupon(id)
+  }
 
   // The customer is emailed when the status actually changes — re-saving an
   // order unchanged used to send the same email again — and, for a shipped
@@ -746,6 +767,7 @@ export async function cancelOrder(
 
   await restoreStock(id)
   await reverseReferralReward(id)
+  await releaseOrderCoupon(id)
   const cancelled = rowToOrder(asRow(data))
   void sendOrderStatusEmail(cancelled, 'cancelled')
   return { order: cancelled, conflict: false }

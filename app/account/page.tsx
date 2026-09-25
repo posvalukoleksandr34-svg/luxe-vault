@@ -8,6 +8,7 @@ import { AccountOrders } from '@/components/account-orders'
 import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
+import { AppCodeSection } from '@/components/account/app-code-section'
 import { ReferralSection } from '@/components/account/referral-section'
 import {
   ACCOUNT_SECTIONS,
@@ -288,6 +289,7 @@ function SectionView({ section }: { section: AccountSectionKey }) {
           {section === 'looks' && <CuratedVaults />}
           {section === 'settings' && <SettingsSection />}
           {section === 'referral' && <ReferralSection />}
+          {section === 'app' && <AppCodeSection />}
           {section === 'credits' && <CreditsSection />}
         </div>
       </div>

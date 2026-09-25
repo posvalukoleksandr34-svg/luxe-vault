@@ -3,7 +3,6 @@ import type {
   CategoryKey,
   Order,
   Product,
-  Promo,
 } from './types'
 
 export const CATEGORY_TREE: { group: CategoryGroupKey; items: CategoryKey[] }[] = [
@@ -252,11 +251,6 @@ export const SEED_PRODUCTS: Product[] = [
     },
     statuses: ['in_stock'],
   },
-]
-
-export const SEED_PROMOS: Promo[] = [
-  { code: 'LUXE10', percent: 10, active: true },
-  { code: 'VAULT20', percent: 20, active: true },
 ]
 
 const now = Date.now()

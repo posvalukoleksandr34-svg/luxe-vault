@@ -9,6 +9,7 @@ export type AccountSectionKey =
   | 'details'
   | 'settings'
   | 'referral'
+  | 'app'
   | 'addresses'
   | 'looks'
 
@@ -29,6 +30,8 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
   { key: 'details', labelKey: 'acct.details', inMenu: true, card: { titleKey: 'acct.details', descKey: 'acct.detailsDesc' } },
   { key: 'settings', labelKey: 'acct.settings', inMenu: true },
   { key: 'referral', labelKey: 'acct.referral', inMenu: true, card: { titleKey: 'acct.referral', descKey: 'acct.referralDesc' } },
+  // The installed app's personal promo code (and, in a browser, how to get it).
+  { key: 'app', labelKey: 'acct.appCode', inMenu: true },
   { key: 'addresses', labelKey: 'acct.addresses', inMenu: false, card: { titleKey: 'acct.addresses', descKey: 'acct.addressesDesc' } },
   // Saved capsules from the stylist. Not in the brief's menu, but an existing
   // part of the account — reachable from the section rail.

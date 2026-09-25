@@ -3,6 +3,7 @@
 import { Smartphone } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Reveal } from '@/components/reveal'
+import { isStandalone } from '@/lib/pwa'
 import { useStore } from '@/lib/store'
 
 /**
@@ -34,15 +35,6 @@ type InstallPromptEvent = Event & {
 }
 
 type Mode = 'prompt' | 'ios' | 'qr'
-
-function isStandalone(): boolean {
-  if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia?.('(display-mode: standalone)').matches ||
-    // iOS Safari's own flag, which predates the display-mode query.
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
 
 export function AppPromoBanner() {
   const { t } = useStore()
@@ -132,7 +124,7 @@ export function AppPromoBanner() {
   if (installed) return null
 
   return (
-    <section aria-labelledby="app-promo-title" className="border-t border-border px-4 py-14 sm:px-6 lg:px-10">
+    <section id="app" aria-labelledby="app-promo-title" className="scroll-mt-20 border-t border-border px-4 py-14 sm:px-6 lg:px-10">
       <Reveal>
         {/* The panel is the page's own warm near-black (--background, hsl(36
             8% 7%)) lifted a few points to --card and back down — a shade that

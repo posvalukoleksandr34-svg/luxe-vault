@@ -11,6 +11,7 @@ import { GlobalPanels } from '@/components/global-panels';
 import { ToastViewport } from '@/components/toast-viewport';
 import { UiEnvironment } from '@/components/ui-environment';
 import { SkipLink } from '@/components/skip-link';
+import { AppWelcome } from '@/components/app-welcome';
 import { BottomNav } from '@/components/bottom-nav';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { DEFAULT_LOCALE } from '@/lib/i18n';
@@ -288,6 +289,9 @@ export default async function RootLayout({
           <CookieConsentLazy />
           {/* The app-style tab bar. Phones only; hidden on /admin. */}
           <BottomNav />
+          {/* The installed app's personal promo code, issued on its first
+              launch after sign-in. Renders nothing; inert in a browser tab. */}
+          <AppWelcome />
         </StoreProvider>
       </body>
     </html>
