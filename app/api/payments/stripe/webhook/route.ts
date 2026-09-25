@@ -105,8 +105,27 @@ export async function POST(request: NextRequest) {
     // Stripe DOES retry, and the retry can claim and process it.
     if (claim === 'claimed') await releaseStripeEvent(event.id)
     const message = error instanceof Error ? error.message : 'Failed to update order'
+    // The full error, stack included, in the platform logs. reportCriticalError
+    // below reaches Telegram only when the bot is configured; this line is
+    // what makes a 500 diagnosable either way.
+    console.error(`[stripe] webhook ${event.type} ${event.id} failed:`, error)
     await reportCriticalError(`Stripe webhook ${event.type}`, message)
     return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+/**
+ * One consequence of a payment whose status is already saved. Isolated: an
+ * exception is logged with its stack and reported, and never reaches the
+ * handler's catch — which would answer 500 and have Stripe retry an update
+ * that already succeeded.
+ */
+async function afterPayment(what: string, orderId: string, work: () => Promise<unknown>): Promise<void> {
+  try {
+    await work()
+  } catch (error) {
+    console.error(`[stripe] ${what} for ${orderId} failed (the payment status is saved):`, error)
+    await reportCriticalError(`Stripe webhook · ${what}`, error).catch(() => false)
   }
 }
 
@@ -199,36 +218,44 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
     return NextResponse.json({ received: true, matched: false })
   }
 
+  // FROM HERE ON THE PAYMENT STATUS IS SAVED. Everything below is a
+  // consequence of it — a stock check, a Telegram slip, emails — and each runs
+  // in its own try/catch (afterPayment). A failure in one is logged with its
+  // stack and reported, and never turns the answer into a 500: that would
+  // make Stripe retry an event whose money-state update already succeeded.
+  const paidOrder = order
+
   // Stock at payment confirmation: the order must still hold its units. If it
   // was cancelled and restocked while the customer was paying, they are taken
   // again atomically — or, when they are gone, support is told to refund.
   if (next === 'paid') {
-    const stock = await ensurePaidOrderStock(order.id)
-    if (stock === 'insufficient') {
-      console.error(`[stripe] ${order.id} was paid but its stock had been released and sold`)
-      if (isMailConfigured) await sendStockConflictAlert(order)
-      await notifyStockConflict(order)
-    }
+    await afterPayment('stock check', paidOrder.id, async () => {
+      const stock = await ensurePaidOrderStock(paidOrder.id)
+      if (stock === 'insufficient') {
+        console.error(`[stripe] ${paidOrder.id} was paid but its stock had been released and sold`)
+        if (isMailConfigured) await sendStockConflictAlert(paidOrder)
+        await notifyStockConflict(paidOrder)
+      }
+    })
     // Once per order, via the event ledger — the same guard as the emails.
-    if (
-      isTelegramConfigured() &&
-      (await claimStripeEvent(`telegram:paid:${order.id}`, 'telegram.paid')) !== 'duplicate'
-    ) {
-      await notifyPaymentConfirmed(order, 'stripe', {
+    await afterPayment('Telegram slip', paidOrder.id, async () => {
+      if (!isTelegramConfigured()) return
+      if ((await claimStripeEvent(`telegram:paid:${paidOrder.id}`, 'telegram.paid')) === 'duplicate') return
+      const sent = await notifyPaymentConfirmed(paidOrder, 'stripe', {
         amount: fromMinorUnits(intent.amount_received || intent.amount),
-        currency: intent.currency.toUpperCase(),
+        currency: (intent.currency ?? 'chf').toUpperCase(),
       })
-    }
+      if (!sent) console.warn(`[stripe] ${paidOrder.id} paid, but the Telegram slip was not delivered (see [telegram] above)`)
+    })
   }
 
   // In-app notification for a failed payment. Guest orders have no user_id
   // and nowhere to deliver one — they still reach the order via its token.
-  if (next === 'failed' && order.userId) {
-    await notifyPaymentFailed({
-      userId: order.userId,
-      orderId: order.id,
-      reason: intent.last_payment_error?.message,
-    })
+  if (next === 'failed' && paidOrder.userId) {
+    const userId = paidOrder.userId
+    await afterPayment('failed-payment notification', paidOrder.id, () =>
+      notifyPaymentFailed({ userId, orderId: paidOrder.id, reason: intent.last_payment_error?.message }),
+    )
   }
 
   // "Payment not completed" email — once per ORDER, not once per declined
@@ -236,8 +263,10 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
   // The claim reuses the event ledger under a synthetic id; without the
   // ledger (pre-0027) it is skipped rather than risk repeats.
   if (next === 'failed' && isMailConfigured) {
-    const once = await claimStripeEvent(`email:payment_failed:${order.id}`, 'email.payment_failed')
-    if (once === 'claimed') await sendPaymentFailedEmail(order)
+    await afterPayment('failed-payment email', paidOrder.id, async () => {
+      const once = await claimStripeEvent(`email:payment_failed:${paidOrder.id}`, 'email.payment_failed')
+      if (once === 'claimed') await sendPaymentFailedEmail(paidOrder)
+    })
   }
 
   // Transactional receipt, sent only on a real settlement — guarded by an
@@ -246,8 +275,9 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
   // this covers the receipt specifically, and pre-0027 deployments).
   let receiptSent = false
   if (next === 'paid' && isMailConfigured) {
-    const claimed = await claimReceiptSend(intent.id)
-    if (claimed) {
+    await afterPayment('receipt email', paidOrder.id, async () => {
+      const claimed = await claimReceiptSend(intent.id)
+      if (!claimed) return
       receiptSent = await sendPaymentReceipt(claimed)
       if (!receiptSent) {
         // Hand the claim back so a later retry can try again — otherwise a
@@ -255,7 +285,7 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
         await releaseReceiptClaim(intent.id)
         console.warn(`[receipts] ${claimed.id} payment succeeded but receipt was not sent`)
       }
-    }
+    })
   }
 
   // Always 200 once the payment status is written. An email failure must not
