@@ -15,7 +15,6 @@ import { attachReferralOrder } from '@/lib/server/referrals'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
-import { notifyNewOrder } from '@/lib/telegram'
 import { warnIfLowStock } from '@/lib/server/low-stock'
 
 export const dynamic = 'force-dynamic'
@@ -161,12 +160,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Operations chat: the new order, and — in parallel, so checkout waits no
-  // longer than it already did — whether it took any variant to its last few
-  // pieces. Neither throws, and both give up within seconds; allSettled so
-  // that even an unexpected rejection cannot turn a placed order into an
-  // error the customer sees and retries.
-  await Promise.allSettled([notifyNewOrder(order), warnIfLowStock(order)])
+  // Operations chat: whether this order took any variant to its last few
+  // pieces. The order itself is announced when it is PAID, as a full slip
+  // (notifyPaymentConfirmed, from the payment webhooks) — an order that is
+  // never paid does not reach the chat. Never throws and gives up within
+  // seconds; allSettled so that even an unexpected rejection cannot turn a
+  // placed order into an error the customer sees and retries.
+  await Promise.allSettled([warnIfLowStock(order)])
 
   // `orderId` at the top level is what the checkout handler redirects with;
   // the full order is kept for the existing callers.

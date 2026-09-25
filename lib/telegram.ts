@@ -1,12 +1,13 @@
 import 'server-only'
 
 import { formatCharged } from '@/lib/currency'
+import { REFERRAL_CODE_RE } from '@/lib/referral-program'
 import { getSiteUrl } from '@/lib/site-url'
 import type { Order, OrderStatus } from '@/lib/types'
 
 /**
- * Operations alerts to a Telegram chat: new orders, confirmed payments, order
- * status changes, and critical system errors.
+ * Operations alerts to a Telegram chat: paid orders (as a shipping slip),
+ * order status changes, returns, stock warnings and critical system errors.
  *
  * Configuration (both required; without them every call is a silent no-op):
  *   TELEGRAM_BOT_TOKEN   the token @BotFather gives the bot
@@ -21,11 +22,12 @@ import type { Order, OrderStatus } from '@/lib/types'
  * Each is the number at the end of a topic's link (t.me/c/<chat>/<THREAD>).
  * Unset, that kind of alert goes to the chat itself, exactly as before.
  *
- * PRIVACY: a Telegram chat is a third party. Order alerts carry the order
- * number, amount, payment method, destination country and the buyer's full
- * name (the shop's decision: staff recognise an order by who placed it). They
- * never carry the email, phone or address; staff open the order in the admin
- * console for those.
+ * PRIVACY: a Telegram chat is a third party. By the shop's decision the
+ * paid-order slip carries everything needed to ship: the buyer's name, email,
+ * phone and delivery address, and the items. Telegram is listed as a
+ * processor in the privacy policy for that reason (app/legal/_content/
+ * privacy.ts). The other alerts carry the order number, amount and name only.
+ * Keep the group to staff.
  *
  * RESILIENCE: nothing here throws, and every call gives up after a few
  * seconds. An alert failing must never fail the order, payment or webhook
@@ -199,16 +201,46 @@ function orderLines(order: Order): string[] {
   ]
 }
 
-/** A new order was placed (not yet paid). */
-export function notifyNewOrder(order: Order): Promise<boolean> {
-  return dispatch(() =>
-    ['🛍 <b>New order</b>', ...orderLines(order), `<a href="${esc(adminLink())}">Open admin</a>`].join('\n'),
-    'orders',
-  )
+/** "Switzerland" for "CH"; the stored value itself if it is not a code. */
+function countryName(code: string | undefined): string {
+  const value = (code ?? '').trim()
+  if (!/^[A-Za-z]{2}$/.test(value)) return value
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(value.toUpperCase()) ?? value
+  } catch {
+    return value
+  }
 }
 
-/** A payment settled. `charged` is what the provider actually took, when it
- *  differs from the CHF total (a EUR card charge, a coin amount). */
+/** What the customer paid, in what they paid it in. Coins need their own
+ *  precision; cents would show 0.0123 BTC as 0.01. */
+function paidAmount(
+  order: Order,
+  provider: 'stripe' | 'nowpayments',
+  charged?: { amount: number; currency: string },
+): string {
+  if (!charged || charged.currency.toUpperCase() === 'CHF') return chf(order.total)
+  const inCurrency =
+    provider === 'nowpayments'
+      ? `${charged.currency.toUpperCase()} ${charged.amount.toFixed(8).replace(/\.?0+$/, '')}`
+      : formatCharged(charged.amount, charged.currency)
+  // The CHF figure too: it is what the order and the invoice say.
+  return `${inCurrency} (${chf(order.total)})`
+}
+
+/**
+ * An order was PAID: the full slip, enough to pack and label the parcel
+ * without opening the admin.
+ *
+ * The only order-placed message. An order that is created and never paid
+ * does not reach the chat; /admin/orders lists it under "Не оплачены".
+ *
+ * Built from the STORED order, not from Stripe's copy of the customer: the
+ * address, phone and name are what the customer typed into our checkout,
+ * and the embedded payment form does not collect a shipping address at
+ * all. `charged` is what the provider actually took, when it differs from
+ * the CHF total (a EUR card charge, a coin amount).
+ */
 export function notifyPaymentConfirmed(
   order: Order,
   provider: 'stripe' | 'nowpayments',
@@ -216,18 +248,54 @@ export function notifyPaymentConfirmed(
 ): Promise<boolean> {
   const via = provider === 'stripe' ? 'Stripe' : 'NOWPayments'
   return dispatch(() => {
-    const paid =
-      charged && charged.currency.toUpperCase() !== 'CHF'
-        ? ` (${esc(
-            provider === 'nowpayments'
-              ? // Coins need their own precision; cents would show 0.0123 BTC as 0.01.
-                `${charged.currency.toUpperCase()} ${charged.amount.toFixed(8).replace(/\.?0+$/, '')}`
-              : formatCharged(charged.amount, charged.currency),
-          )})`
-        : ''
-    return [`✅ <b>Payment confirmed</b> · ${via}`, ...orderLines(order).map((l, i) => (i === 0 ? l + paid : l))].join(
-      '\n',
-    )
+    const c = order.customer
+    const dash = '—'
+    const promo = order.promo?.trim().toUpperCase() ?? ''
+    const referral = REFERRAL_CODE_RE.test(promo) ? promo : ''
+    const coupon = promo && !referral ? promo : ''
+    // Orders from before the address was split into fields have one line.
+    const structured = Boolean(c.street || c.postalCode || c.city)
+
+    // Capped: a message past Telegram's 4096 characters is cut, and a cut
+    // through an HTML tag makes Telegram refuse the whole slip.
+    const MAX_LINES = 25
+    const all = order.items ?? []
+    const items = all.slice(0, MAX_LINES).map((item) => {
+      const variant = [item.size, item.color].filter(Boolean).join(' · ')
+      return `• ${esc(item.name)}${variant ? ` <i>(${esc(variant)})</i>` : ''} x ${Number(item.qty) || 0} - ${esc(
+        chf(item.price * item.qty),
+      )}`
+    })
+    if (all.length > MAX_LINES) items.push(`• …and ${all.length - MAX_LINES} more — see the admin`)
+
+    return [
+      `📦 <b>NEW ORDER RECEIVED!</b>`,
+      `<b>${esc(order.id)}</b> · paid via ${via}`,
+      '',
+      `👤 <b>Customer:</b> ${esc(buyerName(order) || dash)}`,
+      `📧 <b>Email:</b> ${esc(c.email || dash)}`,
+      `📞 <b>Phone:</b> ${esc(c.phone || dash)}`,
+      '',
+      `🏠 <b>SHIPPING ADDRESS:</b>`,
+      ...(structured
+        ? [
+            `• Address: ${esc(c.street || dash)}`,
+            `• City: ${esc(c.city || dash)}`,
+            `• Postal Code: ${esc(c.postalCode || dash)}`,
+            `• Country: ${esc(countryName(c.country) || dash)}`,
+          ]
+        : [`• Address: ${esc(c.address || dash)}`]),
+      '',
+      `🛒 <b>ORDERED ITEMS:</b>`,
+      ...(items.length ? items : [`• ${dash}`]),
+      ...(order.discount > 0 ? [`• Discount${coupon ? ` (${esc(coupon)})` : ''}: -${esc(chf(order.discount))}`] : []),
+      ...(order.shippingCost ? [`• Shipping: ${esc(chf(order.shippingCost))}`] : []),
+      '',
+      `💰 <b>TOTAL PAID:</b> ${esc(paidAmount(order, provider, charged))}`,
+      `🏷️ <b>Referral Code:</b> ${esc(referral || 'None')}`,
+      '',
+      `<a href="${esc(`${adminLink()}/orders?order=${encodeURIComponent(order.id)}`)}">Open in admin</a>`,
+    ].join('\n')
   }, 'orders')
 }
 
