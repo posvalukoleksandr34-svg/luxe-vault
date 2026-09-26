@@ -2,6 +2,7 @@ import 'server-only'
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clientIp } from '@/lib/server/client-ip'
 
 /**
  * Request throttling, counted in Postgres.
@@ -165,21 +166,16 @@ export type LimitResult = {
 /**
  * Identifies the caller for throttling.
  *
- * `x-forwarded-for` is set by the platform's proxy and is the only client
- * address a serverless function sees. It is spoofable on a self-hosted setup
- * behind an untrusted proxy, which is worth knowing but does not change the
- * calculus here — the alternative is no limit at all.
+ * The address comes from lib/server/client-ip.ts, which reads Cloudflare's
+ * CF-Connecting-IP when the request is proven to have come through the edge
+ * and the platform's X-Forwarded-For otherwise. Behind Cloudflare without that
+ * proof, X-Forwarded-For is a Cloudflare server's address — see that file.
  *
  * Falls back to a shared bucket rather than to "unlimited": an unidentifiable
  * caller should be throttled with the other unidentifiable callers, not exempt.
  */
 export function clientKey(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip =
-    forwarded?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip')?.trim() ||
-    ''
-  return ip || 'unidentified'
+  return clientIp(request.headers) || 'unidentified'
 }
 
 export async function checkLimit(

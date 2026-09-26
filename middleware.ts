@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/server/admin-auth'
+import { cameThroughEdge, isEdgeLockConfigured } from '@/lib/server/client-ip'
 import { isCrossSiteWrite } from '@/lib/server/csrf'
 import { updateSession, withAuthCookies } from '@/lib/supabase/middleware'
 
@@ -28,6 +29,28 @@ const SESSION_REFRESH_EXEMPT = new Set([
   '/api/payments/stripe/webhook',
 ])
 
+/**
+ * Reachable without passing through Cloudflare even when the origin lock is
+ * on. The cron routes are invoked by Vercel's scheduler, which calls the
+ * deployment directly rather than through the public domain, and each one
+ * already demands CRON_SECRET as a bearer token.
+ */
+const EDGE_LOCK_EXEMPT_PREFIXES = ['/api/cron/']
+
+/**
+ * Origin lock: with EDGE_ORIGIN_SECRET set, a production request that did not
+ * come through Cloudflare is refused. Without it, the *.vercel.app address
+ * is a way around every WAF and rate-limiting rule configured at the edge
+ * (docs/security/phase-1-perimeter.md). Off in development, so a local
+ * .env with the secret in it does not lock out localhost.
+ */
+function isEdgeBypass(request: NextRequest): boolean {
+  if (process.env.NODE_ENV !== 'production' || !isEdgeLockConfigured()) return false
+  const { pathname } = request.nextUrl
+  if (EDGE_LOCK_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false
+  return !cameThroughEdge(request.headers)
+}
+
 function isAdminPath(pathname: string) {
   return (
     pathname === '/admin' ||
@@ -38,6 +61,10 @@ function isAdminPath(pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (isEdgeBypass(request)) {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
 
   // CSRF: a state-changing request a browser marks as cross-site is refused
   // before any handler, cookie refresh or session check runs (lib/server/csrf.ts).
