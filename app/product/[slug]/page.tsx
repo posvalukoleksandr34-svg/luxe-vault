@@ -13,6 +13,7 @@ import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fu
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { getProductBySlug, listProductSlugs, readCatalog } from '@/lib/server/catalog-store'
 import { pageLocale, relatedProducts } from '@/lib/server/catalog-listing'
+import { paramsFromDatabase } from '@/lib/server/static-params'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -56,8 +57,10 @@ const PRERENDERED_PRODUCTS = 200
  * page beneath it.
  */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const products = await listProductSlugs()
-  return products.slice(0, PRERENDERED_PRODUCTS).map(({ slug }) => ({ slug }))
+  return paramsFromDatabase('product pages', async () => {
+    const products = await listProductSlugs()
+    return products.slice(0, PRERENDERED_PRODUCTS).map(({ slug }) => ({ slug }))
+  })
 }
 
 const SITE_URL = SITE_ORIGIN

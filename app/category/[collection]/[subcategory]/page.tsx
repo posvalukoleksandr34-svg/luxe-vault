@@ -7,6 +7,7 @@ import { CategoryView } from '@/components/products/category-view'
 import { ListingProvider } from '@/components/products/listing-context'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
+import { paramsFromDatabase } from '@/lib/server/static-params'
 import { listingCounts, pageLocale, toListing } from '@/lib/server/catalog-listing'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -27,10 +28,12 @@ export const dynamicParams = true
 const SITE_URL = SITE_ORIGIN
 
 export async function generateStaticParams() {
-  const { tree } = await readTaxonomy()
-  return tree.flatMap((n) =>
-    n.categories.map((c) => ({ collection: n.slug, subcategory: c.slug })),
-  )
+  return paramsFromDatabase('category pages', async () => {
+    const { tree } = await readTaxonomy()
+    return tree.flatMap((n) =>
+      n.categories.map((c) => ({ collection: n.slug, subcategory: c.slug })),
+    )
+  })
 }
 
 /**
