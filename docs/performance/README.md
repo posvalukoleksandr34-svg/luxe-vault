@@ -46,13 +46,13 @@ overstate that one resource.
 
 | # | Finding | Measured | Fixed in |
 |---|---|---|---|
-| P1 | **The whole catalogue is embedded in every page.** The root layout reads it and passes it to `StoreProvider`, so it is serialised into every page's HTML and every RSC payload. That includes `/legal/terms` and `/checkout`. | **~5 KB per product.** At 150 products every page is 0.9–1.04 MB of HTML (80–96 KB gzipped). Each link prefetched in the viewport downloads another **~70 KB gzipped** copy. It grows linearly: 500 products means ~3 MB of HTML per page. | Phase 2 (structural) |
+| P1 | **The whole catalogue is embedded in every page.** The root layout reads it and passes it to `StoreProvider`, so it is serialised into every page's HTML and every RSC payload. That includes `/legal/terms` and `/checkout`. | **~5 KB per product.** At 150 products every page is 0.9–1.04 MB of HTML (80–96 KB gzipped). Each link prefetched in the viewport downloads another **~70 KB gzipped** copy. It grows linearly: 500 products means ~3 MB of HTML per page. | **Phase 2: done** |
 | P2 | **Product pages were rendered on every request.** `/product/[slug]` had `revalidate` but no `generateStaticParams`, which in Next 13 makes the route fully dynamic (λ). | ~92 ms server render per view, a function invocation each. The `/it/` twin was cached (~15 ms). | **Phase 1: this change** |
 | P3 | **Functions probably run far from the database.** Supabase is in AWS **eu-west-1 (Dublin)**: its IPv6 address matches AWS's published ranges. `vercel.json` pinned no region, and Vercel's default for new projects is `iad1` (Washington, D.C.). | If `iad1`: ~70–80 ms per DB round trip. A typical API route makes 3–6 in sequence (rate limit, session, reads, writes), so 250–450 ms. | **Phase 1: this change** |
-| P4 | **The client re-downloaded the catalogue on every page load**, seconds after the server had sent it in the HTML. | One `/api/catalog` per load (765 KB of JSON; ~66 KB compressed in production), plus a parse and a re-render of every product component. | **Phase 1: this change** |
-| P5 | **All 5 UI languages ship to every visitor.** `lib/i18n.ts` (234 KB of source) is a shared chunk on every page. | **~69 KB gzipped** of JS per page, ~80% of it unused by any one visitor. | Phase 2 |
-| P6 | **The full Supabase browser client is on every page**, including realtime, which is unused. | ~71 KB gzipped (auth + realtime + REST chunks) on every page, before interactivity. | Phase 2 |
-| P7 | **Signed-in visitors pay an auth round trip on every request.** Middleware calls `auth.getUser()`, which goes to Supabase Auth. Anonymous visitors do not pay it. | +1 network round trip per page, API call and prefetch while signed in. | Phase 2 |
+| P4 | **The client re-downloaded the catalogue on every page load**, seconds after the server had sent it in the HTML. | One `/api/catalog` per load (765 KB of JSON; ~66 KB compressed in production), plus a parse and a re-render of every product component. | **Phase 1; gone entirely in Phase 2** |
+| P5 | **All 5 UI languages ship to every visitor.** `lib/i18n.ts` (234 KB of source) is a shared chunk on every page. | **~69 KB gzipped** of JS per page, ~80% of it unused by any one visitor. | **Phase 2: done** |
+| P6 | **The full Supabase browser client is on every page**, including realtime, which is unused. | ~71 KB gzipped (auth + realtime + REST chunks) on every page, before interactivity. | **Phase 2: done** |
+| P7 | **Signed-in visitors pay an auth round trip on every request.** Middleware calls `auth.getUser()`, which goes to Supabase Auth. Anonymous visitors do not pay it. | +1 network round trip per page, API call and prefetch while signed in. | **Phase 2: done** (one per page load; zero with asymmetric JWT keys) |
 | P8 | `libphonenumber-js` reaches the home, catalogue and product pages through shared components. | ~27 KB gzipped on pages with no phone field. | Phase 2 |
 | P9 | Uploaded originals are kept at up to 5 MB, unresized. The storefront never serves them (the optimiser does) **except** the full-screen zoom, which is deliberately the original. | One multi-MB image per zoom. | Phase 3 |
 | P10 | Vercel **Hobby** caps image optimisations per month. Past the cap, new image variants fail. | — | Phase 1c (Vercel Pro; see security F8) |
@@ -98,6 +98,10 @@ demand (HTTP 200).
 
 ### 3. No second catalogue download
 
+> **Superseded in Phase 2.** The layout no longer carries products at all, so
+> there is nothing to download twice, and this mechanism (`initialCatalogAt`)
+> was removed with it.
+
 The layout now records when it read the catalogue (`initialCatalogAt`).
 `StoreProvider` skips its mount-time `/api/catalog` fetch when that snapshot
 is under 60 s old. The same 60 s is the layout's `revalidate` and the edge
@@ -117,40 +121,118 @@ compressed per page load in production.
 
 These are already on this branch: [security Phase 1](../security/README.md).
 
-## Phase 2: structural (next 2–4 weeks, one PR each, re-measured)
+## Phase 2: structural (done)
 
-1. **Catalogue out of the root layout (P1, P4).** This is the biggest
-   remaining win.
-   - Pages that render product lists (home, catalogue, category, wishlist)
-     pass their own products to their grids.
-   - `StoreProvider` keeps only what is global: cart, wishlist IDs, session
-     and shipping.
-   - Search suggestions move from client-side matching over the full
-     catalogue (`lib/search/match.ts`) to the existing, CDN-cached
-     `/api/search`.
-   - The cart re-prices through `/api/cart/validate`, which it already calls.
-   - **Target:** a non-catalogue page under 100 KB of HTML, and prefetches of
-     a few KB instead of ~70 KB.
-   - **Watch:** the one layout shift this snapshot was introduced to fix. The
-     grid must still render products in the server HTML.
-2. **One language of UI strings per visitor (P5).** Split `lib/i18n.ts` into
-   per-locale dictionaries, with the active one chosen by the locale segment
-   and the others loaded on switch. About −55 KB gzipped of JS on every page.
-3. **Supabase client after first paint (P6).** Create the browser client
-   through a dynamic `import()` in the store's session effect, and only when
-   an `sb-` auth cookie exists; anonymous visitors never download it. About
-   −70 KB gzipped for most visitors.
-4. **Local session checks (P7).** Switch the Supabase project to asymmetric
-   JWT signing keys (Dashboard → Project Settings → JWT Keys), then use
-   `auth.getClaims()` in middleware. It verifies the token against cached
-   public keys, with no network hop. Installed `@supabase/supabase-js` 2.115
-   already has it.
-5. **Phone library only with phone fields (P8).** Lazy-load `PhoneInput` and
-   `CountrySelect` with `next/dynamic`, and keep `lib/validation.ts` phone
-   parsing on the server.
-6. **`/stylist` static.** It is dynamic only because it reads
-   `searchParams`. Read `?product=` with `useSearchParams` inside a Suspense
-   boundary instead.
+Three commits, each measured with the same production build and local
+Supabase stand-in (150 products) as Phase 1, and verified with browser test
+suites: 37 catalogue checks, 9 session checks and 16 language checks. All
+pass.
+
+### 1. Catalogue out of the root layout (P1, P4)
+
+- The root layout reads **collections and categories only**
+  (`readTaxonomyLists`). No product goes into the store.
+- **Listing pages** (catalogue, department, category, and their `/it/`,
+  `/fr/`, `/de/` twins) pass their own products to the grid and sidebar
+  through `ListingProvider`. The products are trimmed to what a listing shows,
+  in the page's language (`lib/server/catalog-listing.ts`: ~2.1 KB instead of
+  ~5 KB per product). The grid and sidebar still render complete in the
+  server HTML, so the layout shift the old snapshot fixed does not come back.
+- **The product page** chooses its related rail on the server.
+- **The cart, checkout, wishlist, recently viewed and saved looks** look up
+  only the products they show, through `/api/search?ids=` (CDN-cached, with
+  its own rate-limit bucket).
+- **The store's `products`** is now the whole catalogue or nothing, loaded
+  on demand by the stylist's fallback and the admin console only. A cart line
+  is dropped only once the server has **confirmed** its product is gone. A
+  pending or failed lookup drops nothing; both cases are tested.
+- **Search results** are listings in the visitor's language.
+
+| HTML per page (150 products) | Phase 1 | Phase 2 |
+|---|---|---|
+| `/` | 924 KB (85 KB gz) | **94 KB (19 KB gz)** |
+| `/legal/terms` | 909 KB (89 KB gz) | **80 KB (23 KB gz)** |
+| `/checkout` | 886 KB (80 KB gz) | **57 KB (14 KB gz)** |
+| `/product/…` | 1,024 KB (92 KB gz) | **208 KB (27 KB gz)** |
+| `/category/women` | 999 KB (88 KB gz) | **226 KB (26 KB gz)** |
+| `/catalog` (lists every product) | 1,006 KB (90 KB gz) | 541 KB (40 KB gz) |
+
+Link prefetches shrank the same way: they used to carry the whole catalogue.
+
+**Found and fixed along the way (migration 0045):** `search_products` had
+been broken since 0017. It stored `row_count` in a boolean, so any search
+with 2+ full-text matches raised an error. Its typo pass also called
+`pg_trgm` unqualified under an empty `search_path`, so it never ran. Every
+common search therefore fell back to an unranked substring match, which the
+route deliberately never caches.
+
+### 2. Supabase only when there is a session (P6, P7)
+
+- **Browser:** the client is loaded on first use (`lib/supabase/lazy.ts`):
+  - when a session cookie exists;
+  - when an auth action runs (sign-in, sign-up, OTP, OAuth, sign-out);
+  - when an account form acts.
+  
+  An anonymous visitor downloads no Supabase code at all (measured).
+- **Middleware:** the session is refreshed only for a full page load
+  (`Sec-Fetch-Dest: document`) that carries an `sb-*-auth-token` cookie. API
+  routes check the user in their own handlers; prefetches and client
+  navigations need no refresh. Measured signed in: **1 Auth call for 1 page
+  load and 17 prefetches, down from 24.** It uses `getClaims()`, which
+  verifies locally once the project uses asymmetric JWT keys (owner action 2
+  below).
+
+### 3. One UI language per visitor (P5)
+
+- The UI table moved, verbatim, to `lib/ui-strings.ts`, which only server
+  code and the admin console read.
+- `scripts/ui-dictionaries.js` resolves it into one dictionary per language
+  at every build. All 4,510 values were checked equal to `translate()`.
+- English is bundled. Italian, French and German are chunks of their own,
+  fetched when a page in that language opens or the visitor switches.
+- The first render of a page in an unfetched language waits for its chunk,
+  while React keeps the server's HTML (already in that language) on screen.
+  Measured: no hydration mismatch.
+
+| First Load JS (`next build`) | Phase 1 | Phase 2 |
+|---|---|---|
+| `/`, `/catalog`, `/checkout` | 350 kB | **228–230 kB** |
+| `/product/[slug]` | 364 kB | **243 kB** |
+| `/legal/terms` | 242 kB | **120 kB** |
+| `/admin` (reads Russian from the full table) | 286 kB | 232 kB |
+
+### Measured on a 4×-throttled phone (median of 5 loads)
+
+| | Long tasks | LCP | Transferred |
+|---|---|---|---|
+| `/` | 377 → **147 ms** | 1,404 → **1,148 ms** | 1,138 → **673 KB** |
+| `/product/…` | 718 → **375 ms** | 792 → **600 ms** | 1,236 → **712 KB** |
+| `/legal/terms` | 212 → **97 ms** | 676 → **440 ms** | 1,049 → **639 KB** |
+| `/catalog` | 553 → **403 ms** | 1,760 → **1,636 ms** | 1,657 → **800 KB** |
+
+`/it/catalog` measured 225 ms of long tasks and an LCP of 1,812 ms, against
+1,636 ms for `/catalog`. The first Italian page of a visit fetches its
+dictionary before it hydrates; that fetch plausibly competes with the page's
+other requests. Every page after that has it cached.
+
+### Owner actions this phase needs
+
+1. **Apply migration 0045** (`supabase/migrations/0045_search_products_fix.sql`)
+   in production. Until then, search keeps falling back as described above.
+2. **Supabase → Project Settings → JWT Keys:** move to asymmetric signing
+   keys. The middleware's one check per page load then needs no network.
+   Until then it falls back to `getUser()`, as before, now once per page load
+   instead of per request.
+
+### Still open
+
+- **P8, the phone library.** Lazy-load `PhoneInput` and `CountrySelect` with
+  `next/dynamic` (~27 kB gzipped on pages with no phone field).
+- **`/stylist` static.** It is dynamic only because it reads `searchParams`;
+  read `?product=` with `useSearchParams` inside a Suspense boundary instead.
+- **`/catalog` pagination.** It is the one page that carries every product
+  (as listings). Past a few hundred products, paginate it on the server and
+  move its filters into the query.
 
 **Redis/Memcached: not recommended.** Hot reads are already cached at three
 layers: Next's data cache, ISR pages, and the Vercel CDN. Once functions are
