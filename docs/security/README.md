@@ -7,6 +7,7 @@ filtering are already in place and are not repeated here.
 
 | Doc | Covers |
 |---|---|
+| [../performance/README.md](../performance/README.md) | The performance half: measured audit, speed quick wins, structural plan |
 | [phase-1-perimeter.md](phase-1-perimeter.md) | Cloudflare WAF, rate limits, origin lock, admin behind Cloudflare Access |
 | [phase-1-backups.md](phase-1-backups.md) | Offsite encrypted backups, weekly restore test, restore runbook |
 
@@ -84,7 +85,8 @@ about 45 minutes of accounts and secrets.
   than a few weeks, also set `images.formats: ['image/webp']` to take AVIF out
   of the image path.
 - **Move to Vercel Pro** (F8). This brings commercial-use terms, log drains
-  (needed in Phase 3), hourly crons and firewall rate limiting.
+  (needed in Phase 3), hourly crons, firewall rate limiting and a higher
+  image-optimisation quota (performance P10).
 - **Check Netlify** (F11). If a site deploys this repo there, delete it and
   its environment variables, then remove `netlify.toml` and the plugin.
 
