@@ -587,7 +587,7 @@ function OrderCard({
   /** Terminal order: visually inert so it cannot compete with a live one. */
   muted?: boolean
 }) {
-  const { t } = useStore()
+  const { t, colorName } = useStore()
 
   return (
     <div
@@ -666,7 +666,7 @@ function OrderCard({
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-light text-foreground">{item.name}</p>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
-                {item.size} · {item.color} · ×{item.qty}
+                {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
               </p>
             </div>
             <span className="shrink-0 text-[12px] font-light text-foreground">

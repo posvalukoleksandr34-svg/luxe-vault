@@ -49,8 +49,8 @@ export function CartPanel() {
     currentUser,
     openAuth,
     currency,
-    lookupProduct,
-    localize,
+    cartLineName,
+    colorName,
     stockLimit,
     t,
     tf,
@@ -78,13 +78,6 @@ export function CartPanel() {
     cart.map((line) => line.productId),
     { enabled: cartOpen },
   )
-
-  // Line names in the visitor's language: the name saved with a line is
-  // whatever language the page was in when it was added.
-  const lineName = (item: { productId: string; name: string }) => {
-    const product = lookupProduct(item.productId)
-    return (product && localize(product.name)) || item.name
-  }
 
   /**
    * Enter AND exit transitions. `mounted` keeps the drawer in the document
@@ -311,7 +304,7 @@ export function CartPanel() {
                   // This exact size and colour: "+" stops at what exists.
                   const limit = stockLimit(item.productId, item.size, item.color)
                   const atMax = limit !== null && item.qty >= limit
-                  const name = lineName(item)
+                  const name = cartLineName(item)
                   return (
                     <li key={item.key} className="flex gap-4">
                       <Link
@@ -348,7 +341,7 @@ export function CartPanel() {
                           </button>
                         </div>
                         <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/50">
-                          {item.size} · {item.color}
+                          {[item.size, colorName(item.color)].filter(Boolean).join(' · ')}
                         </p>
                         {atMax && (
                           <p className="mt-1 text-[10px] font-light text-gold/75">

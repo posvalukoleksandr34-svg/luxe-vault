@@ -77,6 +77,7 @@ export function ProductGrid({
     setQuery,
     t,
     localize,
+    colorName,
     categoryTree,
     groupLabels,
     categoryLabels,
@@ -493,8 +494,8 @@ export function ProductGrid({
                     type="button"
                     onClick={() => toggleColor(c.name)}
                     aria-pressed={active}
-                    aria-label={c.name}
-                    title={c.name}
+                    aria-label={colorName(c.name) || t('filter.colorLabel')}
+                    title={colorName(c.name) || t('filter.colorLabel')}
                     className={cn(
                       'size-6 rounded-full border transition-all duration-200',
                       active

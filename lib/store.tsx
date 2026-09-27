@@ -31,6 +31,7 @@ import {
   type CurrencyCode,
 } from './currency'
 import { hasSessionCookie, loadSupabase } from './supabase/lazy'
+import { colorLabel, isStorefrontText } from './color-name'
 import { readReferralCookie } from './referral-program'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS } from './data'
@@ -195,6 +196,14 @@ type StoreContextValue = {
    *  never pass anything that will be rendered as HTML. */
   tf: (key: UIKey, vars: Record<string, string | number>) => string
   localize: (text: LocalizedText) => string
+  /** A colour's name as the visitor reads it: translated from the admin's
+   *  Russian where known, '' where not (lib/color-name.ts). Display only —
+   *  stock and cart lines keep keying on the name as stored. */
+  colorName: (name: string) => string
+  /** A cart line's product name in the visitor's language: the looked-up
+   *  product's, else the name saved with the line — unless that is Russian,
+   *  from a cart saved when the storefront still spoke it. */
+  cartLineName: (item: Pick<CartItem, 'productId' | 'name'>) => string
 
   panel: PanelState
   setPanel: (p: PanelState) => void
@@ -1098,6 +1107,21 @@ function maybeSendWelcome() {
 
   const t = useCallback((key: UIKey) => dictionary[key], [dictionary])
 
+  const colorName = useCallback((name: string) => colorLabel(name, locale), [locale])
+
+  // The saved name is whatever language the page was in when the line was
+  // added — Russian, for a cart kept from before the storefront dropped it.
+  // Until the product is looked up that one reads as a neutral "Item".
+  const cartLineName = useCallback(
+    (item: Pick<CartItem, 'productId' | 'name'>) => {
+      const product = lookupProduct(item.productId)
+      const current = product ? localize(product.name) : ''
+      if (current) return current
+      return item.name && isStorefrontText(item.name) ? item.name : dictionary['cart.itemFallback']
+    },
+    [lookupProduct, localize, dictionary],
+  )
+
   const [panel, setPanel] = useState<PanelState>(null)
   const [accountTab, setAccountTab] = useState<AccountTab>('orders')
 
@@ -1412,13 +1436,15 @@ function maybeSendWelcome() {
       trackAddToCart({ ...item, qty: added })
       pushToast({
         title: t('toast.addedToCart'),
-        description: added < item.qty ? onlyNote : `${item.name} · ${item.size} · ${item.color}`,
+        description: added < item.qty
+          ? onlyNote
+          : [item.name, item.size, colorName(item.color)].filter(Boolean).join(' · '),
         variant: 'gold',
       })
       scheduleValidate()
       return { added, limit, inCart: inCart + added }
     },
-    [stockLimit, pushToast, t, tf, scheduleValidate],
+    [stockLimit, pushToast, t, tf, colorName, scheduleValidate],
   )
 
   const updateCartQty = useCallback(
@@ -1970,6 +1996,8 @@ function maybeSendWelcome() {
       t,
       tf,
       localize,
+      colorName,
+      cartLineName,
       panel,
       setPanel,
       accountTab,
@@ -2020,7 +2048,7 @@ function maybeSendWelcome() {
       catalogLoading, ensureCatalog, reloadCatalog, productCache, resolveProducts, lookupProduct,
       shipping, categoryImages, setCategoryImage,
       resetCategoryImage, cart, currentUser, authLoading, locale, setLocale, currency,
-      setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
+      setCurrency, exchangeRates, t, tf, localize, colorName, cartLineName, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
       addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, isWishlisted, toggleWishlist,

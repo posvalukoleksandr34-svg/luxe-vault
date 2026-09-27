@@ -27,16 +27,10 @@ import { formatPrice, useProductsById, useStore } from '@/lib/store'
  * the empty-cart guard below matters — see the note there.
  */
 export default function CheckoutPage() {
-  const { cart, cartCount, cartSubtotal, lookupProduct, localize, t } = useStore()
+  const { cart, cartCount, cartSubtotal, cartLineName, colorName, t } = useStore()
 
   // The lines' products, looked up by id — see the cart drawer.
   useProductsById(cart.map((line) => line.productId))
-
-  // In the visitor's language, from the looked-up product — see the cart drawer.
-  const lineName = (item: { productId: string; name: string }) => {
-    const product = lookupProduct(item.productId)
-    return (product && localize(product.name)) || item.name
-  }
 
   // Set once the order exists server-side. From that point the cart is
   // legitimately empty — the order holds the items — so the empty-cart screen
@@ -113,17 +107,17 @@ export default function CheckoutPage() {
                   <li key={item.key} className="flex items-center gap-3 py-3 first:pt-0">
                     <Image
                       src={productImage(item.image)}
-                      alt={lineName(item)}
+                      alt={cartLineName(item)}
                       width={48}
                       height={48}
                       className="size-12 shrink-0 border border-border/60 object-cover"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[12px] font-light text-foreground">
-                        {lineName(item)}
+                        {cartLineName(item)}
                       </p>
                       <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-muted-foreground/70">
-                        {item.size} · {item.color} · ×{item.qty}
+                        {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                     <span className="shrink-0 text-[12px] font-light tabular-nums text-foreground">

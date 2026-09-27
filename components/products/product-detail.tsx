@@ -70,7 +70,7 @@ const GALLERY_ARROW =
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, tf, locale, localize, categoryLabels, pushToast, shipping } = useStore()
+  const { addToCart, setPanel, t, tf, locale, localize, colorName, categoryLabels, pushToast, shipping } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -82,6 +82,12 @@ export function ProductDetail({ product }: { product: Product }) {
   const touchStartX = useRef<number | null>(null)
 
   const activeColor = p.colors.find((c) => c.name === color)
+  /** A swatch's accessible name: the colour in the visitor's language, or the
+   *  word "Colour" when the admin's name has no translation (lib/color-name.ts). */
+  const swatchLabel = (c: { name: string; stock?: number }) => {
+    const label = colorName(c.name) || t('product.color')
+    return c.stock === 0 ? `${label} — ${t('sold.out')}` : label
+  }
   // A colour with its own photo puts it first, so selecting "Charcoal" shows
   // the charcoal one rather than leaving the customer to hunt the carousel.
   const allImages = (() => {
@@ -558,8 +564,13 @@ export function ProductDetail({ product }: { product: Product }) {
         {p.colors.length > 0 && (
           <div className="mt-8">
             <p className="mb-3 text-[11px] uppercase tracking-[0.15em] text-foreground">
-              {t('product.color')} —{' '}
-              <span className="normal-case tracking-normal text-muted-foreground">{color}</span>
+              {t('product.color')}
+              {color && colorName(color) && (
+                <>
+                  {' '}—{' '}
+                  <span className="normal-case tracking-normal text-muted-foreground">{colorName(color)}</span>
+                </>
+              )}
               {/* The low-stock count now sits under the size picker, where it
                   refers to the exact variant being bought. A colour-level
                   total shown here as well contradicted it — "3 left" beside
@@ -585,8 +596,8 @@ export function ProductDetail({ product }: { product: Product }) {
                     c.stock === 0 && 'opacity-40',
                   )}
                   style={{ backgroundColor: c.hex }}
-                  aria-label={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
-                  title={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
+                  aria-label={swatchLabel(c)}
+                  title={swatchLabel(c)}
                 >
                   {c.stock === 0 && (
                     <span

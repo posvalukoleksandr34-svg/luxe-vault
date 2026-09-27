@@ -78,6 +78,7 @@ export const UI = {
   'cart.checkout': { ru: 'Оформить заказ', en: 'Checkout', it: 'Checkout', fr: 'Commander', de: 'Zur Kasse' },
   'cart.clear': { ru: 'Очистить', en: 'Clear', it: 'Svuota', fr: 'Vider', de: 'Leeren' },
   'cart.remove': { ru: 'Удалить', en: 'Remove', it: 'Rimuovi', fr: 'Retirer', de: 'Entfernen' },
+  'cart.itemFallback': { ru: 'Товар', en: 'Item', it: 'Articolo', fr: 'Article', de: 'Artikel' },
   'checkout.title': { ru: 'Оформление заказа', en: 'Checkout', it: 'Checkout', fr: 'Commande', de: 'Bestellung' },
   'checkout.name': { ru: 'Имя', en: 'Name', it: 'Nome', fr: 'Nom', de: 'Name' },
   'checkout.firstName': { ru: 'Имя', en: 'First name', it: 'Nome', fr: 'Prénom', de: 'Vorname' },
