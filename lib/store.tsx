@@ -335,9 +335,17 @@ function clampToStock(
   return { next: notes.length ? next : lines, notes }
 }
 
+/**
+ * How old a server-rendered catalogue snapshot may be before the client asks
+ * /api/catalog again. Matches the root layout's `revalidate` and the edge
+ * cache on /api/catalog.
+ */
+const CATALOG_FRESH_MS = 60_000
+
 export function StoreProvider({
   children,
   initialCatalog,
+  initialCatalogAt,
   initialShipping,
 }: {
   children: ReactNode
@@ -349,11 +357,19 @@ export function StoreProvider({
    * shift on the storefront (CLS 0.0376, the #shop section reflowing ~3.5s in).
    * Seeding here means the first painted frame already has the products.
    *
-   * loadCatalog() still runs on mount so an admin edit made after this page
-   * was rendered still lands; it just no longer decides whether anything is
-   * visible at all.
+   * loadCatalog() still runs on mount when the snapshot is stale (see
+   * initialCatalogAt), so an admin edit made after this page was rendered
+   * still lands; it just no longer decides whether anything is visible at all.
    */
   initialCatalog?: { products: Product[]; collections: Collection[]; categories: Category[] }
+  /**
+   * Epoch ms at which the server read initialCatalog. A snapshot younger than
+   * CATALOG_FRESH_MS is not fetched again on mount: re-downloading the whole
+   * catalogue seconds after the server sent it cost every page load a second
+   * copy of it (~750 KB of JSON for 150 products), a parse, and a re-render of
+   * every product on the page, for data that could not have changed.
+   */
+  initialCatalogAt?: number
   /**
    * Shipping settings read on the server (getShippingSettings), so the first
    * painted cart, product page and footer already show the admin's figures.
@@ -767,7 +783,21 @@ function maybeSendWelcome() {
   }, [])
 
   useEffect(() => {
+    // Fresh: the server read it under a minute ago, and /api/catalog is itself
+    // cached at the edge for 60 s, so a refetch would at best return data a
+    // few seconds newer. Stale — an ISR copy that sat in the cache, or none —
+    // refetches as before. A visitor clock far from the server's refetches too
+    // (well behind: negative age; ahead: a large one). One a little behind
+    // can accept a snapshot older by that much, which is harmless: prices and
+    // stock are re-checked on the server at checkout.
+    const age = initialCatalogAt === undefined ? Infinity : Date.now() - initialCatalogAt
+    if (initialCatalog && age >= 0 && age < CATALOG_FRESH_MS) {
+      setCatalogLoading(false)
+      return
+    }
     void loadCatalog()
+    // Mount only: the snapshot props never change for a mounted layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadCatalog])
 
   // Preview images now live on the collection row; this keeps the old

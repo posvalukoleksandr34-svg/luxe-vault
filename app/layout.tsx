@@ -85,9 +85,10 @@ const SITE_JSON_LD = siteJsonLd(SITE_DESCRIPTION);
  * into Postgres was meant to end. Verified: `/` was emitted as ○ (static)
  * before this line, and ISR after it.
  *
- * 60s is the staleness ceiling for the FIRST PAINT only. StoreProvider still
- * runs loadCatalog() on mount, so a client corrects itself within a second of
- * hydrating; this only governs what a crawler or a cold visitor sees first.
+ * 60s is the staleness ceiling for the FIRST PAINT only. When the snapshot is
+ * older than that, StoreProvider runs loadCatalog() on mount, so a client
+ * corrects itself within a second of hydrating; this only governs what a
+ * crawler or a cold visitor sees first.
  */
 export const revalidate = 60
 
@@ -204,8 +205,12 @@ export default async function RootLayout({
   // A failure degrades to the previous behaviour — the client fetch still runs
   // on mount — rather than taking down every page in the app.
   let initialCatalog
+  // When the snapshot was taken, so the client can tell a freshly rendered
+  // page from an ISR copy that has sat in the cache (StoreProvider).
+  let catalogReadAt: number | undefined
   try {
     initialCatalog = await readCatalog()
+    catalogReadAt = Date.now()
   } catch (error) {
     console.error('[layout] catalogue unavailable for SSR:', error)
   }
@@ -269,7 +274,11 @@ export default async function RootLayout({
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
 
-        <StoreProvider initialCatalog={initialCatalog} initialShipping={shipping}>
+        <StoreProvider
+          initialCatalog={initialCatalog}
+          initialCatalogAt={catalogReadAt}
+          initialShipping={shipping}
+        >
           {/* The skip link (see the note above), in the visitor's language —
               still first in the tab order: nothing before it is focusable. */}
           <SkipLink />

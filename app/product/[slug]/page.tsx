@@ -11,7 +11,7 @@ import { StyleThisPiece } from '@/components/products/style-this-piece'
 import type { ShippingSettings } from '@/config/shipping'
 import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
-import { getProductBySlug } from '@/lib/server/catalog-store'
+import { getProductBySlug, listProductSlugs } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -36,6 +36,28 @@ export const revalidate = 600
 // A product added after the last build must still resolve rather than 404, so
 // unknown slugs are rendered on demand.
 export const dynamicParams = true
+
+/** Upper bound on product pages rendered during `next build`. */
+const PRERENDERED_PRODUCTS = 200
+
+/**
+ * The most recently updated products are prerendered at build; every other
+ * product page is rendered on first request and then CACHED for the
+ * `revalidate` window above, like the category pages.
+ *
+ * Without this export the route was fully dynamic (λ in the build output):
+ * `revalidate` alone does not make a dynamic segment static in Next 13, so
+ * every product view re-rendered the page on the server — measured at ~90 ms
+ * of render per request, a function invocation each, against ~15 ms from
+ * cache. Prerendering the newest ones means a deploy, which empties that
+ * cache, does not leave every product page cold. Admin edits still show up at
+ * once: revalidateStorefront() revalidates the root layout, which covers every
+ * page beneath it.
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const products = await listProductSlugs()
+  return products.slice(0, PRERENDERED_PRODUCTS).map(({ slug }) => ({ slug }))
+}
 
 const SITE_URL = SITE_ORIGIN
 
