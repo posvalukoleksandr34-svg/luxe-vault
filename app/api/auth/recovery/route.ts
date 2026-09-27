@@ -9,6 +9,7 @@ import {
 import { isMailConfigured, sendEmail, SUPPORT_FROM_ADDRESS } from '@/lib/server/resend'
 import { readJsonObject } from '@/lib/server/http'
 import { verifyTurnstileToken } from '@/lib/server/turnstile'
+import { clientIp } from '@/lib/server/client-ip'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
   // only when no secret is configured (lib/server/turnstile.ts).
   const captcha = await verifyTurnstileToken(
     body.captchaToken,
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    clientIp(request.headers) || null,
   )
   if (!captcha.ok) {
     return NextResponse.json(
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
 
   // Throttle on IP + email so one address cannot be spammed and one client
   // cannot enumerate many addresses.
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local'
+  const ip = clientIp(request.headers) || 'local'
   if (throttled(`${ip}:${email}`)) {
     return NextResponse.json(
       { error: 'Too many requests. Try again in a few minutes.' },

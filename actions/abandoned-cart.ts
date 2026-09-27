@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { captureCheckoutCart, type CaptureOutcome } from '@/lib/server/abandoned-cart-flow'
 import { checkLimit } from '@/lib/server/rate-limit'
+import { clientIp } from '@/lib/server/client-ip'
 
 export type LogAbandonedCheckoutInput = {
   email: string
@@ -26,8 +27,7 @@ export type LogAbandonedCheckoutInput = {
  */
 export async function logAbandonedCheckout(input: LogAbandonedCheckoutInput): Promise<CaptureOutcome | 'rate_limited'> {
   const h = headers()
-  const ip =
-    h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip')?.trim() || 'unidentified'
+  const ip = clientIp(h) || 'unidentified'
   const limit = await checkLimit('cart.capture', ip)
   if (!limit.allowed) return 'rate_limited'
 

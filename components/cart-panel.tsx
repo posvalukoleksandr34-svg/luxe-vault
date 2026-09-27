@@ -12,7 +12,7 @@ import { TrustBadges } from '@/components/trust-badges'
 import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
 import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
 import { productImage } from '@/lib/product-image'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatPrice, useProductsById, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /** How long the slide-out takes; the drawer unmounts once it has finished. */
@@ -49,7 +49,7 @@ export function CartPanel() {
     currentUser,
     openAuth,
     currency,
-    products,
+    lookupProduct,
     localize,
     stockLimit,
     t,
@@ -69,14 +69,22 @@ export function CartPanel() {
   const threshold = shipping.freeShippingThreshold
   const shippingProgress = threshold > 0 ? Math.min(100, (cartSubtotal / threshold) * 100) : 100
 
-  // Line names in the visitor's language, from the catalogue: the name saved
-  // with a line is whatever language the page was in when it was added.
+  const cartOpen = panel === 'cart'
+
+  // The lines' products, looked up when the drawer opens — for their names
+  // in the visitor's language and their stock. The store realigns prices and
+  // drops withdrawn lines as they arrive (reconcileCart).
+  useProductsById(
+    cart.map((line) => line.productId),
+    { enabled: cartOpen },
+  )
+
+  // Line names in the visitor's language: the name saved with a line is
+  // whatever language the page was in when it was added.
   const lineName = (item: { productId: string; name: string }) => {
-    const product = products.find((p) => p.id === item.productId)
+    const product = lookupProduct(item.productId)
     return (product && localize(product.name)) || item.name
   }
-
-  const cartOpen = panel === 'cart'
 
   /**
    * Enter AND exit transitions. `mounted` keeps the drawer in the document

@@ -11,7 +11,9 @@ import { StyleThisPiece } from '@/components/products/style-this-piece'
 import type { ShippingSettings } from '@/config/shipping'
 import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
-import { getProductBySlug } from '@/lib/server/catalog-store'
+import { getProductBySlug, listProductSlugs, readCatalog } from '@/lib/server/catalog-store'
+import { pageLocale, relatedProducts } from '@/lib/server/catalog-listing'
+import { paramsFromDatabase } from '@/lib/server/static-params'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -36,6 +38,30 @@ export const revalidate = 600
 // A product added after the last build must still resolve rather than 404, so
 // unknown slugs are rendered on demand.
 export const dynamicParams = true
+
+/** Upper bound on product pages rendered during `next build`. */
+const PRERENDERED_PRODUCTS = 200
+
+/**
+ * The most recently updated products are prerendered at build; every other
+ * product page is rendered on first request and then CACHED for the
+ * `revalidate` window above, like the category pages.
+ *
+ * Without this export the route was fully dynamic (λ in the build output):
+ * `revalidate` alone does not make a dynamic segment static in Next 13, so
+ * every product view re-rendered the page on the server — measured at ~90 ms
+ * of render per request, a function invocation each, against ~15 ms from
+ * cache. Prerendering the newest ones means a deploy, which empties that
+ * cache, does not leave every product page cold. Admin edits still show up at
+ * once: revalidateStorefront() revalidates the root layout, which covers every
+ * page beneath it.
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return paramsFromDatabase('product pages', async () => {
+    const products = await listProductSlugs()
+    return products.slice(0, PRERENDERED_PRODUCTS).map(({ slug }) => ({ slug }))
+  })
+}
 
 const SITE_URL = SITE_ORIGIN
 
@@ -136,10 +162,20 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
   }
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
+export default async function ProductPage({ params }: { params: { slug: string; locale?: string } }) {
   const product = await getProductBySlug(params.slug)
   if (!product) notFound()
   const shipping = await getShippingSettings()
+
+  // The related rail, chosen here rather than in the browser: the browser no
+  // longer holds the catalogue to choose from. A failed read costs the rail,
+  // never the page.
+  let related: Product[] = []
+  try {
+    related = relatedProducts((await readCatalog()).products, product, pageLocale(params))
+  } catch (error) {
+    console.error('[product] related products unavailable:', error)
+  }
 
   // Shop → collection → category → product. The collection and category
   // crumbs point at their own routes now; they used to point back at the
@@ -179,10 +215,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
         <StyleThisPiece product={product} />
 
-        {/* Everything below the fold. Client components reading the catalogue
-            already in the store, so none of them costs a request. */}
+        {/* Everything below the fold. The related rail arrives with the page;
+            recently viewed looks its few products up after mount. */}
         <ProductReviews productId={product.id} />
-        <RelatedProducts product={product} />
+        <RelatedProducts products={related} />
         <RecentlyViewed currentId={product.id} />
       </main>
 

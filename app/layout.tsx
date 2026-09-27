@@ -1,7 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { StoreProvider } from '@/lib/store';
-import { readCatalog } from '@/lib/server/catalog-store';
+import { readTaxonomyLists } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
 import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
@@ -79,15 +80,16 @@ const SITE_DESCRIPTION_SHORT =
 const SITE_JSON_LD = siteJsonLd(SITE_DESCRIPTION);
 
 /**
- * Without this the layout's catalogue read makes every page fully static and
- * bakes the product list into the build — an admin adding a product would not
- * see it until the next deploy, which is exactly what moving the catalogue
- * into Postgres was meant to end. Verified: `/` was emitted as ○ (static)
- * before this line, and ISR after it.
+ * Without this the layout's taxonomy read makes every page fully static and
+ * bakes the navigation into the build — an admin adding a collection would
+ * not see it until the next deploy, which is exactly what moving the
+ * catalogue into Postgres was meant to end. Verified: `/` was emitted as ○
+ * (static) before this line, and ISR after it.
  *
- * 60s is the staleness ceiling for the FIRST PAINT only. StoreProvider still
- * runs loadCatalog() on mount, so a client corrects itself within a second of
- * hydrating; this only governs what a crawler or a cold visitor sees first.
+ * A route's revalidate is the LOWEST of its segments', so this 60 s is also
+ * the staleness ceiling for every page beneath: a listing page's products and
+ * stock badges, a product page's stock. That is the window the storefront
+ * has always had; the pages that set 600 get 60 through this.
  */
 export const revalidate = 60
 
@@ -197,17 +199,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Read on the server so the storefront's first painted frame already has the
-  // products. This is the fix for the only measured layout shift on the site:
-  // the #shop section reflowing when a client-side /api/catalog call resolved.
+  // Collections and categories — the navigation, labels and filters every
+  // page draws on its first frame. NOT the products: the layout used to read
+  // the whole catalogue here, which serialised every product into every page
+  // and every link prefetch (~5 KB per product, on the terms page too).
+  // Listing pages read their own products now; see ListingProvider.
   //
-  // A failure degrades to the previous behaviour — the client fetch still runs
-  // on mount — rather than taking down every page in the app.
-  let initialCatalog
+  // A failure leaves the built-in taxonomy (lib/data.ts) in place rather than
+  // taking down every page in the app.
+  let initialTaxonomy
   try {
-    initialCatalog = await readCatalog()
+    initialTaxonomy = await readTaxonomyLists()
   } catch (error) {
-    console.error('[layout] catalogue unavailable for SSR:', error)
+    console.error('[layout] taxonomy unavailable for SSR:', error)
   }
   // The admin's shipping fee, threshold and delivery window, for the cart,
   // checkout, product pages and footer. Never throws: it falls back to
@@ -269,30 +273,38 @@ export default async function RootLayout({
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
 
-        <StoreProvider initialCatalog={initialCatalog} initialShipping={shipping}>
-          {/* The skip link (see the note above), in the visitor's language —
-              still first in the tab order: nothing before it is focusable. */}
-          <SkipLink />
-          {/* The page itself, with room at the foot of a phone screen for the
-              tab bar below — without it, the last button on every page would
-              sit under the bar. `md:pb-0` because the bar is phones only. */}
-          <div className="pb-20 md:pb-0">
-            <PageTransition>{children}</PageTransition>
-          </div>
-          {/* Cart / checkout / account drawers. Mounted here, not per page: a
-              page that renders a trigger but not its panel is a dead end. */}
-          <GlobalPanels />
-          <ToastViewport />
-          {/* Inside StoreProvider: the banner is localised via the store. It
-              renders nothing until mounted, so it cannot flash for visitors
-              who already answered. */}
-          <CookieConsentLazy />
-          {/* The app-style tab bar. Phones only; hidden on /admin. */}
-          <BottomNav />
-          {/* The installed app's personal promo code, issued on its first
-              launch after sign-in. Renders nothing; inert in a browser tab. */}
-          <AppWelcome />
-        </StoreProvider>
+        {/* The first render of a page in a language this browser has not
+            fetched yet suspends in StoreProvider until its dictionary arrives
+            (lib/i18n-runtime.ts). This boundary is what lets React keep the
+            server's HTML — already in that language — on screen meanwhile,
+            rather than failing the hydration. On the server nothing suspends,
+            so the fallback is never rendered. */}
+        <Suspense fallback={null}>
+          <StoreProvider initialTaxonomy={initialTaxonomy} initialShipping={shipping}>
+            {/* The skip link (see the note above), in the visitor's language —
+                still first in the tab order: nothing before it is focusable. */}
+            <SkipLink />
+            {/* The page itself, with room at the foot of a phone screen for the
+                tab bar below — without it, the last button on every page would
+                sit under the bar. `md:pb-0` because the bar is phones only. */}
+            <div className="pb-20 md:pb-0">
+              <PageTransition>{children}</PageTransition>
+            </div>
+            {/* Cart / checkout / account drawers. Mounted here, not per page: a
+                page that renders a trigger but not its panel is a dead end. */}
+            <GlobalPanels />
+            <ToastViewport />
+            {/* Inside StoreProvider: the banner is localised via the store. It
+                renders nothing until mounted, so it cannot flash for visitors
+                who already answered. */}
+            <CookieConsentLazy />
+            {/* The app-style tab bar. Phones only; hidden on /admin. */}
+            <BottomNav />
+            {/* The installed app's personal promo code, issued on its first
+                launch after sign-in. Renders nothing; inert in a browser tab. */}
+            <AppWelcome />
+          </StoreProvider>
+        </Suspense>
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
-import { ADMIN_LOCALE, UI, translate, type UIKey } from './i18n'
+import { ADMIN_LOCALE, translate, type UIKey } from './i18n'
+import { UI } from './ui-strings'
 import type { LocalizedText } from './types'
 
 /**

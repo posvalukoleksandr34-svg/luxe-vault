@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE, STOREFRONT_LOCALES, isStorefrontLocale } from '@/lib/i18n'
-import { SITE_ORIGIN } from '@/lib/seo'
+import { SITE_ORIGIN } from '@/lib/site-origin'
 import type { StorefrontLocale } from '@/lib/types'
 
 /**

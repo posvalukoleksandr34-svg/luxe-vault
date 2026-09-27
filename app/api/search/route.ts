@@ -3,11 +3,12 @@ import { isCurrencyCode, type CurrencyCode } from '@/lib/currency'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { buildSearchContext, interpretQuery, isSmartQuery, mergeFilters } from '@/lib/search/interpret'
 import { matchProducts } from '@/lib/search/match'
-import { readCatalog } from '@/lib/server/catalog-store'
+import { getProductsBySlugs, readCatalog } from '@/lib/server/catalog-store'
+import { pageLocale, toListing } from '@/lib/server/catalog-listing'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { interpretWithAi, isSearchAiConfigured } from '@/lib/server/search-ai'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { LocalizedText, Product } from '@/lib/types'
+import type { Locale, LocalizedText, Product } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,8 +16,8 @@ const MAX_RESULTS = 24
 const MAX_POPULAR = 6
 
 /**
- * Search answers depend only on the address (q, cur, ai), never on who asks,
- * so the CDN may answer a repeated query for a minute. It spares the database
+ * Search answers depend only on the address (q, cur, ai, locale — or ids),
+ * never on who asks, so the CDN may answer a repeated query for a minute. It spares the database
  * and — for `ai=1` — a paid model call per keystroke-settled phrase. Not set on
  * a degraded answer (the database search failed), which should be retried.
  */
@@ -41,15 +42,28 @@ const CACHED = { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-r
  * could not place. If it fails, is slow, or is not configured, the rules'
  * reading stands. Every result is a real product from the catalogue.
  *
+ * And a third job, catalogue retrieval: `?ids=a,b,c` answers those products.
+ * The browser no longer holds the catalogue, so the cart, the wishlist and the
+ * recently-viewed rail look up the few products they show here instead.
+ *
+ * Every product in an answer is a LISTING (lib/server/catalog-listing.ts):
+ * what a result or a card shows, in the language asked for (`locale`), not
+ * the full record the product page reads.
+ *
  * GET so it is cacheable, linkable and shows up in a browser's network tab as
  * what it is. Throttled because an unbounded search endpoint is a cheap way to
  * make the database work hard.
  */
 export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const locale = pageLocale({ locale: url.searchParams.get('locale') ?? undefined })
+
+  const ids = url.searchParams.get('ids')
+  if (ids !== null) return lookupByIds(request, ids, locale)
+
   const limited = await enforceLimit('search', request)
   if (limited) return limited
 
-  const url = new URL(request.url)
   const query = (url.searchParams.get('q') ?? '').trim().slice(0, 100)
   const cur = url.searchParams.get('cur')
   const currency: CurrencyCode = isCurrencyCode(cur) ? cur : 'CHF'
@@ -85,7 +99,7 @@ export async function GET(request: NextRequest) {
       if (keyword.results.length > 0) recordSearch(query)
       return NextResponse.json(
         {
-          results: keyword.results,
+          results: toListing(keyword.results, locale),
           total: keyword.results.length,
           fuzzy: keyword.fuzzy,
           degraded: keyword.degraded || undefined,
@@ -112,7 +126,7 @@ export async function GET(request: NextRequest) {
   if (results.length > 0) recordSearch(query)
 
   return NextResponse.json({
-    results,
+    results: toListing(results, locale),
     total: matched.length,
     fuzzy: false,
     mode: 'smart',
@@ -179,6 +193,40 @@ async function popular(): Promise<string[]> {
 
   if (error) return []
   return (data ?? []).map((r) => r.term as string)
+}
+
+/** Most ids one lookup may name — the store asks in batches of this size. */
+const MAX_LOOKUP_IDS = 50
+
+/** A product slug: what `Product.id` holds. Anything else cannot match. */
+const SLUG = /^[a-z0-9][a-z0-9._-]{0,119}$/i
+
+/**
+ * `?ids=a,b,c` — those products, as listings, in the order asked for. An id
+ * that is not in the answer is not for sale (withdrawn or never existed): the
+ * store treats exactly that as "drop it from the cart", so a FAILED read must
+ * never look like an empty answer — it is a 502 instead.
+ */
+async function lookupByIds(request: NextRequest, raw: string, locale: Locale) {
+  const limited = await enforceLimit('catalog.lookup', request)
+  if (limited) return limited
+
+  const ids = Array.from(new Set(raw.split(',').map((id) => id.trim()).filter(Boolean)))
+  if (ids.length > MAX_LOOKUP_IDS || !ids.every((id) => SLUG.test(id))) {
+    return NextResponse.json({ error: 'Invalid ids' }, { status: 400 })
+  }
+
+  try {
+    const found = new Map((await getProductsBySlugs(ids)).map((p) => [p.id, p]))
+    const products = ids.map((id) => found.get(id)).filter((p): p is Product => Boolean(p))
+    return NextResponse.json({ products: toListing(products, locale) }, CACHED)
+  } catch (error) {
+    console.error('[search] lookup by ids failed:', error)
+    return NextResponse.json(
+      { error: 'Lookup unavailable' },
+      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
 }
 
 /** The pre-0017 behaviour, kept only as a safety net. */

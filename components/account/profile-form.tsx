@@ -3,7 +3,7 @@
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabase } from '@/lib/supabase/lazy'
 
 /**
  * Editable name and email.
@@ -91,8 +91,6 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
     setError(null)
     setEmailPending(false)
 
-    const supabase = createClient()
-
     try {
       if (trimmedName !== currentUser.name || birthDirty) {
         // Through a route, not the browser client. Writing `profiles` directly
@@ -122,7 +120,7 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
       }
 
       if (trimmedEmail && trimmedEmail !== currentUser.email) {
-        const { error: authError } = await supabase.auth.updateUser({ email: trimmedEmail })
+        const { error: authError } = await (await loadSupabase()).auth.updateUser({ email: trimmedEmail })
         if (authError) throw new Error(authError.message)
         setEmailPending(true)
       }

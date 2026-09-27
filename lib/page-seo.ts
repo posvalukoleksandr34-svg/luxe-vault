@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
-import { DEFAULT_LOCALE, UI, translate, type UIKey } from '@/lib/i18n'
+import { DEFAULT_LOCALE, translate, type UIKey } from '@/lib/i18n'
+import { UI } from '@/lib/ui-strings'
 import { INDEXED_LOCALES } from '@/lib/locale-routing'
 import { resolveDoc, type LegalDocSet } from '@/app/legal/_content/types'
 import { pageMetadata } from '@/lib/seo'

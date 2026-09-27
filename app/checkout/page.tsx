@@ -9,7 +9,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Header } from '@/components/header'
 import { EmptyState } from '@/components/state-view'
 import { productImage } from '@/lib/product-image'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatPrice, useProductsById, useStore } from '@/lib/store'
 
 /**
  * Dedicated checkout screen.
@@ -27,11 +27,14 @@ import { formatPrice, useStore } from '@/lib/store'
  * the empty-cart guard below matters — see the note there.
  */
 export default function CheckoutPage() {
-  const { cart, cartCount, cartSubtotal, products, localize, t } = useStore()
+  const { cart, cartCount, cartSubtotal, lookupProduct, localize, t } = useStore()
 
-  // In the visitor's language, from the catalogue — see the cart drawer.
+  // The lines' products, looked up by id — see the cart drawer.
+  useProductsById(cart.map((line) => line.productId))
+
+  // In the visitor's language, from the looked-up product — see the cart drawer.
   const lineName = (item: { productId: string; name: string }) => {
-    const product = products.find((p) => p.id === item.productId)
+    const product = lookupProduct(item.productId)
     return (product && localize(product.name)) || item.name
   }
 

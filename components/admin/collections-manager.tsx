@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
-import { useStore } from '@/lib/store'
+import { useFullCatalog, useStore } from '@/lib/store'
 import type { CategoryGroupKey } from '@/lib/types'
 
 // Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
@@ -92,8 +92,9 @@ async function uploadCover(file: File): Promise<string> {
  * image without touching code. Live product counts are shown alongside so
  * it's obvious at a glance which categories are actually populated. */
 export function CollectionsManager() {
+  // Counts per collection need every product; see AdminPanel.
+  const { products } = useFullCatalog()
   const {
-    products,
     categoryImages,
     setCategoryImage,
     resetCategoryImage,

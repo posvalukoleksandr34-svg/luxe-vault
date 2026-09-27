@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { useStore } from '@/lib/store'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabase } from '@/lib/supabase/lazy'
 
 /**
  * The account look for a password field.
@@ -57,7 +57,7 @@ export function PasswordForm({ compact = false }: { compact?: boolean }) {
     setSaving(true)
     setError(null)
     try {
-      const { error: authError } = await createClient().auth.updateUser({ password })
+      const { error: authError } = await (await loadSupabase()).auth.updateUser({ password })
       if (authError) {
         setError(authError.message)
         return
