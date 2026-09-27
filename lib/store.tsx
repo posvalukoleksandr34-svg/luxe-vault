@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session } from '@supabase/supabase-js'
+import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
@@ -30,7 +30,7 @@ import {
   type ExchangeRates,
   type CurrencyCode,
 } from './currency'
-import { createClient } from './supabase/client'
+import { hasSessionCookie, loadSupabase } from './supabase/lazy'
 import { readReferralCookie } from './referral-program'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS } from './data'
@@ -513,48 +513,73 @@ function maybeSendWelcome() {
   // Single source of truth for "who is signed in". Both a fresh login and a
   // session restored from the cookie on page load land here, so the two can
   // never disagree.
+  //
+  // ON DEMAND. The Supabase client (~70 KB of script) is loaded only when this
+  // browser has a session cookie to restore, or when the visitor starts to
+  // sign in (every auth action goes through authClient()). A visitor who has
+  // never signed in never downloads it. See lib/supabase/lazy.ts.
+  const applySession = useCallback((session: Session | null) => {
+    const u = session?.user
+    // What Supabase currently has on the row — compared against the active
+    // locale by the sync effect below.
+    setMetadataLanguage((u?.user_metadata?.language as string | undefined) ?? null)
+    setCurrentUser(
+      u
+        ? {
+            id: u.id,
+            email: u.email ?? '',
+            // Set from signUp metadata; the profiles row refines it below.
+            name:
+              (u.user_metadata?.name as string | undefined)?.trim() ||
+              (u.email ?? '').split('@')[0],
+          }
+        : null,
+    )
+    setAuthLoading(false)
+  }, [])
+
+  const authClientRef = useRef<Promise<SupabaseClient> | null>(null)
+  const authSubscription = useRef<{ unsubscribe: () => void } | null>(null)
+
+  /** The client, with the session restored and the auth listener attached —
+   *  loaded once, by whichever comes first: a restore or a sign-in. */
+  const authClient = useCallback((): Promise<SupabaseClient> => {
+    if (!authClientRef.current) {
+      authClientRef.current = loadSupabase()
+        .then((supabase) => {
+          supabase.auth.getSession().then(({ data }) => {
+            applySession(data.session)
+            if (data.session) maybeSendWelcome()
+          })
+
+          // NOTE: this callback stays synchronous on purpose. Awaiting another
+          // supabase call inside onAuthStateChange can deadlock the client, so
+          // the profile lookup is done by the separate effect below instead.
+          const {
+            data: { subscription },
+          } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
+          authSubscription.current = subscription
+          return supabase
+        })
+        .catch((error) => {
+          authClientRef.current = null
+          throw error
+        })
+    }
+    return authClientRef.current
+  }, [applySession])
+
   useEffect(() => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !hasSessionCookie()) {
+      // Nobody is signed in on this browser: nothing to restore, nothing to
+      // load. Signing in loads the client then.
       setAuthLoading(false)
       return
     }
+    authClient().catch(() => setAuthLoading(false))
+  }, [authClient])
 
-    const supabase = createClient()
-
-    function applySession(session: Session | null) {
-      const u = session?.user
-      // What Supabase currently has on the row — compared against the active
-      // locale by the sync effect below.
-      setMetadataLanguage((u?.user_metadata?.language as string | undefined) ?? null)
-      setCurrentUser(
-        u
-          ? {
-              id: u.id,
-              email: u.email ?? '',
-              // Set from signUp metadata; the profiles row refines it below.
-              name:
-                (u.user_metadata?.name as string | undefined)?.trim() ||
-                (u.email ?? '').split('@')[0],
-            }
-          : null,
-      )
-      setAuthLoading(false)
-    }
-
-    supabase.auth.getSession().then(({ data }) => {
-      applySession(data.session)
-      if (data.session) maybeSendWelcome()
-    })
-
-    // NOTE: this callback stays synchronous on purpose. Awaiting another
-    // supabase call inside onAuthStateChange can deadlock the client, so the
-    // profile lookup is done by the separate effect below instead.
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
-
-    return () => subscription.unsubscribe()
-  }, [])
+  useEffect(() => () => authSubscription.current?.unsubscribe(), [])
 
   // Refine the display name from public.profiles, which is the durable record
   // (auth metadata goes stale if the name is ever edited).
@@ -578,8 +603,8 @@ function maybeSendWelcome() {
     if (metadataLanguage === locale) return
 
     let active = true
-    createClient()
-      .auth.updateUser({ data: { language: locale } })
+    authClient()
+      .then((supabase) => supabase.auth.updateUser({ data: { language: locale } }))
       .then(({ error }) => {
         // Mirror locally on success so this does not re-fire every render.
         if (active && !error) setMetadataLanguage(locale)
@@ -591,7 +616,7 @@ function maybeSendWelcome() {
     return () => {
       active = false
     }
-  }, [currentUserId, locale, metadataLanguage])
+  }, [currentUserId, locale, metadataLanguage, authClient])
 
   /**
    * An invited friend who signs in: recorded as the referrer's pending invite.
@@ -617,11 +642,8 @@ function maybeSendWelcome() {
     if (!currentUserId || !isSupabaseConfigured) return
     let active = true
 
-    createClient()
-      .from('profiles')
-      .select('name')
-      .eq('id', currentUserId)
-      .maybeSingle()
+    authClient()
+      .then((supabase) => supabase.from('profiles').select('name').eq('id', currentUserId).maybeSingle())
       .then(({ data }) => {
         const name = data?.name?.trim()
         if (!active || !name) return
@@ -629,11 +651,14 @@ function maybeSendWelcome() {
           prev && prev.id === currentUserId && prev.name !== name ? { ...prev, name } : prev,
         )
       })
+      .catch(() => {
+        // The auth metadata name stands.
+      })
 
     return () => {
       active = false
     }
-  }, [currentUserId])
+  }, [currentUserId, authClient])
 
 
   useEffect(() => {
@@ -1000,13 +1025,13 @@ function maybeSendWelcome() {
       // session — which is precisely why the value has to be stored ahead of
       // time rather than passed at password-reset time.
       if (!currentUserId || !isSupabaseConfigured) return
-      void createClient()
-        .auth.updateUser({ data: { language: l } })
+      void authClient()
+        .then((supabase) => supabase.auth.updateUser({ data: { language: l } }))
         .catch(() => {
           // Cosmetic sync; a failure here must never block a language switch.
         })
     },
-    [currentUserId, urlCarriesLocale, barePath, pathname, router],
+    [currentUserId, urlCarriesLocale, barePath, pathname, router, authClient],
   )
 
   const tf = useCallback(
@@ -1510,7 +1535,7 @@ function maybeSendWelcome() {
       let error
       try {
         error = (
-          await createClient().auth.signInWithPassword({
+          await (await authClient()).auth.signInWithPassword({
             email: email.trim().toLowerCase(),
             password,
             // Verified by SUPABASE, not by us: this request never touches our
@@ -1536,7 +1561,7 @@ function maybeSendWelcome() {
       trackLogin()
       return true
     },
-    [pushToast, t],
+    [pushToast, t, authClient],
   )
 
   const register = useCallback(
@@ -1544,7 +1569,7 @@ function maybeSendWelcome() {
       const normalized = email.trim().toLowerCase()
       let data, error
       try {
-        ;({ data, error } = await createClient().auth.signUp({
+        ;({ data, error } = await (await authClient()).auth.signUp({
           email: normalized,
           password,
           options: {
@@ -1609,7 +1634,7 @@ function maybeSendWelcome() {
     // provider first rendered, and a visitor who switches language before
     // registering has their account — and every transactional email after it —
     // stamped with the language they did not choose.
-    [pushToast, t, locale],
+    [pushToast, t, locale, authClient],
   )
 
   /**
@@ -1622,7 +1647,7 @@ function maybeSendWelcome() {
   const resendConfirmation = useCallback(
     async (email: string) => {
       try {
-        const { error } = await createClient().auth.resend({
+        const { error } = await (await authClient()).auth.resend({
           type: 'signup',
           email: email.trim().toLowerCase(),
           options: { emailRedirectTo: authCallbackUrl('/') },
@@ -1633,7 +1658,7 @@ function maybeSendWelcome() {
         return { ok: false, message: (e as Error).message }
       }
     },
-    [],
+    [authClient],
   )
 
   /**
@@ -1699,7 +1724,7 @@ function maybeSendWelcome() {
    */
   const verifyRecoveryCode = useCallback(async (email: string, token: string) => {
     try {
-      const { error } = await createClient().auth.verifyOtp({
+      const { error } = await (await authClient()).auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: token.trim(),
         type: 'recovery',
@@ -1709,18 +1734,18 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /** Step 3: sets the new password using the recovery session from step 2. */
   const updatePassword = useCallback(async (password: string) => {
     try {
-      const { error } = await createClient().auth.updateUser({ password })
+      const { error } = await (await authClient()).auth.updateUser({ password })
       if (error) return { ok: false, message: error.message }
       return { ok: true }
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /**
    * Confirms a newly registered email with the code from the signup email.
@@ -1734,7 +1759,7 @@ function maybeSendWelcome() {
    */
   const verifySignupCode = useCallback(async (email: string, token: string) => {
     try {
-      const { error } = await createClient().auth.verifyOtp({
+      const { error } = await (await authClient()).auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: token.trim(),
         type: 'signup',
@@ -1744,7 +1769,7 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /**
    * Starts Google OAuth.
@@ -1759,7 +1784,7 @@ function maybeSendWelcome() {
    */
   const signInWithGoogle = useCallback(async () => {
     try {
-      const { error } = await createClient().auth.signInWithOAuth({
+      const { error } = await (await authClient()).auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: authCallbackUrl('/'),
@@ -1773,17 +1798,17 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   const logout = useCallback(async () => {
     try {
-      await createClient().auth.signOut()
+      await (await authClient()).auth.signOut()
     } catch {
       // Already signed out locally, or Supabase unreachable — the auth state
       // listener clears currentUser either way.
     }
     pushToast({ title: t('toast.loggedOut'), variant: 'default' })
-  }, [pushToast, t])
+  }, [pushToast, t, authClient])
 
   // Writes go to Postgres via the admin API, then state is set from the row
   // the server actually stored. On failure the optimistic change is rolled

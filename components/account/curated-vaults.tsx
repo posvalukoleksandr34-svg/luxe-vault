@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { forgetLook } from '@/lib/saved-looks'
 import { productImage } from '@/lib/product-image'
 import { formatPrice, useProductsById, useStore } from '@/lib/store'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabase } from '@/lib/supabase/lazy'
 import { cn } from '@/lib/utils'
 
 /**
@@ -57,7 +57,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
   const load = useCallback(async () => {
     if (!userId) return
     setState({ kind: 'loading' })
-    const { data, error } = await createClient()
+    const { data, error } = await (await loadSupabase())
       .from('saved_looks')
       .select('*')
       .eq('user_id', userId)
@@ -85,7 +85,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
     if (state.kind === 'ready') {
       setState({ kind: 'ready', rows: state.rows.filter((r) => r.id !== id) })
     }
-    const { error } = await createClient().from('saved_looks').delete().eq('id', id)
+    const { error } = await (await loadSupabase()).from('saved_looks').delete().eq('id', id)
     if (error) {
       console.error('[vaults] delete failed:', error.message)
       setState(previous)
