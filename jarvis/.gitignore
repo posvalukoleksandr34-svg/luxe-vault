@@ -1,0 +1,16 @@
+# The repository root ignores any `skills/` folder (Claude Code skill docs); JARVIS skills are source code.
+!skills/
+!skills/**
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+frontend/dist/
+.env
+.env.local
+data/
+backups/
+*.log
+satellite/.env

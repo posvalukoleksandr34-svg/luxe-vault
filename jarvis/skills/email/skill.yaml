@@ -1,0 +1,16 @@
+name: email
+version: 1.0.0
+title: Почта
+icon: mail
+description: Search and read e-mail, draft replies and new messages, send only after the user confirms (Gmail when connected; local drafts otherwise).
+triggers: [письм, почт, email, e-mail, mail, inbox, входящ, ответь на, черновик, draft, отправь]
+tools:
+  - email_search
+  - email_read
+  - email_create_draft
+  - email_list_drafts
+  - email_send_draft
+  - email_archive
+permissions:
+  email_send_draft: confirm   # anything that leaves the mailbox needs a yes
+  email_archive: autonomous

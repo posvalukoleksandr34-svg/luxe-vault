@@ -1,0 +1,18 @@
+name: calendar
+version: 1.0.0
+title: Календарь
+icon: calendar
+description: Read the schedule, create, move and cancel events, find free time (Google Calendar when connected, otherwise the built-in calendar).
+triggers: [календар, встреч, событи, расписан, созвон, перенес, освободи, свободн, calendar, meeting, event, schedule, reschedule, free time, availability]
+tools:
+  - calendar_list_events
+  - calendar_create_event
+  - calendar_update_event
+  - calendar_delete_event
+  - calendar_find_free_time
+permissions:
+  # Creating/moving your own events is routine; deleting and inviting others is not.
+  calendar_delete_event: confirm
+config:
+  default_duration_minutes: 60
+  working_hours: "09:00-19:00"

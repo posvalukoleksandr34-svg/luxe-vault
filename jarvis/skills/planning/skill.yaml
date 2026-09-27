@@ -1,0 +1,7 @@
+name: planning
+version: 1.0.0
+title: Планирование дня
+icon: list-checks
+description: Daily/weekly planning, time-blocking, preparing for meetings, evening review of tomorrow's schedule.
+triggers: [план на, спланируй, распланируй, завтра у меня, подготовь к встрече, неделю, утренний брифинг, plan my, briefing, prepare for]
+tools: []

@@ -1,0 +1,10 @@
+name: drive
+version: 1.0.0
+title: Google Drive
+icon: cloud
+description: Search and read documents in Google Drive, upload files from the workspace to Drive.
+triggers: [drive, гугл диск, google диск, облак, cloud, google doc, таблиц]
+tools: [drive_search, drive_read, drive_upload]
+requires: [google]
+permissions:
+  drive_upload: confirm

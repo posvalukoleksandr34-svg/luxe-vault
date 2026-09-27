@@ -1,0 +1,9 @@
+name: weather
+version: 1.0.0
+title: Погода
+icon: cloud-sun
+description: Current weather and a 7-day forecast for any place (Open-Meteo, no API key). Reference example of a self-contained API skill.
+triggers: [погод, прогноз, дожд, температур, weather, forecast, rain, temperature]
+tools: [weather_forecast]
+config:
+  default_location: ""
