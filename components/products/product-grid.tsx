@@ -8,9 +8,10 @@ import { EmptyState } from '@/components/state-view'
 import { isProductBuyable } from '@/lib/availability'
 import { buildSearchContext, interpretQuery } from '@/lib/search/interpret'
 import { matchProducts } from '@/lib/search/match'
-import { EMPTY_FILTER, useStore } from '@/lib/store'
+import { EMPTY_FILTER, useFullCatalog, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
+import { useListing } from './listing-context'
 import { ProductCard } from './product-card'
 
 const STANDARD_SIZES = ['S', 'M', 'L', 'XL']
@@ -70,12 +71,10 @@ export function ProductGrid({
   eagerCount?: number
 } = {}) {
   const {
-    products,
     filter,
     setFilter,
     query,
     setQuery,
-    catalogLoading,
     t,
     localize,
     categoryTree,
@@ -85,6 +84,15 @@ export function ProductGrid({
     categories: storeCategories,
     currency,
   } = useStore()
+
+  // What to list: the products the page read on the server (the catalogue
+  // and category pages pass them in — see ListingProvider), so the grid is
+  // complete in the server HTML. Only a grid rendered outside a listing page
+  // falls back to fetching the whole catalogue.
+  const listing = useListing()
+  const fullCatalog = useFullCatalog({ enabled: !listing })
+  const products = listing ? listing.products : fullCatalog.products
+  const catalogLoading = listing ? false : fullCatalog.catalogLoading
 
   // When the route pins the taxonomy, the store's own group/category are
   // ignored entirely rather than merged — a filter left over from the homepage

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { CatalogView } from '@/components/products/catalog-view'
+import { ListingProvider } from '@/components/products/listing-context'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -8,6 +9,8 @@ import { itemListJsonLd } from '@/lib/seo'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { catalogMetadata } from '@/lib/page-seo'
 import { readCatalog } from '@/lib/server/catalog-store'
+import { listingCounts, pageLocale, toListing } from '@/lib/server/catalog-listing'
+import type { Product } from '@/lib/types'
 
 export const metadata: Metadata = catalogMetadata(DEFAULT_LOCALE)
 
@@ -23,23 +26,35 @@ export const metadata: Metadata = catalogMetadata(DEFAULT_LOCALE)
 // keeps a newly added piece visible here without a redeploy.
 export const revalidate = 600
 
-export default async function CatalogPage() {
-  // A failed read must not take the page down — the grid fetches for itself on
-  // mount — so the listing schema is simply omitted when the catalogue is
-  // unavailable rather than asserted as empty, which would tell Google this
-  // shop sells nothing.
-  let products: Awaited<ReturnType<typeof readCatalog>>['products'] = []
+export default async function CatalogPage({ params }: { params?: { locale?: string } }) {
+  // A failed read must not take the page down — without a listing the grid
+  // fetches the catalogue for itself — so the listing schema is simply omitted
+  // when the catalogue is unavailable rather than asserted as empty, which
+  // would tell Google this shop sells nothing.
+  let products: Product[] = []
+  let readOk = false
   try {
     products = (await readCatalog()).products
+    readOk = true
   } catch (error) {
     console.error('[catalog] products unavailable for structured data:', error)
   }
+
+  const view = <CatalogView />
 
   return (
     <>
       <Header />
       <main id="main">
-        <CatalogView />
+        {/* The grid's products, trimmed to what a listing shows and to this
+            page's language — see lib/server/catalog-listing.ts. */}
+        {readOk ? (
+          <ListingProvider products={toListing(products, pageLocale(params))} counts={listingCounts(products)}>
+            {view}
+          </ListingProvider>
+        ) : (
+          view
+        )}
         <Footer />
       </main>
 

@@ -11,7 +11,8 @@ import { StyleThisPiece } from '@/components/products/style-this-piece'
 import type { ShippingSettings } from '@/config/shipping'
 import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
-import { getProductBySlug, listProductSlugs } from '@/lib/server/catalog-store'
+import { getProductBySlug, listProductSlugs, readCatalog } from '@/lib/server/catalog-store'
+import { pageLocale, relatedProducts } from '@/lib/server/catalog-listing'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import type { Product } from '@/lib/types'
 import { serializeJsonLd } from '@/lib/json-ld'
@@ -158,10 +159,20 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
   }
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
+export default async function ProductPage({ params }: { params: { slug: string; locale?: string } }) {
   const product = await getProductBySlug(params.slug)
   if (!product) notFound()
   const shipping = await getShippingSettings()
+
+  // The related rail, chosen here rather than in the browser: the browser no
+  // longer holds the catalogue to choose from. A failed read costs the rail,
+  // never the page.
+  let related: Product[] = []
+  try {
+    related = relatedProducts((await readCatalog()).products, product, pageLocale(params))
+  } catch (error) {
+    console.error('[product] related products unavailable:', error)
+  }
 
   // Shop → collection → category → product. The collection and category
   // crumbs point at their own routes now; they used to point back at the
@@ -201,10 +212,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
         <StyleThisPiece product={product} />
 
-        {/* Everything below the fold. Client components reading the catalogue
-            already in the store, so none of them costs a request. */}
+        {/* Everything below the fold. The related rail arrives with the page;
+            recently viewed looks its few products up after mount. */}
         <ProductReviews productId={product.id} />
-        <RelatedProducts product={product} />
+        <RelatedProducts products={related} />
         <RecentlyViewed currentId={product.id} />
       </main>
 

@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { StoreProvider } from '@/lib/store';
-import { readCatalog } from '@/lib/server/catalog-store';
+import { readTaxonomyLists } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
 import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
@@ -79,16 +79,16 @@ const SITE_DESCRIPTION_SHORT =
 const SITE_JSON_LD = siteJsonLd(SITE_DESCRIPTION);
 
 /**
- * Without this the layout's catalogue read makes every page fully static and
- * bakes the product list into the build — an admin adding a product would not
- * see it until the next deploy, which is exactly what moving the catalogue
- * into Postgres was meant to end. Verified: `/` was emitted as ○ (static)
- * before this line, and ISR after it.
+ * Without this the layout's taxonomy read makes every page fully static and
+ * bakes the navigation into the build — an admin adding a collection would
+ * not see it until the next deploy, which is exactly what moving the
+ * catalogue into Postgres was meant to end. Verified: `/` was emitted as ○
+ * (static) before this line, and ISR after it.
  *
- * 60s is the staleness ceiling for the FIRST PAINT only. When the snapshot is
- * older than that, StoreProvider runs loadCatalog() on mount, so a client
- * corrects itself within a second of hydrating; this only governs what a
- * crawler or a cold visitor sees first.
+ * A route's revalidate is the LOWEST of its segments', so this 60 s is also
+ * the staleness ceiling for every page beneath: a listing page's products and
+ * stock badges, a product page's stock. That is the window the storefront
+ * has always had; the pages that set 600 get 60 through this.
  */
 export const revalidate = 60
 
@@ -198,21 +198,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Read on the server so the storefront's first painted frame already has the
-  // products. This is the fix for the only measured layout shift on the site:
-  // the #shop section reflowing when a client-side /api/catalog call resolved.
+  // Collections and categories — the navigation, labels and filters every
+  // page draws on its first frame. NOT the products: the layout used to read
+  // the whole catalogue here, which serialised every product into every page
+  // and every link prefetch (~5 KB per product, on the terms page too).
+  // Listing pages read their own products now; see ListingProvider.
   //
-  // A failure degrades to the previous behaviour — the client fetch still runs
-  // on mount — rather than taking down every page in the app.
-  let initialCatalog
-  // When the snapshot was taken, so the client can tell a freshly rendered
-  // page from an ISR copy that has sat in the cache (StoreProvider).
-  let catalogReadAt: number | undefined
+  // A failure leaves the built-in taxonomy (lib/data.ts) in place rather than
+  // taking down every page in the app.
+  let initialTaxonomy
   try {
-    initialCatalog = await readCatalog()
-    catalogReadAt = Date.now()
+    initialTaxonomy = await readTaxonomyLists()
   } catch (error) {
-    console.error('[layout] catalogue unavailable for SSR:', error)
+    console.error('[layout] taxonomy unavailable for SSR:', error)
   }
   // The admin's shipping fee, threshold and delivery window, for the cart,
   // checkout, product pages and footer. Never throws: it falls back to
@@ -274,11 +272,7 @@ export default async function RootLayout({
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
 
-        <StoreProvider
-          initialCatalog={initialCatalog}
-          initialCatalogAt={catalogReadAt}
-          initialShipping={shipping}
-        >
+        <StoreProvider initialTaxonomy={initialTaxonomy} initialShipping={shipping}>
           {/* The skip link (see the note above), in the visitor's language —
               still first in the tab order: nothing before it is focusable. */}
           <SkipLink />

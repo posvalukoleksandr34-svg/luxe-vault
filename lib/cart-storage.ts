@@ -154,23 +154,32 @@ export function clearStoredCart(): void {
  * for the colour variant the customer picked, not the product's default, and
  * overwriting it would quietly show them a different coat.
  *
+ * `lookup` answers per line: the product, `null` when the server CONFIRMED it
+ * is no longer for sale, or `undefined` when it has not been looked up yet.
+ * Only a confirmed `null` drops a line. The store no longer holds the whole
+ * catalogue, so "not in the list I happen to have" must never be read as
+ * "deleted" — that is how a partial list would empty a customer's basket.
+ *
  * Returns the same array instance when nothing changed, so the caller can skip
  * a pointless re-render.
  */
 export function reconcileCart(
   items: CartItem[],
-  products: Product[],
+  lookup: (productId: string) => Product | null | undefined,
   localizeName: (name: Product['name']) => string,
 ): CartItem[] {
-  if (items.length === 0 || products.length === 0) return items
+  if (items.length === 0) return items
 
-  const byId = new Map(products.map((p) => [p.id, p]))
   let changed = false
 
   const next: CartItem[] = []
   for (const item of items) {
-    const product = byId.get(item.productId)
-    if (!product) {
+    const product = lookup(item.productId)
+    if (product === undefined) {
+      next.push(item)
+      continue
+    }
+    if (product === null) {
       changed = true
       continue
     }

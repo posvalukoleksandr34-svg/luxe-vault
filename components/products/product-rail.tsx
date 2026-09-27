@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ProductCard } from '@/components/products/product-card'
-import { useStore } from '@/lib/store'
+import { useProductsById, useStore } from '@/lib/store'
 import type { Product } from '@/lib/types'
 
 /**
@@ -14,8 +14,10 @@ import type { Product } from '@/lib/types'
  * all behave identically wherever a product appears — three card components
  * is how those quietly drift apart.
  *
- * Rendered client-side from the catalogue already in the store, so neither
- * rail costs a request.
+ * The related rail is chosen on the server (relatedProducts() in
+ * lib/server/catalog-listing.ts) and arrives with the page. Recently viewed
+ * is this browser's own history, so it is looked up by id after mount — a
+ * few products from the edge cache, not the whole catalogue.
  */
 
 const RECENT_KEY = 'lv.recently-viewed.v1'
@@ -76,39 +78,24 @@ function Rail({ title, products }: { title: string; products: Product[] }) {
   )
 }
 
-export function RelatedProducts({ product }: { product: Product }) {
-  const { products, t } = useStore()
-
-  // Same category first, then the rest of the collection. Falling back to the
-  // collection matters on a thin catalogue, where a category may hold only the
-  // product being viewed and the rail would otherwise be empty.
-  const sameCategory = products.filter(
-    (p) => p.id !== product.id && p.category === product.category,
-  )
-  const sameGroup = products.filter(
-    (p) => p.id !== product.id && p.group === product.group && p.category !== product.category,
-  )
-
-  const related = [...sameCategory, ...sameGroup].slice(0, 8)
-
-  return <Rail title={t('product.related')} products={related} />
+export function RelatedProducts({ products }: { products: Product[] }) {
+  const { t } = useStore()
+  return <Rail title={t('product.related')} products={products} />
 }
 
 export function RecentlyViewed({ currentId }: { currentId: string }) {
-  const { products, t } = useStore()
+  const { t } = useStore()
   const [ids, setIds] = useState<string[]>([])
 
   // Read after mount, not during render: localStorage does not exist on the
   // server and reading it in render would make the markup differ between the
   // two passes.
   useEffect(() => {
-    setIds(readViewed())
+    setIds(readViewed().filter((id) => id !== currentId))
   }, [currentId])
 
-  const items = ids
-    .filter((id) => id !== currentId)
-    .map((id) => products.find((p) => p.id === id))
-    .filter((p): p is Product => Boolean(p))
+  // Withdrawn products simply drop out; the rail hides itself when empty.
+  const { products } = useProductsById(ids)
 
-  return <Rail title={t('product.recentlyViewed')} products={items} />
+  return <Rail title={t('product.recentlyViewed')} products={products} />
 }

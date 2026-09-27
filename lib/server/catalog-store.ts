@@ -238,20 +238,18 @@ async function readProducts(supabase: ReturnType<typeof createAdminClient>) {
     .order('created_at', { ascending: false })
 }
 
-/** One round trip for the whole catalogue — it is small and always needed
- *  together, so three queries beat N+1 and beat three separate requests. */
-export async function readCatalog(): Promise<Catalog> {
-  const supabase = createAdminClient()
+export type TaxonomyLists = Pick<Catalog, 'collections' | 'categories'>
 
-  const [collectionsRes, categoriesRes, productsRes] = await Promise.all([
+async function readTaxonomyRows(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<TaxonomyLists> {
+  const [collectionsRes, categoriesRes] = await Promise.all([
     supabase.from('collections').select(COLLECTION_SELECT).order('sort_order'),
     supabase.from('categories').select(CATEGORY_SELECT).order('sort_order'),
-    readProducts(supabase),
   ])
 
   if (collectionsRes.error) throw new Error(`Failed to read collections: ${collectionsRes.error.message}`)
   if (categoriesRes.error) throw new Error(`Failed to read categories: ${categoriesRes.error.message}`)
-  if (productsRes.error) throw new Error(`Failed to read products: ${productsRes.error.message}`)
 
   const collections = (collectionsRes.data ?? []).map(rowToCollection)
   const byId = new Map(collections.map((c) => [c.id, c.slug]))
@@ -265,12 +263,35 @@ export async function readCatalog(): Promise<Catalog> {
     sortOrder: (row.sort_order as number) ?? 0,
   }))
 
+  return { collections, categories }
+}
+
+/**
+ * Collections and categories only — the part of the catalogue every page
+ * needs (navigation, labels, filters), without a single product row.
+ *
+ * What the root layout reads. It used to read the whole catalogue, which
+ * serialised every product into every page and every prefetch.
+ */
+export async function readTaxonomyLists(): Promise<TaxonomyLists> {
+  return readTaxonomyRows(createAdminClient())
+}
+
+/** One round trip for the whole catalogue — it is small and always needed
+ *  together, so three queries beat N+1 and beat three separate requests. */
+export async function readCatalog(): Promise<Catalog> {
+  const supabase = createAdminClient()
+
+  const [taxonomy, productsRes] = await Promise.all([readTaxonomyRows(supabase), readProducts(supabase)])
+
+  if (productsRes.error) throw new Error(`Failed to read products: ${productsRes.error.message}`)
+
   // The select string is chosen at runtime by readProducts(), which costs
   // PostgREST's compile-time row typing. rowToProduct reads every field
   // defensively, so the cast is safe.
   const productRows = (productsRes.data ?? []) as unknown as Record<string, unknown>[]
 
-  return { collections, categories, products: productRows.map(rowToProduct) }
+  return { ...taxonomy, products: productRows.map(rowToProduct) }
 }
 
 // ------------------------------------------------------------ collections ----
@@ -629,6 +650,22 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
   if (error) throw new Error(`Failed to read product: ${error.message}`)
   return data ? rowToProduct(data as unknown as Record<string, unknown>) : null
+}
+
+/**
+ * The products with these slugs, in one query. Unknown slugs are simply
+ * absent from the result — a withdrawn product and a mistyped id look the
+ * same, and both mean "not for sale".
+ */
+export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  if (slugs.length === 0) return []
+  const { data, error } = await createAdminClient()
+    .from('products')
+    .select(await resolveProductSelect())
+    .in('slug', slugs)
+
+  if (error) throw new Error(`Failed to read products: ${error.message}`)
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToProduct)
 }
 
 /**

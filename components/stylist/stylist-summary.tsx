@@ -10,7 +10,7 @@ import {
   STYLIST_OCCASION_LABELS,
   STYLIST_STYLE_LABELS,
 } from '@/lib/i18n'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatPrice, useFullCatalog, useProductsById, useStore } from '@/lib/store'
 import type { StylistBrief } from '@/lib/stylist/types'
 import type { Product } from '@/lib/types'
 
@@ -31,7 +31,7 @@ export function StylistSummary({
   /** Absent while the looks are being built. */
   onEdit?: () => void
 }) {
-  const { t, tf, localize, products } = useStore()
+  const { t, tf, localize } = useStore()
 
   const rows: { key: string; label: string; value: string | null }[] = [
     {
@@ -69,9 +69,8 @@ export function StylistSummary({
     { key: 'notes', label: t('stylist.sum.notes'), value: brief.notes?.trim() || null },
   ]
 
-  const anchor = brief.anchorProductId
-    ? products.find((p) => p.id === brief.anchorProductId)
-    : undefined
+  // The piece the look is built around, looked up by id.
+  const anchor = useProductsById(brief.anchorProductId ? [brief.anchorProductId] : []).products[0]
 
   return (
     <section aria-labelledby="stylist-summary" className="mb-12 border border-border/60 p-5 sm:p-6">
@@ -149,7 +148,10 @@ export function StylistFallback({
   hint?: string
   onRetry?: () => void
 }) {
-  const { t, products } = useStore()
+  const { t } = useStore()
+  // Only this failure/empty state works over every product, so the whole
+  // catalogue is fetched when — and only if — it is shown.
+  const { products } = useFullCatalog()
   const picks = useMemo(() => fallbackPicks(products, brief), [products, brief])
 
   return (

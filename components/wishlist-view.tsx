@@ -2,9 +2,8 @@
 
 import { Heart } from 'lucide-react'
 import { Link } from '@/components/locale-link'
-import { useMemo } from 'react'
 import { ProductCard } from '@/components/products/product-card'
-import { useStore } from '@/lib/store'
+import { useProductsById, useStore } from '@/lib/store'
 
 /**
  * The saved-products screen behind the bottom bar's "Избранное".
@@ -21,14 +20,12 @@ import { useStore } from '@/lib/store'
  * visitor keeps track, and demanding an account first is what loses them.
  */
 export function WishlistView() {
-  const { wishlist, wishlistCount, products, t, tf, catalogLoading } = useStore()
+  const { wishlist, wishlistCount, t, tf } = useStore()
 
-  const saved = useMemo(() => {
-    const byId = new Map(products.map((p) => [p.id, p]))
-    return wishlist.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => Boolean(p))
-  }, [wishlist, products])
+  // The saved products, looked up by id — a few products, not the catalogue.
+  // Resolving them is also what settles the header badge (wishlistCount).
+  const { products: saved, pending, missing } = useProductsById(wishlist)
 
-  const missing = wishlist.length - saved.length
 
   return (
     <section className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 sm:py-14 lg:px-10">
@@ -47,12 +44,12 @@ export function WishlistView() {
       </header>
 
       {saved.length === 0 ? (
-        // `catalogLoading` matters here: with an empty catalogue every saved id
+        // `pending` matters here: before the lookup answers, every saved id
         // looks withdrawn, and claiming the list is empty would be wrong.
         <div className="flex flex-col items-center py-16 text-center">
           <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold/70" />
           <p className="mt-6 font-serif text-xl text-foreground">
-            {catalogLoading && wishlist.length > 0 ? '…' : t('wishlist.empty')}
+            {pending && wishlist.length > 0 ? '…' : t('wishlist.empty')}
           </p>
           <p className="mt-3 max-w-sm text-[13px] font-light leading-relaxed text-muted-foreground">
             {t('wishlist.emptyHint')}
