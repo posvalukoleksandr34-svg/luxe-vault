@@ -1,7 +1,8 @@
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { ProductDetailSkeleton } from '@/components/skeletons'
-import { DEFAULT_LOCALE, UI, translate } from '@/lib/i18n'
+import { DEFAULT_LOCALE, translate } from '@/lib/i18n'
+import { UI } from '@/lib/ui-strings'
 
 /**
  * Shown while a product page is fetched — the route is server-rendered per

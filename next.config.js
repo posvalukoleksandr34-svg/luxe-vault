@@ -1,5 +1,11 @@
 const isDev = process.env.NODE_ENV !== 'production'
 
+// One UI dictionary per language (lib/ui-dict/*.json), resolved from
+// lib/ui-strings.ts before anything is compiled — here rather than in an npm
+// script so every way of running `next build` or `next dev` produces them.
+// See scripts/ui-dictionaries.js.
+require('./scripts/ui-dictionaries').generate()
+
 /**
  * Content-Security-Policy, one directive per key.
  *

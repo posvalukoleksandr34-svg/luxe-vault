@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 
 import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
-import { DEFAULT_LOCALE, UI, translate, type UIKey } from '@/lib/i18n'
+import { DEFAULT_LOCALE, translate, type UIKey } from '@/lib/i18n'
+import { UI } from '@/lib/ui-strings'
 import {
   INDEXED_LOCALES,
   OG_LOCALE,
@@ -9,24 +10,11 @@ import {
   localizedPath,
 } from '@/lib/locale-routing'
 import { primaryText } from '@/lib/localized-text'
+import { SITE_ORIGIN } from '@/lib/site-origin'
 import type { Product, StorefrontLocale } from '@/lib/types'
 
-/**
- * Everything a search engine is told about who publishes this shop.
- *
- * Three files used to declare the origin for themselves — the root layout, the
- * product page, robots.ts and sitemap.ts — which is three chances for a domain
- * change to leave one of them pointing somewhere else. A canonical that
- * disagrees with the sitemap is the kind of defect that costs weeks: Google
- * takes the disagreement as a signal that neither URL is authoritative.
- *
- * NOT lib/site-url.ts. That resolves per environment, on purpose, so an auth
- * email from a preview deployment returns to that preview. Canonicals, the
- * sitemap and structured data must name the PRODUCTION origin from every
- * environment — a preview build that advertises its own hostname to a crawler
- * is asking to be indexed as a duplicate of the real shop.
- */
-export const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_ORIGIN ?? 'https://luxe-vault.store').replace(/\/$/, '')
+// SITE_ORIGIN lives in lib/site-origin.ts; re-exported for existing importers.
+export { SITE_ORIGIN } from '@/lib/site-origin'
 
 export const SITE_NAME = 'LUXE VAULT'
 export const BRAND_NAME = 'Luxe Vault'

@@ -45,11 +45,11 @@ import {
   GROUP_LABELS,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
-  UI,
   isStorefrontLocale,
   translate,
   type UIKey,
 } from './i18n'
+import { defaultDictionary, loadDictionary, loadedDictionary } from './i18n-runtime'
 import { isUnlocalizedPath, localizedPath, splitLocale } from './locale-routing'
 import type {
   CartItem,
@@ -373,6 +373,11 @@ export function formatChf(value: number, exact = false) {
 
 let toastSeq = 0
 
+/** Suspends the render: React retries it once this language has loaded. */
+function suspendUntilLoaded(locale: StorefrontLocale): never {
+  throw loadDictionary(locale)
+}
+
 /** A variant's stock per the catalogue. null when the product is untracked
  *  (no variant rows — see Product.variants), 0 for a combination with no row
  *  or a product the admin marked out of stock. */
@@ -467,8 +472,22 @@ export function StoreProvider({
   // A localised URL is the truth while it is on screen. Navigating from /it to
   // an English page has to move the language with it, or the drawer the
   // visitor left open would keep speaking the previous page's language.
+  //
+  // The language's dictionary is loaded first (lib/i18n-runtime.ts): nothing
+  // may render in a language whose strings are not here yet.
   useEffect(() => {
-    if (urlCarriesLocale) setLocaleState(pathLocale)
+    if (!urlCarriesLocale) return
+    let active = true
+    loadDictionary(pathLocale)
+      .then(() => {
+        if (active) setLocaleState(pathLocale)
+      })
+      .catch(() => {
+        // Could not fetch it: stay in the language already on screen.
+      })
+    return () => {
+      active = false
+    }
   }, [urlCarriesLocale, pathLocale])
 
   /**
@@ -673,7 +692,11 @@ function maybeSendWelcome() {
       // land on the default, and their next choice overwrites the stale value.
       const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
       if (isStorefrontLocale(saved)) {
-        setLocaleState(saved)
+        loadDictionary(saved)
+          .then(() => setLocaleState(saved))
+          .catch(() => {
+            // Could not fetch it: the default language stands.
+          })
       }
     } catch {
       // localStorage unavailable
@@ -1002,22 +1025,31 @@ function maybeSendWelcome() {
 
   const setLocale = useCallback(
     (l: StorefrontLocale) => {
-      setLocaleState(l)
       try {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
       } catch {
         // ignore write errors
       }
 
+      // The language's dictionary first, then the switch — so the new page
+      // never paints a frame in the old language, or in none.
+      //
       // On a storefront page the language is part of the address, so choosing
       // one is a navigation to the same page in that language — not a state
       // flip that would leave /it showing English, or English showing at /it.
       // The stored preference above still matters: it is what the pages
       // WITHOUT a language in their URL (checkout, the account) read.
-      if (urlCarriesLocale) {
-        const next = localizedPath(barePath, l)
-        if (next !== pathname) router.replace(next, { scroll: false })
-      }
+      loadDictionary(l)
+        .then(() => {
+          setLocaleState(l)
+          if (urlCarriesLocale) {
+            const next = localizedPath(barePath, l)
+            if (next !== pathname) router.replace(next, { scroll: false })
+          }
+        })
+        .catch(() => {
+          // Could not fetch it: the page stays in the language it is in.
+        })
 
       // Mirror the choice into auth metadata so transactional emails follow
       // the customer's current language rather than the one they happened to
@@ -1034,13 +1066,29 @@ function maybeSendWelcome() {
     [currentUserId, urlCarriesLocale, barePath, pathname, router, authClient],
   )
 
+  // The active language's UI strings — one language, not all five (see
+  // lib/i18n-runtime.ts).
+  //
+  // A page opened in a language whose strings this browser has not fetched
+  // yet — the first /it/… page of a visit — SUSPENDS its first render: React
+  // keeps the server's HTML, already in that language, on screen until the
+  // chunk arrives, then hydrates with text that matches it. Every later change
+  // of language loads before it switches, so after hydration the dictionary is
+  // always here; the default one is the belt to that brace.
+  const hydratedRef = useRef(false)
+  useEffect(() => {
+    hydratedRef.current = true
+  }, [])
+  const dictionary =
+    loadedDictionary(locale) ?? (hydratedRef.current ? defaultDictionary : suspendUntilLoaded(locale))
+
   const tf = useCallback(
     (key: UIKey, vars: Record<string, string | number>) =>
       Object.entries(vars).reduce(
         (out, [name, value]) => out.split(`{${name}}`).join(String(value)),
-        translate(UI[key], locale),
+        dictionary[key],
       ),
-    [locale],
+    [dictionary],
   )
 
   const localize = useCallback(
@@ -1048,7 +1096,7 @@ function maybeSendWelcome() {
     [locale],
   )
 
-  const t = useCallback((key: UIKey) => translate(UI[key], locale), [locale])
+  const t = useCallback((key: UIKey) => dictionary[key], [dictionary])
 
   const [panel, setPanel] = useState<PanelState>(null)
   const [accountTab, setAccountTab] = useState<AccountTab>('orders')

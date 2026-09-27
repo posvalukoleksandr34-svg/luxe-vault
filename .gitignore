@@ -55,3 +55,7 @@ skills/
 # .env.example holds only placeholder keys, documenting what a deploy needs
 # — safe, and useful, to keep in git.
 !.env.example
+
+# UI dictionaries, one per language, generated from lib/ui-strings.ts by
+# scripts/ui-dictionaries.js on every build — never edited by hand.
+/lib/ui-dict/

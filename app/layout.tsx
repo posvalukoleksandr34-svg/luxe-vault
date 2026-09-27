@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { StoreProvider } from '@/lib/store';
 import { readTaxonomyLists } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
@@ -272,30 +273,38 @@ export default async function RootLayout({
             reachable. Rendered before everything else so it is the first stop
             in the tab order, which is the only position that helps. */}
 
-        <StoreProvider initialTaxonomy={initialTaxonomy} initialShipping={shipping}>
-          {/* The skip link (see the note above), in the visitor's language —
-              still first in the tab order: nothing before it is focusable. */}
-          <SkipLink />
-          {/* The page itself, with room at the foot of a phone screen for the
-              tab bar below — without it, the last button on every page would
-              sit under the bar. `md:pb-0` because the bar is phones only. */}
-          <div className="pb-20 md:pb-0">
-            <PageTransition>{children}</PageTransition>
-          </div>
-          {/* Cart / checkout / account drawers. Mounted here, not per page: a
-              page that renders a trigger but not its panel is a dead end. */}
-          <GlobalPanels />
-          <ToastViewport />
-          {/* Inside StoreProvider: the banner is localised via the store. It
-              renders nothing until mounted, so it cannot flash for visitors
-              who already answered. */}
-          <CookieConsentLazy />
-          {/* The app-style tab bar. Phones only; hidden on /admin. */}
-          <BottomNav />
-          {/* The installed app's personal promo code, issued on its first
-              launch after sign-in. Renders nothing; inert in a browser tab. */}
-          <AppWelcome />
-        </StoreProvider>
+        {/* The first render of a page in a language this browser has not
+            fetched yet suspends in StoreProvider until its dictionary arrives
+            (lib/i18n-runtime.ts). This boundary is what lets React keep the
+            server's HTML — already in that language — on screen meanwhile,
+            rather than failing the hydration. On the server nothing suspends,
+            so the fallback is never rendered. */}
+        <Suspense fallback={null}>
+          <StoreProvider initialTaxonomy={initialTaxonomy} initialShipping={shipping}>
+            {/* The skip link (see the note above), in the visitor's language —
+                still first in the tab order: nothing before it is focusable. */}
+            <SkipLink />
+            {/* The page itself, with room at the foot of a phone screen for the
+                tab bar below — without it, the last button on every page would
+                sit under the bar. `md:pb-0` because the bar is phones only. */}
+            <div className="pb-20 md:pb-0">
+              <PageTransition>{children}</PageTransition>
+            </div>
+            {/* Cart / checkout / account drawers. Mounted here, not per page: a
+                page that renders a trigger but not its panel is a dead end. */}
+            <GlobalPanels />
+            <ToastViewport />
+            {/* Inside StoreProvider: the banner is localised via the store. It
+                renders nothing until mounted, so it cannot flash for visitors
+                who already answered. */}
+            <CookieConsentLazy />
+            {/* The app-style tab bar. Phones only; hidden on /admin. */}
+            <BottomNav />
+            {/* The installed app's personal promo code, issued on its first
+                launch after sign-in. Renders nothing; inert in a browser tab. */}
+            <AppWelcome />
+          </StoreProvider>
+        </Suspense>
       </body>
     </html>
   );
