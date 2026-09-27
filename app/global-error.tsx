@@ -3,7 +3,8 @@
 import './globals.css'
 
 import { useEffect } from 'react'
-import { DEFAULT_LOCALE, UI } from '@/lib/i18n'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
+import { defaultDictionary } from '@/lib/i18n-runtime'
 import { reportError } from '@/lib/monitoring/reportError'
 
 /**
@@ -14,7 +15,7 @@ import { reportError } from '@/lib/monitoring/reportError'
  *
  * It replaces the whole document, so it brings its own <html>/<body> and has
  * no StoreProvider — which means no visitor's chosen language either. The copy
- * is the storefront's DEFAULT language, read straight from the i18n table, and
+ * is the storefront's DEFAULT language, from its bundled dictionary, and
  * the look mirrors components/catalog-unavailable.tsx. "Try again" is a full reload,
  * because the layout that failed is server-rendered and reset() alone would
  * replay the same failed payload.
@@ -43,17 +44,17 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
           <div role="alert" className="flex max-w-md flex-col items-center text-center">
             <span aria-hidden className="h-px w-12 bg-[#D4AF37]/60" />
             <h1 className="mt-6 font-serif text-2xl tracking-wide text-[#CCCCCC] sm:text-3xl">
-              {UI['state.catalogUnavailableTitle'][DEFAULT_LOCALE]}
+              {defaultDictionary['state.catalogUnavailableTitle']}
             </h1>
             <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-[#CCCCCC]">
-              {UI['state.catalogUnavailableHint'][DEFAULT_LOCALE]}
+              {defaultDictionary['state.catalogUnavailableHint']}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="tap-safe no-juice mt-10 inline-flex items-center justify-center border border-[#D4AF37] bg-transparent px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] transition-colors duration-300 hover:bg-[#D4AF37] hover:text-[#000000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#000000]"
             >
-              {UI['common.retry'].ru}
+              {defaultDictionary['common.retry']}
             </button>
           </div>
         </main>

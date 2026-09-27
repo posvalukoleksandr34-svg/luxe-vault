@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { checkLimit } from '@/lib/server/rate-limit'
+import { clientIp } from '@/lib/server/client-ip'
 import { addToWaitlist, type WaitlistError } from '@/lib/server/waitlist'
 import { isValidEmail } from '@/lib/validation'
 import { getCurrentUser } from '@/lib/supabase/server'
@@ -56,7 +57,7 @@ export async function joinWaitlist(input: JoinWaitlistInput): Promise<JoinWaitli
   if (!isValidEmail(email)) return { ok: false, error: 'INVALID_EMAIL' }
 
   const h = headers()
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip')?.trim() || 'unidentified'
+  const ip = clientIp(h) || 'unidentified'
   const limit = await checkLimit('stock.alert', ip)
   if (!limit.allowed) return { ok: false, error: 'RATE_LIMITED' }
 

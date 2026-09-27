@@ -64,7 +64,7 @@ function stepTimestamp(order: Order, status: OrderStatus): number | undefined {
 }
 
 export function OrderTracker({ order }: { order: Order }) {
-  const { t, tf, locale, shipping } = useStore()
+  const { t, tf, locale, shipping, colorName } = useStore()
 
   const terminal = order.status === 'cancelled' || order.status === 'refunded'
   // Driven by status + timestamps, so the estimate narrows as the parcel
@@ -314,7 +314,7 @@ export function OrderTracker({ order }: { order: Order }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-light text-foreground">{item.name}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
-                  {item.size} · {item.color} · ×{item.qty}
+                  {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <span className="shrink-0 text-[13px] font-light tabular-nums text-foreground">

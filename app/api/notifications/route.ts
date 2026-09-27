@@ -3,6 +3,7 @@ import { listNotifications, markNotificationsRead } from '@/lib/server/notificat
 import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { readJsonObject } from '@/lib/server/http'
+import { toStorefrontLocale } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,11 @@ export const dynamic = 'force-dynamic'
  * a query parameter. That is the whole access-control story here: a
  * `?userId=` would turn this endpoint into a way to read anyone's feed by
  * guessing a uuid.
+ *
+ * `locale` is the language the bell is being read in: notifications are
+ * stored as templates and put into words here, so the whole panel reads in
+ * one language (lib/server/notifications.ts). Anything else, or nothing,
+ * means the default.
  */
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser()
@@ -23,9 +29,10 @@ export async function GET(request: NextRequest) {
 
   const rawLimit = Number(request.nextUrl.searchParams.get('limit'))
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 30
+  const locale = toStorefrontLocale(request.nextUrl.searchParams.get('locale'))
 
   try {
-    const { notifications, unreadCount } = await listNotifications(user.id, limit)
+    const { notifications, unreadCount } = await listNotifications(user.id, limit, locale)
     return NextResponse.json({ notifications, unreadCount })
   } catch (error) {
     console.error('[notifications] read failed:', error)

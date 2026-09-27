@@ -1,14 +1,14 @@
 import 'server-only'
 
 import { FULFILMENT, describeBusinessDays } from '@/lib/fulfilment'
-import { toStorefrontLocale } from '@/lib/i18n'
-import { getOrderLocale } from '@/lib/server/order-locale'
+import type { DeliveryTimeframe } from '@/config/shipping'
+import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Notification, NotificationType, StorefrontLocale } from '@/lib/types'
 
 /**
- * Notification triggers.
+ * Notification triggers, and the feed that shows them.
  *
  * Lives in lib/server/ rather than lib/ because every write here uses the
  * service-role key: migration 0010 grants no INSERT policy, so a notification
@@ -16,36 +16,78 @@ import type { Notification, NotificationType, StorefrontLocale } from '@/lib/typ
  * from a client component, bundling it would be a build error at best and a
  * leaked key at worst — `server-only` makes that failure loud and immediate.
  *
- * Every function here is FIRE-AND-FORGET by design. A notification is a
- * courtesy attached to something that already happened: the payment really
- * failed, the parcel really shipped. Throwing from here would let a cosmetic
- * insert failure roll back or retry the real operation — in the Stripe webhook
- * that would mean re-running a money-state update because a bell icon did not
+ * Every trigger is FIRE-AND-FORGET by design. A notification is a courtesy
+ * attached to something that already happened: the payment really failed, the
+ * parcel really shipped. Throwing from here would let a cosmetic insert
+ * failure roll back or retry the real operation — in the Stripe webhook that
+ * would mean re-running a money-state update because a bell icon did not
  * light up. So failures are logged and swallowed, and the caller is told
  * whether it worked without being forced to care.
+ *
+ * LANGUAGE. A notification is stored as WHAT happened — a template and its
+ * parameters (migration 0046) — and put into words when it is READ, in the
+ * language the reader has the storefront in. It used to be the other way
+ * round: the text was written once, in the language of the order it was
+ * about, so one account's bell mixed Italian (an order placed on /it), English
+ * and — for rows from before the storefront dropped it — Russian, under a
+ * header in whatever the page was in. Rows from before 0046 carry no template;
+ * they are recognised from their text (recognise(), below) and re-rendered the
+ * same way.
+ *
+ * `title` and `body` are still written, in the default language: they are
+ * what a row reads as if it can be neither rendered nor recognised.
  */
+
+/** What a notification says, before it is put into any language. */
+type Template =
+  | { key: 'payment_failed'; orderId: string; reason?: string }
+  | { key: 'status'; orderId: string; status: string; tracking?: string; timeframe?: DeliveryTimeframe }
+  | { key: 'return_refunded'; orderId: string }
+  | { key: 'return_rejected'; orderId: string; note: string }
 
 type NewNotification = {
   userId: string
   type: NotificationType
-  title: string
-  body?: string
+  template: Template
   /** In-app path, e.g. `/order/LV-ABC123`. Must start with "/". */
   actionUrl?: string
   orderId?: string
 }
 
-async function insert(n: NewNotification): Promise<boolean> {
-  try {
-    const { error } = await createAdminClient().from('notifications').insert({
-      user_id: n.userId,
-      type: n.type,
-      title: n.title,
-      body: n.body ?? null,
-      action_url: n.actionUrl ?? null,
-      order_id: n.orderId ?? null,
-    })
+/** Set once the template columns turn out not to exist (0046 not applied). */
+let templateColumnsMissing = false
 
+function isMissingColumn(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    (/template|params/i.test(error.message ?? '') && /column/i.test(error.message ?? ''))
+  )
+}
+
+async function insert(n: NewNotification): Promise<boolean> {
+  const { title, body } = render(n.template, DEFAULT_LOCALE)
+  const { key, ...params } = n.template
+  const row = {
+    user_id: n.userId,
+    type: n.type,
+    title: title.slice(0, 200),
+    body: body ? body.slice(0, 500) : null,
+    action_url: n.actionUrl ?? null,
+    order_id: n.orderId ?? null,
+  }
+  try {
+    const admin = createAdminClient()
+    let { error } = templateColumnsMissing
+      ? await admin.from('notifications').insert(row)
+      : await admin.from('notifications').insert({ ...row, template: key, params })
+    // Before 0046 the row is written without its template. It still renders
+    // in the reader's language: recognise() reads it back from the text.
+    if (error && !templateColumnsMissing && isMissingColumn(error)) {
+      templateColumnsMissing = true
+      console.warn('[notifications] notifications.template is missing — apply migration 0046.')
+      ;({ error } = await admin.from('notifications').insert(row))
+    }
     if (error) {
       console.warn(`[notifications] insert failed (${n.type}): ${error.message}`)
       return false
@@ -59,22 +101,15 @@ async function insert(n: NewNotification): Promise<boolean> {
 
 /**
  * Notification copy, in the four languages the storefront can be read in.
- *
- * These were Russian literals, which put Cyrillic in the bell panel of a shop
- * that shows Russian nowhere else. They are written into the database as text,
- * so there is no re-rendering them later in another language — the language is
- * chosen once, here, from the order the notification is about.
- *
- * Russian is absent deliberately, including for an order placed back when the
- * storefront still offered it: `localeOf` clamps that away. The admin console
- * reads orders, not notifications, so nothing here needs the console's Russian.
+ * Russian is absent deliberately: the storefront never shows it, and the
+ * admin console reads orders, not notifications.
  */
 type NotificationCopy = {
   paymentFailedTitle: (id: string) => string
   paymentFailedBody: string
   trackingPrefix: (tracking: string) => string
   statusTitles: Record<string, (id: string) => string>
-  /** `{span}` is the admin's delivery timeframe, filled in at send time. */
+  /** `{span}` is the admin's delivery timeframe, filled in at render time. */
   statusBodies: Record<string, string>
 }
 
@@ -165,74 +200,6 @@ const COPY: Record<StorefrontLocale, NotificationCopy> = {
   },
 }
 
-/** The language to write a notification about this order in: the one the order
- *  was placed in, clamped to what the storefront can still show. */
-async function localeOf(orderId: string): Promise<StorefrontLocale> {
-  return toStorefrontLocale(await getOrderLocale(orderId))
-}
-
-/**
- * A payment attempt failed.
- *
- * Called from the Stripe webhook on `payment_intent.payment_failed`. The order
- * survives as unpaid, so the notification points at it — the customer can
- * retry from there with the same method they originally chose.
- */
-export async function notifyPaymentFailed(params: {
-  userId: string
-  orderId: string
-  /** Stripe's customer-facing decline message, when it gave one. */
-  reason?: string
-}): Promise<boolean> {
-  const copy = COPY[await localeOf(params.orderId)]
-  return insert({
-    userId: params.userId,
-    type: 'payment_failed',
-    // Stripe's own decline message when it gave one: already in the
-    // customer's language, and more specific than anything written here.
-    title: copy.paymentFailedTitle(params.orderId),
-    body: params.reason?.trim() || copy.paymentFailedBody,
-    actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
-    orderId: params.orderId,
-  })
-}
-
-/**
- * An order's fulfilment status changed.
- *
- * Called from the admin order PATCH. `pending` is deliberately not notified:
- * it is the state an order is created in, so a notification would fire on
- * every checkout to tell the customer what they just did.
- */
-export async function notifyStatusUpdate(params: {
-  userId: string
-  orderId: string
-  status: string
-  trackingNumber?: string | null
-}): Promise<boolean> {
-  const locale = await localeOf(params.orderId)
-  const copy = COPY[locale]
-  const title = copy.statusTitles[params.status]
-  if (!title) return false
-
-  let body =
-    params.status === 'shipped' && params.trackingNumber
-      ? `${copy.trackingPrefix(params.trackingNumber)}${copy.statusBodies.shipped}`
-      : copy.statusBodies[params.status]
-  if (body.includes('{span}')) {
-    const { deliveryTimeframe } = await getShippingSettings()
-    body = body.replace('{span}', describeBusinessDays(deliveryTimeframe, locale))
-  }
-
-  return insert({
-    userId: params.userId,
-    type: 'status_update',
-    title: title(params.orderId),
-    body,
-    actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
-    orderId: params.orderId,
-  })
-}
 
 /**
  * The outcome of a return request, told to the customer who filed it.
@@ -278,6 +245,203 @@ const RETURN_COPY: Record<
   },
 }
 
+/** For a row about an order that can be neither rendered nor recognised. */
+const GENERIC_COPY: Record<StorefrontLocale, { title: (id: string) => string; body: string }> = {
+  en: { title: (id) => `Update on order ${id}`, body: 'Open the order for the details.' },
+  it: { title: (id) => `Aggiornamento sull’ordine ${id}`, body: 'Apri l’ordine per i dettagli.' },
+  fr: { title: (id) => `Du nouveau pour la commande ${id}`, body: 'Ouvrez la commande pour les détails.' },
+  de: { title: (id) => `Neuigkeiten zu Bestellung ${id}`, body: 'Öffnen Sie die Bestellung für die Details.' },
+}
+
+/**
+ * The Russian copy notifications were written in until 3b507a3. Only READ now:
+ * recognise() uses it to identify those rows, so they render in the reader's
+ * language like any other.
+ */
+const LEGACY_RU = {
+  paymentFailedTitle: (id: string) => `Платёж по заказу ${id} не прошёл`,
+  paymentFailedBody: 'Списание не состоялось. Заказ сохранён — его можно оплатить повторно из личного кабинета.',
+  trackingPrefix: (tracking: string) => `Трек-номер: ${tracking}. `,
+  statusTitles: {
+    processing: (id: string) => `Заказ ${id} принят в обработку`,
+    shipped: (id: string) => `Заказ ${id} отправлен`,
+    delivered: (id: string) => `Заказ ${id} доставлен`,
+    cancelled: (id: string) => `Заказ ${id} отменён`,
+    refunded: (id: string) => `По заказу ${id} оформлен возврат`,
+  } as Record<string, (id: string) => string>,
+}
+
+// ------------------------------------------------------------------ render
+
+/** The notification in words, in `locale`. `timeframe` stands in for a
+ *  processing row that did not record its own (rows from before 0046). */
+function render(
+  t: Template,
+  locale: StorefrontLocale,
+  timeframe?: DeliveryTimeframe,
+): { title: string; body?: string } {
+  switch (t.key) {
+    case 'payment_failed': {
+      const copy = COPY[locale]
+      // Stripe's own decline message when it gave one: more specific than
+      // anything written here.
+      return { title: copy.paymentFailedTitle(t.orderId), body: t.reason?.trim() || copy.paymentFailedBody }
+    }
+    case 'status': {
+      const copy = COPY[locale]
+      const title = copy.statusTitles[t.status]
+      if (!title) return genericRender(t.orderId, locale)
+      let body =
+        t.status === 'shipped' && t.tracking
+          ? `${copy.trackingPrefix(t.tracking)}${copy.statusBodies.shipped}`
+          : copy.statusBodies[t.status]
+      const range = t.timeframe ?? timeframe
+      if (body.includes('{span}') && range) body = body.replace('{span}', describeBusinessDays(range, locale))
+      return { title: title(t.orderId), body }
+    }
+    case 'return_refunded': {
+      const copy = RETURN_COPY[locale]
+      return { title: copy.refundedTitle(t.orderId), body: copy.refundedBody }
+    }
+    case 'return_rejected': {
+      const copy = RETURN_COPY[locale]
+      return {
+        title: copy.rejectedTitle(t.orderId),
+        body: `${copy.rejectedBody} ${t.note.trim().slice(0, 600)}`.trim(),
+      }
+    }
+  }
+}
+
+function genericRender(orderId: string, locale: StorefrontLocale) {
+  return { title: GENERIC_COPY[locale].title(orderId), body: GENERIC_COPY[locale].body }
+}
+
+// ------------------------------------------------------------------ recognise
+
+const ID = '\u0000'
+
+function escape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** A template function turned into an anchored pattern capturing its argument. */
+function pattern(fn: (arg: string) => string, anchorEnd = true): RegExp {
+  const [before, after] = fn(ID).split(ID)
+  return new RegExp(`^${escape(before)}(.+?)${escape(after)}${anchorEnd ? '$' : ''}`, 's')
+}
+
+/** Every language a row may have been written in: the four, and old Russian. */
+const WRITTEN_IN = [...Object.values(COPY), LEGACY_RU]
+
+const TITLE_PATTERNS: { re: RegExp; kind: 'payment_failed' | 'return_refunded' | 'return_rejected' | string }[] = [
+  ...WRITTEN_IN.map((c) => ({ re: pattern(c.paymentFailedTitle), kind: 'payment_failed' })),
+  ...WRITTEN_IN.flatMap((c) =>
+    Object.entries(c.statusTitles).map(([status, fn]) => ({ re: pattern(fn), kind: `status:${status}` })),
+  ),
+  ...Object.values(RETURN_COPY).flatMap((c) => [
+    { re: pattern(c.refundedTitle), kind: 'return_refunded' },
+    { re: pattern(c.rejectedTitle), kind: 'return_rejected' },
+  ]),
+]
+const TRACKING_PATTERNS = WRITTEN_IN.map((c) => pattern(c.trackingPrefix, false))
+const DEFAULT_PAYMENT_BODIES = new Set(WRITTEN_IN.map((c) => c.paymentFailedBody))
+const REJECTED_PREFIXES = Object.values(RETURN_COPY).map((c) => c.rejectedBody)
+
+/**
+ * The template a row was written from, read back from its text: for rows
+ * written before migration 0046, which stored only the words. Every such row
+ * came from one of the copy tables above (or the Russian they replaced), so
+ * its title identifies it exactly, and the parts that vary — order number,
+ * tracking number, a decline or rejection reason — are recovered verbatim.
+ */
+export function recognise(title: string, body: string | undefined, orderId?: string): Template | null {
+  for (const { re, kind } of TITLE_PATTERNS) {
+    const match = re.exec(title)
+    if (!match) continue
+    const id = orderId || match[1]
+    if (kind === 'payment_failed') {
+      const reason = body && !DEFAULT_PAYMENT_BODIES.has(body) ? body : undefined
+      return { key: 'payment_failed', orderId: id, reason }
+    }
+    if (kind === 'return_refunded') return { key: 'return_refunded', orderId: id }
+    if (kind === 'return_rejected') {
+      const prefix = REJECTED_PREFIXES.find((p) => body?.startsWith(p))
+      return { key: 'return_rejected', orderId: id, note: prefix ? body!.slice(prefix.length).trim() : body ?? '' }
+    }
+    const status = kind.slice('status:'.length)
+    const tracking = body ? TRACKING_PATTERNS.map((re) => re.exec(body)?.[1]).find(Boolean) : undefined
+    return { key: 'status', orderId: id, status, tracking }
+  }
+  return null
+}
+
+function isTemplate(key: unknown, params: unknown): boolean {
+  return (
+    typeof key === 'string' &&
+    ['payment_failed', 'status', 'return_refunded', 'return_rejected'].includes(key) &&
+    typeof params === 'object' &&
+    params !== null &&
+    typeof (params as { orderId?: unknown }).orderId === 'string'
+  )
+}
+
+/**
+ * A payment attempt failed.
+ *
+ * Called from the Stripe webhook on `payment_intent.payment_failed`. The order
+ * survives as unpaid, so the notification points at it — the customer can
+ * retry from there with the same method they originally chose.
+ */
+export async function notifyPaymentFailed(params: {
+  userId: string
+  orderId: string
+  /** Stripe's customer-facing decline message, when it gave one. */
+  reason?: string
+}): Promise<boolean> {
+  return insert({
+    userId: params.userId,
+    type: 'payment_failed',
+    template: { key: 'payment_failed', orderId: params.orderId, reason: params.reason?.trim() || undefined },
+    actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
+    orderId: params.orderId,
+  })
+}
+
+/**
+ * An order's fulfilment status changed.
+ *
+ * Called from the admin order PATCH. `pending` is deliberately not notified:
+ * it is the state an order is created in, so a notification would fire on
+ * every checkout to tell the customer what they just did.
+ */
+export async function notifyStatusUpdate(params: {
+  userId: string
+  orderId: string
+  status: string
+  trackingNumber?: string | null
+}): Promise<boolean> {
+  if (!COPY[DEFAULT_LOCALE].statusTitles[params.status]) return false
+  // The timeframe as it stands NOW, kept with the row: "usually 10–14 days"
+  // is a promise made at this moment, not whatever the setting says later.
+  const timeframe =
+    params.status === 'processing' ? (await getShippingSettings()).deliveryTimeframe : undefined
+  return insert({
+    userId: params.userId,
+    type: 'status_update',
+    template: {
+      key: 'status',
+      orderId: params.orderId,
+      status: params.status,
+      tracking: params.trackingNumber?.trim() || undefined,
+      timeframe,
+    },
+    actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
+    orderId: params.orderId,
+  })
+}
+
+
 export async function notifyReturnDecision(params: {
   userId: string
   orderId: string
@@ -285,15 +449,13 @@ export async function notifyReturnDecision(params: {
   /** Required in practice for a rejection; the schema enforces it upstream. */
   note?: string
 }): Promise<boolean> {
-  const copy = RETURN_COPY[await localeOf(params.orderId)]
-  const refunded = params.outcome === 'refunded'
   return insert({
     userId: params.userId,
     type: 'status_update',
-    title: refunded ? copy.refundedTitle(params.orderId) : copy.rejectedTitle(params.orderId),
-    body: refunded
-      ? copy.refundedBody
-      : `${copy.rejectedBody} ${(params.note ?? '').trim().slice(0, 600)}`.trim(),
+    template:
+      params.outcome === 'refunded'
+        ? { key: 'return_refunded', orderId: params.orderId }
+        : { key: 'return_rejected', orderId: params.orderId, note: (params.note ?? '').trim().slice(0, 600) },
     actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
     orderId: params.orderId,
   })
@@ -301,21 +463,51 @@ export async function notifyReturnDecision(params: {
 
 // ---------------------------------------------------------------------- read
 
-function rowToNotification(row: Record<string, unknown>): Notification {
+/**
+ * A row in the reader's language: from its template, else from the template
+ * its text is recognised as, else — a row about an order that matches
+ * neither — a generic line pointing at the order, rather than words in
+ * another language. A row with no order at all keeps its own text.
+ */
+export function rowToNotification(
+  row: Record<string, unknown>,
+  locale: StorefrontLocale,
+  timeframe: DeliveryTimeframe | undefined,
+): Notification {
+  const orderId = (row.order_id as string | null) ?? undefined
+  const storedTitle = row.title as string
+  const storedBody = (row.body as string | null) ?? undefined
+  const template = templateOf(row)
+  const text = template
+    ? render(template, locale, timeframe)
+    : orderId
+      ? genericRender(orderId, locale)
+      : { title: storedTitle, body: storedBody }
   return {
     id: row.id as string,
     createdAt: Date.parse(row.created_at as string),
     type: row.type as NotificationType,
-    title: row.title as string,
-    body: (row.body as string | null) ?? undefined,
+    title: text.title,
+    body: text.body,
     actionUrl: (row.action_url as string | null) ?? undefined,
-    orderId: (row.order_id as string | null) ?? undefined,
+    orderId,
     isRead: Boolean(row.is_read),
   }
 }
 
+function templateOf(row: Record<string, unknown>): Template | null {
+  if (isTemplate(row.template, row.params)) {
+    return { key: row.template, ...(row.params as object) } as Template
+  }
+  return recognise(
+    row.title as string,
+    (row.body as string | null) ?? undefined,
+    (row.order_id as string | null) ?? undefined,
+  )
+}
+
 /**
- * A user's recent notifications, newest first.
+ * A user's recent notifications, newest first, in `locale`.
  *
  * Capped rather than paginated: a bell panel is a glance, not an archive, and
  * an unbounded query on a chatty account would ship kilobytes on every page
@@ -325,13 +517,16 @@ function rowToNotification(row: Record<string, unknown>): Notification {
 export async function listNotifications(
   userId: string,
   limit = 30,
+  locale: StorefrontLocale = DEFAULT_LOCALE,
 ): Promise<{ notifications: Notification[]; unreadCount: number }> {
   const admin = createAdminClient()
 
   const [listRes, countRes] = await Promise.all([
+    // `*`, not a column list: the template columns exist only once migration
+    // 0046 is applied, and naming them would fail the read before then.
     admin
       .from('notifications')
-      .select('id, created_at, type, title, body, action_url, order_id, is_read')
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(Math.min(Math.max(limit, 1), 100)),
@@ -345,8 +540,17 @@ export async function listNotifications(
 
   if (listRes.error) throw new Error(`Failed to read notifications: ${listRes.error.message}`)
 
+  const rows = (listRes.data ?? []) as Record<string, unknown>[]
+  // A processing row from before 0046 did not keep its timeframe; the current
+  // one stands in. Read only when such a row is on screen.
+  const needsTimeframe = rows.some((row) => {
+    const t = templateOf(row)
+    return t?.key === 'status' && t.status === 'processing' && !t.timeframe
+  })
+  const timeframe = needsTimeframe ? (await getShippingSettings()).deliveryTimeframe : undefined
+
   return {
-    notifications: (listRes.data ?? []).map(rowToNotification),
+    notifications: rows.map((row) => rowToNotification(row, locale, timeframe)),
     unreadCount: countRes.count ?? 0,
   }
 }

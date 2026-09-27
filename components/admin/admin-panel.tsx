@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { ORDER_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { STATUS_LABELS } from '@/lib/i18n'
-import { formatChf, useStore } from '@/lib/store'
+import { formatChf, useFullCatalog, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { CollectionsManager } from './collections-manager'
 import { CustomersManager } from './customers-manager'
@@ -53,8 +53,11 @@ type AdminTab =
 const STATUS_LABELS_RU = ORDER_STATUS_LABELS_RU
 
 export function AdminPanel() {
+  // The console works over every product, so it is the one place (with the
+  // stylist's fallback) that fetches the whole catalogue. The storefront no
+  // longer holds it; see useFullCatalog.
+  const { products } = useFullCatalog()
   const {
-    products,
     deleteProduct,
     pushToast,
     categoryLabels,

@@ -54,7 +54,7 @@ function SuccessSkeleton() {
 function SuccessContent() {
   const params = useSearchParams()
   const orderId = params.get('order')?.trim().toUpperCase() ?? ''
-  const { t, tf, locale } = useStore()
+  const { t, tf, locale, colorName } = useStore()
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -183,7 +183,7 @@ function SuccessContent() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-light text-foreground">{item.name}</p>
                   <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
-                    {item.size} · {item.color} · ×{item.qty}
+                    {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 <span className="shrink-0 text-[13px] font-light tabular-nums text-foreground">

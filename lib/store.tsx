@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session } from '@supabase/supabase-js'
+import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
@@ -30,7 +30,8 @@ import {
   type ExchangeRates,
   type CurrencyCode,
 } from './currency'
-import { createClient } from './supabase/client'
+import { hasSessionCookie, loadSupabase } from './supabase/lazy'
+import { colorLabel, isStorefrontText } from './color-name'
 import { readReferralCookie } from './referral-program'
 import { isSupabaseConfigured } from './supabase/env'
 import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS } from './data'
@@ -45,11 +46,11 @@ import {
   GROUP_LABELS,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
-  UI,
   isStorefrontLocale,
   translate,
   type UIKey,
 } from './i18n'
+import { defaultDictionary, loadDictionary, loadedDictionary } from './i18n-runtime'
 import { isUnlocalizedPath, localizedPath, splitLocale } from './locale-routing'
 import type {
   CartItem,
@@ -140,14 +141,31 @@ export const EMPTY_FILTER: Filter = {
 export const CATEGORY_IMAGES_STORAGE_KEY = 'luxe-vault-category-images'
 
 type StoreContextValue = {
+  /**
+   * The WHOLE catalogue — or nothing. Empty until something asks for it
+   * (useFullCatalog: the stylist, the admin console); no storefront page
+   * loads it any more. Never a subset: see ensureCatalog.
+   */
   products: Product[]
   collections: Collection[]
   categories: Category[]
   categoryTree: { group: CategoryGroupKey; items: CategoryKey[] }[]
   groupLabels: Record<string, LocalizedText>
   categoryLabels: Record<string, LocalizedText>
+  /** True until the whole catalogue has arrived (or failed to). */
   catalogLoading: boolean
+  /** Fetches the whole catalogue, once per visit; later calls reuse it. */
+  ensureCatalog: () => void
   reloadCatalog: () => Promise<void>
+  /**
+   * Products looked up by id (/api/search?ids=). `undefined`: not asked yet;
+   * `null`: the server confirmed it is not for sale.
+   */
+  productCache: Record<string, Product | null>
+  /** Looks these ids up, skipping any already known or in flight. */
+  resolveProducts: (ids: readonly string[]) => void
+  /** One product as far as this browser knows: see productCache. */
+  lookupProduct: (productId: string) => Product | null | undefined
   /** The admin's shipping fee, free-shipping threshold and delivery window
    *  (store_settings) — seeded by the layout, refreshed with the catalogue. */
   shipping: ShippingSettings
@@ -178,6 +196,14 @@ type StoreContextValue = {
    *  never pass anything that will be rendered as HTML. */
   tf: (key: UIKey, vars: Record<string, string | number>) => string
   localize: (text: LocalizedText) => string
+  /** A colour's name as the visitor reads it: translated from the admin's
+   *  Russian where known, '' where not (lib/color-name.ts). Display only —
+   *  stock and cart lines keep keying on the name as stored. */
+  colorName: (name: string) => string
+  /** A cart line's product name in the visitor's language: the looked-up
+   *  product's, else the name saved with the line — unless that is Russian,
+   *  from a cart saved when the storefront still spoke it. */
+  cartLineName: (item: Pick<CartItem, 'productId' | 'name'>) => string
 
   panel: PanelState
   setPanel: (p: PanelState) => void
@@ -200,14 +226,16 @@ type StoreContextValue = {
   pushToast: (t: Omit<Toast, 'id'>) => void
   dismissToast: (id: number) => void
   /** Adds up to what the variant's stock allows, counting what the cart
-   *  already holds; says how many went in. */
-  addToCart: (item: Omit<CartItem, 'key'>) => AddToCartResult
+   *  already holds; says how many went in. Pass the product when the caller
+   *  has it (the product page does), so the limit is known without a lookup. */
+  addToCart: (item: Omit<CartItem, 'key'>, product?: Product) => AddToCartResult
   /** Sets a line's quantity, never above its variant's stock. */
   updateCartQty: (key: string, qty: number) => void
   /** How many units of this exact size + colour exist to sell: null when the
-   *  product's stock is not tracked. The server's latest answer when there is
-   *  one, else the catalogue. */
-  stockLimit: (productId: string, size: string, color: string) => number | null
+   *  product's stock is not tracked (or the product is not known yet). The
+   *  server's latest answer when there is one, else `product` when given,
+   *  else whatever this browser has looked up. */
+  stockLimit: (productId: string, size: string, color: string, product?: Product) => number | null
 
   supportEntry: SupportEntry
   /** Opens the support center drawer. */
@@ -281,6 +309,55 @@ export function useStore() {
 }
 
 /**
+ * The whole catalogue, fetched when the first screen that needs it mounts.
+ *
+ * For screens that genuinely work over every product: the stylist's fallback
+ * picks and the admin console. A storefront page wants useProductsById (a few
+ * products) or its listing (ListingProvider) instead.
+ */
+export function useFullCatalog(
+  { enabled = true }: { enabled?: boolean } = {},
+): { products: Product[]; catalogLoading: boolean } {
+  const { products, catalogLoading, ensureCatalog } = useStore()
+  useEffect(() => {
+    if (enabled) ensureCatalog()
+  }, [enabled, ensureCatalog])
+  return { products, catalogLoading }
+}
+
+/**
+ * These products, looked up by id — in the order given, found ones only.
+ *
+ * `pending` while any id is still unknown; `missing` counts the ids the
+ * server confirmed are no longer for sale. Pass `enabled: false` to hold the
+ * lookup (a closed drawer need not ask).
+ */
+export function useProductsById(
+  ids: readonly string[],
+  { enabled = true }: { enabled?: boolean } = {},
+): { products: Product[]; pending: boolean; missing: number } {
+  const { lookupProduct, resolveProducts } = useStore()
+  const key = ids.join('\n')
+
+  useEffect(() => {
+    if (enabled && key) resolveProducts(key.split('\n'))
+  }, [enabled, key, resolveProducts])
+
+  return useMemo(() => {
+    const products: Product[] = []
+    let pending = false
+    let missing = 0
+    for (const id of key ? key.split('\n') : []) {
+      const product = lookupProduct(id)
+      if (product === undefined) pending = true
+      else if (product === null) missing++
+      else products.push(product)
+    }
+    return { products, pending, missing }
+  }, [key, lookupProduct])
+}
+
+/**
  * A CHF amount, shown in the visitor's chosen display currency.
  *
  * For what is being SHOPPED: the catalogue, the cart, the checkout summary.
@@ -304,6 +381,11 @@ export function formatChf(value: number, exact = false) {
 }
 
 let toastSeq = 0
+
+/** Suspends the render: React retries it once this language has loaded. */
+function suspendUntilLoaded(locale: StorefrontLocale): never {
+  throw loadDictionary(locale)
+}
 
 /** A variant's stock per the catalogue. null when the product is untracked
  *  (no variant rows — see Product.variants), 0 for a combination with no row
@@ -335,41 +417,41 @@ function clampToStock(
   return { next: notes.length ? next : lines, notes }
 }
 
+/** Ids per /api/search?ids= request; the route accepts up to this many. */
+const LOOKUP_BATCH = 50
+
 export function StoreProvider({
   children,
-  initialCatalog,
+  initialTaxonomy,
   initialShipping,
 }: {
   children: ReactNode
   /**
-   * Catalogue read on the server and handed in as the initial state.
+   * Collections and categories, read on the server: the navigation, the
+   * labels and the filters need them on the first painted frame.
    *
-   * Without it the grid was empty in the server HTML and only appeared when
-   * /api/catalog resolved on the client — the single measured source of layout
-   * shift on the storefront (CLS 0.0376, the #shop section reflowing ~3.5s in).
-   * Seeding here means the first painted frame already has the products.
-   *
-   * loadCatalog() still runs on mount so an admin edit made after this page
-   * was rendered still lands; it just no longer decides whether anything is
-   * visible at all.
+   * PRODUCTS ARE NOT HANDED IN HERE ANY MORE. The whole catalogue used to be,
+   * which serialised every product into every page and every link prefetch —
+   * ~5 KB per product on the terms page, the checkout, everywhere. Listing
+   * pages now pass their own products to the grid (ListingProvider), and
+   * everything else looks up only the products it shows (useProductsById).
    */
-  initialCatalog?: { products: Product[]; collections: Collection[]; categories: Category[] }
+  initialTaxonomy?: { collections: Collection[]; categories: Category[] }
   /**
    * Shipping settings read on the server (getShippingSettings), so the first
    * painted cart, product page and footer already show the admin's figures.
    */
   initialShipping?: ShippingSettings
 }) {
-  const [products, setProducts] = useState<Product[]>(initialCatalog?.products ?? [])
-  // Already hydrated when the server supplied the catalogue — otherwise the
-  // grid would render its "loading" branch over content it already has.
-  const [productsHydrated, setProductsHydrated] = useState(Boolean(initialCatalog))
-  const [collections, setCollections] = useState<Collection[]>(initialCatalog?.collections ?? [])
-  const [categories, setCategories] = useState<Category[]>(initialCatalog?.categories ?? [])
+  // The whole catalogue, fetched only when asked for (ensureCatalog).
+  const [products, setProducts] = useState<Product[]>([])
+  const [collections, setCollections] = useState<Collection[]>(initialTaxonomy?.collections ?? [])
+  const [categories, setCategories] = useState<Category[]>(initialTaxonomy?.categories ?? [])
   const [shipping, setShipping] = useState<ShippingSettings>(
     initialShipping ?? DEFAULT_SHIPPING_SETTINGS,
   )
-  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogStatus, setCatalogStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const catalogLoading = catalogStatus === 'idle' || catalogStatus === 'loading'
   const [cart, setCart] = useState<CartItem[]>([])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -399,8 +481,22 @@ export function StoreProvider({
   // A localised URL is the truth while it is on screen. Navigating from /it to
   // an English page has to move the language with it, or the drawer the
   // visitor left open would keep speaking the previous page's language.
+  //
+  // The language's dictionary is loaded first (lib/i18n-runtime.ts): nothing
+  // may render in a language whose strings are not here yet.
   useEffect(() => {
-    if (urlCarriesLocale) setLocaleState(pathLocale)
+    if (!urlCarriesLocale) return
+    let active = true
+    loadDictionary(pathLocale)
+      .then(() => {
+        if (active) setLocaleState(pathLocale)
+      })
+      .catch(() => {
+        // Could not fetch it: stay in the language already on screen.
+      })
+    return () => {
+      active = false
+    }
   }, [urlCarriesLocale, pathLocale])
 
   /**
@@ -445,48 +541,73 @@ function maybeSendWelcome() {
   // Single source of truth for "who is signed in". Both a fresh login and a
   // session restored from the cookie on page load land here, so the two can
   // never disagree.
+  //
+  // ON DEMAND. The Supabase client (~70 KB of script) is loaded only when this
+  // browser has a session cookie to restore, or when the visitor starts to
+  // sign in (every auth action goes through authClient()). A visitor who has
+  // never signed in never downloads it. See lib/supabase/lazy.ts.
+  const applySession = useCallback((session: Session | null) => {
+    const u = session?.user
+    // What Supabase currently has on the row — compared against the active
+    // locale by the sync effect below.
+    setMetadataLanguage((u?.user_metadata?.language as string | undefined) ?? null)
+    setCurrentUser(
+      u
+        ? {
+            id: u.id,
+            email: u.email ?? '',
+            // Set from signUp metadata; the profiles row refines it below.
+            name:
+              (u.user_metadata?.name as string | undefined)?.trim() ||
+              (u.email ?? '').split('@')[0],
+          }
+        : null,
+    )
+    setAuthLoading(false)
+  }, [])
+
+  const authClientRef = useRef<Promise<SupabaseClient> | null>(null)
+  const authSubscription = useRef<{ unsubscribe: () => void } | null>(null)
+
+  /** The client, with the session restored and the auth listener attached —
+   *  loaded once, by whichever comes first: a restore or a sign-in. */
+  const authClient = useCallback((): Promise<SupabaseClient> => {
+    if (!authClientRef.current) {
+      authClientRef.current = loadSupabase()
+        .then((supabase) => {
+          supabase.auth.getSession().then(({ data }) => {
+            applySession(data.session)
+            if (data.session) maybeSendWelcome()
+          })
+
+          // NOTE: this callback stays synchronous on purpose. Awaiting another
+          // supabase call inside onAuthStateChange can deadlock the client, so
+          // the profile lookup is done by the separate effect below instead.
+          const {
+            data: { subscription },
+          } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
+          authSubscription.current = subscription
+          return supabase
+        })
+        .catch((error) => {
+          authClientRef.current = null
+          throw error
+        })
+    }
+    return authClientRef.current
+  }, [applySession])
+
   useEffect(() => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !hasSessionCookie()) {
+      // Nobody is signed in on this browser: nothing to restore, nothing to
+      // load. Signing in loads the client then.
       setAuthLoading(false)
       return
     }
+    authClient().catch(() => setAuthLoading(false))
+  }, [authClient])
 
-    const supabase = createClient()
-
-    function applySession(session: Session | null) {
-      const u = session?.user
-      // What Supabase currently has on the row — compared against the active
-      // locale by the sync effect below.
-      setMetadataLanguage((u?.user_metadata?.language as string | undefined) ?? null)
-      setCurrentUser(
-        u
-          ? {
-              id: u.id,
-              email: u.email ?? '',
-              // Set from signUp metadata; the profiles row refines it below.
-              name:
-                (u.user_metadata?.name as string | undefined)?.trim() ||
-                (u.email ?? '').split('@')[0],
-            }
-          : null,
-      )
-      setAuthLoading(false)
-    }
-
-    supabase.auth.getSession().then(({ data }) => {
-      applySession(data.session)
-      if (data.session) maybeSendWelcome()
-    })
-
-    // NOTE: this callback stays synchronous on purpose. Awaiting another
-    // supabase call inside onAuthStateChange can deadlock the client, so the
-    // profile lookup is done by the separate effect below instead.
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => applySession(session))
-
-    return () => subscription.unsubscribe()
-  }, [])
+  useEffect(() => () => authSubscription.current?.unsubscribe(), [])
 
   // Refine the display name from public.profiles, which is the durable record
   // (auth metadata goes stale if the name is ever edited).
@@ -510,8 +631,8 @@ function maybeSendWelcome() {
     if (metadataLanguage === locale) return
 
     let active = true
-    createClient()
-      .auth.updateUser({ data: { language: locale } })
+    authClient()
+      .then((supabase) => supabase.auth.updateUser({ data: { language: locale } }))
       .then(({ error }) => {
         // Mirror locally on success so this does not re-fire every render.
         if (active && !error) setMetadataLanguage(locale)
@@ -523,7 +644,7 @@ function maybeSendWelcome() {
     return () => {
       active = false
     }
-  }, [currentUserId, locale, metadataLanguage])
+  }, [currentUserId, locale, metadataLanguage, authClient])
 
   /**
    * An invited friend who signs in: recorded as the referrer's pending invite.
@@ -549,11 +670,8 @@ function maybeSendWelcome() {
     if (!currentUserId || !isSupabaseConfigured) return
     let active = true
 
-    createClient()
-      .from('profiles')
-      .select('name')
-      .eq('id', currentUserId)
-      .maybeSingle()
+    authClient()
+      .then((supabase) => supabase.from('profiles').select('name').eq('id', currentUserId).maybeSingle())
       .then(({ data }) => {
         const name = data?.name?.trim()
         if (!active || !name) return
@@ -561,11 +679,14 @@ function maybeSendWelcome() {
           prev && prev.id === currentUserId && prev.name !== name ? { ...prev, name } : prev,
         )
       })
+      .catch(() => {
+        // The auth metadata name stands.
+      })
 
     return () => {
       active = false
     }
-  }, [currentUserId])
+  }, [currentUserId, authClient])
 
 
   useEffect(() => {
@@ -580,7 +701,11 @@ function maybeSendWelcome() {
       // land on the default, and their next choice overwrites the stale value.
       const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY)
       if (isStorefrontLocale(saved)) {
-        setLocaleState(saved)
+        loadDictionary(saved)
+          .then(() => setLocaleState(saved))
+          .catch(() => {
+            // Could not fetch it: the default language stands.
+          })
       }
     } catch {
       // localStorage unavailable
@@ -701,33 +826,6 @@ function maybeSendWelcome() {
 
   const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
 
-  /**
-   * How many saved items there actually are to look at.
-   *
-   * NOT `wishlist.length`. That counts saved IDS, and an id outlives the
-   * product it points at: withdraw something from the catalogue and every
-   * customer who saved it keeps a badge that will never correspond to
-   * anything. The page has always resolved ids against the catalogue and
-   * rendered what survives, so the badge counting the other thing meant a
-   * header reading "2" above a page reading "Your wishlist is empty".
-   *
-   * WHILE THE CATALOGUE IS UNKNOWN, THE RAW COUNT STANDS. Resolving against an
-   * empty or still-loading catalogue would answer nought, so every navigation
-   * would blink the badge out and back, and a failed catalogue read would
-   * quietly claim the wishlist is empty when it is only unreadable.
-   *
-   * The ids themselves are deliberately NOT pruned. A product can leave the
-   * catalogue and come back — unpublished for a photoshoot, out of stock for a
-   * season — and deleting the row or the local entry would throw away the
-   * customer's intent permanently to tidy a number. The page already says how
-   * many are no longer available.
-   */
-  const wishlistCount = useMemo(() => {
-    if (catalogLoading || products.length === 0) return wishlist.length
-    const live = new Set(products.map((p) => p.id))
-    return wishlist.reduce((n, id) => (live.has(id) ? n + 1 : n), 0)
-  }, [wishlist, products, catalogLoading])
-
   const setCurrency = useCallback((next: CurrencyCode) => {
     // The module value first, so every formatPrice() in the re-render this
     // state change triggers already reads the new currency.
@@ -746,29 +844,157 @@ function maybeSendWelcome() {
   // edits were saved to the admin's own machine and no customer could ever
   // see them. Fetching it from /api/catalog is what actually makes an admin
   // change reach the shop.
+  //
+  // ON DEMAND. Nothing loads it on mount any more: the storefront's pages get
+  // their products from the server (listings) or by id (useProductsById).
+  // Only screens that genuinely work over every product — the stylist's
+  // fallback picks, the admin console — call ensureCatalog (useFullCatalog).
   const loadCatalog = useCallback(async () => {
+    // A reload keeps showing the list it has rather than flipping to "loading".
+    setCatalogStatus((status) => (status === 'ready' ? status : 'loading'))
     try {
       const res = await fetch('/api/catalog', { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
-      if (Array.isArray(data.products)) setProducts(data.products)
+      if (!Array.isArray(data.products)) throw new Error('malformed catalogue')
+      setProducts(data.products)
       if (Array.isArray(data.collections)) setCollections(data.collections)
       if (Array.isArray(data.categories)) setCategories(data.categories)
       // Re-validated rather than trusted: a malformed payload keeps the last
       // good figures instead of pricing the cart from NaN.
       const nextShipping = validateShippingSettings(data.shipping)
       if (nextShipping.ok) setShipping(nextShipping.settings)
-    } catch {
+      setCatalogStatus('ready')
+    } catch (error) {
       // Catalogue unreachable (offline, or migrations not run yet). Leave the
       // last known list in place rather than blanking the shop.
-    } finally {
-      setCatalogLoading(false)
+      setCatalogStatus((status) => (status === 'ready' ? status : 'error'))
+      throw error
     }
   }, [])
 
-  useEffect(() => {
-    void loadCatalog()
+  /** The one request for the whole catalogue, shared by every caller. */
+  const catalogRequest = useRef<Promise<void> | null>(null)
+
+  const ensureCatalog = useCallback(() => {
+    if (catalogRequest.current) return
+    catalogRequest.current = loadCatalog().catch(() => {
+      // Let the next screen that asks try again.
+      catalogRequest.current = null
+    })
   }, [loadCatalog])
+
+  const reloadCatalog = useCallback(async () => {
+    const request = loadCatalog()
+    catalogRequest.current = request.catch(() => {
+      catalogRequest.current = null
+    })
+    await request.catch(() => {})
+  }, [loadCatalog])
+
+  // ------------------------------------------------------ products by id ----
+  // The cart, the checkout, the wishlist, the recently-viewed rail and the
+  // saved looks each show a handful of products. They are looked up by id
+  // (/api/search?ids=, cached at the edge) instead of downloading every
+  // product to find them.
+
+  const [productCache, setProductCache] = useState<Record<string, Product | null>>({})
+  const productCacheRef = useRef(productCache)
+  productCacheRef.current = productCache
+  const lookupsInFlight = useRef(new Set<string>())
+
+  const resolveProducts = useCallback(
+    (ids: readonly string[]) => {
+      const wanted = Array.from(new Set(ids)).filter(
+        (id) => id && !(id in productCacheRef.current) && !lookupsInFlight.current.has(id),
+      )
+      if (wanted.length === 0) return
+      // Sorted, so the same set of ids is the same URL — and the same cached
+      // answer at the edge — whatever order the caller listed them in.
+      wanted.sort()
+      for (let i = 0; i < wanted.length; i += LOOKUP_BATCH) {
+        const batch = wanted.slice(i, i + LOOKUP_BATCH)
+        batch.forEach((id) => lookupsInFlight.current.add(id))
+        const url = `/api/search?ids=${encodeURIComponent(batch.join(','))}&locale=${locale}`
+        fetch(url)
+          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+          .then((data: { products?: unknown }) => {
+            if (!Array.isArray(data?.products)) throw new Error('malformed lookup')
+            const found = new Map((data.products as Product[]).map((p) => [p.id, p]))
+            setProductCache((prev) => {
+              const next = { ...prev }
+              // An id the server did not return is CONFIRMED gone — the only
+              // way a cart line is ever dropped (reconcileCart).
+              for (const id of batch) next[id] = found.get(id) ?? null
+              return next
+            })
+          })
+          .catch(() => {
+            // Offline or throttled: these stay unknown, which drops nothing.
+            // The next screen that needs them asks again.
+          })
+          .finally(() => batch.forEach((id) => lookupsInFlight.current.delete(id)))
+      }
+    },
+    [locale],
+  )
+
+  const catalogById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
+
+  /**
+   * One product as far as this browser knows. The whole catalogue, when it
+   * has been loaded, is authoritative (a product missing from it is gone);
+   * otherwise whatever has been looked up by id.
+   */
+  const lookupProduct = useCallback(
+    (productId: string): Product | null | undefined => {
+      if (catalogStatus === 'ready') return catalogById.get(productId) ?? null
+      return productCache[productId]
+    },
+    [catalogStatus, catalogById, productCache],
+  )
+
+  /**
+   * How many saved items there actually are to look at.
+   *
+   * NOT `wishlist.length`. That counts saved IDS, and an id outlives the
+   * product it points at: withdraw something from the catalogue and every
+   * customer who saved it keeps a badge that will never correspond to
+   * anything. The page has always resolved ids against the catalogue and
+   * rendered what survives, so the badge counting the other thing meant a
+   * header reading "2" above a page reading "Your wishlist is empty".
+   *
+   * WHILE ANY SAVED ID IS UNRESOLVED, THE RAW COUNT STANDS. Counting against
+   * products not looked up yet would answer nought, so every navigation would
+   * blink the badge out and back, and a failed lookup would quietly claim the
+   * wishlist is empty when it is only unreadable. The ids are resolved when the
+   * wishlist page opens (useProductsById), and the badge settles then.
+   *
+   * The ids themselves are deliberately NOT pruned. A product can leave the
+   * catalogue and come back — unpublished for a photoshoot, out of stock for a
+   * season — and deleting the row or the local entry would throw away the
+   * customer's intent permanently to tidy a number. The page already says how
+   * many are no longer available.
+   */
+  /** After an admin write: the next lookup of this id asks the server again. */
+  const forgetCachedProduct = useCallback((productId: string) => {
+    setProductCache((prev) => {
+      if (!(productId in prev)) return prev
+      const next = { ...prev }
+      delete next[productId]
+      return next
+    })
+  }, [])
+
+  const wishlistCount = useMemo(() => {
+    let live = 0
+    for (const id of wishlist) {
+      const product = lookupProduct(id)
+      if (product === undefined) return wishlist.length
+      if (product) live++
+    }
+    return live
+  }, [wishlist, lookupProduct])
 
   // Preview images now live on the collection row; this keeps the old
   // `categoryImages[group]` shape so consuming components did not change.
@@ -808,22 +1034,31 @@ function maybeSendWelcome() {
 
   const setLocale = useCallback(
     (l: StorefrontLocale) => {
-      setLocaleState(l)
       try {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
       } catch {
         // ignore write errors
       }
 
+      // The language's dictionary first, then the switch — so the new page
+      // never paints a frame in the old language, or in none.
+      //
       // On a storefront page the language is part of the address, so choosing
       // one is a navigation to the same page in that language — not a state
       // flip that would leave /it showing English, or English showing at /it.
       // The stored preference above still matters: it is what the pages
       // WITHOUT a language in their URL (checkout, the account) read.
-      if (urlCarriesLocale) {
-        const next = localizedPath(barePath, l)
-        if (next !== pathname) router.replace(next, { scroll: false })
-      }
+      loadDictionary(l)
+        .then(() => {
+          setLocaleState(l)
+          if (urlCarriesLocale) {
+            const next = localizedPath(barePath, l)
+            if (next !== pathname) router.replace(next, { scroll: false })
+          }
+        })
+        .catch(() => {
+          // Could not fetch it: the page stays in the language it is in.
+        })
 
       // Mirror the choice into auth metadata so transactional emails follow
       // the customer's current language rather than the one they happened to
@@ -831,22 +1066,38 @@ function maybeSendWelcome() {
       // session — which is precisely why the value has to be stored ahead of
       // time rather than passed at password-reset time.
       if (!currentUserId || !isSupabaseConfigured) return
-      void createClient()
-        .auth.updateUser({ data: { language: l } })
+      void authClient()
+        .then((supabase) => supabase.auth.updateUser({ data: { language: l } }))
         .catch(() => {
           // Cosmetic sync; a failure here must never block a language switch.
         })
     },
-    [currentUserId, urlCarriesLocale, barePath, pathname, router],
+    [currentUserId, urlCarriesLocale, barePath, pathname, router, authClient],
   )
+
+  // The active language's UI strings — one language, not all five (see
+  // lib/i18n-runtime.ts).
+  //
+  // A page opened in a language whose strings this browser has not fetched
+  // yet — the first /it/… page of a visit — SUSPENDS its first render: React
+  // keeps the server's HTML, already in that language, on screen until the
+  // chunk arrives, then hydrates with text that matches it. Every later change
+  // of language loads before it switches, so after hydration the dictionary is
+  // always here; the default one is the belt to that brace.
+  const hydratedRef = useRef(false)
+  useEffect(() => {
+    hydratedRef.current = true
+  }, [])
+  const dictionary =
+    loadedDictionary(locale) ?? (hydratedRef.current ? defaultDictionary : suspendUntilLoaded(locale))
 
   const tf = useCallback(
     (key: UIKey, vars: Record<string, string | number>) =>
       Object.entries(vars).reduce(
         (out, [name, value]) => out.split(`{${name}}`).join(String(value)),
-        translate(UI[key], locale),
+        dictionary[key],
       ),
-    [locale],
+    [dictionary],
   )
 
   const localize = useCallback(
@@ -854,7 +1105,22 @@ function maybeSendWelcome() {
     [locale],
   )
 
-  const t = useCallback((key: UIKey) => translate(UI[key], locale), [locale])
+  const t = useCallback((key: UIKey) => dictionary[key], [dictionary])
+
+  const colorName = useCallback((name: string) => colorLabel(name, locale), [locale])
+
+  // The saved name is whatever language the page was in when the line was
+  // added — Russian, for a cart kept from before the storefront dropped it.
+  // Until the product is looked up that one reads as a neutral "Item".
+  const cartLineName = useCallback(
+    (item: Pick<CartItem, 'productId' | 'name'>) => {
+      const product = lookupProduct(item.productId)
+      const current = product ? localize(product.name) : ''
+      if (current) return current
+      return item.name && isStorefrontText(item.name) ? item.name : dictionary['cart.itemFallback']
+    },
+    [lookupProduct, localize, dictionary],
+  )
 
   const [panel, setPanel] = useState<PanelState>(null)
   const [accountTab, setAccountTab] = useState<AccountTab>('orders')
@@ -997,11 +1263,11 @@ function maybeSendWelcome() {
         })
         if (!res.ok) throw new Error((await res.json())?.error ?? 'failed')
       } catch (e) {
-        void loadCatalog()
+        void reloadCatalog()
         pushToast({ title: (e as Error).message, variant: 'default' })
       }
     },
-    [loadCatalog, pushToast],
+    [reloadCatalog, pushToast],
   )
 
   const resetCategoryImage = useCallback(
@@ -1018,11 +1284,11 @@ function maybeSendWelcome() {
         })
         if (!res.ok) throw new Error((await res.json())?.error ?? 'failed')
       } catch (e) {
-        void loadCatalog()
+        void reloadCatalog()
         pushToast({ title: (e as Error).message, variant: 'default' })
       }
     },
-    [loadCatalog, pushToast],
+    [reloadCatalog, pushToast],
   )
 
 
@@ -1034,19 +1300,19 @@ function maybeSendWelcome() {
   // real, by the database when the order is placed (place_order's
   // `stock >= qty`), so a stale page can at worst be told "no" at checkout.
 
-  /** Per-variant stock from the last server check. Cleared when a new
-   *  catalogue arrives: that is a newer snapshot until the next check. */
+  /** Per-variant stock from the last server check. Live, so it outranks a
+   *  looked-up product, which can be a minute old at the edge. */
   const [serverStock, setServerStock] = useState<Record<string, number | null>>({})
 
   const stockLimit = useCallback(
-    (productId: string, size: string, color: string): number | null => {
-      const product = products.find((p) => p.id === productId)
+    (productId: string, size: string, color: string, known?: Product): number | null => {
+      const product = known ?? lookupProduct(productId) ?? undefined
       if (product?.statuses.includes('out_of_stock')) return 0
       const key = `${productId}|${size}|${color}`
       if (key in serverStock) return serverStock[key]
       return product ? catalogLimit(product, size, color) : null
     },
-    [products, serverStock],
+    [lookupProduct, serverStock],
   )
 
   /** The cart as of the last change, readable synchronously: two presses in
@@ -1137,9 +1403,9 @@ function maybeSendWelcome() {
   }, [validateCart])
 
   const addToCart = useCallback(
-    (item: Omit<CartItem, 'key'>): AddToCartResult => {
+    (item: Omit<CartItem, 'key'>, product?: Product): AddToCartResult => {
       const key = `${item.productId}-${item.size}-${item.color}`
-      const limit = stockLimit(item.productId, item.size, item.color)
+      const limit = stockLimit(item.productId, item.size, item.color, product)
       const inCart = cartRef.current.find((c) => c.key === key)?.qty ?? 0
       const added = Math.max(0, limit === null ? item.qty : Math.min(item.qty, limit - inCart))
       const onlyNote = limit ? tf('stock.onlyInSize', { n: limit, size: item.size }) : undefined
@@ -1170,13 +1436,15 @@ function maybeSendWelcome() {
       trackAddToCart({ ...item, qty: added })
       pushToast({
         title: t('toast.addedToCart'),
-        description: added < item.qty ? onlyNote : `${item.name} · ${item.size} · ${item.color}`,
+        description: added < item.qty
+          ? onlyNote
+          : [item.name, item.size, colorName(item.color)].filter(Boolean).join(' · '),
         variant: 'gold',
       })
       scheduleValidate()
       return { added, limit, inCart: inCart + added }
     },
-    [stockLimit, pushToast, t, tf, scheduleValidate],
+    [stockLimit, pushToast, t, tf, colorName, scheduleValidate],
   )
 
   const updateCartQty = useCallback(
@@ -1234,24 +1502,32 @@ function maybeSendWelcome() {
     writeCart(cart)
   }, [cart])
 
-  /* Realign a restored cart with the catalogue once it loads — refreshed
-     prices, re-localised names, deleted products dropped. reconcileCart
-     returns the same array when nothing moved, so React bails out of the
-     update rather than re-rendering every consumer on each catalogue poll. */
+  /* The cart's products, looked up once the page has settled, so a restored
+     basket's prices and names catch up without waiting for the drawer. Ids
+     already known are not asked for again (resolveProducts). */
+  const cartProductIds = useMemo(
+    () => Array.from(new Set(cart.map((line) => line.productId))).sort().join(','),
+    [cart],
+  )
+  useEffect(() => {
+    if (!cartProductIds) return
+    const timer = setTimeout(() => resolveProducts(cartProductIds.split(',')), 1500)
+    return () => clearTimeout(timer)
+  }, [cartProductIds, resolveProducts])
+
+  /* Realign the cart with its products as they become known — refreshed
+     prices, re-localised names, withdrawn products dropped (only once the
+     server has confirmed it: see reconcileCart). Lines are clamped to the
+     freshest stock figure known, with a notice that says what changed rather
+     than a silent edit. reconcileCart and clampToStock return the same array
+     when nothing moved, so React bails out of the update. */
   useEffect(() => {
     if (!cartRestored.current) return
-    // A new catalogue is a new stock snapshot, and lines are clamped to it —
-    // with a notice that says what changed rather than a silent edit.
-    setServerStock({})
-    const byId = new Map(products.map((p) => [p.id, p]))
-    const limitOf = (l: CartItem) => {
-      const p = byId.get(l.productId)
-      return p ? catalogLimit(p, l.size, l.color) : null
-    }
-    const { notes } = clampToStock(reconcileCart(cartRef.current, products, localize), limitOf)
-    setCart((prev) => clampToStock(reconcileCart(prev, products, localize), limitOf).next)
+    const limitOf = (l: CartItem) => stockLimit(l.productId, l.size, l.color)
+    const { notes } = clampToStock(reconcileCart(cartRef.current, lookupProduct, localize), limitOf)
+    setCart((prev) => clampToStock(reconcileCart(prev, lookupProduct, localize), limitOf).next)
     announceStock(notes)
-  }, [products, localize, announceStock])
+  }, [lookupProduct, stockLimit, localize, announceStock])
 
   // Opening the basket checks it against live stock.
   useEffect(() => {
@@ -1333,7 +1609,7 @@ function maybeSendWelcome() {
       let error
       try {
         error = (
-          await createClient().auth.signInWithPassword({
+          await (await authClient()).auth.signInWithPassword({
             email: email.trim().toLowerCase(),
             password,
             // Verified by SUPABASE, not by us: this request never touches our
@@ -1359,7 +1635,7 @@ function maybeSendWelcome() {
       trackLogin()
       return true
     },
-    [pushToast, t],
+    [pushToast, t, authClient],
   )
 
   const register = useCallback(
@@ -1367,7 +1643,7 @@ function maybeSendWelcome() {
       const normalized = email.trim().toLowerCase()
       let data, error
       try {
-        ;({ data, error } = await createClient().auth.signUp({
+        ;({ data, error } = await (await authClient()).auth.signUp({
           email: normalized,
           password,
           options: {
@@ -1432,7 +1708,7 @@ function maybeSendWelcome() {
     // provider first rendered, and a visitor who switches language before
     // registering has their account — and every transactional email after it —
     // stamped with the language they did not choose.
-    [pushToast, t, locale],
+    [pushToast, t, locale, authClient],
   )
 
   /**
@@ -1445,7 +1721,7 @@ function maybeSendWelcome() {
   const resendConfirmation = useCallback(
     async (email: string) => {
       try {
-        const { error } = await createClient().auth.resend({
+        const { error } = await (await authClient()).auth.resend({
           type: 'signup',
           email: email.trim().toLowerCase(),
           options: { emailRedirectTo: authCallbackUrl('/') },
@@ -1456,7 +1732,7 @@ function maybeSendWelcome() {
         return { ok: false, message: (e as Error).message }
       }
     },
-    [],
+    [authClient],
   )
 
   /**
@@ -1522,7 +1798,7 @@ function maybeSendWelcome() {
    */
   const verifyRecoveryCode = useCallback(async (email: string, token: string) => {
     try {
-      const { error } = await createClient().auth.verifyOtp({
+      const { error } = await (await authClient()).auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: token.trim(),
         type: 'recovery',
@@ -1532,18 +1808,18 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /** Step 3: sets the new password using the recovery session from step 2. */
   const updatePassword = useCallback(async (password: string) => {
     try {
-      const { error } = await createClient().auth.updateUser({ password })
+      const { error } = await (await authClient()).auth.updateUser({ password })
       if (error) return { ok: false, message: error.message }
       return { ok: true }
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /**
    * Confirms a newly registered email with the code from the signup email.
@@ -1557,7 +1833,7 @@ function maybeSendWelcome() {
    */
   const verifySignupCode = useCallback(async (email: string, token: string) => {
     try {
-      const { error } = await createClient().auth.verifyOtp({
+      const { error } = await (await authClient()).auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: token.trim(),
         type: 'signup',
@@ -1567,7 +1843,7 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   /**
    * Starts Google OAuth.
@@ -1582,7 +1858,7 @@ function maybeSendWelcome() {
    */
   const signInWithGoogle = useCallback(async () => {
     try {
-      const { error } = await createClient().auth.signInWithOAuth({
+      const { error } = await (await authClient()).auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: authCallbackUrl('/'),
@@ -1596,17 +1872,17 @@ function maybeSendWelcome() {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
-  }, [])
+  }, [authClient])
 
   const logout = useCallback(async () => {
     try {
-      await createClient().auth.signOut()
+      await (await authClient()).auth.signOut()
     } catch {
       // Already signed out locally, or Supabase unreachable — the auth state
       // listener clears currentUser either way.
     }
     pushToast({ title: t('toast.loggedOut'), variant: 'default' })
-  }, [pushToast, t])
+  }, [pushToast, t, authClient])
 
   // Writes go to Postgres via the admin API, then state is set from the row
   // the server actually stored. On failure the optimistic change is rolled
@@ -1625,6 +1901,7 @@ function maybeSendWelcome() {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data?.error ?? 'Failed to save product')
         setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
+        forgetCachedProduct(p.id)
         pushToast({ title: t('toast.productAdded'), variant: 'success' })
         return true
       } catch (e) {
@@ -1633,7 +1910,7 @@ function maybeSendWelcome() {
         return false
       }
     },
-    [products, pushToast, t],
+    [products, pushToast, t, forgetCachedProduct],
   )
 
   const updateProduct = useCallback(
@@ -1649,6 +1926,7 @@ function maybeSendWelcome() {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data?.error ?? 'Failed to update product')
         setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
+        forgetCachedProduct(p.id)
         pushToast({ title: t('toast.productUpdated'), variant: 'success' })
         return true
       } catch (e) {
@@ -1657,7 +1935,7 @@ function maybeSendWelcome() {
         return false
       }
     },
-    [products, pushToast, t],
+    [products, pushToast, t, forgetCachedProduct],
   )
 
   const deleteProduct = useCallback(
@@ -1672,6 +1950,7 @@ function maybeSendWelcome() {
           const data = await res.json().catch(() => ({}))
           throw new Error(data?.error ?? 'Failed to delete product')
         }
+        forgetCachedProduct(id)
         pushToast({ title: t('toast.productDeleted'), variant: 'default' })
         return true
       } catch (e) {
@@ -1680,7 +1959,7 @@ function maybeSendWelcome() {
         return false
       }
     },
-    [products, pushToast, t],
+    [products, pushToast, t, forgetCachedProduct],
   )
 
   // Memoised so a change to provider state that is NOT part of the context
@@ -1697,7 +1976,11 @@ function maybeSendWelcome() {
       groupLabels,
       categoryLabels,
       catalogLoading,
-      reloadCatalog: loadCatalog,
+      ensureCatalog,
+      reloadCatalog,
+      productCache,
+      resolveProducts,
+      lookupProduct,
       shipping,
       categoryImages,
       setCategoryImage,
@@ -1713,6 +1996,8 @@ function maybeSendWelcome() {
       t,
       tf,
       localize,
+      colorName,
+      cartLineName,
       panel,
       setPanel,
       accountTab,
@@ -1760,9 +2045,10 @@ function maybeSendWelcome() {
     }),
     [
       products, collections, categories, categoryTree, groupLabels, categoryLabels,
-      catalogLoading, loadCatalog, shipping, categoryImages, setCategoryImage,
+      catalogLoading, ensureCatalog, reloadCatalog, productCache, resolveProducts, lookupProduct,
+      shipping, categoryImages, setCategoryImage,
       resetCategoryImage, cart, currentUser, authLoading, locale, setLocale, currency,
-      setCurrency, exchangeRates, t, tf, localize, panel, setPanel, accountTab, setAccountTab, openAccount,
+      setCurrency, exchangeRates, t, tf, localize, colorName, cartLineName, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
       addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, isWishlisted, toggleWishlist,

@@ -2,8 +2,9 @@
 
 import { Link } from '@/components/locale-link'
 import { useMemo } from 'react'
-import { useStore } from '@/lib/store'
+import { useFullCatalog, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { useListing } from './listing-context'
 
 /**
  * Left-hand catalogue navigation for the category routes.
@@ -30,7 +31,22 @@ export function CategoryNav({
   /** Undefined on a collection page; a category slug on a subcategory page. */
   category?: string
 }) {
-  const { products, categoryTree, groupLabels, categoryLabels, localize, t } = useStore()
+  const { categoryTree, groupLabels, categoryLabels, localize, t } = useStore()
+
+  // Counts for the WHOLE catalogue, which the listing page computed on the
+  // server: a department page lists one department, but its sidebar counts
+  // every one. Outside a listing page, counted from the full catalogue.
+  const listing = useListing()
+  const fullCatalog = useFullCatalog({ enabled: !listing })
+  const counts = useMemo(() => {
+    if (listing) return listing.counts
+    const counted: Record<string, number> = {}
+    for (const p of fullCatalog.products) {
+      counted[p.group] = (counted[p.group] ?? 0) + 1
+      counted[`${p.group}/${p.category}`] = (counted[`${p.group}/${p.category}`] ?? 0) + 1
+    }
+    return counted
+  }, [listing, fullCatalog.products])
 
   const tree = useMemo(
     () =>
@@ -38,19 +54,19 @@ export function CategoryNav({
         .map((n) => ({
           slug: n.group,
           label: localize(groupLabels[n.group] ?? {}),
-          count: products.filter((p) => p.group === n.group).length,
+          count: counts[n.group] ?? 0,
           items: n.items
             .map((c) => ({
               slug: c,
               label: localize(categoryLabels[c] ?? {}),
-              count: products.filter((p) => p.group === n.group && p.category === c).length,
+              count: counts[`${n.group}/${c}`] ?? 0,
             }))
             // A subcategory with nothing in it is a dead link, not a filter
             // that returns nothing — the same rule the chips already applied.
             .filter((c) => c.count > 0),
         }))
         .filter((n) => n.count > 0),
-    [products, categoryTree, groupLabels, categoryLabels, localize],
+    [counts, categoryTree, groupLabels, categoryLabels, localize],
   )
 
   const active = tree.find((n) => n.slug === group)

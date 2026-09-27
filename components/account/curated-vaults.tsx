@@ -8,10 +8,9 @@ import { LoadError } from '@/components/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { forgetLook } from '@/lib/saved-looks'
 import { productImage } from '@/lib/product-image'
-import { formatPrice, useStore } from '@/lib/store'
-import { createClient } from '@/lib/supabase/client'
+import { formatPrice, useProductsById, useStore } from '@/lib/store'
+import { loadSupabase } from '@/lib/supabase/lazy'
 import { cn } from '@/lib/utils'
-import type { Product } from '@/lib/types'
 
 /**
  * Curated Vaults — the capsules this customer has saved.
@@ -58,7 +57,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
   const load = useCallback(async () => {
     if (!userId) return
     setState({ kind: 'loading' })
-    const { data, error } = await createClient()
+    const { data, error } = await (await loadSupabase())
       .from('saved_looks')
       .select('*')
       .eq('user_id', userId)
@@ -86,7 +85,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
     if (state.kind === 'ready') {
       setState({ kind: 'ready', rows: state.rows.filter((r) => r.id !== id) })
     }
-    const { error } = await createClient().from('saved_looks').delete().eq('id', id)
+    const { error } = await (await loadSupabase()).from('saved_looks').delete().eq('id', id)
     if (error) {
       console.error('[vaults] delete failed:', error.message)
       setState(previous)
@@ -185,7 +184,7 @@ function EmptyVaults() {
 const PLACEHOLDERS = [0, 1, 2, 3]
 
 function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
-  const { t, tf, localize, products, locale } = useStore()
+  const { t, tf, localize, locale } = useStore()
   // Two-step delete instead of a confirmation dialog: an overlay over a card
   // in a grid is a heavier interruption than the action deserves, and a
   // second click on the same button is unmistakable.
@@ -197,13 +196,9 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
     return () => clearTimeout(id)
   }, [confirming])
 
-  const ids = row.product_ids ?? []
-  const found: Product[] = []
-  for (const id of ids) {
-    const product = products.find((p) => p.id === id)
-    if (product) found.push(product)
-  }
-  const missing = ids.length - found.length
+  // The capsule's pieces, looked up by id: withdrawn ones are counted as
+  // missing only once the server has said so.
+  const { products: found, missing } = useProductsById(row.product_ids ?? [])
   const total = found.reduce((sum, p) => sum + p.price, 0)
 
   let date = ''

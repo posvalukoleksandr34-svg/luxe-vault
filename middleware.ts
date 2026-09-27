@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/server/admin-auth'
+import { cameThroughEdge, isEdgeLockConfigured } from '@/lib/server/client-ip'
 import { isCrossSiteWrite } from '@/lib/server/csrf'
-import { updateSession, withAuthCookies } from '@/lib/supabase/middleware'
+import { hasSessionCookie, updateSession, withAuthCookies } from '@/lib/supabase/middleware'
 
 // Paths that must stay reachable without an admin session — the login page/form
 // and the login API it posts to. Everything else under /admin and /api/admin
@@ -13,20 +14,59 @@ const ADMIN_PUBLIC_PATHS = new Set([
 ])
 
 /**
- * Server-to-server endpoints that must not pay for a Supabase auth round-trip.
- * Both payment webhooks are called by the provider's infrastructure and
- * authenticate themselves — NOWPayments with an HMAC signature, Stripe with a
- * signed timestamp — so there is never a user session to refresh.
+ * Whether this request should pay for a Supabase session refresh.
  *
- * It is not only waste: the refresh is a network call, and a slow or
- * unreachable Supabase would add its latency to every webhook delivery, which
- * is how a provider starts seeing timeouts and retrying payments that already
- * succeeded.
+ * Only a full page load by a signed-in visitor does. Everything else skips it:
+ *
+ *  - No session cookie: nobody to refresh — every visitor who has not signed
+ *    in, and every server-to-server caller.
+ *  - /api/*: each route that needs the user calls getCurrentUser(), and its
+ *    server client writes refreshed cookies onto its own response, so the
+ *    check here was a second auth round trip on every signed-in API call.
+ *    That also keeps the payment webhooks (signed by their providers, never
+ *    carrying a session) off the refresh entirely: a slow Supabase must not
+ *    add latency to a webhook delivery, or providers time out and retry
+ *    payments that already succeeded.
+ *  - Anything the page fetches rather than navigates to: link prefetches,
+ *    client-side navigations, Server Actions. No page reads the session on
+ *    the server, and a Server Action that needs the user checks it itself.
+ *    Measured before this: 24 auth round trips for one page view, one per
+ *    prefetched link.
+ *
+ * "Fetched" is read from Sec-Fetch-Dest, which the browser sets and page
+ * script cannot: `document` for a page load, `empty` for fetch(). Next's own
+ * RSC and prefetch headers would say more, but Next 13.5 deletes them before
+ * middleware runs (next/dist/server/web/adapter.js, FLIGHT_PARAMETERS). A
+ * client that sends no Sec-Fetch-Dest at all is refreshed, as before.
  */
-const SESSION_REFRESH_EXEMPT = new Set([
-  '/api/payments/crypto/webhook',
-  '/api/payments/stripe/webhook',
-])
+function needsSessionRefresh(request: NextRequest): boolean {
+  if (request.nextUrl.pathname.startsWith('/api/')) return false
+  const dest = request.headers.get('sec-fetch-dest')
+  if (dest !== null && dest !== 'document') return false
+  return hasSessionCookie(request)
+}
+
+/**
+ * Reachable without passing through Cloudflare even when the origin lock is
+ * on. The cron routes are invoked by Vercel's scheduler, which calls the
+ * deployment directly rather than through the public domain, and each one
+ * already demands CRON_SECRET as a bearer token.
+ */
+const EDGE_LOCK_EXEMPT_PREFIXES = ['/api/cron/']
+
+/**
+ * Origin lock: with EDGE_ORIGIN_SECRET set, a production request that did not
+ * come through Cloudflare is refused. Without it, the *.vercel.app address
+ * is a way around every WAF and rate-limiting rule configured at the edge
+ * (docs/security/phase-1-perimeter.md). Off in development, so a local
+ * .env with the secret in it does not lock out localhost.
+ */
+function isEdgeBypass(request: NextRequest): boolean {
+  if (process.env.NODE_ENV !== 'production' || !isEdgeLockConfigured()) return false
+  const { pathname } = request.nextUrl
+  if (EDGE_LOCK_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false
+  return !cameThroughEdge(request.headers)
+}
 
 function isAdminPath(pathname: string) {
   return (
@@ -39,19 +79,22 @@ function isAdminPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (isEdgeBypass(request)) {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
+
   // CSRF: a state-changing request a browser marks as cross-site is refused
   // before any handler, cookie refresh or session check runs (lib/server/csrf.ts).
   if (isCrossSiteWrite(request.method, pathname, request.headers)) {
     return NextResponse.json({ error: 'Cross-site request refused' }, { status: 403 })
   }
 
-  if (SESSION_REFRESH_EXEMPT.has(pathname)) {
-    return NextResponse.next()
-  }
-
-  // Always refresh first: the rotated auth cookies have to ride along on
-  // whatever response we end up returning, including redirects.
-  const { response } = await updateSession(request)
+  // Refresh first when there is a session to refresh: the rotated auth
+  // cookies have to ride along on whatever response we end up returning,
+  // including redirects.
+  const { response } = needsSessionRefresh(request)
+    ? await updateSession(request)
+    : { response: NextResponse.next() }
 
   // The admin console is a separate, self-contained auth system (password +
   // signed session cookie). It is intentionally NOT a Supabase user, so the
@@ -80,10 +123,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Widened from the admin-only matcher: Supabase tokens must be refreshed on
-     * every navigation, not just under /admin. Static assets and image
-     * optimiser requests are excluded — they carry no session and running the
-     * auth round-trip on them would be pure latency.
+     * Widened from the admin-only matcher: Supabase tokens are refreshed on
+     * page navigations (needsSessionRefresh decides which), not just under
+     * /admin. Static assets and image optimiser requests are excluded — they
+     * carry no session and running the middleware on them would be pure
+     * latency.
      */
     '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|webmanifest)$).*)',
   ],

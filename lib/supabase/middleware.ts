@@ -19,9 +19,10 @@ function warnBadUrlOnce(problem: string) {
 /**
  * Refreshes the Supabase auth token on the incoming request.
  *
- * Access tokens are short-lived. Without a refresh on each request the server
- * would start seeing a signed-in visitor as anonymous well before the browser
- * does. This runs in middleware so both sides always agree.
+ * Access tokens are short-lived. Without a refresh the server would start
+ * seeing a signed-in visitor as anonymous well before the browser does. This
+ * runs in middleware so both sides always agree — for page navigations that
+ * carry a session; middleware.ts (needsSessionRefresh) skips everything else.
  *
  * The returned `response` carries the rotated cookies and MUST be the response
  * that is eventually sent — or, when redirecting, its cookies must be copied
@@ -34,7 +35,7 @@ export async function updateSession(request: NextRequest) {
   if (!isSupabaseConfigured) {
     // Supabase not wired up yet — leave the request untouched so the rest of
     // the site (and /admin, which has its own auth) keeps working.
-    return { response, user: null }
+    return { response }
   }
 
   // A malformed URL cannot be recovered from here, and attempting it would
@@ -43,7 +44,7 @@ export async function updateSession(request: NextRequest) {
   const urlProblem = describeUrlProblem(SUPABASE_URL!)
   if (urlProblem) {
     warnBadUrlOnce(urlProblem)
-    return { response, user: null }
+    return { response }
   }
 
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
@@ -61,14 +62,29 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
-  // getUser(), never getSession(): getSession only decodes the cookie and
-  // trusts whatever it finds, whereas getUser revalidates the token with the
-  // Auth server. This call is also what triggers the refresh above.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getClaims(): refreshes an expiring token (which is what writes the rotated
+  // cookies above) and then verifies the JWT. With the project on asymmetric
+  // JWT signing keys (Supabase → Project Settings → JWT Keys) it verifies
+  // locally against the cached public key — no round trip to the Auth server
+  // on every navigation. On the legacy shared secret it falls back to
+  // getUser(), exactly what this called before. Nothing here authorises
+  // anything: API routes and server actions check the user themselves.
+  await supabase.auth.getClaims()
 
-  return { response, user }
+  return { response }
+}
+
+/**
+ * Whether the request carries a Supabase session at all.
+ *
+ * @supabase/ssr keeps it in `sb-<project>-auth-token`, split into `.0`, `.1`…
+ * when large. No such cookie, nothing to refresh — which is every visitor who
+ * has not signed in.
+ */
+export function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(({ name, value }) => value !== '' && /^sb-.+-auth-token(\.\d+)?$/.test(name))
 }
 
 /** Copies refreshed auth cookies onto a different response (e.g. a redirect). */

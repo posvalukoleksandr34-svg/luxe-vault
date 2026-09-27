@@ -4,7 +4,7 @@ import { CheckCircle2, KeyRound, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
-import { createClient } from '@/lib/supabase/client'
+import { hasSessionCookie, loadSupabase } from '@/lib/supabase/lazy'
 import { useStore } from '@/lib/store'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -40,23 +40,36 @@ export function PasswordRecoveryModal() {
   useEffect(() => {
     if (!isSupabaseConfigured) return
 
-    const supabase = createClient()
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      // Synchronous on purpose: awaiting another supabase call inside this
-      // callback can deadlock the client.
-      if (event === 'PASSWORD_RECOVERY') setOpen(true)
-    })
-
     // The event fires while the client parses the URL on load, which can land
     // before this listener attaches. Reading the hash directly covers that
     // race rather than relying on subscription timing.
-    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
-      setOpen(true)
-    }
+    const recoveryLink = typeof window !== 'undefined' && window.location.hash.includes('type=recovery')
+    if (recoveryLink) setOpen(true)
 
-    return () => subscription.unsubscribe()
+    // Supabase can only report PASSWORD_RECOVERY for a recovery link or an
+    // existing session. On any other page load there is nothing to listen for,
+    // and the client (~70 KB) is not downloaded just to listen.
+    if (!recoveryLink && !hasSessionCookie()) return
+
+    let cancelled = false
+    let subscription: { unsubscribe: () => void } | undefined
+    loadSupabase()
+      .then((supabase) => {
+        if (cancelled) return
+        subscription = supabase.auth.onAuthStateChange((event) => {
+          // Synchronous on purpose: awaiting another supabase call inside this
+          // callback can deadlock the client.
+          if (event === 'PASSWORD_RECOVERY') setOpen(true)
+        }).data.subscription
+      })
+      .catch(() => {
+        // Could not load: the hash check above still opens the form.
+      })
+
+    return () => {
+      cancelled = true
+      subscription?.unsubscribe()
+    }
   }, [])
 
   const close = useCallback(() => {
@@ -84,7 +97,7 @@ export function PasswordRecoveryModal() {
     setBusy(true)
     setError(null)
     try {
-      const { error } = await createClient().auth.updateUser({ password })
+      const { error } = await (await loadSupabase()).auth.updateUser({ password })
       if (error) throw error
       setDone(true)
       // Clear the recovery hash so a refresh does not reopen the modal.

@@ -20,7 +20,7 @@ import type { Notification } from '@/lib/types'
  * one cheap indexed query and is well inside what "prompt" means here.
  */
 export function NotificationCenter() {
-  const { currentUser, locale } = useStore()
+  const { currentUser, locale, t } = useStore()
 
   const [items, setItems] = useState<Notification[]>([])
   const [unread, setUnread] = useState(0)
@@ -32,7 +32,9 @@ export function NotificationCenter() {
     if (!currentUser) return
     setLoading(true)
     try {
-      const res = await fetch('/api/notifications')
+      // In the language the page is in: the server puts each notification
+      // into words for the reader, so the panel never mixes languages.
+      const res = await fetch(`/api/notifications?locale=${locale}`)
       if (!res.ok) return
       const data = await res.json()
       setItems(Array.isArray(data.notifications) ? data.notifications : [])
@@ -43,7 +45,7 @@ export function NotificationCenter() {
     } finally {
       setLoading(false)
     }
-  }, [currentUser])
+  }, [currentUser, locale])
 
   useEffect(() => {
     if (!currentUser) {
@@ -112,7 +114,7 @@ export function NotificationCenter() {
           setOpen((v) => !v)
           if (!open) void load()
         }}
-        aria-label="Notifications"
+        aria-label={t('notifications.title')}
         aria-expanded={open}
         className="relative flex size-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
       >
@@ -131,7 +133,7 @@ export function NotificationCenter() {
           <div className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] border border-border bg-popover shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Уведомления
+                {t('notifications.title')}
               </span>
               {unread > 0 && (
                 <button
@@ -140,7 +142,7 @@ export function NotificationCenter() {
                   className="flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold"
                 >
                   <Check className="size-3" />
-                  Прочитать всё
+                  {t('notifications.markAllRead')}
                 </button>
               )}
             </div>
@@ -152,7 +154,7 @@ export function NotificationCenter() {
                 </div>
               ) : items.length === 0 ? (
                 <p className="px-4 py-10 text-center text-[12px] font-light text-muted-foreground">
-                  Пока нет уведомлений
+                  {t('notifications.empty')}
                 </p>
               ) : (
                 <ul className="divide-y divide-border/40">

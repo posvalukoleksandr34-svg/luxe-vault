@@ -4,8 +4,11 @@ import { breadcrumbJsonLd } from '@/components/breadcrumbs'
 import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { CategoryView } from '@/components/products/category-view'
+import { ListingProvider } from '@/components/products/listing-context'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
+import { paramsFromDatabase } from '@/lib/server/static-params'
+import { listingCounts, pageLocale, toListing } from '@/lib/server/catalog-listing'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { subcategoryMetadataFor } from '@/lib/page-seo'
@@ -25,10 +28,12 @@ export const dynamicParams = true
 const SITE_URL = SITE_ORIGIN
 
 export async function generateStaticParams() {
-  const { tree } = await readTaxonomy()
-  return tree.flatMap((n) =>
-    n.categories.map((c) => ({ collection: n.slug, subcategory: c.slug })),
-  )
+  return paramsFromDatabase('category pages', async () => {
+    const { tree } = await readTaxonomy()
+    return tree.flatMap((n) =>
+      n.categories.map((c) => ({ collection: n.slug, subcategory: c.slug })),
+    )
+  })
 }
 
 /**
@@ -57,7 +62,7 @@ export async function generateMetadata({
 export default async function SubcategoryPage({
   params,
 }: {
-  params: { collection: string; subcategory: string }
+  params: { collection: string; subcategory: string; locale?: string }
 }) {
   const found = await resolve(params.collection, params.subcategory)
   if (!found) notFound()
@@ -71,8 +76,8 @@ export default async function SubcategoryPage({
     { name, url: `/category/${found.node.slug}/${found.category.slug}` },
   ]
 
-  // See the collection page: the listing's own contents, for a crawler that
-  // does not run the client-side grid.
+  // See the collection page: the listing's own contents, for the grid and
+  // for the ItemList.
   const { products } = await readTaxonomy()
   const path = `/category/${found.node.slug}/${found.category.slug}`
   const listed = products.filter((p) => p.group === found.node.slug && p.category === found.category.slug)
@@ -82,7 +87,11 @@ export default async function SubcategoryPage({
       <Header />
 
       <main id="main">
-        <CategoryView group={found.node.slug} category={found.category.slug} />
+        {/* See the collection page: this category's products, all
+            departments' counts. */}
+        <ListingProvider products={toListing(listed, pageLocale(params))} counts={listingCounts(products)}>
+          <CategoryView group={found.node.slug} category={found.category.slug} />
+        </ListingProvider>
         <Footer />
       </main>
 

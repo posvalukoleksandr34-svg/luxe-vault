@@ -1,0 +1,81 @@
+# Weekly restore drill: the newest offsite backup is decrypted, restored into
+# a throwaway Postgres and checked row by row against the manifest written
+# when it was taken. What it does: scripts/backup/restore-test.sh.
+#
+# It also fails when the newest backup is more than 30 hours old, so a nightly
+# job that silently stopped is noticed within a week rather than on the day
+# the backup is needed.
+#
+# Runs in the `backups` environment for the same reason as offsite-backup.yml.
+
+name: Backup restore test
+
+on:
+  schedule:
+    - cron: '19 5 * * 1'   # Mondays, 05:19 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: backups
+    services:
+      # Disposable: exists for this job only. Keep its major version equal to
+      # PG_IMAGE below and at least the production server's.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore-test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    env:
+      PG_IMAGE: postgres:17
+      RESTORE_DB_URL: postgresql://postgres:restore-test@127.0.0.1:5432/postgres
+      BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
+      BACKUP_S3_PROVIDER: ${{ vars.BACKUP_S3_PROVIDER }}
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_REGION: ${{ vars.BACKUP_S3_REGION }}
+      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      BACKUP_AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$BACKUP_AGE_IDENTITY" ] || [ -z "$BACKUP_BUCKET" ]; then
+            echo "::warning::The restore test is not configured yet. See docs/security/phase-1-backups.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Install age
+        if: steps.config.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Restore and verify
+        if: steps.config.outputs.ready == 'true'
+        run: scripts/backup/restore-test.sh
+
+      - name: Report failure to Telegram
+        if: failure()
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          [ -n "$INTERNAL_API_SECRET" ] || exit 0
+          curl -sS --max-time 20 -X POST "$SITE_URL/api/internal/telegram" \
+            -H "Authorization: Bearer $INTERNAL_API_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"kind":"error","context":"Backup restore test (GitHub Actions)","text":"The weekly restore test FAILED: the newest offsite backup could not be restored or is incomplete. See the Actions log."}'

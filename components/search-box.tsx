@@ -80,6 +80,7 @@ export function SearchBox({
     categoryLabels,
     groupLabels,
     currency,
+    locale,
   } = useStore()
 
   const [open, setOpen] = useState(false)
@@ -113,7 +114,9 @@ export function SearchBox({
     }
   }, [open])
 
-  /** The same search, run on the catalogue this browser already holds. */
+  /** The same search, run on whatever catalogue this browser already holds —
+   *  only when the server cannot be reached, and empty unless something on
+   *  this visit loaded the full catalogue (the stylist, the admin). */
   function searchLocally(term: string): Found {
     const reading = interpretQuery(
       term,
@@ -166,7 +169,8 @@ export function SearchBox({
     setLoading(true)
     const controller = new AbortController()
     let aiTimer: ReturnType<typeof setTimeout> | undefined
-    const url = `/api/search?q=${encodeURIComponent(term)}&cur=${currency}`
+    // `locale`: results arrive as listings in the language being read.
+    const url = `/api/search?q=${encodeURIComponent(term)}&cur=${currency}&locale=${locale}`
 
     async function ask(href: string) {
       const res = await fetch(href, { signal: controller.signal })
@@ -224,7 +228,7 @@ export function SearchBox({
       if (aiTimer) clearTimeout(aiTimer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, open, currency])
+  }, [query, open, currency, locale])
 
   const term = query.trim()
   const { results, total, fuzzy, reading } = found

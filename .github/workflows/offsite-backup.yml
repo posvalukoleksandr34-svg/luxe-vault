@@ -1,0 +1,83 @@
+# Nightly offsite backup: database, Storage media and the repository, each
+# encrypted before it leaves the runner. What it does: scripts/backup/backup.sh.
+# Setup, and how to restore: docs/security/phase-1-backups.md.
+#
+# Secrets live in the `backups` ENVIRONMENT, not the repository, so they are
+# only released to jobs running from main (Settings → Environments → backups →
+# Deployment branches: main only). A workflow edited on a branch or in a pull
+# request cannot read the database URL.
+#
+# Does nothing but warn until SUPABASE_DB_URL is set.
+
+name: Offsite backup
+
+on:
+  schedule:
+    # 02:43 UTC — the quietest hour for a European shop, and off the top of
+    # the hour, when GitHub's scheduler delays or drops runs first.
+    - cron: '43 2 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: backups
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_AGE_RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+      BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
+      BACKUP_S3_PROVIDER: ${{ vars.BACKUP_S3_PROVIDER }}
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_REGION: ${{ vars.BACKUP_S3_REGION }}
+      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      SUPABASE_S3_ENDPOINT: ${{ vars.SUPABASE_S3_ENDPOINT }}
+      SUPABASE_S3_REGION: ${{ vars.SUPABASE_S3_REGION }}
+      SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+      SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+      BACKUP_MEDIA_PASSPHRASE: ${{ secrets.BACKUP_MEDIA_PASSPHRASE }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::Offsite backup is not configured yet (SUPABASE_DB_URL is empty). See docs/security/phase-1-backups.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          # Every branch and tag, for the git bundle.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install age
+        if: steps.config.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Back up
+        if: steps.config.outputs.ready == 'true'
+        run: scripts/backup/backup.sh
+
+      - name: Report failure to Telegram
+        if: failure()
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          [ -n "$INTERNAL_API_SECRET" ] || exit 0
+          curl -sS --max-time 20 -X POST "$SITE_URL/api/internal/telegram" \
+            -H "Authorization: Bearer $INTERNAL_API_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"kind":"error","context":"Offsite backup (GitHub Actions)","text":"The nightly backup FAILED. Nothing new was stored offsite tonight; see the Actions log."}'

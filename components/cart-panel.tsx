@@ -12,7 +12,7 @@ import { TrustBadges } from '@/components/trust-badges'
 import { trackBeginCheckout, trackViewCart } from '@/lib/analytics'
 import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
 import { productImage } from '@/lib/product-image'
-import { formatPrice, useStore } from '@/lib/store'
+import { formatPrice, useProductsById, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /** How long the slide-out takes; the drawer unmounts once it has finished. */
@@ -49,8 +49,8 @@ export function CartPanel() {
     currentUser,
     openAuth,
     currency,
-    products,
-    localize,
+    cartLineName,
+    colorName,
     stockLimit,
     t,
     tf,
@@ -69,14 +69,15 @@ export function CartPanel() {
   const threshold = shipping.freeShippingThreshold
   const shippingProgress = threshold > 0 ? Math.min(100, (cartSubtotal / threshold) * 100) : 100
 
-  // Line names in the visitor's language, from the catalogue: the name saved
-  // with a line is whatever language the page was in when it was added.
-  const lineName = (item: { productId: string; name: string }) => {
-    const product = products.find((p) => p.id === item.productId)
-    return (product && localize(product.name)) || item.name
-  }
-
   const cartOpen = panel === 'cart'
+
+  // The lines' products, looked up when the drawer opens — for their names
+  // in the visitor's language and their stock. The store realigns prices and
+  // drops withdrawn lines as they arrive (reconcileCart).
+  useProductsById(
+    cart.map((line) => line.productId),
+    { enabled: cartOpen },
+  )
 
   /**
    * Enter AND exit transitions. `mounted` keeps the drawer in the document
@@ -303,7 +304,7 @@ export function CartPanel() {
                   // This exact size and colour: "+" stops at what exists.
                   const limit = stockLimit(item.productId, item.size, item.color)
                   const atMax = limit !== null && item.qty >= limit
-                  const name = lineName(item)
+                  const name = cartLineName(item)
                   return (
                     <li key={item.key} className="flex gap-4">
                       <Link
@@ -340,7 +341,7 @@ export function CartPanel() {
                           </button>
                         </div>
                         <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/50">
-                          {item.size} · {item.color}
+                          {[item.size, colorName(item.color)].filter(Boolean).join(' · ')}
                         </p>
                         {atMax && (
                           <p className="mt-1 text-[10px] font-light text-gold/75">

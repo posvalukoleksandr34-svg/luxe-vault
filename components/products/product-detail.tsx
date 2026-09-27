@@ -70,7 +70,7 @@ const GALLERY_ARROW =
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, tf, locale, localize, categoryLabels, pushToast, shipping } = useStore()
+  const { addToCart, setPanel, t, tf, locale, localize, colorName, categoryLabels, pushToast, shipping } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -82,6 +82,12 @@ export function ProductDetail({ product }: { product: Product }) {
   const touchStartX = useRef<number | null>(null)
 
   const activeColor = p.colors.find((c) => c.name === color)
+  /** A swatch's accessible name: the colour in the visitor's language, or the
+   *  word "Colour" when the admin's name has no translation (lib/color-name.ts). */
+  const swatchLabel = (c: { name: string; stock?: number }) => {
+    const label = colorName(c.name) || t('product.color')
+    return c.stock === 0 ? `${label} — ${t('sold.out')}` : label
+  }
   // A colour with its own photo puts it first, so selecting "Charcoal" shows
   // the charcoal one rather than leaving the customer to hunt the carousel.
   const allImages = (() => {
@@ -184,11 +190,11 @@ export function ProductDetail({ product }: { product: Product }) {
     : p.colors.find((c) => c.name !== color && c.stock !== 0)
 
   // What this exact size + colour still allows: its stock minus what the cart
-  // already holds. From the store, which also knows the server's latest
-  // answer — the catalogue this page was rendered with can be minutes old.
+  // already holds. The store's answer prefers the server's latest check (the
+  // page itself can be a minute old); this page's product is the fallback.
   const { cart, stockLimit } = useStore()
   const lineColor = color ?? p.colors[0]?.name ?? '—'
-  const limit = size ? stockLimit(p.id, size, lineColor) : null
+  const limit = size ? stockLimit(p.id, size, lineColor, p) : null
   const inCart = size ? cart.find((c) => c.key === `${p.id}-${size}-${lineColor}`)?.qty ?? 0 : 0
   const remaining = limit === null ? null : Math.max(0, limit - inCart)
   /** The server says none are left, although the page's catalogue did not. */
@@ -370,15 +376,18 @@ export function ProductDetail({ product }: { product: Product }) {
     // The store adds only what the variant's stock allows, counting what is
     // already in the cart, and says how many went in — so a fast double tap,
     // or the main button and the sticky bar together, can never overshoot.
-    const result = addToCart({
-      productId: p.id,
-      name: productName,
-      image: selectedImage || p.image,
-      price: p.price,
-      size,
-      color: lineColor,
-      qty,
-    })
+    const result = addToCart(
+      {
+        productId: p.id,
+        name: productName,
+        image: selectedImage || p.image,
+        price: p.price,
+        size,
+        color: lineColor,
+        qty,
+      },
+      p,
+    )
     // The click confirms an item went in, so a press that added nothing
     // stays silent (the store's notice says why). Covers both buttons.
     if (result.added === 0) return
@@ -555,8 +564,13 @@ export function ProductDetail({ product }: { product: Product }) {
         {p.colors.length > 0 && (
           <div className="mt-8">
             <p className="mb-3 text-[11px] uppercase tracking-[0.15em] text-foreground">
-              {t('product.color')} —{' '}
-              <span className="normal-case tracking-normal text-muted-foreground">{color}</span>
+              {t('product.color')}
+              {color && colorName(color) && (
+                <>
+                  {' '}—{' '}
+                  <span className="normal-case tracking-normal text-muted-foreground">{colorName(color)}</span>
+                </>
+              )}
               {/* The low-stock count now sits under the size picker, where it
                   refers to the exact variant being bought. A colour-level
                   total shown here as well contradicted it — "3 left" beside
@@ -582,8 +596,8 @@ export function ProductDetail({ product }: { product: Product }) {
                     c.stock === 0 && 'opacity-40',
                   )}
                   style={{ backgroundColor: c.hex }}
-                  aria-label={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
-                  title={c.stock === 0 ? `${c.name} — ${t('sold.out')}` : c.name}
+                  aria-label={swatchLabel(c)}
+                  title={swatchLabel(c)}
                 >
                   {c.stock === 0 && (
                     <span
@@ -613,7 +627,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 sizes={p.sizes}
                 // Buyable now: the catalogue's stock AND the server's latest
                 // word on it (the store's stockLimit).
-                isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor) !== 0}
+                isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor, p) !== 0}
                 onApply={setSize}
                 productCut={resolveTags(p).fit}
                 sizeChart={p.sizeChart}

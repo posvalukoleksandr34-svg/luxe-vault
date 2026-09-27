@@ -5,7 +5,7 @@ import { Link } from '@/components/locale-link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/password-input'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabase } from '@/lib/supabase/lazy'
 import { useStore } from '@/lib/store'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -26,8 +26,8 @@ export default function UpdatePasswordPage() {
   // simply typed the URL would get a password form that cannot work.
   useEffect(() => {
     let active = true
-    createClient()
-      .auth.getUser()
+    loadSupabase()
+      .then((supabase) => supabase.auth.getUser())
       .then(({ data }) => {
         if (!active) return
         setAuthorized(Boolean(data.user))
@@ -60,7 +60,7 @@ export default function UpdatePasswordPage() {
     setBusy(true)
     setError(null)
     try {
-      const { error } = await createClient().auth.updateUser({ password })
+      const { error } = await (await loadSupabase()).auth.updateUser({ password })
       if (error) throw error
       setDone(true)
       // Give them a moment to read the confirmation before leaving.
