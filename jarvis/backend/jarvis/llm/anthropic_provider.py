@@ -56,7 +56,7 @@ class AnthropicProvider(LLMProvider):
         key = await self._api_key()
         if not key:
             raise LLMNotConfigured(
-                "Anthropic API key is not configured. Set ANTHROPIC_API_KEY or add it in Settings → Models."
+                "не задан ключ Anthropic API — добавьте его в Настройки → Ключи API или ANTHROPIC_API_KEY в .env."
             )
         client = self._clients.get(key)
         if client is None:

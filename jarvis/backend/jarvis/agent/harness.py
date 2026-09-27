@@ -66,6 +66,8 @@ class AgentRuntime:
             conversation = await session.get(Conversation, task.conversation_id) if task.conversation_id else None
         if user is None:
             raise LLMError("task owner no longer exists")
+        # Skill on/off and settings are changed through the API process; a separate worker picks them up here.
+        await self.app.skills.refresh_state()
         profile = get_profile(task.input.get("agent"))
         state = dict(task.state or {})
         if state.get("v") != STATE_VERSION:

@@ -249,3 +249,21 @@ async def test_approval_ids_are_user_scoped(app, user, provider):
         await app.approvals.decide(a.id, user_id=intruder.id, approve=True, via="web")
     async with app.sessionmaker() as s:
         assert (await s.get(Approval, a.id)).status == "pending"
+
+
+async def test_worker_picks_up_skill_toggles_made_by_the_api_process(app, user, provider):
+    """With docker compose the API and the worker are separate processes: a skill switched off in the UI
+    must disappear from the worker's next turn without a restart."""
+    from jarvis.db.models import SkillState
+
+    provider.impl = ScriptedProvider([text_response("ok"), text_response("ok")])
+    async with app.sessionmaker() as s:  # the row the API process writes; this process's cache is untouched
+        await s.merge(SkillState(name="weather", enabled=False, config={}))
+        await s.commit()
+    try:
+        await _submit(app, user, "привет")
+        await run_tasks(app)
+        names = {t["name"] for t in provider.impl.requests[0].tools}
+        assert "time_now" in names and "weather_forecast" not in names
+    finally:
+        await app.skills.set_enabled("weather", True)

@@ -221,7 +221,7 @@ class DemoBrain(LLMProvider):
 
         if re.search(r"найди|исследуй|research|find information", low):
             return text_response("В демо-режиме я не умею искать в интернете. Подключите ключ ANTHROPIC_API_KEY "
-                                 "(Settings → Models), и я проведу исследование и соберу отчёт.")
+                                 "(Настройки → Ключи API), и я проведу исследование и соберу отчёт.")
 
         return text_response(
             "Я работаю в демо-режиме без языковой модели и понимаю только простые команды: «запомни …», "

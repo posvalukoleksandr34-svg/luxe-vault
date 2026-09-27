@@ -145,7 +145,7 @@ async def _doctor() -> int:
             await app.redis.ping()
             print("✓ redis reachable")
         key = await app.secrets.get("anthropic_api_key")
-        print("✓ Anthropic key configured" if key else "✗ Anthropic key missing (Settings → Models or ANTHROPIC_API_KEY)")
+        print("✓ Anthropic key configured" if key else "✗ Anthropic key missing (Settings → API keys or ANTHROPIC_API_KEY)")
         problems += 0 if key or s.fake_llm else 1
         print(f"• embeddings: {app.embedder.model} ({'on' if app.embedder.enabled else 'off'})")
         print(f"• skills: {', '.join(sorted(app.skills.skills))}")
