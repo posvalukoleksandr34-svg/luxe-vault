@@ -15,3 +15,5 @@ backups/
 *.log
 satellite/.env
 frontend/public/vad/
+infrastructure/monitoring/metrics_token
+.devdata/

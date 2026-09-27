@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import getpass
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,9 +26,19 @@ from jarvis.core.container import build_app
 from jarvis.settings import get_settings
 
 
+def _alembic_ini() -> Path:
+    candidates = [Path(os.environ["JARVIS_ALEMBIC_INI"])] if os.environ.get("JARVIS_ALEMBIC_INI") else []
+    candidates += [Path(__file__).resolve().parents[1] / "alembic.ini", Path.cwd() / "alembic.ini",
+                   Path("/app/backend/alembic.ini")]
+    for c in candidates:
+        if c.exists():
+            return c
+    raise SystemExit("alembic.ini not found; set JARVIS_ALEMBIC_INI")
+
+
 def _migrate() -> int:
-    ini = Path(__file__).resolve().parents[1] / "alembic.ini"
-    return subprocess.call([sys.executable, "-m", "alembic", "-c", str(ini), "upgrade", "head"])
+    ini = _alembic_ini()
+    return subprocess.call([sys.executable, "-m", "alembic", "-c", str(ini), "upgrade", "head"], cwd=ini.parent)
 
 
 async def _create_user(email: str, owner: bool) -> None:

@@ -103,7 +103,7 @@ def parse_when(text: str, now: datetime) -> tuple[datetime | None, str]:
         t = re.sub(r"\b(завтра|tomorrow)\b", "", t, flags=re.I)
     elif re.search(r"\b(сегодня|today)\b", t, re.I):
         t = re.sub(r"\b(сегодня|today)\b", "", t, flags=re.I)
-    m = re.search(r"\bчерез\s+(\d+)\s*(мин|час)|\bin\s+(\d+)\s*(min|hour)", t, re.I)
+    m = re.search(r"\bчерез\s+(\d+)\s*(мин\w*|час\w*)|\bin\s+(\d+)\s*(min\w*|hours?)\b", t, re.I)
     if m:
         n = int(m.group(1) or m.group(3))
         unit = (m.group(2) or m.group(4)).lower()

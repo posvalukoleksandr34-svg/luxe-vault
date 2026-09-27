@@ -11,6 +11,7 @@ export default defineConfig({
       "/api": { target: process.env.JARVIS_API ?? "http://localhost:8000", changeOrigin: false, ws: true },
     },
   },
-  build: { target: "es2022", sourcemap: false, chunkSizeWarningLimit: 900 },
+  // assetsInlineLimit 0: no data: URLs, so the strict CSP (font-src/img-src 'self') holds.
+  build: { target: "es2022", sourcemap: false, chunkSizeWarningLimit: 900, assetsInlineLimit: 0 },
   test: { environment: "jsdom", setupFiles: ["./src/test/setup.ts"], css: false },
 });

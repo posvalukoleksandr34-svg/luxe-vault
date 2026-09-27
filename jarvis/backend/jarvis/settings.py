@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     embedded_worker: bool = False
     worker_concurrency: int = 4
     worker_id: str | None = None
+    metrics_port: int | None = None  # worker exposes Prometheus metrics here when set
 
     # ---- storage -------------------------------------------------------------------------------
     database_url: str = "postgresql+asyncpg://jarvis:jarvis@postgres:5432/jarvis"

@@ -230,6 +230,17 @@ async def main() -> None:
     app = await build_app(settings)
     if settings.worker_id:
         app.worker_id = settings.worker_id
+    if settings.metrics_port:
+        from prometheus_client import start_http_server
+
+        start_http_server(settings.metrics_port)  # scraped by Prometheus on the internal network
+
+    async def warm_embeddings() -> None:
+        # first use of the local embedding model downloads it (~220 MB) — do it now, not mid-conversation
+        with contextlib.suppress(Exception):
+            await app.embedder.embed(["warm-up"])
+
+    asyncio.get_running_loop().create_task(warm_embeddings())
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):

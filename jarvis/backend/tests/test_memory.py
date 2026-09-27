@@ -73,3 +73,34 @@ async def test_extraction_pipeline_stores_supersedes_and_skips(app, user, provid
     assert not any("привет" in c for c in contents)  # low importance filtered
     rows, _ = await app.memory.list(user.id)
     assert "Пользователь живёт в Москве" not in {r.content for r in rows}  # superseded, no longer active
+
+
+async def test_embedding_outage_degrades_to_keyword_search(app, user, monkeypatch, tmp_path):
+    """No access to the model hub must not stall memory: the breaker trips once, search keeps working."""
+    import time as _time
+
+    from jarvis.memory.embeddings import LocalEmbedder
+
+    emb = LocalEmbedder(None, tmp_path)
+    calls = {"n": 0}
+
+    def boom(*a, **k):
+        calls["n"] += 1
+        raise OSError("403 Forbidden")
+
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, "fastembed", types.SimpleNamespace(TextEmbedding=boom))
+    original = app.memory.embedder
+    app.memory.embedder = emb
+    try:
+        assert emb.enabled
+        t0 = _time.monotonic()
+        await app.memory.add(user.id, "Пользователь играет на гитаре", kind="profile")
+        found = await app.memory.search(user.id, "гитара")
+        assert found and "гитаре" in found[0].memory.content
+        assert calls["n"] == 1 and not emb.enabled  # breaker open after one failure
+        assert _time.monotonic() - t0 < 5
+    finally:
+        app.memory.embedder = original

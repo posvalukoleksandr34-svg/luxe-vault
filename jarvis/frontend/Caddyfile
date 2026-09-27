@@ -1,0 +1,58 @@
+# JARVIS edge. Set JARVIS_SITE_ADDRESS to your domain (e.g. jarvis.example.com) for automatic
+# Let's Encrypt HTTPS; the default ":80" serves plain HTTP for local use.
+# Let's Encrypt registration works without an e-mail; add `email you@example.com` below to get expiry notices.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$JARVIS_SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), geolocation=(), microphone=(self)"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# wasm-unsafe-eval: in-browser voice activity detection (onnxruntime-web). No inline scripts.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+	}
+
+	# Prometheus metrics are for the internal network only.
+	@metrics path /metrics /metrics/*
+	respond @metrics 404
+
+	request_body {
+		max_size 30MB
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+			transport http {
+				read_timeout 15m
+			}
+		}
+	}
+
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		header /index.html Cache-Control "no-cache"
+		file_server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

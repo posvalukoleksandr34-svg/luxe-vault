@@ -122,3 +122,17 @@ def test_openai_message_conversion():
 async def test_llm_error_retryable_flag():
     err = LLMError("x", retryable=True)
     assert err.retryable
+
+
+def test_demo_time_parser_removes_whole_phrase():
+    from datetime import datetime
+
+    from jarvis.llm.fake import parse_when
+
+    now = datetime(2026, 9, 27, 12, 0)
+    when, rest = parse_when("Напомни через 1 минуту проверить почту", now)
+    assert when == datetime(2026, 9, 27, 12, 1) and "уту" not in rest and "проверить почту" in rest
+    when, rest = parse_when("remind me in 2 hours to call mom", now)
+    assert when == datetime(2026, 9, 27, 14, 0) and "hours" not in rest
+    when, _ = parse_when("завтра в 10 купить молоко", now)
+    assert when == datetime(2026, 9, 28, 10, 0)

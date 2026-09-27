@@ -12,6 +12,7 @@ import asyncio
 import hashlib
 import math
 import re
+import time
 from pathlib import Path
 
 import httpx
@@ -58,22 +59,45 @@ class HashEmbedder(Embedder):
 
 
 class LocalEmbedder(Embedder):
+    RETRY_AFTER_S = 1800.0
+
     def __init__(self, model: str | None, cache_dir: Path):
         self.model = model or "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         self.cache_dir = cache_dir
         self._impl = None
         self._lock = asyncio.Lock()
-        self.dim = 384 if "MiniLM" in self.model else 768
+        self._failed_until = 0.0
+        self._dim = 384 if "MiniLM" in self.model else 768
+
+    @property
+    def dim(self) -> int:  # type: ignore[override]
+        # Circuit breaker: while the model cannot be loaded (e.g. no access to huggingface.co), report
+        # "disabled" so memory falls back to full-text + trigram search instantly instead of stalling.
+        return 0 if time.monotonic() < self._failed_until else self._dim
+
+    @dim.setter
+    def dim(self, value: int) -> None:
+        self._dim = value
 
     async def _load(self):
         async with self._lock:
             if self._impl is None:
+                if time.monotonic() < self._failed_until:
+                    raise RuntimeError("embedding model unavailable (cooling down)")
+
                 def _make():
                     from fastembed import TextEmbedding  # optional dependency
 
                     return TextEmbedding(model_name=self.model, cache_dir=str(self.cache_dir))
 
-                self._impl = await asyncio.to_thread(_make)
+                try:
+                    self._impl = await asyncio.to_thread(_make)
+                except Exception as exc:
+                    self._failed_until = time.monotonic() + self.RETRY_AFTER_S
+                    log.warning("embeddings.unavailable", model=self.model, error=str(exc)[:200],
+                                retry_in_s=self.RETRY_AFTER_S,
+                                hint="memory uses keyword search meanwhile; set HF_ENDPOINT for a mirror")
+                    raise
                 log.info("embeddings.loaded", model=self.model)
         return self._impl
 
