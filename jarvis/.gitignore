@@ -14,3 +14,4 @@ data/
 backups/
 *.log
 satellite/.env
+frontend/public/vad/
