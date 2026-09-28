@@ -47,6 +47,26 @@ import type { Product } from '@/lib/types'
 const RETURN_DAYS = 14
 
 /**
+ * How wide the main photo is actually drawn — what the browser needs to pick
+ * a sharp enough copy from the srcset.
+ *
+ * Below lg the gallery is one column across the screen. From lg it is half of
+ * the page: the 1400px container (app/product/[slug]/page.tsx) less its 40px
+ * padding each side and the 56px gap, halved — 444px at 1024 wide (43vw),
+ * 632px at 1400 and above. This said "560px", under the real width, so the
+ * browser fetched a copy smaller than the box and stretched it.
+ */
+const MAIN_PHOTO_SIZES = '(max-width: 1023px) 100vw, (max-width: 1400px) 45vw, 632px'
+
+/**
+ * Encoder quality for the main photo. The optimiser's default, 75, is fine for
+ * a grid card but visibly soft on the one large photo a customer inspects —
+ * fabric texture and stitching are what they came to look at. 90 keeps that
+ * detail; the thumbnails stay at the default.
+ */
+const MAIN_PHOTO_QUALITY = 90
+
+/**
  * The gallery arrows. z-20 puts them ABOVE the full-photo click-to-zoom
  * button (z-10): without it that button covered them, so every arrow click
  * opened the lightbox instead of changing the photo. Always visible where
@@ -408,7 +428,9 @@ export function ProductDetail({ product }: { product: Product }) {
         >
           {/* The LCP element on every product page — hence `priority`, which
               preloads it instead of waiting for the image to be discovered
-              during layout.
+              during layout. The same original as the lightbox, through the
+              optimiser at the drawn size and MAIN_PHOTO_QUALITY; only the
+              thumbnail strip below uses small copies (sizes="64px").
 
               Click-to-zoom rather than hover-magnifier: a magnifier needs a
               pointer, so it does nothing on the half of traffic that is a
@@ -423,7 +445,8 @@ export function ProductDetail({ product }: { product: Product }) {
             src={selectedImage}
             alt={productName}
             fill
-            sizes="(max-width: 1024px) 100vw, 560px"
+            sizes={MAIN_PHOTO_SIZES}
+            quality={MAIN_PHOTO_QUALITY}
             priority
             className={cn('size-full object-cover', outOfStock && 'opacity-40 grayscale')}
           />
