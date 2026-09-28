@@ -1,14 +1,17 @@
-"""OpenAI-compatible chat-completions provider for *local* models (Ollama, vLLM, LM Studio).
+"""OpenAI chat-completions provider: OpenAI itself and *local* models (Ollama, vLLM, LM Studio).
 
-Used by the optional `local` route (private/offline mode, or failover when the
-cloud brain is unreachable). Converts the canonical Claude-shaped messages to
-chat-completions and back.
+Two instances are built in `core.container`:
+  - `openai`        — api.openai.com, the brain when JARVIS_LLM_PROVIDER=openai
+  - `openai_compat` — the optional `local` route (private/offline mode, or failover)
+Converts the canonical Claude-shaped messages to chat-completions and back.
 """
 
 from __future__ import annotations
 
+import inspect
 import json
 import uuid
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -54,13 +57,20 @@ def to_openai_messages(system: list[dict], messages: list[dict]) -> list[dict]:
                 msg["tool_calls"] = calls
             out.append(msg)
         else:
-            texts = []
+            texts: list[str] = []
+            images: list[dict] = []
             for b in content:
                 if b.get("type") == "tool_result":
                     out.append({"role": "tool", "tool_call_id": b["tool_use_id"], "content": _text_of(b.get("content"))})
                 elif b.get("type") == "text":
                     texts.append(b.get("text", ""))
-            if texts:
+                elif b.get("type") == "image" and (b.get("source") or {}).get("type") == "base64":
+                    src = b["source"]
+                    images.append({"type": "image_url",
+                                   "image_url": {"url": f"data:{src['media_type']};base64,{src['data']}"}})
+            if images:
+                out.append({"role": "user", "content": [{"type": "text", "text": "\n".join(texts)}, *images]})
+            elif texts:
                 out.append({"role": "user", "content": "\n".join(texts)})
     return out
 
@@ -74,30 +84,58 @@ def to_openai_tools(tools: list[dict]) -> list[dict]:
     ]
 
 
+KeySource = str | None | Callable[[], Awaitable[str | None]]
+
+
 class OpenAICompatProvider(LLMProvider):
     name = "openai_compat"
 
-    def __init__(self, base_url: str | None, api_key: str | None = None, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(self, base_url: str | None, api_key: KeySource = None,
+                 transport: httpx.AsyncBaseTransport | None = None, *, label: str = "local model",
+                 require_key: bool = False, openai_params: bool = False):
+        """`openai_params`: speak api.openai.com's dialect — max_completion_tokens (GPT-5 models reject
+        max_tokens) and reasoning_effort from the route's `effort`. Local servers get the classic form."""
         self.base_url = (base_url or "").rstrip("/")
         self.api_key = api_key
         self.transport = transport
+        self.label = label
+        self.require_key = require_key
+        self.openai_params = openai_params
+
+    async def _key(self) -> str | None:
+        key = self.api_key
+        if callable(key):
+            key = key()
+            if inspect.isawaitable(key):
+                key = await key
+        return key or None
 
     async def generate(self, route: RouteConfig, req: LLMRequest, *, on_text: TextCallback | None = None) -> LLMResponse:
         if not self.base_url:
             raise LLMNotConfigured("Local model endpoint is not configured (JARVIS_LOCAL_LLM_BASE_URL).")
+        api_key = await self._key()
+        if self.require_key and not api_key:
+            raise LLMNotConfigured(
+                "не задан ключ OpenAI API — добавьте его в Настройки → Ключи API или OPENAI_API_KEY в .env.")
         body: dict[str, Any] = {
             "model": route.model,
             "messages": to_openai_messages(req.system, req.messages),
-            "max_tokens": req.max_tokens or route.max_tokens,
             "stream": True,
             "stream_options": {"include_usage": True},
         }
+        limit = req.max_tokens or route.max_tokens
+        if self.openai_params:
+            body["max_completion_tokens"] = limit
+            if route.effort:
+                body["reasoning_effort"] = route.effort
+        else:
+            body["max_tokens"] = limit
         tools = to_openai_tools(req.tools)
         if tools:
             body["tools"] = tools
         if req.output_schema:
             body["response_format"] = {"type": "json_schema", "json_schema": {"name": "out", "schema": req.output_schema}}
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         text_parts: list[str] = []
         calls: dict[int, dict[str, Any]] = {}
         finish = "stop"
@@ -107,7 +145,8 @@ class OpenAICompatProvider(LLMProvider):
                 async with client.stream("POST", f"{self.base_url}/chat/completions", json=body, headers=headers) as r:
                     if r.status_code >= 400:
                         detail = (await r.aread()).decode(errors="replace")[:500]
-                        raise LLMError(f"local model error {r.status_code}: {detail}", retryable=r.status_code >= 500,
+                        retryable = r.status_code >= 500 or r.status_code == 429
+                        raise LLMError(f"{self.label} error {r.status_code}: {detail}", retryable=retryable,
                                        status=r.status_code)
                     async for line in r.aiter_lines():
                         if not line.startswith("data:"):
@@ -117,8 +156,11 @@ class OpenAICompatProvider(LLMProvider):
                             break
                         chunk = json.loads(data)
                         if chunk.get("usage"):
-                            usage.input_tokens = chunk["usage"].get("prompt_tokens", 0)
-                            usage.output_tokens = chunk["usage"].get("completion_tokens", 0)
+                            u = chunk["usage"]
+                            cached = (u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+                            usage.input_tokens = (u.get("prompt_tokens") or 0) - cached
+                            usage.cache_read_tokens = cached
+                            usage.output_tokens = u.get("completion_tokens") or 0
                         for choice in chunk.get("choices", []):
                             delta = choice.get("delta") or {}
                             if delta.get("content"):
@@ -134,7 +176,7 @@ class OpenAICompatProvider(LLMProvider):
                             if choice.get("finish_reason"):
                                 finish = choice["finish_reason"]
         except httpx.HTTPError as exc:
-            raise LLMError(f"cannot reach local model: {exc}", retryable=True) from exc
+            raise LLMError(f"cannot reach {self.label}: {exc}", retryable=True) from exc
 
         content: list[dict[str, Any]] = []
         if text_parts:

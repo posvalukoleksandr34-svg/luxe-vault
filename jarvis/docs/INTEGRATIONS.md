@@ -4,7 +4,28 @@
 значение из `.env` имеет приоритет). Состояние каждой интеграции видно на странице **Интеграции** и в
 `docker compose exec api jarvis doctor`.
 
-## Anthropic (обязательно)
+## Мозг: Anthropic или OpenAI (одно из двух обязательно)
+
+`JARVIS_LLM_PROVIDER=anthropic` (по умолчанию, Claude) или `openai` (GPT). Переменная `DEFAULT_LLM_PROVIDER`
+тоже понимается. Нужен ключ только выбранного провайдера — интерфейс и `jarvis doctor` проверяют именно его.
+
+### OpenAI
+
+1. https://platform.openai.com → API keys → Create new secret key.
+2. В `.env`: `JARVIS_LLM_PROVIDER=openai` и `OPENAI_API_KEY=sk-...` → `docker compose up -d`.
+3. Модели по умолчанию: `main`/`voice`/`deep` — `gpt-5.6-terra` (reasoning effort medium / low / high),
+   `worker`/`fast` — `gpt-5.6-luna`. Другие — в `config/models.yaml` → `openai_routes`
+   (например `main: {provider: openai, model: gpt-5.6-sol, effort: medium}`).
+4. Серверный веб-поиск есть только у Claude. С OpenAI для поиска нужен `JARVIS_SEARCH_PROVIDER=tavily`
+   (`TAVILY_API_KEY`) или `brave` (`BRAVE_API_KEY`); чтение страниц (`web_fetch`) работает без ключей.
+5. Чтобы OpenAI был вообще единственным внешним сервисом: `JARVIS_STT_PROVIDER=openai`,
+   `JARVIS_TTS_PROVIDER=openai`, `JARVIS_EMBEDDING_PROVIDER=openai` (или `local` — эмбеддинги на своём CPU).
+   Для эмбеддингов ключ должен быть именно в `.env`.
+
+Отличия от Claude: PDF-вложения в чат модели не передаются (картинки — передаются), нет серверного
+веб-поиска и fallback-модели при отказе.
+
+### Anthropic
 
 1. https://console.anthropic.com → API Keys → Create key.
 2. `ANTHROPIC_API_KEY=sk-ant-...` или Настройки → Ключи API → «Anthropic (мозг)».

@@ -91,7 +91,13 @@ Google OAuth — нет (им нужен HTTPS-адрес; Google допуска
 `python3 jarvis_satellite.py --calibrate`, токен устройства:
 `docker compose exec api jarvis device-token you@example.com kitchen --scopes voice,chat`.
 
-## 8. Полезные команды
+## 8. Windows: автозапуск и окно-приложение
+
+`scripts/windows/install-autostart.bat` — JARVIS стартует сам (без окон) при входе в Windows, на рабочем
+столе и в «Пуске» появляется ярлык «JARVIS», который открывает его в отдельном окне без адресной строки.
+Подробности — [`scripts/windows/README.md`](../scripts/windows/README.md).
+
+## 9. Полезные команды
 
 ```bash
 docker compose exec api jarvis doctor          # проверка конфигурации и связности
@@ -101,7 +107,7 @@ make backup / make restore SNAPSHOT=latest     # бэкап / восстанов
 docker compose up -d --scale worker=3          # больше параллельных задач
 ```
 
-## 9. Разработка
+## 10. Разработка
 
 ```bash
 make test-infra                     # Postgres (pgvector) :55432 + Redis :56379 в Docker

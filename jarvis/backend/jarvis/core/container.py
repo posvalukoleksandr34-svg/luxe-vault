@@ -95,11 +95,17 @@ class AppContext:
             "google": "google" in providers,
             "browser": bool(self.browser and self.browser.available),
             "sandbox": bool(self.sandbox and self.sandbox.available),
-            "search": bool(search_key) or s.search_provider == "anthropic",
+            # Anthropic-hosted search only exists when Claude is the brain.
+            "search": bool(search_key) or (s.search_provider == "anthropic" and s.llm_provider == "anthropic"),
             "fetch": True,
         }
         self._availability[user_id] = (time.monotonic(), avail)
         return avail
+
+    @property
+    def brain_key_name(self) -> str:
+        """The secret the configured brain needs: anthropic_api_key or openai_api_key."""
+        return "openai_api_key" if self.settings.llm_provider == "openai" else "anthropic_api_key"
 
     def invalidate_availability(self, user_id: uuid.UUID | None = None) -> None:
         if user_id is None:
@@ -244,15 +250,17 @@ async def build_app(
     app.policy = PolicyEngine(cfg)
 
     # brain
-    routes, pricing, fallbacks = load_routes(settings.config_dir / "models.yaml")
+    routes, pricing, fallbacks = load_routes(settings.config_dir / "models.yaml", settings.llm_provider)
     if providers is None:
         providers = {
             "anthropic": AnthropicProvider(lambda: secrets.get("anthropic_api_key")),
+            "openai": OpenAICompatProvider(settings.openai_base_url, lambda: secrets.get("openai_api_key"),
+                                           label="OpenAI", require_key=True, openai_params=True),
             "openai_compat": OpenAICompatProvider(settings.local_llm_base_url, settings.local_llm_api_key),
         }
         if settings.fake_llm:
             demo = DemoBrain()
-            providers = {"anthropic": demo, "openai_compat": demo, "demo": demo}
+            providers = {"anthropic": demo, "openai": demo, "openai_compat": demo, "demo": demo}
     app.router = ModelRouter(routes, providers, pricing=pricing, fallbacks=fallbacks, recorder=app.record_llm_call,
                              spend_today=app.spend_today, daily_limit_usd=settings.daily_cost_limit_usd)
 

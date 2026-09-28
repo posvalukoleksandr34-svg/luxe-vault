@@ -58,7 +58,12 @@ class Settings(BaseSettings):
     locale: str = "ru"
 
     # ---- brain ---------------------------------------------------------------------------------
+    # Which cloud model family is the brain: `anthropic` (Claude) or `openai` (GPT). Picks the route
+    # preset in config/models.yaml (`routes` / `openai_routes`) and which API key the UI asks for.
+    llm_provider: Literal["anthropic", "openai"] = Field(
+        default="anthropic", validation_alias=_alias("JARVIS_LLM_PROVIDER", "DEFAULT_LLM_PROVIDER"))
     anthropic_api_key: str | None = Field(default=None, validation_alias=_alias("ANTHROPIC_API_KEY"))
+    openai_base_url: str = "https://api.openai.com/v1"
     # Optional OpenAI-compatible endpoint (Ollama / vLLM / LM Studio) for a private local model route.
     local_llm_base_url: str | None = None
     local_llm_api_key: str | None = None
@@ -66,6 +71,11 @@ class Settings(BaseSettings):
     max_agent_steps: int = 25
     # Use the scripted offline model (tests / demo without an API key).
     fake_llm: bool = False
+
+    @field_validator("llm_provider", mode="before")
+    @classmethod
+    def _provider_lower(cls, v: str) -> str:
+        return v.strip().lower() if isinstance(v, str) else v
 
     # ---- memory --------------------------------------------------------------------------------
     embedding_provider: Literal["local", "voyage", "openai", "hash", "none"] = "local"

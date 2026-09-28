@@ -228,6 +228,8 @@ export interface SystemStatus {
   brain: {
     configured: boolean;
     demo_mode: boolean;
+    provider: "anthropic" | "openai";
+    key_name: string;
     main_model: string;
     routes: Record<string, { provider: string; model: string; effort: string | null }>;
   };

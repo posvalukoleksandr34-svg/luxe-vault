@@ -9,7 +9,7 @@ import { ago } from "../lib/format";
 import type { SystemStatus, User } from "../lib/types";
 
 const SECRET_LABELS: Record<string, { label: string; hint: string }> = {
-  anthropic_api_key: { label: "Anthropic (мозг)", hint: "Claude — основная модель. Обязательно." },
+  anthropic_api_key: { label: "Anthropic (Claude)", hint: "Не нужен, если мозг — OpenAI" },
   deepgram_api_key: { label: "Deepgram (распознавание речи)", hint: "Nova-3, быстрый STT для голоса и голосовых сообщений" },
   elevenlabs_api_key: { label: "ElevenLabs (синтез речи)", hint: "Flash v2.5, потоковый голос" },
   openai_api_key: { label: "OpenAI (резерв STT/TTS/эмбеддингов)", hint: "Необязательно" },
@@ -22,7 +22,12 @@ const SECRET_LABELS: Record<string, { label: string; hint: string }> = {
   google_client_secret: { label: "Google OAuth client secret", hint: "Вместе с GOOGLE_CLIENT_ID" },
 };
 
-function SecretRow({ k, status }: { k: string; status: { configured: boolean; source: string } }) {
+const BRAIN_LABELS: Record<string, { label: string; hint: string }> = {
+  anthropic_api_key: { label: "Anthropic (Claude)", hint: "Не нужен, если мозг — OpenAI" },
+  openai_api_key: { label: "OpenAI (мозг)", hint: "GPT — основная модель (JARVIS_LLM_PROVIDER=openai). Обязательно." },
+};
+
+function SecretRow({ k, status, brainKey }: { k: string; status: { configured: boolean; source: string }; brainKey?: string }) {
   const qc = useQueryClient();
   const [value, setValue] = useState("");
   const [editing, setEditing] = useState(false);
@@ -36,7 +41,7 @@ function SecretRow({ k, status }: { k: string; status: { configured: boolean; so
       qc.invalidateQueries({ queryKey: ["integrations"] });
     },
   });
-  const meta = SECRET_LABELS[k] ?? { label: k, hint: "" };
+  const meta = (k === brainKey ? BRAIN_LABELS[k] : undefined) ?? SECRET_LABELS[k] ?? { label: k, hint: "" };
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -212,7 +217,9 @@ export function SettingsPage() {
         <div className="space-y-6">
           <Card title="Ключи API" subtitle="Хранятся зашифрованными (Fernet). Значения из .env имеют приоритет. Изменение требует повторного входа.">
             <ul className="divide-y divide-line">
-              {Object.entries(settings.data?.secrets ?? {}).map(([k, v]) => <SecretRow key={k} k={k} status={v} />)}
+              {Object.entries(settings.data?.secrets ?? {})
+                .sort(([a], [b]) => Number(b === sys.data?.brain.key_name) - Number(a === sys.data?.brain.key_name))
+                .map(([k, v]) => <SecretRow key={k} k={k} status={v} brainKey={sys.data?.brain.key_name} />)}
             </ul>
           </Card>
           <Card title="Безопасность">

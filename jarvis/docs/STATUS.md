@@ -20,6 +20,7 @@
 | Суб-агенты (research / browser / coding / planner) | Implemented | |
 | Роутер моделей, фолбэки, дневной бюджет, учёт стоимости | Implemented | |
 | Claude Opus 5 / Sonnet 5 / Haiku 4.5 | Requires credentials | `ANTHROPIC_API_KEY` |
+| OpenAI GPT-5.6 Terra / Luna вместо Claude (`JARVIS_LLM_PROVIDER=openai`) | Implemented, Requires credentials | `OPENAI_API_KEY`; проверено против эмулятора OpenAI API, с настоящим ключом не запускалось |
 | Локальная модель (Ollama/vLLM) как резерв | Implemented, Requires external account* | *нужна машина с моделью; профиль `local-ai` |
 | DemoBrain (работа без ключа) | Implemented, Configured | `JARVIS_FAKE_LLM=true`; только для проверки конвейера |
 | Личность и идентичность (`config/identity/*.md`) | Implemented, Configured | |

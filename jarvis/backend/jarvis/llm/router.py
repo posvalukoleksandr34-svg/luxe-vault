@@ -7,6 +7,9 @@
     fast    — memory extraction, titles, reconciliation, classifiers   claude-haiku-4-5
     local   — optional private model on an OpenAI-compatible server    (Ollama / vLLM)
 
+With JARVIS_LLM_PROVIDER=openai the same route names are served by OpenAI GPT models instead
+(OPENAI_ROUTES, overridable in config/models.yaml -> openai_routes); Anthropic is not called at all.
+
 Every call is metered (tokens, cost, latency) and checked against the daily budget.
 A route may name a `fallback_route` used when its provider is down or unconfigured.
 """
@@ -41,6 +44,18 @@ DEFAULT_ROUTES: dict[str, dict[str, Any]] = {
               "server_tools": False},
 }
 
+# The same roles on OpenAI. GPT-5.6 Terra is the balanced tier; Luna the fast, cheap one.
+# `effort` becomes OpenAI's reasoning_effort (none | low | medium | high | xhigh | max).
+_OPENAI = {"provider": "openai", "thinking": "none", "server_tools": False, "eager_tool_streaming": False}
+OPENAI_ROUTES: dict[str, dict[str, Any]] = {
+    "main": {**_OPENAI, "model": "gpt-5.6-terra", "effort": "medium", "max_tokens": 32000, "fallback_route": "local"},
+    "deep": {**_OPENAI, "model": "gpt-5.6-terra", "effort": "high", "max_tokens": 64000},
+    "voice": {**_OPENAI, "model": "gpt-5.6-terra", "effort": "low", "max_tokens": 8000},
+    "worker": {**_OPENAI, "model": "gpt-5.6-luna", "effort": "medium", "max_tokens": 32000},
+    "fast": {**_OPENAI, "model": "gpt-5.6-luna", "effort": "low", "max_tokens": 4096},
+    "local": DEFAULT_ROUTES["local"],
+}
+
 
 @dataclass
 class CallRecord:
@@ -62,11 +77,15 @@ Recorder = Callable[[CallRecord], Awaitable[None]]
 SpendLookup = Callable[[], Awaitable[float]]
 
 
-def load_routes(path: Path | None) -> tuple[dict[str, RouteConfig], dict[str, dict[str, float]], dict[str, str]]:
+def load_routes(path: Path | None, provider: str = "anthropic",
+                ) -> tuple[dict[str, RouteConfig], dict[str, dict[str, float]], dict[str, str]]:
     raw: dict[str, Any] = {}
     if path and path.exists():
         raw = yaml.safe_load(path.read_text()) or {}
-    routes_raw = {**DEFAULT_ROUTES, **(raw.get("routes") or {})}
+    if provider == "openai":
+        routes_raw = {**OPENAI_ROUTES, **(raw.get("openai_routes") or {})}
+    else:
+        routes_raw = {**DEFAULT_ROUTES, **(raw.get("routes") or {})}
     allowed = {f.name for f in fields(RouteConfig)}
     routes: dict[str, RouteConfig] = {}
     fallbacks: dict[str, str] = {}

@@ -74,7 +74,7 @@ async def tools(p: Principal = Depends(current), app: AppContext = Depends(get_a
                     "input_schema": spec.input_schema()})
     mcp_status = await app.secrets.get_setting("mcp_status", {})
     return {"tools": out, "availability": availability, "mcp": mcp_status,
-            "server_tools": app.settings.search_provider == "anthropic"}
+            "server_tools": app.settings.search_provider == "anthropic" and app.settings.llm_provider == "anthropic"}
 
 
 @router.get("/permissions")

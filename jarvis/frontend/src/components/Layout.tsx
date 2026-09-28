@@ -335,8 +335,9 @@ export function Layout() {
         </header>
         {sys && !sys.brain.configured && (
           <div className="border-b border-warn/25 bg-warn/[0.07] px-5 py-2 text-xs text-warn">
-            Мозг не подключён: добавьте ключ Anthropic в{" "}
-            <NavLink to="/settings" className="underline">Настройки → Ключи API</NavLink> или переменную ANTHROPIC_API_KEY.
+            Мозг не подключён: добавьте ключ {sys.brain.provider === "openai" ? "OpenAI" : "Anthropic"} в{" "}
+            <NavLink to="/settings" className="underline">Настройки → Ключи API</NavLink> или переменную{" "}
+            {sys.brain.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"}.
           </div>
         )}
         {sys?.brain.demo_mode && (

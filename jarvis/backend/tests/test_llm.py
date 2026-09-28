@@ -136,3 +136,73 @@ def test_demo_time_parser_removes_whole_phrase():
     assert when == datetime(2026, 9, 27, 14, 0) and "hours" not in rest
     when, _ = parse_when("завтра в 10 купить молоко", now)
     assert when == datetime(2026, 9, 28, 10, 0)
+
+
+async def test_openai_brain_speaks_openai_dialect():
+    """JARVIS_LLM_PROVIDER=openai: key from the secret store, max_completion_tokens, reasoning_effort."""
+    seen = {}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        seen["url"], seen["auth"], seen["body"] = str(r.url), r.headers.get("authorization"), json.loads(r.content)
+        chunks = [
+            {"choices": [{"delta": {"content": "Привет"}}]},
+            {"choices": [{"delta": {}, "finish_reason": "stop"}]},
+            {"choices": [], "usage": {"prompt_tokens": 100, "completion_tokens": 5,
+                                      "prompt_tokens_details": {"cached_tokens": 60}}},
+        ]
+        body = "".join(f"data: {json.dumps(c)}\n\n" for c in chunks) + "data: [DONE]\n"
+        return httpx.Response(200, text=body)
+
+    async def key():
+        return "sk-test"
+
+    p = OpenAICompatProvider("https://api.openai.com/v1", key, httpx.MockTransport(handler), label="OpenAI",
+                             require_key=True, openai_params=True)
+    route = RouteConfig(name="main", provider="openai", model="gpt-5.6-terra", effort="medium", max_tokens=32000)
+    resp = await p.generate(route, LLMRequest(system=[{"type": "text", "text": "sys"}],
+                                              messages=[{"role": "user", "content": "hi"}]))
+    assert seen["url"] == "https://api.openai.com/v1/chat/completions" and seen["auth"] == "Bearer sk-test"
+    body = seen["body"]
+    assert body["model"] == "gpt-5.6-terra" and body["max_completion_tokens"] == 32000 and "max_tokens" not in body
+    assert body["reasoning_effort"] == "medium"
+    assert resp.text == "Привет" and resp.usage.input_tokens == 40 and resp.usage.cache_read_tokens == 60
+
+
+async def test_openai_brain_without_key_is_not_configured():
+    p = OpenAICompatProvider("https://api.openai.com/v1", lambda: None, label="OpenAI", require_key=True,
+                             openai_params=True)
+    with pytest.raises(LLMNotConfigured, match="OpenAI"):
+        await p.generate(RouteConfig(name="main", provider="openai", model="gpt-5.6-terra"),
+                         LLMRequest(system=[], messages=[{"role": "user", "content": "x"}]))
+
+
+def test_openai_route_preset_replaces_claude(tmp_path):
+    from pathlib import Path
+
+    cfg = Path(__file__).resolve().parents[2] / "config" / "models.yaml"
+    routes, pricing, fallbacks = load_routes(cfg, "openai")
+    brain = {n: r for n, r in routes.items() if n != "local"}
+    assert {r.provider for r in brain.values()} == {"openai"}
+    assert routes["main"].model == "gpt-5.6-terra" and routes["fast"].model == "gpt-5.6-luna"
+    assert all(not r.server_tools for r in brain.values()) and fallbacks.get("main") == "local"
+    assert "gpt-5.6-terra" in pricing
+    custom = tmp_path / "models.yaml"
+    custom.write_text("openai_routes:\n  main: {provider: openai, model: gpt-5.6-sol, effort: high}\n")
+    assert load_routes(custom, "openai")[0]["main"].model == "gpt-5.6-sol"
+    assert load_routes(cfg, "anthropic")[0]["main"].provider == "anthropic"  # default unchanged
+
+
+def test_llm_provider_setting_accepts_default_llm_provider(monkeypatch):
+    from jarvis.settings import Settings
+
+    monkeypatch.setenv("DEFAULT_LLM_PROVIDER", "OpenAI")
+    assert Settings().llm_provider == "openai"
+    monkeypatch.setenv("JARVIS_LLM_PROVIDER", "anthropic")
+    assert Settings().llm_provider == "anthropic"  # the JARVIS_ name wins
+
+
+def test_image_attachments_become_openai_image_parts():
+    msgs = to_openai_messages([], [{"role": "user", "content": [
+        {"type": "text", "text": "что на фото?"},
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "AAAA"}}]}])
+    assert msgs[0]["content"][1] == {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}

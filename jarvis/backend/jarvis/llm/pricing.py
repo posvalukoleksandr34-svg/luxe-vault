@@ -14,6 +14,10 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "claude-fable-5-1": {"input": 10.0, "output": 50.0},
     "claude-sonnet-5": {"input": 2.0, "output": 10.0},
     "claude-haiku-4-5": {"input": 1.0, "output": 5.0},
+    # OpenAI does not charge for cache writes; cached reads are 10% of input.
+    "gpt-5.6-terra": {"input": 2.0, "output": 12.0, "cache_write": 2.0},
+    "gpt-5.6-luna": {"input": 1.0, "output": 6.0, "cache_write": 1.0},
+    "gpt-5.6-sol": {"input": 5.0, "output": 30.0, "cache_write": 5.0},
 }
 
 

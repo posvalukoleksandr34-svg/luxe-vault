@@ -77,11 +77,12 @@ async def system_status(p: Principal = Depends(current), app: AppContext = Depen
             raw = await app.redis.get(key)
             if raw:
                 workers.append(json.loads(raw))
-    brain = await app.secrets.get("anthropic_api_key")
+    brain = await app.secrets.get(app.brain_key_name)
     main = app.router.route("main")
     return {
         "version": jarvis.__version__, "env": app.settings.env,
         "brain": {"configured": bool(brain) or app.settings.fake_llm, "demo_mode": app.settings.fake_llm,
+                  "provider": app.settings.llm_provider, "key_name": app.brain_key_name,
                   "main_model": main.model, "routes": {n: {"provider": r.provider, "model": r.model, "effort": r.effort}
                                                        for n, r in app.router.routes.items()}},
         "workers": workers, "embedded_worker": app.settings.embedded_worker,

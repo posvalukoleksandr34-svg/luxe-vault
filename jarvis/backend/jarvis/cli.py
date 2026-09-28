@@ -144,8 +144,11 @@ async def _doctor() -> int:
         if app.redis is not None:
             await app.redis.ping()
             print("✓ redis reachable")
-        key = await app.secrets.get("anthropic_api_key")
-        print("✓ Anthropic key configured" if key else "✗ Anthropic key missing (Settings → API keys or ANTHROPIC_API_KEY)")
+        brand = "OpenAI" if s.llm_provider == "openai" else "Anthropic"
+        env_name = "OPENAI_API_KEY" if s.llm_provider == "openai" else "ANTHROPIC_API_KEY"
+        key = await app.secrets.get(app.brain_key_name)
+        print(f"✓ brain: {brand}, key configured" if key
+              else f"✗ brain: {brand}, key missing (Settings → API keys or {env_name})")
         problems += 0 if key or s.fake_llm else 1
         print(f"• embeddings: {app.embedder.model} ({'on' if app.embedder.enabled else 'off'})")
         print(f"• skills: {', '.join(sorted(app.skills.skills))}")
