@@ -47,6 +47,8 @@ support reports). They run automatically when the api starts; back up first (`sc
 - OAuth `state` is shared by all OAuth integrations and bound to the integration it was issued for.
 
 ### Fixed
+- Memory: an empty `HF_ENDPOINT=` line in `.env` broke the local embedding model download ("Request URL is
+  missing an 'http://' or 'https://' protocol"); empty now means the default huggingface.co.
 - OpenAI brain: `gpt-5.6-terra` rejects `reasoning_effort` together with function tools on `/v1/chat/completions`
   (HTTP 400 "Function tools with reasoning_effort are not supported"). JARVIS now retries once with
   `reasoning_effort: none` and remembers it for that model; requests without tools keep their reasoning effort.

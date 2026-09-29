@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import math
+import os
 import re
 import time
 from pathlib import Path
@@ -18,6 +19,12 @@ from pathlib import Path
 import httpx
 
 from jarvis.core.logging import log
+
+# `HF_ENDPOINT=` left empty in .env reaches the container as "" and huggingface_hub (read once, when fastembed
+# imports it) then builds URLs without a scheme: "Request URL is missing an 'http://' or 'https://' protocol".
+# Empty means "not set" → the default https://huggingface.co.
+if not (os.environ.get("HF_ENDPOINT") or "").strip():
+    os.environ.pop("HF_ENDPOINT", None)
 
 
 class Embedder:
