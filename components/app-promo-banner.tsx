@@ -25,8 +25,10 @@ import { useStore } from '@/lib/store'
  * iOS's navigator.standalone, or the `appinstalled` event), so it never asks
  * someone to install what they are already using.
  *
- * Light on purpose: a warm beige panel against the storefront's black is the
- * one place on the page that reads as an advertisement rather than the shop.
+ * Colours: .app-promo in app/globals.css — cream into sand into a matte gold,
+ * the storefront's own palette, with near-black type. It was a gradient left
+ * over from the dark theme (near-black → white → near-black), which on the
+ * light storefront read as brushed steel and put dark text on dark ends.
  */
 
 type InstallPromptEvent = Event & {
@@ -87,7 +89,7 @@ export function AppPromoBanner() {
         QRCode.toDataURL(window.location.origin, {
           margin: 1,
           width: 240,
-          color: { dark: '#0c0b09', light: '#00000000' },
+          color: { dark: '#2a2118', light: '#00000000' },
         }),
       )
       .then((url) => {
@@ -126,33 +128,22 @@ export function AppPromoBanner() {
   return (
     <section id="app" aria-labelledby="app-promo-title" className="scroll-mt-20 border-t border-border px-4 py-14 sm:px-6 lg:px-10">
       <Reveal>
-        {/* The panel is the page's own warm near-black (--background, hsl(36
-            8% 7%)) lifted a few points to --card and back down — a shade that
-            separates it from the page without becoming a black box. Built from
-            the tokens rather than hex, so it tracks the theme; deliberately
-            never #000000, which is colder than anything else on the page. */}
-        <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,hsl(36_8%_11%)_0%,hsl(var(--card))_45%,hsl(36_8%_8.5%)_100%)] px-6 py-10 text-foreground sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
-          {/* A single gold pool behind the artwork, and a hairline along the
-              top edge — the same two devices the rest of the storefront uses
-              to lift a dark panel off a dark page. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -right-32 -top-32 size-80 bg-[radial-gradient(circle,hsl(var(--gold)/0.14),transparent_70%)]"
-          />
+        <div className="app-promo relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden rounded-xl px-6 py-10 sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
+          {/* A gold hairline along the top edge, as on the storefront's other panels. */}
           <span
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent"
           />
 
           <div className="relative max-w-xl">
-            <p className="text-[10px] uppercase tracking-[0.34em] text-gold">LUXE VAULT</p>
+            <p className="app-promo__eyebrow text-[10px] uppercase tracking-[0.34em]">LUXE VAULT</p>
             <h2
               id="app-promo-title"
-              className="mt-4 font-sans text-2xl font-bold uppercase leading-tight tracking-[0.08em] text-foreground sm:text-3xl"
+              className="mt-4 font-sans text-2xl font-bold uppercase leading-tight tracking-[0.08em] text-[#1c1c1c] sm:text-3xl"
             >
               {t('app.promoTitle')}
             </h2>
-            <p className="mt-4 max-w-md text-[13px] font-light leading-relaxed text-muted-foreground">
+            <p className="app-promo__text mt-4 max-w-md text-[13px] font-light leading-relaxed">
               {t('app.promoSubtitle')}
             </p>
           </div>
@@ -172,14 +163,14 @@ export function AppPromoBanner() {
                   <Smartphone aria-hidden strokeWidth={1.5} className="size-4" />
                   {t('app.install')}
                 </button>
-                <p className="text-[11px] font-light text-muted-foreground/90">{t('app.installHint')}</p>
+                <p className="app-promo__text text-[11px] font-light">{t('app.installHint')}</p>
               </>
             )}
 
             {mode === 'ios' && (
-              <div className="rounded-xl border border-gold/25 bg-foreground/[0.04] px-5 py-4">
+              <div className="rounded-xl border border-gold/30 bg-white/55 px-5 py-4">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-gold">{t('app.install')}</p>
-                <p className="mt-2 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground">
+                <p className="app-promo__text mt-2 max-w-xs text-[12px] font-light leading-relaxed">
                   {t('app.iosHint')}
                 </p>
               </div>
@@ -187,11 +178,11 @@ export function AppPromoBanner() {
 
             {mode === 'qr' && (
               <div className="flex items-center gap-4">
-                {/* An inlaid ivory tile. The code itself stays dark-on-light:
-                    that is what every phone camera is built to read, and an
-                    inverted one is a coin flip on older scanners. The gold
-                    hairline is what ties it to the panel. */}
-                <div className="flex size-[104px] items-center justify-center rounded-xl border border-gold/30 bg-[#F2EDE3] p-2 shadow-[0_0_24px_-12px_hsl(var(--gold)/0.6)]">
+                {/* A pale ivory tile set into the panel with a gold hairline.
+                    The code stays dark on light — what every phone camera is
+                    built to read — in a deep brown rather than black, so it
+                    belongs to the palette without losing contrast. */}
+                <div className="app-promo__qr flex size-[104px] items-center justify-center rounded-xl p-2">
                   {qr ? (
                     // eslint-disable-next-line @next/next/no-img-element -- a data: URI generated in the browser; the optimiser cannot serve it.
                     <img src={qr} alt={t('app.qrAlt')} width={88} height={88} className="size-full object-contain" />
@@ -199,7 +190,7 @@ export function AppPromoBanner() {
                     <Smartphone aria-hidden strokeWidth={1} className="size-7 text-[#8A7B5C]" />
                   )}
                 </div>
-                <p className="max-w-[12rem] text-[11px] font-light leading-relaxed text-muted-foreground/90">
+                <p className="app-promo__text max-w-[12rem] text-[11px] font-light leading-relaxed">
                   {t('app.qrHint')}
                 </p>
               </div>

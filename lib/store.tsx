@@ -802,6 +802,9 @@ function maybeSendWelcome() {
   const reloadWishlist = useCallback(() => setWishlistAttempt((n) => n + 1), [])
   /** The account last signed in here, so signing out can forget its cache. */
   const lastUserId = useRef<string | null>(null)
+  /** Counts the account toggles sent, so a load that started before one of
+   *  them knows its answer may be older than that tap (see below). */
+  const accountToggles = useRef(0)
 
   // A guest's list is ready as soon as it has been read — once it is known
   // that nobody is signed in (a session being restored would replace it).
@@ -857,9 +860,18 @@ function maybeSendWelcome() {
     let timer: ReturnType<typeof setTimeout> | undefined
     const attempt = async (n: number) => {
       const local = readWishlist()
+      const togglesAtStart = accountToggles.current
       let result: Awaited<ReturnType<typeof fetchWishlist>>
       try {
         result = local.length > 0 ? await mergeWishlist({ ids: local }) : await fetchWishlist()
+        // A heart tapped while this was in flight went straight to the
+        // account (toggleWishlist), and this answer may have been read before
+        // that write: showing it would un-fill the heart the customer just
+        // filled. Read the list again — it now includes the tap.
+        if (result.ok && accountToggles.current !== togglesAtStart) {
+          const fresh = await fetchWishlist()
+          if (fresh.ok) result = fresh
+        }
       } catch {
         // A server action that never answered (offline, a deploy mid-request).
         result = { ok: false, reason: 'failed' }
@@ -1282,11 +1294,18 @@ function maybeSendWelcome() {
           variant: saving ? 'gold' : 'default',
         })
 
-      if (wishlistOwner === 'guest') {
+      // Only a visitor who is not signed in keeps the list in this browser.
+      // A signed-in customer's tap goes to the account even while their list
+      // is still loading: written to the local list instead, it was replaced
+      // by the account's list a moment later — the heart un-filled itself
+      // right after the tap, and if the browser held earlier local items the
+      // tap was cleared along with them and lost for good.
+      if (!currentUserId) {
         setWishlist(toggleWishlistItem(productId))
         announce()
         return
       }
+      accountToggles.current += 1
 
       const previous = wishlist
       const optimistic =
@@ -1310,7 +1329,7 @@ function maybeSendWelcome() {
         pushToast({ title: t('toast.wishlistFailed'), variant: 'default' })
       })
     },
-    [wishlistOwner, wishlist, pushToast, t],
+    [currentUserId, wishlist, pushToast, t],
   )
 
   const setCategoryImage = useCallback(
