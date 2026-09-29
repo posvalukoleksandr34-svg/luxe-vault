@@ -39,6 +39,9 @@ FLAGS = {  # owner kill switches (default on)
     "public_api": "Публичный API v1",
     "signup": "Регистрация новых аккаунтов (если JARVIS_SIGNUP_MODE не closed)",
 }
+FEATURE_LABELS = {**FLAGS, "google": "Google (Gmail, Calendar, Drive)", "browser": "Серверный браузер",
+                  "sandbox": "Песочница для кода", "automations": "Автоматизации", "api": "Личный API",
+                  "public_api": "Публичный API v1"}
 LABELS = {
     "messages_month": "сообщений в месяц", "messages_per_minute": "сообщений в минуту",
     "llm_usd_month": "бюджет модели в месяц", "custom_commands": "своих команд",
@@ -50,7 +53,7 @@ class QuotaExceeded(ToolError):
     def __init__(self, metric: str, limit: float, plan: Plan, *, feature: bool = False):
         self.metric, self.limit, self.plan, self.feature = metric, limit, plan, feature
         if feature:
-            msg = f"Функция «{FLAGS.get(metric, metric)}» не входит в тариф {plan.title}."
+            msg = f"Функция «{FEATURE_LABELS.get(metric, metric)}» не входит в тариф {plan.title}."
         elif metric == "messages_per_minute":
             msg = "Слишком много сообщений подряд — подождите минуту."
         elif metric == "llm_usd_month":

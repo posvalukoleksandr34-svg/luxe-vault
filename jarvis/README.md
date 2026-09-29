@@ -48,6 +48,12 @@ docker compose logs api | grep SETUP    # одноразовый код, есл�
 | Документ | О чём |
 |---|---|
 | [docs/STATUS.md](docs/STATUS.md) | **Что реализовано, что требует ключей/аккаунтов, чего ещё нет** |
+| [CHANGELOG.md](CHANGELOG.md) | Что изменилось в каждой версии |
+| [desktop/README.md](desktop/README.md) | Управление компьютером: установка desktop-агента на ПК |
+| [docs/COMMANDS.md](docs/COMMANDS.md) | Свои команды («игровой режим» и т. п.) |
+| [docs/VOICE.md](docs/VOICE.md) | Голос, свой голос, режим без рук |
+| [docs/COMMERCIAL.md](docs/COMMERCIAL.md) | Аккаунты, тарифы и лимиты, оплата Stripe, админка, API v1 |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Если что-то не работает |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура, стек, агентное ядро, память, разрешения, задачи, каналы |
 | [docs/SETUP.md](docs/SETUP.md) | Установка на сервер, домен/HTTPS, профили, локальная разработка |
 | [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Anthropic, Google, Telegram, WhatsApp, голос, поиск, MCP, REST-коннекторы, спутник с wake word |

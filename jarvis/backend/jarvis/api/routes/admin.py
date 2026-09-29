@@ -125,6 +125,10 @@ async def patch_user(user_id: uuid.UUID, body: UserPatch, p: Principal = Depends
             raise HTTPException(404, "not found")
         if user.is_owner and body.plan is not None:
             raise HTTPException(400, "the owner always has the owner plan")
+    if body.plan is not None:  # first: it may be refused (paid Stripe plan) — then nothing else changes
+        await _set_plan(app, p, user_id, body.plan)
+    async with app.sessionmaker() as session:
+        user = await session.get(User, user_id)
         if body.disabled is not None:
             user.disabled_at = utcnow() if body.disabled else None
             if body.disabled:  # sign out everywhere now
@@ -135,8 +139,6 @@ async def patch_user(user_id: uuid.UUID, body: UserPatch, p: Principal = Depends
         await audit(session, action="admin.user_updated", actor="user", user_id=p.user_id, target=str(user_id),
                     data=body.model_dump(exclude_none=True))
         await session.commit()
-    if body.plan is not None:
-        await _set_plan(app, p, user_id, body.plan)
     app.billing.invalidate(user_id)
     return {"ok": True}
 

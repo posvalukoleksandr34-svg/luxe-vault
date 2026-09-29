@@ -33,12 +33,12 @@ export const usePublicConfig = () =>
   useQuery({ queryKey: ["public-config"], queryFn: () => get<PublicConfig>("/api/public/config"), staleTime: 60_000 });
 
 export const LIMIT_LABELS: Record<string, string> = {
-  messages_month: "сообщений в месяц",
-  messages_per_minute: "сообщений в минуту",
-  llm_usd_month: "бюджет модели, $/мес",
-  custom_commands: "своих команд",
-  automations: "автоматизаций",
-  devices: "компьютеров одновременно",
+  messages_month: "Сообщений в месяц",
+  messages_per_minute: "Сообщений в минуту",
+  llm_usd_month: "Бюджет модели, $/мес",
+  custom_commands: "Своих команд",
+  automations: "Автоматизаций",
+  devices: "Компьютеров одновременно",
 };
 
 export const FEATURE_LABELS: Record<string, string> = {
@@ -237,9 +237,12 @@ export function PlanCard({ plan, current, action }: { plan: PublicPlan; current?
         {plan.price_month ? <span className="text-xs font-normal text-muted"> / месяц</span> : null}
       </p>
       <ul className="mt-4 flex-1 space-y-1.5 text-xs">
-        {Object.entries(plan.limits).filter(([k]) => k !== "messages_per_minute").map(([k, v]) => (
-          <li key={k} className="flex gap-2"><Check className="size-3.5 shrink-0 text-ok" />{k === "llm_usd_month" ? `до $${v} на модель в месяц` : `${v} ${LIMIT_LABELS[k] ?? k}`}</li>
-        ))}
+        {Object.entries(plan.limits)
+          // a device limit means nothing on a plan without computer control — never advertise it there
+          .filter(([k]) => k !== "messages_per_minute" && (k !== "devices" || plan.features.includes("computer")))
+          .map(([k, v]) => (
+            <li key={k} className="flex gap-2"><Check className="size-3.5 shrink-0 text-ok" />{k === "llm_usd_month" ? `до $${v} на модель в месяц` : `${LIMIT_LABELS[k] ?? k}: ${v}`}</li>
+          ))}
         {plan.features.map((f) => (
           <li key={f} className="flex gap-2"><Check className="size-3.5 shrink-0 text-ok" />{FEATURE_LABELS[f] ?? f}</li>
         ))}
