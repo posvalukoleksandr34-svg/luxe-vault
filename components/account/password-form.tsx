@@ -17,7 +17,7 @@ import { loadSupabase } from '@/lib/supabase/lazy'
  * the base `pr-11` and let a long password run 4px under the 44px eye button.
  */
 const FIELD =
-  'h-11 w-full border border-border bg-background px-3.5 py-2.5 pr-11 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]'
+  'h-11 w-full rounded-xl border border-border bg-card px-3.5 py-2.5 pr-11 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]'
 
 /**
  * Change password.
@@ -123,7 +123,7 @@ export function PasswordForm({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={change}
           disabled={saving || password.length === 0}
-          className="flex w-full items-center justify-center gap-2 border border-gold/40 bg-gold/5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-40 shadow-gold"
         >
           {saving && <Loader2 className="size-3.5 animate-spin" />}
           {t('account.changePassword')}

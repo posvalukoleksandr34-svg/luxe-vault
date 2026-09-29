@@ -24,7 +24,7 @@ function FooterSupportLink() {
     <button
       type="button"
       onClick={() => openSupport()}
-      className="tap-safe flex items-center gap-2 text-left text-[12px] font-light text-gold/80 transition hover:text-gold"
+      className="tap-safe flex items-center gap-2 text-left text-[12px] font-light text-gold transition hover:text-gold"
     >
       <LifeBuoy className="size-3.5 shrink-0" />
       {t('support.footerLink')}
@@ -65,7 +65,7 @@ export function Footer() {
                 VAULT
               </span>
             </div>
-            <p className="mt-4 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/60">
+            <p className="mt-4 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/85">
               {t('footer.tagline')}
             </p>
           </div>
@@ -76,17 +76,17 @@ export function Footer() {
             </h3>
             <ul className="space-y-2.5">
               <li>
-                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
                   {t('footer.new')}
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollTo('collections')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('collections')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
                   {t('nav.collections')}
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground">
+                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
                   {t('footer.sale')}
                 </button>
               </li>
@@ -100,10 +100,10 @@ export function Footer() {
             </h3>
             <Accordion type="single" collapsible className="-mt-1 w-full">
               <AccordionItem value="delivery" className="border-border/40">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
                   {t('footer.delivery')}
                 </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
+                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
                   {tf('help.delivery.content', {
                     // The admin's figures (store_settings, /admin/settings).
                     span: describeBusinessDays(shipping.deliveryTimeframe, locale),
@@ -114,19 +114,19 @@ export function Footer() {
               </AccordionItem>
 
               <AccordionItem value="returns" className="border-border/40">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
                   {t('footer.returns')}
                 </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
+                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
                   {t('help.returns.content')}
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="reviews" className="border-border/40 last:border-0">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/80 hover:text-foreground hover:no-underline">
+                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
                   {t('footer.reviews')}
                 </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/60">
+                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
                   {t('help.reviews.content')}
                 </AccordionContent>
               </AccordionItem>
@@ -143,7 +143,7 @@ export function Footer() {
                   href={`https://t.me/${TELEGRAM_ADMIN.replace('@', '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/85 transition hover:text-gold"
                 >
                   <Send className="size-3.5 shrink-0" />
                   {TELEGRAM_ADMIN}
@@ -152,7 +152,7 @@ export function Footer() {
               <li>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/60 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/85 transition hover:text-gold"
                 >
                   <Mail className="size-3.5 shrink-0" />
                   {SUPPORT_EMAIL}
@@ -164,7 +164,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/contact"
-                  className="tap-safe text-[12px] font-light text-muted-foreground/60 transition hover:text-foreground"
+                  className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground"
                 >
                   {t('footer.contactPage')}
                 </Link>
@@ -178,13 +178,13 @@ export function Footer() {
               and app stores check for them, and GDPR requires the privacy
               notice to be reachable from anywhere. */}
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <Link href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <Link href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
               {t('footer.terms')}
             </Link>
-            <Link href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <Link href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
               {t('footer.privacy')}
             </Link>
-            <Link href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold">
+            <Link href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
               {t('footer.refunds')}
             </Link>
             {/* Consent must be withdrawable as easily as it was given, which
@@ -192,14 +192,14 @@ export function Footer() {
             <button
               type="button"
               onClick={openCookieSettings}
-              className="tap-safe text-[11px] font-light text-muted-foreground/50 transition hover:text-gold"
+              className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold"
             >
               {t('cookies.settings')}
             </button>
             <SoundToggle />
             <MotionToggle />
           </nav>
-          <p className="text-[11px] font-light text-muted-foreground/40">
+          <p className="text-[11px] font-light text-muted-foreground/85">
             {t('footer.rights')}
           </p>
         </div>

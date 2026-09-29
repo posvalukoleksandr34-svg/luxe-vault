@@ -83,12 +83,12 @@ export function ShareDialog({
             value={url}
             aria-label={t('share.link')}
             onFocus={(e) => e.currentTarget.select()}
-            className="h-11 min-w-0 flex-1 border border-border bg-background px-3.5 text-base leading-normal text-muted-foreground outline-none transition focus:border-gold/60 md:h-10 md:px-3 md:text-[13px]"
+            className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3.5 text-base leading-normal text-muted-foreground outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15 md:h-10 md:px-3 md:text-[13px]"
           />
           <button
             type="button"
             onClick={() => void copy()}
-            className="flex h-11 shrink-0 items-center gap-2 border border-gold/40 bg-gold/5 px-4 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground md:h-10"
+            className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-transparent bg-gold-gradient px-4 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] md:h-10 shadow-gold"
           >
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             {copied ? t('share.copied') : t('share.copy')}
@@ -127,7 +127,7 @@ function Network({
       // noreferrer as well as noopener: the network does not need to be told
       // which capsule page the link was sent from.
       rel="noopener noreferrer"
-      className="flex min-h-[64px] flex-col items-center justify-center gap-1.5 border border-border/60 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-gold"
+      className="flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-gold"
     >
       {children}
       {label}

@@ -30,12 +30,23 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'gold-gradient': 'linear-gradient(135deg, hsl(43 80% 60%) 0%, hsl(38 90% 50%) 100%)',
+        'gold-gradient': 'linear-gradient(135deg, hsl(var(--gold-light)) 0%, hsl(var(--gold)) 52%, hsl(var(--gold-dark)) 100%)',
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      // Gold TEXT is the deep ink, gold fills and borders the bright gold —
+      // see the two-golds note on :root in app/globals.css. textColor wins
+      // over colors for text-* utilities only.
+      textColor: {
+        gold: {
+          DEFAULT: 'hsl(var(--gold-ink))',
+          foreground: 'hsl(var(--gold-foreground))',
+          light: 'hsl(var(--gold-ink))',
+          dark: 'hsl(var(--gold-ink))',
+        },
       },
       colors: {
         background: 'hsl(var(--background))',

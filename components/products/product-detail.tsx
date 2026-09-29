@@ -73,7 +73,7 @@ const MAIN_PHOTO_QUALITY = 90
  * there is no hover (touch screens) and on keyboard focus.
  */
 const GALLERY_ARROW =
-  'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:size-11 [@media(hover:none)]:opacity-100'
+  'no-juice absolute top-1/2 z-20 flex size-9 -translate-y-1/2 items-center justify-center rounded-xl border border-border/60 bg-background/60 text-foreground opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-background/90 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:size-11 [@media(hover:none)]:opacity-100'
 
 /**
  * Product detail, driven by a `product` prop rather than by store state.
@@ -417,10 +417,10 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
-      {/* Gallery — full-bleed on a phone (the negative margin cancels the
-          page's gutter), padded again from md up where the layout is two
-          columns and an edge-to-edge photo would fight the text beside it. */}
-      <div className="-mx-4 sm:-mx-6 md:mx-0">
+      {/* Gallery — inside the page's gutter at every width: with rounded
+          corners, a full-bleed photo would round off against the screen
+          edge. */}
+      <div>
         <div
           className="card-gold group relative aspect-[3/4] overflow-hidden"
           onTouchStart={handleTouchStart}
@@ -493,7 +493,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 type="button"
                 onClick={() => goToIndex(i)}
                 className={cn(
-                  'no-juice relative size-16 shrink-0 overflow-hidden border transition-all duration-300',
+                  'no-juice relative size-16 shrink-0 overflow-hidden rounded-xl border transition-all duration-300',
                   i === selectedIndex
                     ? 'border-gold opacity-100'
                     : 'border-transparent opacity-50 hover:opacity-90',
@@ -518,7 +518,7 @@ export function ProductDetail({ product }: { product: Product }) {
           it simply scrolls with the page, so nothing can end up hidden. The
           phone layout is a single column and never sticky. */}
       <div className="flex flex-col lg:sticky lg:top-24 lg:self-start">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-gold/70">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-gold">
           {localize(categoryLabels[p.category] ?? {})}
         </p>
         {/* h1, not h2: on a dedicated page the product name is the document's
@@ -536,7 +536,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <span className="text-xl font-light text-foreground">{formatPrice(p.price)}</span>
           {discountPercent(p.price, p.oldPrice) > 0 && (
             <>
-              <span className="text-base font-light text-muted-foreground/50 line-through">
+              <span className="text-base font-light text-muted-foreground/85 line-through">
                 {formatPrice(p.oldPrice as number)}
               </span>
               <DiscountBadge price={p.price} oldPrice={p.oldPrice} className="px-2 py-1 text-[11px]" />
@@ -548,14 +548,14 @@ export function ProductDetail({ product }: { product: Product }) {
             as a label with nothing after it. The SKU moved to the foot of the
             panel, beside Share, as the article number. */}
         {p.brand && (
-          <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+          <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85">
             {t('product.brand')}: <span className="text-foreground/80">{p.brand}</span>
           </p>
         )}
 
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5">
           {outOfStock && (
-            <span className="inline-flex items-center gap-1.5 border border-border/60 px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               {sizeSoldOut && sizeStatus ? sizeStatus : t('sold.out')}
             </span>
           )}
@@ -563,8 +563,8 @@ export function ProductDetail({ product }: { product: Product }) {
             // "In stock" beside a sold-out size or colour would contradict it.
             .filter((s) => s !== 'out_of_stock' && !(s === 'in_stock' && outOfStock))
             .map((s) => (
-              <span key={s} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
-                <ShieldCheck className="size-3 text-gold/60" />
+              <span key={s} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/85">
+                <ShieldCheck className="size-3 text-gold" />
                 {/* "In stock", said of the chosen size once there is one. */}
                 {s === 'in_stock' && sizeStatus ? sizeStatus : localize(STATUS_LABELS[s])}
               </span>
@@ -579,7 +579,7 @@ export function ProductDetail({ product }: { product: Product }) {
         {/* Omitted when the product has no description yet, rather than
             leaving an empty gap in the panel. */}
         {localize(p.description).trim() && (
-          <p className="mt-6 whitespace-pre-line text-[14px] font-light leading-[1.75] text-[#D9D4CA]">
+          <p className="mt-6 whitespace-pre-line text-[14px] font-light leading-[1.75] text-foreground/80">
             {localize(p.description)}
           </p>
         )}
@@ -668,7 +668,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 <button
                   type="button"
                   onClick={() => setShowGuide((v) => !v)}
-                  className="tap-safe flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
+                  className="tap-safe flex items-center gap-1 text-[11px] text-gold transition hover:text-gold"
                 >
                   <Ruler className="size-3" />
                   {t('product.sizeGuide')}
@@ -693,12 +693,12 @@ export function ProductDetail({ product }: { product: Product }) {
                   aria-label={soldOut ? `${s} — ${t('sold.out')}` : s}
                   title={soldOut ? `${s} — ${t('sold.out')}` : undefined}
                   className={cn(
-                    'tap-safe min-w-11 border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
+                    'tap-safe min-w-11 rounded-xl border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
                     size === s
                       ? 'border-gold bg-gold/5 text-gold'
                       : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
                     soldOut &&
-                      'cursor-not-allowed border-border/40 text-muted-foreground/40 line-through hover:border-border/40 hover:text-muted-foreground/40',
+                      'cursor-not-allowed border-border/40 text-muted-foreground/85 line-through hover:border-border/40 hover:text-muted-foreground/85',
                   )}
                 >
                   {s}
@@ -706,10 +706,10 @@ export function ProductDetail({ product }: { product: Product }) {
               )
             })}
           </div>
-          {!size && <p className="mt-2 text-[11px] text-destructive/80">{t('product.selectSize')}</p>}
+          {!size && <p className="mt-2 text-[11px] text-destructive">{t('product.selectSize')}</p>}
           {/* Only when tracked AND actually low — a permanent counter on a
               well-stocked item is noise and manufactured urgency. */}
-          {lowStockText && hurryCount === null && <p className="mt-2 text-[11px] text-gold/80">{lowStockText}</p>}
+          {lowStockText && hurryCount === null && <p className="mt-2 text-[11px] text-gold">{lowStockText}</p>}
           {/* Sold-out sizes cannot be selected, so the waitlist for them is a
               quiet link here — it opens the dialog on just those sizes. (A
               chosen variant at zero gets the inline form instead, below.) */}
@@ -725,7 +725,7 @@ export function ProductDetail({ product }: { product: Product }) {
         </div>
 
         {showGuide && (
-          <div className="animate-fade-in mt-4 overflow-x-auto border border-border/60">
+          <div className="animate-fade-in mt-4 overflow-x-auto rounded-xl border border-border/60">
             <table className="w-full text-left text-[12px]">
               <thead className="bg-accent/50 text-foreground">
                 <tr>
@@ -762,7 +762,7 @@ export function ProductDetail({ product }: { product: Product }) {
         )}
 
         <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2', hurryCount !== null ? 'mt-4' : 'mt-8')}>
-          <div className="flex items-center border border-border">
+          <div className="flex items-center rounded-xl border border-border">
             <button
               type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -786,7 +786,7 @@ export function ProductDetail({ product }: { product: Product }) {
             </button>
           </div>
           {limitNote && (
-            <p className="text-[11px] font-light leading-snug text-gold/80" role="status">
+            <p className="text-[11px] font-light leading-snug text-gold" role="status">
               {limitNote}
               {inCart > 0 && (
                 <span className="text-muted-foreground"> · {tf('stock.inCart', { n: inCart })}</span>
@@ -808,7 +808,7 @@ export function ProductDetail({ product }: { product: Product }) {
               type="button"
               onClick={handleAdd}
               disabled={!size || unavailable || maxedOut}
-              className="w-full border border-gold/30 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+              className="rounded-xl w-full border border-transparent bg-gold-gradient py-4 text-[13px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
             >
               {unavailable
                 ? t('sold.out')
@@ -826,7 +826,7 @@ export function ProductDetail({ product }: { product: Product }) {
             the other sizes are right there. */}
         {outOfStock &&
           ((colorSoldOut && otherColor) || !(tracked && size && color && selectedStock === 0)) && (
-          <div className="mt-3 border border-border/60 px-4 py-3.5">
+          <div className="mt-3 rounded-xl border border-border/60 px-4 py-3.5">
             <p className="text-[11px] uppercase tracking-[0.15em] text-foreground">
               {t('state.unavailableTitle')}
             </p>
@@ -840,14 +840,14 @@ export function ProductDetail({ product }: { product: Product }) {
                   setColor(otherColor.name)
                   setSelectedIndex(0)
                 }}
-                className="tap-safe mt-2 text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold/80"
+                className="tap-safe mt-2 text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold"
               >
                 {t('state.chooseColor')}
               </button>
             ) : (
               <Link
                 href={`/category/${encodeURIComponent(p.group)}`}
-                className="tap-safe mt-2 inline-block text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold/80"
+                className="tap-safe mt-2 inline-block text-[11px] uppercase tracking-[0.15em] text-gold transition hover:text-gold"
               >
                 {t('state.viewSimilar')}
               </Link>
@@ -864,7 +864,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <AccordionItem value="shipping" className="border-border/40">
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
               <span className="flex items-center gap-3">
-                <Package className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                <Package className="size-4 shrink-0 text-gold" strokeWidth={1.5} />
                 {tf('product.freeShippingFrom', { amount: formatPrice(shipping.freeShippingThreshold) })}
               </span>
             </AccordionTrigger>
@@ -880,7 +880,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <AccordionItem value="delivery" className="border-border/40">
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
               <span className="flex items-center gap-3">
-                <CalendarDays className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                <CalendarDays className="size-4 shrink-0 text-gold" strokeWidth={1.5} />
                 {tf('product.deliveryEstimate', { span: deliverySpan })}
               </span>
             </AccordionTrigger>
@@ -892,13 +892,13 @@ export function ProductDetail({ product }: { product: Product }) {
           <AccordionItem value="returns" className="border-border/40">
             <AccordionTrigger className="py-3.5 text-left text-[12px] font-light tracking-wide text-foreground/85 hover:text-foreground hover:no-underline">
               <span className="flex items-center gap-3">
-                <RotateCcw className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+                <RotateCcw className="size-4 shrink-0 text-gold" strokeWidth={1.5} />
                 {tf('product.returnsWithin', { n: RETURN_DAYS })}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-4 pl-7 text-[12px] font-light leading-relaxed text-muted-foreground">
               {t('help.returns.content')}{' '}
-              <Link href="/legal/refunds" className="text-gold/80 underline-offset-4 hover:text-gold hover:underline">
+              <Link href="/legal/refunds" className="text-gold underline-offset-4 hover:text-gold hover:underline">
                 {t('product.returnsPolicy')} →
               </Link>
             </AccordionContent>
@@ -907,7 +907,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* Trust, in one quiet line — no payment logos. */}
         <div className="mt-5 flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} />
           <div>
             <p className="text-[11px] uppercase tracking-[0.15em] text-foreground/85">
               {t('product.securePurchase')}
@@ -922,7 +922,7 @@ export function ProductDetail({ product }: { product: Product }) {
             quoting it is far easier to answer), and Share. */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/40 pt-4">
           {sku ? (
-            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85">
               {t('product.article')}:{' '}
               <span className="font-mono normal-case tracking-normal text-foreground/80">{sku}</span>
             </p>
@@ -932,7 +932,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <button
             type="button"
             onClick={() => void share()}
-            className="tap-safe inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition-colors duration-300 hover:text-gold"
+            className="tap-safe inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition-colors duration-300 hover:text-gold"
           >
             <Share2 className="size-3.5" strokeWidth={1.5} />
             {t('product.share')}
@@ -976,7 +976,7 @@ export function ProductDetail({ product }: { product: Product }) {
             type="button"
             onClick={() => setZoomed(false)}
             aria-label={t('product.closeZoom')}
-            className="absolute right-4 top-4 flex size-10 items-center justify-center border border-border/60 bg-background/60 text-foreground transition hover:bg-background/90"
+            className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-xl border border-border/60 bg-background/60 text-foreground transition hover:bg-background/90"
           >
             <X className="size-4" />
           </button>
@@ -1015,7 +1015,7 @@ export function ProductDetail({ product }: { product: Product }) {
             onClick={handleAdd}
             disabled={!size || unavailable || maxedOut}
             tabIndex={showStickyBuy ? 0 : -1}
-            className="max-w-[55%] shrink-0 border border-gold/40 bg-gold/10 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+            className="max-w-[55%] shrink-0 rounded-xl border border-gold/40 bg-gold/10 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/85"
           >
             {unavailable
               ? t('sold.out')

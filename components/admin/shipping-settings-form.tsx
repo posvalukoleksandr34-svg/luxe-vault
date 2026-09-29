@@ -133,7 +133,7 @@ export function ShippingSettingsForm({
                 onChange={(e) => setThreshold(e.target.value)}
                 className={INPUT}
               />
-              <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+              <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/85">
                 По сумме товаров после скидки. 0 — доставка всегда бесплатна.
               </span>
             </label>
@@ -168,7 +168,7 @@ export function ShippingSettingsForm({
                 className={cn(INPUT, 'w-24')}
               />
             </div>
-            <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+            <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/85">
               Для товаров без собственного срока (его можно задать в карточке товара). Покупатели
               видят срок на своём языке.
             </span>
@@ -186,7 +186,7 @@ export function ShippingSettingsForm({
             {status && (
               <p
                 role={status.kind === 'error' ? 'alert' : 'status'}
-                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-400')}
+                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-700')}
               >
                 {status.text}
               </p>

@@ -56,7 +56,7 @@ export function Reviews() {
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         <Reveal className="mb-12 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold/70">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold">
               {t('reviews.subtitle')}
             </p>
             <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -66,7 +66,7 @@ export function Reviews() {
           <button
             type="button"
             onClick={() => setShowForm((v) => !v)}
-            className="tap-safe border border-gold/30 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="tap-safe rounded-xl border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
           >
             {t('reviews.writeReview')}
           </button>
@@ -120,7 +120,7 @@ function ReviewCard({ review, locale }: { review: Review; locale: string }) {
         <span className="text-[12px] font-medium uppercase tracking-[0.1em] text-foreground">
           {review.name}
         </span>
-        <span className="text-[11px] text-muted-foreground/50">
+        <span className="text-[11px] text-muted-foreground/85">
           {new Date(review.createdAt).toLocaleDateString(locale)}
         </span>
       </div>
@@ -150,7 +150,7 @@ function StarRating({
           <Star
             className={cn(
               'size-4 transition-colors',
-              n <= value ? 'fill-gold text-gold' : 'fill-transparent text-muted-foreground/40',
+              n <= value ? 'fill-gold text-gold' : 'fill-transparent text-muted-foreground/85',
             )}
           />
         </button>
@@ -193,7 +193,7 @@ function ReviewForm({ onSubmitted }: { onSubmitted: (review: Review) => void }) 
 
   if (done) {
     return (
-      <div className="border border-gold/30 bg-gold/5 p-6 text-center">
+      <div className="rounded-xl border border-gold/30 bg-gold/5 p-6 text-center">
         <p className="text-[13px] font-light text-gold">{t('reviews.submitted')}</p>
       </div>
     )
@@ -212,7 +212,7 @@ function ReviewForm({ onSubmitted }: { onSubmitted: (review: Review) => void }) 
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={60}
-            className="w-full border border-border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15"
           />
         </label>
         <div>
@@ -235,14 +235,14 @@ function ReviewForm({ onSubmitted }: { onSubmitted: (review: Review) => void }) 
           required
           rows={4}
           maxLength={800}
-          className="w-full resize-none border border-border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40"
+          className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15"
         />
       </label>
 
       <button
         type="submit"
         disabled={submitting || !name.trim() || !message.trim()}
-        className="mt-5 border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+        className="mt-5 rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
       >
         {t('reviews.submit')}
       </button>

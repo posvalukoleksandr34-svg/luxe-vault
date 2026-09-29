@@ -31,8 +31,8 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     // The storefront's black, so the splash screen and the status bar match
     // the site rather than flashing white.
-    background_color: '#000000',
-    theme_color: '#000000',
+    background_color: '#FAF8F5',
+    theme_color: '#FAF8F5',
     categories: ['shopping', 'lifestyle'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

@@ -92,7 +92,7 @@ export function SectionsGrid() {
             `1fr` each, so the row always fills the container exactly. Two
             columns at an intermediate width would strand the third card alone
             on its own row, which is why the jump is straight to three. */}
-        <div className="-mx-4 grid grid-cols-1 gap-px sm:-mx-6 md:mx-0 md:grid-cols-3 md:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
           {CORE_DEPARTMENTS.map((department, i) => {
             const section = VISUALS[department.slug]
             // A department with no card art of its own still renders, labelled

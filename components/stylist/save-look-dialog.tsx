@@ -51,27 +51,27 @@ export function SaveLookAuthDialog({
           <button
             type="button"
             onClick={() => onChoose('login')}
-            className="w-full border border-gold bg-gold px-5 py-3.5 text-[12px] uppercase tracking-[0.18em] text-gold-foreground transition-opacity duration-300 hover:opacity-90"
+            className="rounded-xl w-full border border-gold bg-gold-gradient px-5 py-3.5 text-[12px] uppercase tracking-[0.18em] text-gold-foreground transition-opacity duration-300 hover:opacity-90 shadow-gold"
           >
             {t('user.login')}
           </button>
           <button
             type="button"
             onClick={() => onChoose('register')}
-            className="w-full border border-gold/40 bg-gold/5 px-5 py-3.5 text-[12px] uppercase tracking-[0.18em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl w-full border border-transparent bg-gold-gradient px-5 py-3.5 text-[12px] uppercase tracking-[0.18em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
           >
             {t('looks.authRegister')}
           </button>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="tap-safe mx-auto mt-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 transition hover:text-foreground"
+            className="tap-safe mx-auto mt-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-foreground"
           >
             {t('looks.authLater')}
           </button>
         </div>
 
-        <p className="text-center text-[11px] font-light text-muted-foreground/50">
+        <p className="text-center text-[11px] font-light text-muted-foreground/85">
           {t('looks.authNote')}
         </p>
       </DialogContent>

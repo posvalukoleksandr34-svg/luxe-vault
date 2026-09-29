@@ -27,12 +27,12 @@ export function CartReminderOptOut({ token }: { token: string }) {
   }
 
   return (
-    <main id="main" className="flex min-h-[100svh] items-center justify-center bg-[#000000] px-6 py-16">
+    <main id="main" className="flex min-h-[100svh] items-center justify-center bg-background px-6 py-16">
       <div className="flex max-w-md flex-col items-center text-center">
-        <BellOff aria-hidden strokeWidth={1.25} className="size-9 text-[#D4AF37]" />
-        <span aria-hidden className="mt-6 h-px w-12 bg-[#D4AF37]" />
-        <h1 className="mt-6 font-serif text-2xl tracking-wide text-[#E5E5E5]">{t('cartReminder.unsubTitle')}</h1>
-        <p className="mt-4 text-sm font-light leading-relaxed text-[#CCCCCC]">
+        <BellOff aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
+        <span aria-hidden className="mt-6 h-px w-12 bg-gold" />
+        <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground">{t('cartReminder.unsubTitle')}</h1>
+        <p className="mt-4 text-sm font-light leading-relaxed text-foreground/80">
           {state === 'done' ? t('cartReminder.unsubDone') : t('cartReminder.unsubHint')}
         </p>
         {state !== 'done' && (
@@ -40,13 +40,13 @@ export function CartReminderOptOut({ token }: { token: string }) {
             type="button"
             onClick={optOut}
             disabled={state === 'busy'}
-            className="tap-safe mt-10 inline-flex items-center gap-2 border border-[#D4AF37] px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] transition-colors enabled:hover:bg-[#D4AF37] enabled:hover:text-[#000000] disabled:opacity-60"
+            className="tap-safe mt-10 inline-flex items-center gap-2 rounded-xl border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors enabled:hover:bg-gold enabled:hover:text-gold-foreground disabled:opacity-60"
           >
             {state === 'busy' && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
             {state === 'error' ? t('pay.tryAgain') : t('cartReminder.unsubButton')}
           </button>
         )}
-        <a href="/" className="mt-6 text-[11px] uppercase tracking-[0.15em] text-[#8c8c8c] hover:text-[#CCCCCC]">
+        <a href="/" className="mt-6 text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground/80">
           {t('state.goToCatalog')}
         </a>
       </div>

@@ -84,13 +84,13 @@ export function AppCodeSection() {
   }
 
   if (state.kind === 'loading') {
-    return <div className="h-[280px] max-w-2xl animate-pulse border border-white/10 bg-white/[0.02]" aria-busy="true" aria-label={t('common.loading')} />
+    return <div className="h-[280px] max-w-2xl animate-pulse rounded-xl border border-border bg-foreground/[0.04]" aria-busy="true" aria-label={t('common.loading')} />
   }
   if (state.kind === 'failed') return <LoadError title={t('appCode.unavailable')} onRetry={load} />
 
   const { view, inApp } = state
   const note = (text: string) => (
-    <div className="max-w-xl border border-white/10 p-6">
+    <div className="max-w-xl rounded-xl border border-border p-6">
       <p className="text-[14px] font-light leading-relaxed text-foreground/75">{text}</p>
     </div>
   )
@@ -101,7 +101,7 @@ export function AppCodeSection() {
     if (inApp) return note(t('appCode.disabled'))
     // In a browser tab with no code yet: the way to get one.
     return (
-      <div className="max-w-xl border border-white/10 p-6">
+      <div className="max-w-xl rounded-xl border border-border p-6">
         <Smartphone className="size-5 text-foreground/60" strokeWidth={1.5} aria-hidden />
         <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/75">{t('appCode.installFirst')}</p>
         <Link href="/#app" className="nav-link t-label tap-safe mt-5 inline-block">
@@ -116,7 +116,7 @@ export function AppCodeSection() {
   const dateFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <section className="max-w-2xl border border-white/10 p-6 sm:p-8">
+    <section className="max-w-2xl rounded-xl border border-border p-6 sm:p-8">
       <h2 className="text-balance font-serif text-[24px] font-normal leading-[1.15] tracking-tight text-foreground sm:text-[30px]">
         {tf('appCode.title', { discount: appDiscountLabel(view.kind, view.value) })}
       </h2>
@@ -127,7 +127,7 @@ export function AppCodeSection() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={qr} alt={tf('appCode.qrAlt', { code: view.code })} width={180} height={180} className="size-[180px]" />
           ) : (
-            <div className="size-[180px] animate-pulse bg-white/[0.04]" aria-hidden />
+            <div className="size-[180px] animate-pulse bg-foreground/[0.04]" aria-hidden />
           )}
         </div>
 
@@ -141,7 +141,7 @@ export function AppCodeSection() {
               <button
                 type="button"
                 onClick={() => copy(view.code)}
-                className="mt-4 inline-flex min-h-[44px] items-center gap-2 border border-white/10 px-4 text-[13px] font-light text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
+                className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border px-4 text-[13px] font-light text-foreground/80 transition-colors hover:border-gold/60 hover:text-foreground"
               >
                 {copied ? <Check className="size-4" strokeWidth={1.5} /> : <Copy className="size-4" strokeWidth={1.5} />}
                 {t('appCode.copy')}

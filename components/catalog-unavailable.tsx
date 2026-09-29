@@ -49,15 +49,15 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
   return (
     <main
       id="main"
-      className="flex min-h-[100svh] w-full items-center justify-center bg-[#000000] px-6 py-16 text-[#CCCCCC]"
+      className="flex min-h-[100svh] w-full items-center justify-center bg-background px-6 py-16 text-foreground/80"
     >
       <div role="alert" className="flex max-w-md flex-col items-center text-center">
-        <DatabaseZap aria-hidden strokeWidth={1.25} className="size-9 text-[#D4AF37]" />
-        <span aria-hidden className="mt-6 h-px w-12 bg-[#D4AF37]/60" />
-        <h1 className="mt-6 font-serif text-2xl tracking-wide text-[#CCCCCC] sm:text-3xl">
+        <DatabaseZap aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
+        <span aria-hidden className="mt-6 h-px w-12 bg-gold/60" />
+        <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground/80 sm:text-3xl">
           {t('state.catalogUnavailableTitle')}
         </h1>
-        <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-[#CCCCCC]">
+        <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
           {t('state.catalogUnavailableHint')}
         </p>
         {/* no-juice: the global hover rule (globals.css) forces gold ink, which
@@ -67,7 +67,7 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
           onClick={retry}
           disabled={retrying}
           aria-busy={retrying}
-          className="tap-safe no-juice mt-10 inline-flex items-center justify-center gap-2 border border-[#D4AF37] bg-transparent px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] transition-colors duration-300 enabled:hover:bg-[#D4AF37] enabled:hover:text-[#000000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#000000] disabled:cursor-wait disabled:opacity-60"
+          className="tap-safe no-juice mt-10 inline-flex items-center justify-center gap-2 rounded-xl border border-gold bg-transparent px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 enabled:hover:bg-gold enabled:hover:text-gold-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-60"
         >
           <RefreshCw
             aria-hidden
@@ -84,7 +84,7 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
             reaches a person even when the page cannot render at all. */}
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
-          className="tap-safe mt-6 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[#CCCCCC]/60 underline-offset-4 transition-colors duration-300 hover:text-[#D4AF37] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#000000]"
+          className="tap-safe mt-6 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-foreground/80/60 underline-offset-4 transition-colors duration-300 hover:text-gold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <LifeBuoy aria-hidden strokeWidth={1.5} className="size-3.5" />
           {t('state.contactSupport')}

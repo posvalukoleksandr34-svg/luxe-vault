@@ -32,13 +32,13 @@ export function SoundToggle({ className }: { className?: string }) {
         if (toggleSound()) playClickSound()
       }}
       className={cn(
-        'tap-safe inline-flex items-center gap-1.5 text-[11px] font-light text-muted-foreground/50 transition hover:text-gold',
+        'tap-safe inline-flex items-center gap-1.5 text-[11px] font-light text-muted-foreground/85 transition hover:text-gold',
         className,
       )}
     >
       <Icon className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
       {t('sound.label')}
-      <span aria-hidden className={soundEnabled ? 'text-gold/70' : undefined}>
+      <span aria-hidden className={soundEnabled ? 'text-gold' : undefined}>
         · {soundEnabled ? t('sound.on') : t('sound.off')}
       </span>
     </button>

@@ -102,7 +102,7 @@ export function LegalDocument({ set }: { set: LegalDocSet }) {
   return (
     <>
       <h1>{doc.title}</h1>
-      <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground/60">
+      <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground/85">
         {doc.effective}
       </p>
 
@@ -115,7 +115,7 @@ export function LegalDocument({ set }: { set: LegalDocSet }) {
       )}
 
       {locale !== AUTHORITATIVE_LOCALE && !isFallback && (
-        <p className="text-[11px] font-light italic text-muted-foreground/50">
+        <p className="text-[11px] font-light italic text-muted-foreground/85">
           {AUTHORITATIVE_NOTICE[locale] ?? AUTHORITATIVE_NOTICE.en}
         </p>
       )}

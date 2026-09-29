@@ -29,14 +29,14 @@ export function MotionToggle({ className }: { className?: string }) {
         if (!systemReduced) setReduced(!reduced)
       }}
       className={cn(
-        'tap-safe inline-flex items-center gap-1.5 text-[11px] font-light text-muted-foreground/50 transition hover:text-gold',
-        systemReduced && 'cursor-default hover:text-muted-foreground/50',
+        'tap-safe inline-flex items-center gap-1.5 text-[11px] font-light text-muted-foreground/85 transition hover:text-gold',
+        systemReduced && 'cursor-default hover:text-muted-foreground/85',
         className,
       )}
     >
       <Wind className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
       {t('motion.label')}
-      <span aria-hidden className={reduced ? 'text-gold/70' : undefined}>
+      <span aria-hidden className={reduced ? 'text-gold' : undefined}>
         · {reduced ? t('sound.on') : t('sound.off')}
       </span>
     </button>

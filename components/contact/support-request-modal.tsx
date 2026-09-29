@@ -192,10 +192,10 @@ export function SupportRequestModal({
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[120] overflow-y-auto bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0">
+        <Dialog.Overlay className="fixed inset-0 z-[120] overflow-y-auto bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0">
           <div className="flex min-h-full items-stretch justify-center sm:items-center sm:p-6">
             <Dialog.Content
-              className="relative w-full max-w-[560px] border-white/10 bg-background px-5 pb-8 pt-14 outline-none sm:border sm:px-10 sm:pb-10 sm:pt-12"
+              className="relative w-full max-w-[560px] border-border bg-background px-5 pb-8 pt-14 outline-none sm:border sm:px-10 sm:pb-10 sm:pt-12"
               onOpenAutoFocus={(e) => {
                 // Focus the first field rather than the close button.
                 e.preventDefault()
@@ -226,7 +226,7 @@ export function SupportRequestModal({
                     >
                       {c.doneOpen}
                     </Link>
-                    <Dialog.Close className="t-cta inline-flex min-h-[48px] items-center justify-center border border-white/[0.15] px-8 text-foreground/[0.85] transition-colors hover:border-white/40 hover:text-foreground">
+                    <Dialog.Close className="t-cta inline-flex min-h-[48px] items-center justify-center rounded-xl border border-border px-8 text-foreground/[0.85] transition-colors hover:border-gold/60 hover:text-foreground">
                       {c.close}
                     </Dialog.Close>
                   </div>
@@ -243,7 +243,7 @@ export function SupportRequestModal({
                   <div className="mt-8 flex flex-col gap-5">
                     <div>
                       <label htmlFor="contact-name" className={LABEL}>
-                        {c.name} <span className="text-foreground/[0.35]">· {c.required}</span>
+                        {c.name} <span className="text-foreground/70">· {c.required}</span>
                       </label>
                       <input
                         ref={refs.name}
@@ -269,7 +269,7 @@ export function SupportRequestModal({
 
                     <div>
                       <label htmlFor="contact-email" className={LABEL}>
-                        {c.email} <span className="text-foreground/[0.35]">· {c.required}</span>
+                        {c.email} <span className="text-foreground/70">· {c.required}</span>
                       </label>
                       <div className="relative">
                         <input
@@ -290,7 +290,7 @@ export function SupportRequestModal({
                           aria-describedby={
                             showEmailState && !emailValid ? 'contact-email-error' : describedBy('email')
                           }
-                          className={cn(FIELD, 'pr-11', showEmailState && emailValid && 'border-white/30')}
+                          className={cn(FIELD, 'pr-11', showEmailState && emailValid && 'border-gold/50')}
                         />
                         {showEmailState && emailValid && (
                           <Check
@@ -331,7 +331,7 @@ export function SupportRequestModal({
                       <div>
                         <label htmlFor="contact-handle" className={LABEL}>
                           {method === 'phone' ? c.handlePhone : c.handleTelegram}{' '}
-                          <span className="text-foreground/[0.35]">· {c.required}</span>
+                          <span className="text-foreground/70">· {c.required}</span>
                         </label>
                         <input
                           ref={refs.handle}
@@ -405,7 +405,7 @@ export function SupportRequestModal({
 
                     <div>
                       <label htmlFor="contact-message" className={LABEL}>
-                        {c.message} <span className="text-foreground/[0.35]">· {c.required}</span>
+                        {c.message} <span className="text-foreground/70">· {c.required}</span>
                       </label>
                       <textarea
                         ref={refs.message}
@@ -434,14 +434,14 @@ export function SupportRequestModal({
                       <span className={LABEL}>{c.attach}</span>
                       <label
                         htmlFor="contact-files"
-                        className="flex min-h-[64px] cursor-pointer items-center gap-4 border border-dashed border-white/[0.15] px-4 py-3 transition-colors hover:border-white/[0.35] focus-within:border-white/50"
+                        className="flex min-h-[64px] cursor-pointer items-center gap-4 rounded-xl border border-dashed border-border px-4 py-3 transition-colors hover:border-gold/60 focus-within:border-gold/60"
                       >
                         <Paperclip className="size-4 shrink-0 text-foreground/70" strokeWidth={1.25} aria-hidden />
                         <span className="flex flex-col">
-                          <span className="text-[13px] text-foreground underline decoration-white/25 underline-offset-4">
+                          <span className="text-[13px] text-foreground underline decoration-foreground/30 underline-offset-4">
                             {c.attachChoose}
                           </span>
-                          <span className="t-meta mt-0.5 text-foreground/[0.45]">{c.attachHint}</span>
+                          <span className="t-meta mt-0.5 text-foreground/70">{c.attachHint}</span>
                         </span>
                         <input
                           id="contact-files"
@@ -461,17 +461,17 @@ export function SupportRequestModal({
                         </p>
                       )}
                       {files.length > 0 && (
-                        <ul className="mt-3 divide-y divide-white/10 border-y border-white/10">
+                        <ul className="mt-3 divide-y divide-border border-y border-border">
                           {files.map((f, i) => (
                             <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-3 py-2">
                               <span className="min-w-0 truncate text-[13px] font-light text-foreground/[0.85]">{f.name}</span>
                               <span className="flex shrink-0 items-center gap-2">
-                                <span className="t-meta tabular-nums text-foreground/[0.45]">{formatBytes(f.size)}</span>
+                                <span className="t-meta tabular-nums text-foreground/70">{formatBytes(f.size)}</span>
                                 <button
                                   type="button"
                                   onClick={() => setFiles((list) => list.filter((_, j) => j !== i))}
                                   aria-label={`${c.remove}: ${f.name}`}
-                                  className="flex size-9 items-center justify-center text-foreground/50 transition-colors hover:text-foreground"
+                                  className="flex size-9 items-center justify-center text-foreground/70 transition-colors hover:text-foreground"
                                 >
                                   <X className="size-3.5" strokeWidth={1.5} />
                                 </button>
@@ -530,7 +530,7 @@ function Select({
         {children}
       </select>
       <ChevronDown
-        className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-foreground/50"
+        className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-foreground/70"
         strokeWidth={1.25}
         aria-hidden
       />

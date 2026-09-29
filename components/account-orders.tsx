@@ -43,10 +43,10 @@ const StripePayment = dynamic(
 
 const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'text-muted-foreground bg-muted/40 border-border',
-  processing: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  shipped: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-  cancelled: 'text-red-400 bg-red-400/10 border-red-400/30',
+  processing: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  shipped: 'text-blue-700 bg-blue-500/10 border-blue-500/30',
+  delivered: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  cancelled: 'text-red-700 bg-red-500/10 border-red-500/30',
   refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
@@ -222,7 +222,7 @@ export function AccountOrders({
         </button>
         <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
           {t('orders.payingFor')} <span className="text-foreground">{paying.order.id}</span>
-          <span className="ml-2 text-muted-foreground/50">· {paymentMethodLabel(paying.order.payment, t)}</span>
+          <span className="ml-2 text-muted-foreground/85">· {paymentMethodLabel(paying.order.payment, t)}</span>
         </p>
 
         {/* Branches on the method stored with the order, so a card order
@@ -303,7 +303,7 @@ export function AccountOrders({
               {t('orders.refresh')}
             </button>
           </div>
-          <p className="mb-4 text-[11px] font-light leading-relaxed text-muted-foreground/70">
+          <p className="mb-4 text-[11px] font-light leading-relaxed text-muted-foreground/85">
             {t('orders.unpaidHint')}
           </p>
           <div className="space-y-3">
@@ -320,7 +320,7 @@ export function AccountOrders({
                         type="button"
                         onClick={() => setConfirmOrder(order)}
                         disabled={cancelling === order.id}
-                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-destructive/50 hover:text-destructive disabled:opacity-40"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-destructive/50 hover:text-destructive disabled:opacity-40"
                       >
                         {cancelling === order.id ? (
                           <Loader2 className="size-3.5 animate-spin" />
@@ -333,7 +333,7 @@ export function AccountOrders({
                         type="button"
                         onClick={() => void startPayment(order)}
                         disabled={cancelling === order.id || startingPayment === order.id}
-                        className="flex items-center justify-center gap-2 border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:opacity-40"
+                        className="rounded-xl flex items-center justify-center gap-2 border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:opacity-40 shadow-gold"
                       >
                         <Wallet className="size-3.5" />
                         {t('orders.payNow')}
@@ -385,7 +385,7 @@ export function AccountOrders({
                       <button
                         type="button"
                         onClick={() => askRefund(order)}
-                        className="flex items-center justify-center gap-1.5 border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/40 hover:text-gold"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/40 hover:text-gold"
                       >
                         <RotateCcw className="size-3.5" />
                         {t('orders.requestRefund')}
@@ -413,18 +413,18 @@ export function AccountOrders({
                     // The button is gone rather than disabled: there is
                     // nothing to press twice, and a greyed-out control invites
                     // a second try. The badge says what state it is in.
-                    <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
+                    <span className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold">
                       {t('rma.pending')}
                     </span>
                   ) : order.returnStatus === 'approved' ? (
                     // Decided, money not yet back — a hand-refunded payment,
                     // or a card refund being retried. Said as such, so the
                     // customer does not read "approved" as "paid".
-                    <span className="border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold/80">
+                    <span className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold">
                       {t('rma.approved')}
                     </span>
                   ) : order.returnStatus === 'refunded' ? (
-                    <span className="border border-emerald-400/30 bg-emerald-400/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-emerald-300/90">
+                    <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-emerald-700/90">
                       {t('orders.refunded')}
                     </span>
                   ) : undefined
@@ -445,12 +445,12 @@ export function AccountOrders({
             onClick={() => setCancelledOpen((v) => !v)}
             className="flex w-full items-center justify-between border-b border-border/60 pb-2 text-left"
           >
-            <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/50">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/85">
               {t('orders.cancelledTitle')} · {cancelled.length}
             </span>
             <ChevronDown
               className={cn(
-                'size-3.5 text-muted-foreground/50 transition-transform duration-300',
+                'size-3.5 text-muted-foreground/85 transition-transform duration-300',
                 cancelledOpen && 'rotate-180',
               )}
             />
@@ -514,7 +514,7 @@ function CancelDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="cancel-dialog-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[121] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[121] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl"
       >
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" strokeWidth={1.5} />
@@ -528,7 +528,7 @@ function CancelDialog({
             <p className="mt-2 text-[13px] font-light leading-relaxed text-muted-foreground">
               {t('orders.cancelConfirm')}
             </p>
-            <p className="mt-2 font-mono text-[12px] text-muted-foreground/70">{order.id}</p>
+            <p className="mt-2 font-mono text-[12px] text-muted-foreground/85">{order.id}</p>
           </div>
         </div>
 
@@ -537,14 +537,14 @@ function CancelDialog({
             type="button"
             onClick={onDismiss}
             autoFocus
-            className="border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+            className="rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
           >
             {t('orders.cancelKeep')}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="border border-destructive/40 bg-destructive/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-destructive transition-all duration-300 hover:bg-destructive hover:text-destructive-foreground"
+            className="rounded-xl border border-destructive/40 bg-destructive/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-destructive transition-all duration-300 hover:bg-destructive hover:text-destructive-foreground"
           >
             {t('orders.cancelConfirmCta')}
           </button>
@@ -558,16 +558,16 @@ function PaymentBadge({ status }: { status: PaymentStatus }) {
   const { t } = useStore()
   const map: Record<PaymentStatus, { label: string; className: string }> = {
     pending_payment: { label: t('orders.awaitingPayment'), className: 'text-gold border-gold/40 bg-gold/10' },
-    confirming: { label: t('crypto.confirming'), className: 'text-blue-400 border-blue-400/30 bg-blue-400/10' },
-    paid: { label: t('crypto.paid'), className: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' },
-    failed: { label: t('crypto.failed'), className: 'text-red-400 border-red-400/30 bg-red-400/10' },
-    expired: { label: t('crypto.expired'), className: 'text-red-400 border-red-400/30 bg-red-400/10' },
+    confirming: { label: t('crypto.confirming'), className: 'text-blue-700 border-blue-500/30 bg-blue-500/10' },
+    paid: { label: t('crypto.paid'), className: 'text-emerald-700 border-emerald-500/30 bg-emerald-500/10' },
+    failed: { label: t('crypto.failed'), className: 'text-red-700 border-red-500/30 bg-red-500/10' },
+    expired: { label: t('crypto.expired'), className: 'text-red-700 border-red-500/30 bg-red-500/10' },
     refunded: { label: t('orders.refunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
     partially_refunded: { label: t('orders.partiallyRefunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
   }
   const c = map[status]
   return (
-    <span className={cn('border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]', c.className)}>
+    <span className={cn('rounded-xl border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]', c.className)}>
       {c.label}
     </span>
   )
@@ -592,7 +592,7 @@ function OrderCard({
   return (
     <div
       className={cn(
-        'border p-4 transition-opacity duration-300',
+        'rounded-xl border p-4 transition-opacity duration-300',
         highlight && 'border-gold/30 bg-gold/[0.03]',
         !highlight && !muted && 'border-border bg-card',
         // Greyed out rather than hidden: the customer needs to see that the
@@ -612,19 +612,19 @@ function OrderCard({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          <span className={cn('font-serif text-lg', muted ? 'text-muted-foreground/60 line-through' : 'text-gold')}>
+          <span className={cn('font-serif text-lg', muted ? 'text-muted-foreground/85 line-through' : 'text-gold')}>
             {formatChf(order.total)}
           </span>
           {/* Paid by card in another currency: what the card was charged. */}
           {orderCharge(order).converted && (
-            <span className="-mt-1 text-[10px] font-light tabular-nums text-muted-foreground/70">
+            <span className="-mt-1 text-[10px] font-light tabular-nums text-muted-foreground/85">
               {formatCharged(orderCharge(order).amount, orderCharge(order).currency)}
             </span>
           )}
           <div className="flex flex-wrap justify-end gap-1.5">
             <span
               className={cn(
-                'border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]',
+                'rounded-xl border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]',
                 ORDER_STATUS_COLORS[order.status],
               )}
             >
@@ -665,7 +665,7 @@ function OrderCard({
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-light text-foreground">{item.name}</p>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/85">
                 {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
               </p>
             </div>

@@ -21,7 +21,7 @@ export function Breadcrumbs({ trail, className }: { trail: Crumb[]; className?: 
       <ol className="flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
         {trail.map((crumb, i) => (
           <li key={`${crumb.url}-${i}`} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight className="size-3 text-muted-foreground/40" aria-hidden />}
+            {i > 0 && <ChevronRight className="size-3 text-muted-foreground/85" aria-hidden />}
             {i === trail.length - 1 ? (
               // The current page is not a link — a self-link is noise for a
               // screen reader and a wasted crawl for a bot.

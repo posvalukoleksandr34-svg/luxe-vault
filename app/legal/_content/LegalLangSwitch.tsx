@@ -28,10 +28,10 @@ export function LegalLangSwitch() {
           onClick={() => setLocale(l.code)}
           aria-current={l.code === locale ? 'true' : undefined}
           className={cn(
-            'border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] transition-all duration-300',
+            'rounded-xl border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] transition-all duration-300',
             l.code === locale
               ? 'border-gold/50 bg-gold/10 text-gold'
-              : 'border-border/50 text-muted-foreground/60 hover:border-gold/30 hover:text-gold',
+              : 'border-border/50 text-muted-foreground/85 hover:border-gold/30 hover:text-gold',
           )}
         >
           {l.flag}

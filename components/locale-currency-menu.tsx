@@ -47,7 +47,7 @@ export function LocaleCurrencyMenu() {
         className="tap-safe flex items-center gap-1 whitespace-nowrap px-1.5 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground transition hover:text-foreground sm:px-2"
       >
         <span>{current?.flag ?? locale.toUpperCase()}</span>
-        <span aria-hidden className="text-muted-foreground/40">
+        <span aria-hidden className="text-muted-foreground/85">
           ·
         </span>
         <span>{currency}</span>
@@ -61,9 +61,9 @@ export function LocaleCurrencyMenu() {
             aria-label={t('header.langCurrency')}
             // max-w keeps it inside a 375px screen whatever the button's
             // position; anchored right, it opens leftwards under the header.
-            className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] border border-border bg-popover py-3 shadow-2xl"
+            className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover py-3 shadow-2xl"
           >
-            <p className="px-4 pb-1.5 text-[10px] uppercase tracking-[0.3em] text-gold/70">
+            <p className="px-4 pb-1.5 text-[10px] uppercase tracking-[0.3em] text-gold">
               {t('header.language')}
             </p>
             {LANGUAGE_ORDER.map((code) => {
@@ -78,7 +78,7 @@ export function LocaleCurrencyMenu() {
 
             <div className="mx-4 my-2.5 h-px bg-border/60" />
 
-            <p className="px-4 pb-1.5 text-[10px] uppercase tracking-[0.3em] text-gold/70">
+            <p className="px-4 pb-1.5 text-[10px] uppercase tracking-[0.3em] text-gold">
               {t('header.currency')}
             </p>
             {CURRENCY_CODES.map((code) => (
@@ -90,7 +90,7 @@ export function LocaleCurrencyMenu() {
 
             {/* Said here, where the choice is made, not only at checkout:
                 what the currency means for each way of paying. */}
-            <p className="px-4 pt-2.5 text-[10px] font-light leading-relaxed text-muted-foreground/60">
+            <p className="px-4 pt-2.5 text-[10px] font-light leading-relaxed text-muted-foreground/85">
               {t('header.currencyNote')}
             </p>
           </div>

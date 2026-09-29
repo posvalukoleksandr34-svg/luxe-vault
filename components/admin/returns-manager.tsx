@@ -58,12 +58,12 @@ const FILTERS: { key: Filter; label: string }[] = [
 ]
 
 const STATUS_BADGE: Record<ReturnRequestStatus, { label: string; className: string }> = {
-  pending: { label: 'Ожидает решения', className: 'border-amber-400/30 bg-amber-400/10 text-amber-300' },
+  pending: { label: 'Ожидает решения', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700' },
   // Approved and not yet completed means the money has NOT moved — the one
   // state a manager must notice, so it is the loudest of the four.
-  approved: { label: 'Одобрена · деньги не возвращены', className: 'border-sky-400/40 bg-sky-400/10 text-sky-300' },
-  rejected: { label: 'Отклонена', className: 'border-red-400/30 bg-red-400/10 text-red-300' },
-  completed: { label: 'Деньги возвращены', className: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' },
+  approved: { label: 'Одобрена · деньги не возвращены', className: 'border-sky-500/40 bg-sky-500/10 text-sky-700' },
+  rejected: { label: 'Отклонена', className: 'border-red-500/30 bg-red-500/10 text-red-700' },
+  completed: { label: 'Деньги возвращены', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' },
 }
 
 const REASON_LABEL: Record<ReturnReason, UIKey> = {
@@ -298,7 +298,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                 <span className="tabular-nums text-foreground">{formatChf(order.total)}</span>
               </div>
               {order.refundedAmount > 0 && (
-                <div className="mt-1 flex justify-between text-xs text-emerald-300">
+                <div className="mt-1 flex justify-between text-xs text-emerald-700">
                   <span>Уже возвращено</span>
                   <span className="tabular-nums">{formatChf(order.refundedAmount)}</span>
                 </div>
@@ -333,7 +333,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => void decide('reject')}
                   disabled={busy !== null || note.trim().length === 0}
-                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-red-500 disabled:opacity-40"
                 >
                   {busy === 'reject' ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />}
                   Подтвердить отказ
@@ -375,7 +375,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => void decide('complete')}
                   disabled={busy !== null}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-emerald-500 disabled:opacity-40"
                 >
                   {busy === 'complete' ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   Деньги возвращены вручную
@@ -389,7 +389,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => setRejecting(true)}
                   disabled={busy !== null}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-400/40 px-4 py-2 text-sm text-red-300 transition hover:bg-red-400/10 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-700 transition hover:bg-red-500/10 disabled:opacity-40"
                 >
                   <X className="size-4" />
                   Отклонить
@@ -398,7 +398,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
             </div>
           )}
 
-          {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+          {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         </footer>
       )}
     </article>

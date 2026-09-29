@@ -275,7 +275,7 @@ export function SupportCenter({
               <button
                 type="button"
                 onClick={() => go({ view: 'ticket', number: view.ticket.number })}
-                className="border border-gold/40 bg-gold/5 px-6 py-3.5 text-[12px] uppercase tracking-[0.16em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                className="rounded-xl border border-transparent bg-gold-gradient px-6 py-3.5 text-[12px] uppercase tracking-[0.16em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
               >
                 {c.openConversation}
               </button>
@@ -285,7 +285,7 @@ export function SupportCenter({
                   setHistory([])
                   setView({ view: 'home' })
                 }}
-                className="border border-border px-6 py-3.5 text-[12px] uppercase tracking-[0.16em] text-muted-foreground transition hover:text-foreground"
+                className="rounded-xl border border-border px-6 py-3.5 text-[12px] uppercase tracking-[0.16em] text-muted-foreground transition hover:text-foreground"
               >
                 {c.back}
               </button>
@@ -382,14 +382,14 @@ function HomeView({
         </p>
         <label className="relative mt-7 block">
           <span className="sr-only">{c.searchPlaceholder}</span>
-          <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
+          <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/85" />
           <input
             id="support-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={c.searchPlaceholder}
-            className="w-full border-b border-border bg-transparent py-3 pl-7 pr-2 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/50 focus:border-gold/60"
+            className="w-full border-b border-border bg-transparent py-3 pl-7 pr-2 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold focus:ring-4 focus:ring-gold/15"
           />
         </label>
       </section>
@@ -399,7 +399,7 @@ function HomeView({
           {results.length > 0 ? (
             <FaqList entries={results} locale={locale} answer={answer} defaultOpen={results.length === 1} />
           ) : (
-            <div className="border border-border/60 px-5 py-5">
+            <div className="rounded-xl border border-border/60 px-5 py-5">
               <p className="text-[13px] text-foreground">{fill(c.searchEmpty, { q: query.trim() })}</p>
               <p className="mt-1 text-[12px] font-light text-muted-foreground">{c.searchEmptyHint}</p>
             </div>
@@ -411,7 +411,7 @@ function HomeView({
           <Section title={c.topicsTitle}>
             {/* Hairline grid: the gaps are the rules. The first topic spans
                 the row, so six remain for three even rows of two. */}
-            <div className="grid grid-cols-1 gap-px border border-border/60 bg-border/60 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-px rounded-xl border border-border/60 bg-border/60 sm:grid-cols-2">
               {[first, ...rest].map((topic, i) => (
                 <button
                   key={topic}
@@ -424,7 +424,7 @@ function HomeView({
                   )}
                 >
                   {c.topics[topic]}
-                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-gold" />
+                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/85 transition group-hover:translate-x-0.5 group-hover:text-gold" />
                 </button>
               ))}
             </div>
@@ -433,7 +433,7 @@ function HomeView({
           <button
             type="button"
             onClick={() => onContact()}
-            className="group mt-8 flex w-full items-center justify-between gap-4 border border-gold/40 bg-gold/5 px-5 py-4 text-left transition-all duration-300 hover:bg-gold"
+            className="group mt-8 flex w-full items-center justify-between gap-4 rounded-xl border border-gold/40 bg-gold/5 px-5 py-4 text-left transition-all duration-300 hover:bg-gold"
           >
             <span>
               <span className="block text-[12px] uppercase tracking-[0.18em] text-gold group-hover:text-gold-foreground">
@@ -454,7 +454,7 @@ function HomeView({
                   <button
                     type="button"
                     onClick={onAllTickets}
-                    className="text-[10px] uppercase tracking-[0.18em] text-gold/80 transition hover:text-gold"
+                    className="text-[10px] uppercase tracking-[0.18em] text-gold transition hover:text-gold"
                   >
                     {c.viewAll} · {tickets.length}
                   </button>
@@ -478,7 +478,7 @@ function HomeView({
                 <button
                   type="button"
                   onClick={onSignIn}
-                  className="text-[11px] uppercase tracking-[0.18em] text-gold transition hover:text-gold/80"
+                  className="text-[11px] uppercase tracking-[0.18em] text-gold transition hover:text-gold"
                 >
                   {c.signIn}
                 </button>
@@ -488,7 +488,7 @@ function HomeView({
             )}
           </Section>
 
-          <p className="mt-10 text-[11px] font-light leading-relaxed text-muted-foreground/70">
+          <p className="mt-10 text-[11px] font-light leading-relaxed text-muted-foreground/85">
             {c.orWrite.split('{email}')[0]}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-muted-foreground transition hover:text-gold">
               {SUPPORT_EMAIL}
@@ -512,7 +512,7 @@ function HomeView({
 // ------------------------------------------------------------- pieces ----
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] uppercase tracking-[0.24em] text-gold/80">{children}</p>
+  return <p className="text-[10px] uppercase tracking-[0.24em] text-gold">{children}</p>
 }
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
@@ -543,7 +543,7 @@ function StillNeedHelp({ c, onContact }: { c: SupportCopy; onContact: () => void
       <button
         type="button"
         onClick={onContact}
-        className="border border-gold/40 bg-gold/5 px-5 py-3 text-[11px] uppercase tracking-[0.16em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+        className="rounded-xl border border-transparent bg-gold-gradient px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
       >
         {c.contact}
       </button>
@@ -597,13 +597,13 @@ const STATUS_STYLE: Record<SupportTicketStatus, string> = {
   open: 'border-gold/40 text-gold',
   in_progress: 'border-foreground/25 text-foreground/80',
   waiting_user: 'border-gold bg-gold/10 text-gold',
-  resolved: 'border-emerald-500/30 text-emerald-400/90',
+  resolved: 'border-emerald-500/30 text-emerald-700/90',
   closed: 'border-border text-muted-foreground',
 }
 
 function StatusPill({ status, c }: { status: SupportTicketStatus; c: SupportCopy }) {
   return (
-    <span className={cn('whitespace-nowrap border px-2 py-0.5 text-[9px] uppercase tracking-[0.16em]', STATUS_STYLE[status])}>
+    <span className={cn('whitespace-nowrap rounded-xl border px-2 py-0.5 text-[9px] uppercase tracking-[0.16em]', STATUS_STYLE[status])}>
       {c.statuses[status]}
     </span>
   )
@@ -630,7 +630,7 @@ function TicketRow({ t, c, locale, onOpen }: { t: SupportTicket; c: SupportCopy;
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1.5">
         <StatusPill status={t.status} c={c} />
-        <span className="text-[10px] tabular-nums text-muted-foreground/70">{dateFmt(locale, t.lastMessageAt)}</span>
+        <span className="text-[10px] tabular-nums text-muted-foreground/85">{dateFmt(locale, t.lastMessageAt)}</span>
       </span>
     </button>
   )
@@ -661,7 +661,7 @@ function OrderRow({ o, c, locale, onNavigate }: { o: Order; c: SupportCopy; loca
             href={tracking.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-gold transition hover:text-gold/80"
+            className="flex items-center gap-1 text-gold transition hover:text-gold"
           >
             {c.track}
             <ArrowUpRight className="size-3" />
@@ -718,12 +718,12 @@ function AttachmentPicker({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <label
           htmlFor={id}
-          className="flex cursor-pointer items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-gold/90 transition hover:text-gold"
+          className="flex cursor-pointer items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-gold transition hover:text-gold"
         >
           {preparing ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
           {c.attach}
         </label>
-        <span className="text-[11px] font-light text-muted-foreground/60">{c.attachHint}</span>
+        <span className="text-[11px] font-light text-muted-foreground/85">{c.attachHint}</span>
         <input
           id={id}
           type="file"
@@ -739,7 +739,7 @@ function AttachmentPicker({
       {files.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-2">
           {files.map((f, i) => (
-            <li key={`${f.name}-${i}`} className="flex items-center gap-2.5 border border-border py-1.5 pl-1.5 pr-2">
+            <li key={`${f.name}-${i}`} className="flex items-center gap-2.5 rounded-xl border border-border py-1.5 pl-1.5 pr-2">
               {previews[i] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={previews[i] as string} alt="" className="size-8 object-cover" />
@@ -749,12 +749,12 @@ function AttachmentPicker({
                 </span>
               )}
               <span className="max-w-[9rem] truncate text-[11px] text-foreground/[0.85]">{f.name}</span>
-              <span className="text-[10px] tabular-nums text-muted-foreground/60">{formatBytes(f.size)}</span>
+              <span className="text-[10px] tabular-nums text-muted-foreground/85">{formatBytes(f.size)}</span>
               <button
                 type="button"
                 onClick={() => onChange(files.filter((_, j) => j !== i))}
                 aria-label={`${c.remove} ${f.name}`}
-                className="text-muted-foreground/60 transition hover:text-foreground"
+                className="text-muted-foreground/85 transition hover:text-foreground"
               >
                 <X className="size-3" />
               </button>
@@ -774,7 +774,7 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
         a.url && a.type.startsWith('image/') && !/hei[cf]/.test(a.type) ? (
           <a key={a.path} href={a.url} target="_blank" rel="noopener noreferrer" title={a.name}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={a.url} alt={a.name} className="size-20 border border-border object-cover transition hover:border-gold/50" />
+            <img src={a.url} alt={a.name} className="size-20 rounded-xl border border-border object-cover transition hover:border-gold/50" />
           </a>
         ) : (
           <a
@@ -782,11 +782,11 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
             href={a.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 border border-border px-3 py-2 text-[11px] text-foreground/[0.85] transition hover:border-gold/50 hover:text-gold"
+            className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[11px] text-foreground/[0.85] transition hover:border-gold/50 hover:text-gold"
           >
             <FileText className="size-3.5" />
             <span className="max-w-[12rem] truncate">{a.name}</span>
-            <span className="text-muted-foreground/60">{formatBytes(a.size)}</span>
+            <span className="text-muted-foreground/85">{formatBytes(a.size)}</span>
           </a>
         ),
       )}
@@ -800,8 +800,8 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
 // placeholders, a crisp white/15 hairline and a quiet amber edge on focus. The
 // border change is the focus indicator, so the global gold outline is off here.
 const FIELD =
-  'w-full border border-white/[0.15] bg-transparent px-3.5 py-3 text-[13px] font-light text-neutral-300 outline-none transition-colors placeholder:text-neutral-400 focus:border-amber-500/40 focus:ring-0 focus-visible:outline-none'
-const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-neutral-300'
+  'w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground/85 outline-none transition-colors placeholder:text-muted-foreground/85 focus:border-gold focus:ring-4 focus:ring-gold/15 focus:ring-0 focus-visible:outline-none'
+const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-foreground/85'
 
 function NewTicketForm({
   c,
@@ -895,10 +895,10 @@ function NewTicketForm({
               aria-pressed={category === cat}
               onClick={() => setCategory(cat)}
               className={cn(
-                'border px-3.5 py-2 text-xs uppercase tracking-wider transition-[color,border-color,background-color,box-shadow] duration-200',
+                'rounded-xl border px-3.5 py-2 text-xs uppercase tracking-wider transition-[color,border-color,background-color,box-shadow] duration-200',
                 category === cat
-                  ? 'border-amber-500/60 bg-amber-500/10 text-amber-200 shadow-[0_0_16px_-6px_rgba(245,158,11,0.55)]'
-                  : 'border-white/10 bg-neutral-900/80 text-neutral-300 hover:border-white/25 hover:text-neutral-100',
+                  ? 'border-amber-500/60 bg-amber-500/10 text-amber-700 shadow-[0_0_16px_-6px_rgba(245,158,11,0.55)]'
+                  : 'border-border bg-card text-foreground/85 hover:border-gold/60 hover:text-foreground',
               )}
             >
               {c.categories[cat]}
@@ -928,7 +928,7 @@ function NewTicketForm({
             ))}
           </select>
           {orderClosed && (
-            <p id="support-order-closed" role="alert" className="mt-2 text-[12px] font-light text-destructive/90">
+            <p id="support-order-closed" role="alert" className="mt-2 text-[12px] font-light text-destructive">
               {c.orderClosed}
             </p>
           )}
@@ -954,7 +954,7 @@ function NewTicketForm({
           </div>
           <div>
             <label htmlFor="support-name" className={LABEL}>
-              {c.name} <span className="normal-case tracking-normal text-muted-foreground/50">· {c.optional}</span>
+              {c.name} <span className="normal-case tracking-normal text-muted-foreground/85">· {c.optional}</span>
             </label>
             <input
               id="support-name"
@@ -1004,7 +1004,7 @@ function NewTicketForm({
       </div>
 
       {error && (
-        <p role="alert" className="mt-5 text-[12px] font-light text-destructive/90">
+        <p role="alert" className="mt-5 text-[12px] font-light text-destructive">
           {error}
         </p>
       )}
@@ -1012,7 +1012,7 @@ function NewTicketForm({
       <button
         type="submit"
         disabled={orderClosed || sending || !subject.trim() || !message.trim() || (!signedIn && !email.trim())}
-        className="mt-7 flex w-full items-center justify-center gap-2 border border-gold/40 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.18em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+        className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-4 text-[12px] uppercase tracking-[0.18em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
       >
         {sending && <Loader2 className="size-3.5 animate-spin" />}
         {sending ? c.sending : c.submit}
@@ -1067,7 +1067,7 @@ function TicketView({
   if (state.s === 'loading') return <Loading c={c} />
   if (state.s === 'error') {
     return (
-      <div className="border border-border/60 px-5 py-6">
+      <div className="rounded-xl border border-border/60 px-5 py-6">
         <p className="text-[13px] font-light leading-relaxed text-muted-foreground">{state.notFound ? c.notFound : c.loadError}</p>
         <div className="mt-4 flex flex-wrap gap-4">
           {!state.notFound && (
@@ -1123,7 +1123,7 @@ function TicketView({
         {ticket.orderNumber && <span>· {fill(c.orderRef, { id: ticket.orderNumber })}</span>}
         <span>· {fill(c.opened, { date: dateFmt(locale, ticket.createdAt) })}</span>
       </div>
-      <p className="mt-3 text-[12px] font-light text-muted-foreground/80">
+      <p className="mt-3 text-[12px] font-light text-muted-foreground/90">
         {fill(c.statusHints[ticket.status], { span: replySpan })}
       </p>
 
@@ -1134,7 +1134,7 @@ function TicketView({
             <li key={m.id} className={cn('border-l pl-4', staff ? 'border-gold/70' : 'border-border')}>
               <p className="flex flex-wrap items-baseline gap-x-2 text-[10px] uppercase tracking-[0.18em]">
                 <span className={staff ? 'text-gold' : 'text-foreground/80'}>{staff ? c.team : c.you}</span>
-                <span className="normal-case tracking-normal text-muted-foreground/60 tabular-nums">
+                <span className="normal-case tracking-normal text-muted-foreground/85 tabular-nums">
                   {dateFmt(locale, m.createdAt, true)}
                 </span>
               </p>
@@ -1149,9 +1149,9 @@ function TicketView({
       <div ref={endRef} />
 
       {closed ? (
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border border-border/60 px-5 py-4">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/60 px-5 py-4">
           <p className="text-[12px] font-light text-muted-foreground">{c.closedNote}</p>
-          <button type="button" onClick={onNew} className="text-[11px] uppercase tracking-[0.18em] text-gold transition hover:text-gold/80">
+          <button type="button" onClick={onNew} className="text-[11px] uppercase tracking-[0.18em] text-gold transition hover:text-gold">
             {c.newRequest}
           </button>
         </div>
@@ -1174,14 +1174,14 @@ function TicketView({
             <button
               type="submit"
               disabled={sending || !reply.trim()}
-              className="flex items-center gap-2 border border-gold/40 bg-gold/5 px-6 py-3 text-[11px] uppercase tracking-[0.18em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+              className="flex items-center gap-2 rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[11px] uppercase tracking-[0.18em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
             >
               {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
               {c.send}
             </button>
           </div>
           {error && (
-            <p role="alert" className="mt-3 text-[12px] font-light text-destructive/90">
+            <p role="alert" className="mt-3 text-[12px] font-light text-destructive">
               {error}
             </p>
           )}

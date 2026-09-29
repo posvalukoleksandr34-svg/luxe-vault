@@ -95,7 +95,7 @@ export function TrackingDetails({
           onClick={copy}
           aria-label={t('track.copyCode')}
           title={t('track.copyCode')}
-          className="flex items-center gap-1 border border-border px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition hover:border-gold/50 hover:text-foreground"
+          className="flex items-center gap-1 rounded-xl border border-border px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition hover:border-gold/50 hover:text-foreground"
         >
           {copied ? (
             <>
@@ -119,7 +119,7 @@ export function TrackingDetails({
           // this window otherwise; noreferrer keeps the order URL out of their
           // logs.
           rel="noopener noreferrer"
-          className="mt-2.5 inline-flex items-center gap-1.5 border border-gold/40 bg-gold/5 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+          className="rounded-xl mt-2.5 inline-flex items-center gap-1.5 border border-transparent bg-gold-gradient px-3 py-2 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
         >
           <ExternalLink className="size-3" />
           {t('track.trackPackage')}
@@ -128,7 +128,7 @@ export function TrackingDetails({
         // Named carriers we have no URL for, and orders where the admin typed
         // a number but no carrier. Saying where to take the code is more use
         // than a dead button.
-        <p className="mt-2 text-[11px] font-light text-muted-foreground/70">
+        <p className="mt-2 text-[11px] font-light text-muted-foreground/85">
           {t('track.noCarrierLink')}
         </p>
       )}

@@ -17,10 +17,10 @@ const STATUS_KEY = {
 } as const
 
 const STATUS_TONE: Record<ReferralStatus, string> = {
-  pending: 'text-foreground/55',
+  pending: 'text-foreground/70',
   order_placed: 'text-foreground/80',
   reward_paid: 'text-foreground',
-  void: 'text-foreground/40',
+  void: 'text-foreground/70',
 }
 
 /**
@@ -79,10 +79,10 @@ export function ReferralSection() {
   if (state.kind === 'loading') {
     return (
       <div className="space-y-4" aria-busy="true" aria-label={t('common.loading')}>
-        <div className="h-[260px] animate-pulse border border-white/10 bg-white/[0.02]" />
+        <div className="h-[260px] animate-pulse rounded-xl border border-border bg-foreground/[0.04]" />
         <div className="grid gap-4 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-[132px] animate-pulse border border-white/10 bg-white/[0.02]" />
+            <div key={i} className="h-[132px] animate-pulse rounded-xl border border-border bg-foreground/[0.04]" />
           ))}
         </div>
       </div>
@@ -95,8 +95,8 @@ export function ReferralSection() {
 
   if (state.kind === 'unavailable') {
     return (
-      <div className="max-w-xl border border-white/10 p-6">
-        <p className="t-label text-foreground/50">{t('acct.soon')}</p>
+      <div className="max-w-xl rounded-xl border border-border p-6">
+        <p className="t-label text-foreground/70">{t('acct.soon')}</p>
         <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/75">{t('acct.referralSoon')}</p>
       </div>
     )
@@ -125,19 +125,19 @@ export function ReferralSection() {
 
   const dateFmt = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' })
   const shareButton =
-    'inline-flex min-h-[44px] items-center gap-2 border border-white/10 px-4 text-[13px] font-light text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground'
+    'inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border px-4 text-[13px] font-light text-foreground/80 transition-colors hover:border-gold/60 hover:text-foreground'
 
   return (
     <div className="space-y-10">
       {/* The offer and the link. */}
-      <section className="border border-white/10 p-6 sm:p-8">
+      <section className="rounded-xl border border-border p-6 sm:p-8">
         <h2 className="max-w-2xl text-balance font-serif text-[26px] font-normal leading-[1.15] tracking-tight text-foreground sm:text-[34px]">
           {tf('ref.heroTitle', { percent: data.discountPercent, reward })}
         </h2>
         <p className="mt-4 max-w-xl text-[14px] font-light leading-relaxed text-foreground/65">{t('ref.heroHow')}</p>
 
-        <div className="mt-8 border-t border-white/10 pt-6">
-          <label htmlFor="referral-link" className="t-label mb-2 block text-foreground/55">
+        <div className="mt-8 border-t border-border pt-6">
+          <label htmlFor="referral-link" className="t-label mb-2 block text-foreground/70">
             {t('ref.linkLabel')}
           </label>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-0">
@@ -147,7 +147,7 @@ export function ReferralSection() {
               readOnly
               value={data.link}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-h-[48px] w-full min-w-0 border border-white/10 bg-transparent px-4 text-[14px] font-light text-foreground outline-none focus:border-white/40 sm:border-r-0"
+              className="min-h-[48px] w-full min-w-0 rounded-xl border border-border bg-card px-4 text-[14px] font-light text-foreground outline-none focus:border-gold focus:ring-4 focus:ring-gold/15 sm:border-r-0"
             />
             <button
               type="button"
@@ -158,11 +158,11 @@ export function ReferralSection() {
               {copied ? t('ref.copied') : t('ref.copy')}
             </button>
           </div>
-          <p className="t-meta mt-2 text-foreground/45">
+          <p className="t-meta mt-2 text-foreground/70">
             {t('ref.codeLabel')}: <span className="tabular-nums tracking-wider text-foreground/75">{data.code}</span>
           </p>
 
-          <p className="t-label mb-3 mt-6 text-foreground/55">{t('ref.shareVia')}</p>
+          <p className="t-label mb-3 mt-6 text-foreground/70">{t('ref.shareVia')}</p>
           <div className="flex flex-wrap gap-2">
             {share.map(({ key, label, icon: Icon, href }) => (
               <a
@@ -203,17 +203,17 @@ export function ReferralSection() {
         </h2>
 
         {data.history.length === 0 ? (
-          <p className="border-y border-white/10 py-6 text-[14px] font-light text-foreground/60">{t('ref.historyEmpty')}</p>
+          <p className="border-y border-border py-6 text-[14px] font-light text-foreground/60">{t('ref.historyEmpty')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] border-collapse text-left">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-border">
                   {[t('ref.colFriend'), t('ref.colStatus'), t('ref.colDate'), t('ref.colReward')].map((h, i) => (
                     <th
                       key={h}
                       scope="col"
-                      className={cn('t-label py-3 pr-4 font-normal text-foreground/50', i === 3 && 'pr-0 text-right')}
+                      className={cn('t-label py-3 pr-4 font-normal text-foreground/70', i === 3 && 'pr-0 text-right')}
                     >
                       {h}
                     </th>
@@ -222,7 +222,7 @@ export function ReferralSection() {
               </thead>
               <tbody>
                 {data.history.map((row) => (
-                  <tr key={row.id} className="border-b border-white/10">
+                  <tr key={row.id} className="border-b border-border">
                     <td className="py-4 pr-4 text-[14px] font-light text-foreground/85">{row.friend}</td>
                     <td className={cn('py-4 pr-4 text-[13px] font-light', STATUS_TONE[row.status])}>
                       {t(STATUS_KEY[row.status])}
@@ -241,17 +241,17 @@ export function ReferralSection() {
         )}
       </section>
 
-      <p className="max-w-2xl text-[12px] font-light leading-relaxed text-foreground/45">{t('ref.terms')}</p>
+      <p className="max-w-2xl text-[12px] font-light leading-relaxed text-foreground/70">{t('ref.terms')}</p>
     </div>
   )
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <li className="flex flex-col border border-white/10 p-6">
-      <span className="t-label text-foreground/55">{label}</span>
+    <li className="flex flex-col rounded-xl border border-border p-6">
+      <span className="t-label text-foreground/70">{label}</span>
       <span className="mt-4 font-serif text-[36px] font-normal leading-none tabular-nums text-foreground">{value}</span>
-      {sub && <span className="t-meta mt-3 text-foreground/45">{sub}</span>}
+      {sub && <span className="t-meta mt-3 text-foreground/70">{sub}</span>}
     </li>
   )
 }

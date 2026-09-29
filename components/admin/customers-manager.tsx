@@ -89,7 +89,7 @@ export function CustomersManager() {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <Users className="size-6 text-muted-foreground/25" strokeWidth={1.25} />
+          <Users className="size-6 text-muted-foreground/85" strokeWidth={1.25} />
           <p className="text-[13px] text-muted-foreground">
             {customers.length === 0 ? 'Клиентов пока нет' : 'Ничего не найдено'}
           </p>
@@ -111,14 +111,14 @@ export function CustomersManager() {
                 <tr key={c.id} className="border-t border-border/60">
                   <td className="px-4 py-3">
                     <span className="block text-foreground">{c.name || '—'}</span>
-                    <span className="block text-[11px] text-muted-foreground/70">{c.email}</span>
+                    <span className="block text-[11px] text-muted-foreground/85">{c.email}</span>
                   </td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.orders}</td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.paidOrders}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-gold">
                     {formatChf(c.spent)}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground/70">
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground/85">
                     {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('ru-RU') : '—'}
                   </td>
                 </tr>
@@ -128,7 +128,7 @@ export function CustomersManager() {
         </div>
       )}
 
-      <p className="mt-3 text-[11px] text-muted-foreground/60">
+      <p className="mt-3 text-[11px] text-muted-foreground/85">
         Потрачено — за вычетом возвратов; отменённые заказы не учитываются.
       </p>
     </div>

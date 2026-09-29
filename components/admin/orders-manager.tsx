@@ -279,7 +279,7 @@ export function OrdersManager({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Номер, имя, email, трек"
                 aria-label="Поиск заказа"
-                className="w-52 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+                className="w-52 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/85"
               />
             </label>
           </div>
@@ -481,7 +481,7 @@ function OrderDetail({
             )}
           </p>
           {order.paymentAddress && (
-            <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/60" title={order.paymentAddress}>
+            <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/85" title={order.paymentAddress}>
               {order.paymentAddress}
             </p>
           )}

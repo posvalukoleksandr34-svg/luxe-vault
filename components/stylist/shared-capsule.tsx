@@ -46,7 +46,7 @@ export function SharedCapsule({
       />
 
       <header className="mb-10 max-w-2xl">
-        <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold/70">
+        <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold">
           {tf('looks.savedOn', { date })}
         </p>
         <h1 className="font-serif text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl">
@@ -72,7 +72,7 @@ export function SharedCapsule({
       <div className="mt-14 border-t border-border/40 pt-8">
         <Link
           href="/stylist"
-          className="inline-flex items-center gap-2 border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors duration-300 hover:border-gold/60 hover:text-gold"
+          className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors duration-300 hover:border-gold/60 hover:text-gold"
         >
           {t('looks.styleYourOwn')}
         </Link>

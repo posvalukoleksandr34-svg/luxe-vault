@@ -101,7 +101,7 @@ export function NotifyWhenAvailable({
           <button
             type="button"
             className={cn(
-              'flex w-full items-center justify-center gap-2.5 border border-gold/40 bg-gold/5 py-4 text-[13px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground',
+              'flex w-full items-center justify-center gap-2.5 rounded-xl border border-transparent bg-gold-gradient py-4 text-[13px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold',
               className,
             )}
           >
@@ -112,7 +112,7 @@ export function NotifyWhenAvailable({
           <button
             type="button"
             className={cn(
-              'tap-safe inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold',
+              'tap-safe inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:text-gold',
               className,
             )}
           >
@@ -136,7 +136,7 @@ export function NotifyWhenAvailable({
         {done ? (
           <p
             role="status"
-            className="flex items-center gap-2 border border-gold/40 bg-gold/5 px-4 py-3.5 text-[13px] font-light text-gold"
+            className="flex items-center gap-2 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3.5 text-[13px] font-light text-gold"
           >
             <Check className="size-4 shrink-0" />
             {t('stockAlert.confirmed')}
@@ -162,7 +162,7 @@ export function NotifyWhenAvailable({
                       onClick={() => setChosen(s)}
                       aria-pressed={chosen === s}
                       className={cn(
-                        'min-w-11 border px-3 py-2.5 text-[13px] font-light transition-colors duration-200',
+                        'min-w-11 rounded-xl border px-3 py-2.5 text-[13px] font-light transition-colors duration-200',
                         chosen === s
                           ? 'border-gold bg-gold/5 text-gold'
                           : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -193,12 +193,12 @@ export function NotifyWhenAvailable({
                 required
                 autoComplete="email"
                 className={cn(
-                  'w-full border border-border bg-background px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold',
+                  'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold',
                   signedIn && 'text-muted-foreground',
                 )}
               />
               {signedIn && (
-                <span className="mt-1.5 block text-[11px] font-light text-muted-foreground/70">
+                <span className="mt-1.5 block text-[11px] font-light text-muted-foreground/85">
                   {t('stockAlert.accountEmail')}
                 </span>
               )}
@@ -213,7 +213,7 @@ export function NotifyWhenAvailable({
             <button
               type="submit"
               disabled={submitting || !chosen}
-              className="flex w-full items-center justify-center gap-2 border border-gold/40 bg-gold/5 px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient px-5 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-50 shadow-gold"
             >
               {submitting && <Loader2 className="size-3.5 animate-spin" />}
               {t('stockAlert.notify')}

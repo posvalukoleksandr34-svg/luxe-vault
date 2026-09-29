@@ -622,7 +622,7 @@ export function ProductForm({
                 />
               </label>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground/60">
+            <p className="mt-2 text-[11px] text-muted-foreground/85">
               Достаточно одного языка. Пустые языки при сохранении переводятся автоматически
               (без GEMINI_API_KEY — копируют исходный текст). «Перевести» заменяет только пустые
               поля и копии исходного текста — ваши переводы не трогает.
@@ -724,7 +724,7 @@ export function ProductForm({
                 onChange={(e) => setForm({ ...form, deliveryMin: e.target.value })}
                 placeholder={`от · ${DEFAULT_DELIVERY_DAYS.min}`}
                 aria-label="Срок доставки: от, дней"
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
               />
               <input
                 type="number"
@@ -735,10 +735,10 @@ export function ProductForm({
                 onChange={(e) => setForm({ ...form, deliveryMax: e.target.value })}
                 placeholder={`до · ${DEFAULT_DELIVERY_DAYS.max}`}
                 aria-label="Срок доставки: до, дней"
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">
+            <p className="mt-1.5 text-[11px] text-muted-foreground/85">
               От подтверждения оплаты до доставки. Пусто — срок магазина по умолчанию (
               {DEFAULT_DELIVERY_DAYS.min}–{DEFAULT_DELIVERY_DAYS.max} дн.). Целые недели
               показываются неделями: 14 и 14 — «около 2 недель», 10 и 14 — «10–14 дней».
@@ -768,13 +768,13 @@ export function ProductForm({
                 Цвет
               </button>
             </div>
-            <p className="mb-2 text-[11px] text-muted-foreground/60">
+            <p className="mb-2 text-[11px] text-muted-foreground/85">
               Название обязательно — по нему покупатель узнаёт цвет в заказе. Остаток
               можно оставить пустым: пусто — не отслеживается, 0 — распродано.
             </p>
 
             {colors.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/70">
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/85">
                 Цвета не заданы
               </p>
             ) : (
@@ -863,12 +863,12 @@ export function ProductForm({
                 Строка
               </button>
             </div>
-            <p className="mb-2 text-[11px] text-muted-foreground/60">
+            <p className="mb-2 text-[11px] text-muted-foreground/85">
               Все значения в сантиметрах. Пустая таблица — гид по размерам не показывается.
             </p>
 
             {measurements.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/70">
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground/85">
                 Замеры не заданы
               </p>
             ) : (
@@ -933,7 +933,7 @@ export function ProductForm({
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
               Статусы <span className="text-destructive">*</span>
             </span>
-            <p className="mb-1.5 text-[11px] text-muted-foreground/60">
+            <p className="mb-1.5 text-[11px] text-muted-foreground/85">
               {derivedStatus
                 ? `Наличие считается автоматически по остаткам ниже: всего ${totalStock} шт. Чтобы задать его вручную, очистите таблицу остатков.`
                 : '«В наличии» / «Нет в наличии» обязателен и взаимоисключающий. Заполните остатки ниже — и наличие будет считаться автоматически.'}
@@ -975,7 +975,7 @@ export function ProductForm({
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
               Посадка, стиль и повод
             </span>
-            <p className="mb-2 text-[11px] text-muted-foreground/60">
+            <p className="mb-2 text-[11px] text-muted-foreground/85">
               Используются подбором размера, умным поиском и AI-стилистом. Не выбрано — определяется
               автоматически по названию и категории.
             </p>
@@ -1059,13 +1059,13 @@ export function ProductForm({
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
               Остатки
             </span>
-            <p className="mb-2 text-[11px] text-muted-foreground/60">
+            <p className="mb-2 text-[11px] text-muted-foreground/85">
               Количество на складе для каждого размера и цвета. Оставьте всё пустым — товар
               продаётся без учёта остатков. 0 — «нет в наличии».
             </p>
 
             {sizeList.length === 0 || colorList.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-[12px] text-muted-foreground/60">
+              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-[12px] text-muted-foreground/85">
                 Укажите размеры и цвета выше, чтобы заполнить остатки.
               </p>
             ) : (
@@ -1105,13 +1105,13 @@ export function ProductForm({
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-1.5 text-[11px] text-muted-foreground/60" aria-live="polite">
+                <p className="mt-1.5 text-[11px] text-muted-foreground/85" aria-live="polite">
                   Всего: <span className="tabular-nums text-foreground">{totalStock}</span> шт.
                   {trackedCells === 0 && ' — учёт остатков выключен, наличие задаётся вручную'}
                   {derivedStatus && (
                     <>
                       {' '}· статус товара:{' '}
-                      <span className={derivedStatus === 'in_stock' ? 'text-emerald-400' : 'text-destructive'}>
+                      <span className={derivedStatus === 'in_stock' ? 'text-emerald-700' : 'text-destructive'}>
                         {derivedStatus === 'in_stock' ? 'В наличии' : 'Нет в наличии'}
                       </span>{' '}
                       (авто)
@@ -1157,7 +1157,7 @@ export function ProductForm({
                 </>
               )}
             </button>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">
+            <p className="mt-1.5 text-[11px] text-muted-foreground/85">
               JPG, PNG или WebP, до {MAX_FILE_SIZE_MB} МБ на файл. Первое фото в списке ниже становится обложкой товара.
             </p>
 
@@ -1284,7 +1284,7 @@ function Input({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-gold"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold"
       />
     </label>
   )

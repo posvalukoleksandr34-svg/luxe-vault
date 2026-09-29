@@ -233,7 +233,7 @@ function SettingsForm({ settings }: { settings: ReferralSettings }) {
             onChange={(e) => setDiscount(e.target.value)}
             className={INPUT}
           />
-          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/85">
             От {REFERRAL_DISCOUNT_RANGE.min} до {REFERRAL_DISCOUNT_RANGE.max}%, от суммы товаров.
           </span>
         </label>
@@ -251,13 +251,13 @@ function SettingsForm({ settings }: { settings: ReferralSettings }) {
             onChange={(e) => setReward(e.target.value)}
             className={INPUT}
           />
-          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/85">
             Начисляется, когда друг оплатил первый заказ; снимается, если заказ возвращён.
           </span>
         </label>
       </div>
 
-      <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground/70">
+      <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground/85">
         Новые значения применяются к заказам и оплатам после сохранения. Уже начисленные бонусы не
         меняются — у каждого остаётся сумма, с которой он был начислен.
         {settings.updatedAt && ` Последнее изменение: ${formatDate(settings.updatedAt)}.`}
@@ -275,7 +275,7 @@ function SettingsForm({ settings }: { settings: ReferralSettings }) {
         {status && (
           <p
             role={status.kind === 'error' ? 'alert' : 'status'}
-            className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-400')}
+            className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-700')}
           >
             {status.text}
           </p>
@@ -329,13 +329,13 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
       <td className="px-4 py-3">
         <p className="text-foreground">{row.referrer.name}</p>
         <p className="text-xs text-muted-foreground">{row.referrer.email}</p>
-        {row.referrer.code && <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/60">{row.referrer.code}</p>}
+        {row.referrer.code && <p className="mt-0.5 font-mono text-[11px] text-muted-foreground/85">{row.referrer.code}</p>}
       </td>
 
       <td className="px-4 py-3">
         <p className="text-foreground">{row.friend.name ?? '—'}</p>
         <p className="text-xs text-muted-foreground">{row.friend.email}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+        <p className="mt-0.5 text-[11px] text-muted-foreground/85">
           {row.friend.hasAccount ? 'с аккаунтом' : 'гость'} · с {formatDate(row.createdAt)}
         </p>
       </td>
@@ -353,7 +353,7 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
                 .join(' · ') || 'заказ не найден'}
             </p>
             {row.order.total !== null && (
-              <p className="text-[11px] text-muted-foreground/60">{formatChf(row.order.total)}</p>
+              <p className="text-[11px] text-muted-foreground/85">{formatChf(row.order.total)}</p>
             )}
           </>
         ) : (
@@ -380,11 +380,11 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
 
         {s === 'void' && (
           <>
-            <Badge className="border-red-400/30 bg-red-400/10 text-red-300">Аннулирован — заказ возвращён</Badge>
+            <Badge className="border-red-500/30 bg-red-500/10 text-red-700">Аннулирован — заказ возвращён</Badge>
             {row.paidOutAt && (
               // The reward was handed over before the refund: the customer's
               // balance is now negative by that amount.
-              <p className="mt-1.5 max-w-[220px] text-[11px] leading-relaxed text-amber-300">
+              <p className="mt-1.5 max-w-[220px] text-[11px] leading-relaxed text-amber-700">
                 Бонус был выплачен {formatDate(row.paidOutAt)} — баланс клиента ушёл в минус.
               </p>
             )}
@@ -393,7 +393,7 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
 
         {s === 'paid_out' && (
           <>
-            <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700">
               Выплачено {formatDate(row.paidOutAt)}
             </Badge>
             {row.payoutNote && <p className="mt-1.5 max-w-[220px] text-[11px] text-muted-foreground">{row.payoutNote}</p>}
@@ -402,7 +402,7 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
 
         {s === 'to_pay' && (
           <div className="max-w-[240px]">
-            <Badge className="border-amber-400/30 bg-amber-400/10 text-amber-300">
+            <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-700">
               К выплате · начислен {formatDate(row.rewardedAt)}
             </Badge>
 
@@ -456,7 +456,7 @@ function ReferralRow({ row, payoutsEnabled }: { row: AdminReferralRow; payoutsEn
             )}
 
             {error && (
-              <p role="alert" className="mt-1.5 text-[11px] text-red-400">
+              <p role="alert" className="mt-1.5 text-[11px] text-red-700">
                 {error}
               </p>
             )}

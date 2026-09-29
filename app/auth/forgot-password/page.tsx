@@ -99,7 +99,7 @@ function ForgotPasswordForm() {
       </p>
 
       {linkError && (
-        <p className="mt-4 border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-[12px] text-destructive">
+        <p className="mt-4 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-[12px] text-destructive">
           {linkError}
         </p>
       )}
@@ -124,7 +124,7 @@ function ForgotPasswordForm() {
             autoComplete="email"
             // 44px / 16px on a phone so iOS does not zoom the page on focus
             // and leave the form scrolled sideways; compact from md up.
-            className="h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none focus:border-gold md:h-10 md:px-3 md:text-sm"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-base leading-normal text-foreground outline-none focus:border-gold md:h-10 md:px-3 md:text-sm"
           />
         </div>
 
@@ -133,7 +133,7 @@ function ForgotPasswordForm() {
         <button
           type="submit"
           disabled={busy || !email.trim()}
-          className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+          className="rounded-xl flex w-full items-center justify-center gap-2 border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
         >
           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {t('otp.step1.submit')}

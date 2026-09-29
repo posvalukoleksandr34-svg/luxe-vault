@@ -15,7 +15,7 @@ export function StylistIntro() {
   const { t } = useStore()
   return (
     <header className="mb-12 max-w-2xl">
-      <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold/70">Luxe Vault</p>
+      <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold">Luxe Vault</p>
       <h1 className="font-serif text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl">
         {t('stylist.cta')}
       </h1>

@@ -216,12 +216,12 @@ export function PasswordResetModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {step === 'done' ? (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" strokeWidth={1.5} />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" strokeWidth={1.5} />
             ) : (
               <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-gold" strokeWidth={1.5} />
             )}
@@ -273,7 +273,7 @@ export function PasswordResetModal({
                 autoComplete="email"
                 // Same field metrics as every other auth input: 44px and 16px
                 // on a phone, compact from md up.
-                className="h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm"
               />
             </div>
 
@@ -390,7 +390,7 @@ export function PasswordResetModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl w-full border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
           >
             {t('otp.done.cta')}
           </button>
@@ -414,9 +414,9 @@ function SubmitButton({
       type="submit"
       disabled={busy || disabled}
       className={cn(
-        'flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300',
+        'flex w-full items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300',
         'hover:bg-gold hover:text-gold-foreground',
-        'disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40',
+        'disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/85',
       )}
     >
       {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

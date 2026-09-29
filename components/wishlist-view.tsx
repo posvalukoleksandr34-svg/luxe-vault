@@ -48,46 +48,46 @@ export function WishlistView() {
 
       {saved.length === 0 && loading ? (
         <div className="flex justify-center py-24" role="status" aria-live="polite">
-          <Heart aria-hidden strokeWidth={1.25} className="size-9 animate-pulse text-gold/60" />
+          <Heart aria-hidden strokeWidth={1.25} className="size-9 animate-pulse text-gold" />
           <span className="sr-only">{t('wishlist.title')}</span>
         </div>
       ) : saved.length === 0 && wishlistStatus === 'error' ? (
         <div className="flex flex-col items-center py-16 text-center" role="alert">
-          <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold/70" />
+          <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
           <p className="mt-6 max-w-sm text-[14px] font-light leading-relaxed text-foreground">
             {t('wishlist.loadFailed')}
           </p>
           <button
             type="button"
             onClick={reloadWishlist}
-            className="mt-8 inline-flex items-center justify-center border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="mt-8 inline-flex items-center justify-center rounded-xl border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
           >
             {t('common.retry')}
           </button>
         </div>
       ) : saved.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
-          <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold/70" />
+          <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
           <p className="mt-6 font-serif text-xl text-foreground">{t('wishlist.empty')}</p>
           <p className="mt-3 max-w-sm text-[13px] font-light leading-relaxed text-muted-foreground">
             {t('wishlist.emptyHint')}
           </p>
           <Link
             href="/catalog"
-            className="mt-8 inline-flex items-center justify-center border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="mt-8 inline-flex items-center justify-center rounded-xl border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
           >
             {t('wishlist.browse')}
           </Link>
         </div>
       ) : (
         <>
-          <div className="-mx-4 grid grid-cols-2 gap-x-px gap-y-8 sm:-mx-6 md:mx-0 md:grid-cols-3 md:gap-x-4 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 md:gap-x-4 xl:grid-cols-4">
             {saved.map((product, i) => (
               <ProductCard key={product.id} product={product} priority={i < 2} />
             ))}
           </div>
           {missing > 0 && (
-            <p className="mt-10 text-[12px] font-light text-muted-foreground/80">{t('wishlist.gone')}</p>
+            <p className="mt-10 text-[12px] font-light text-muted-foreground/90">{t('wishlist.gone')}</p>
           )}
         </>
       )}

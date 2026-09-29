@@ -337,7 +337,7 @@ export function ProductGrid({
               {t('nav.shop')}
             </h2>
           )}
-          <p className={cn('text-[12px] uppercase tracking-[0.15em] text-muted-foreground/50', wrap && 'mt-2')}>
+          <p className={cn('text-[12px] uppercase tracking-[0.15em] text-muted-foreground/85', wrap && 'mt-2')}>
             {filtered.length} {t('filter.results')}
           </p>
         </div>
@@ -347,7 +347,7 @@ export function ProductGrid({
             draws a different-width native arrow (Safari's is the widest), and
             the label text runs underneath it. Removing it makes the reserved
             space `pr-9` and identical everywhere. */}
-        <label className="flex min-w-fit shrink-0 items-center gap-2 whitespace-nowrap text-[12px] uppercase tracking-[0.1em] text-muted-foreground/70">
+        <label className="flex min-w-fit shrink-0 items-center gap-2 whitespace-nowrap text-[12px] uppercase tracking-[0.1em] text-muted-foreground/85">
           {t('filter.sortBy')}
           <span className="relative inline-block">
             <select
@@ -355,7 +355,7 @@ export function ProductGrid({
               onChange={(e) =>
                 setFilter({ ...filter, sort: e.target.value as typeof filter.sort })
               }
-              className="w-full min-w-[180px] cursor-pointer appearance-none truncate whitespace-nowrap border border-border/60 bg-transparent py-1.5 pl-2.5 pr-9 text-[12px] text-foreground outline-none transition focus:border-gold"
+              className="w-full min-w-[180px] cursor-pointer appearance-none truncate whitespace-nowrap rounded-xl border border-border/60 bg-transparent py-1.5 pl-2.5 pr-9 text-[12px] text-foreground outline-none transition focus:border-gold"
             >
               {/* Options inherit the page's dark palette in some engines and the
                   system one in others, so their colours are set explicitly —
@@ -377,7 +377,7 @@ export function ProductGrid({
               </option>
             </select>
             <ChevronDown
-              className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/70"
+              className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/85"
               strokeWidth={1.5}
               aria-hidden
             />
@@ -396,7 +396,7 @@ export function ProductGrid({
               active={!filter.group && !filter.sale}
               onClick={() => setFilter({ ...filter, group: null, category: null, sale: false })}
             >
-              {t('filter.all')} <span className="text-muted-foreground/40">· {products.length}</span>
+              {t('filter.all')} <span className="text-muted-foreground/85">· {products.length}</span>
             </FilterLink>
             {groups.map((g) => (
               <FilterLink
@@ -411,7 +411,7 @@ export function ProductGrid({
                   })
                 }
               >
-                {g.label} <span className="text-muted-foreground/40">· {g.count}</span>
+                {g.label} <span className="text-muted-foreground/85">· {g.count}</span>
               </FilterLink>
             ))}
             {saleCount > 0 && (
@@ -422,7 +422,7 @@ export function ProductGrid({
                   onClick={() => setFilter({ ...filter, sale: !filter.sale, group: null, category: null })}
                   accent
                 >
-                  {t('filter.sale')} <span className="text-muted-foreground/40">· {saleCount}</span>
+                  {t('filter.sale')} <span className="text-muted-foreground/85">· {saleCount}</span>
                 </FilterLink>
               </>
             )}
@@ -450,7 +450,7 @@ export function ProductGrid({
         {/* Size filter — multi-select; a product matches if it has ANY of
             the currently selected sizes. Updates the grid instantly. */}
         <div className="flex items-center gap-1.5">
-          <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
+          <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/85">
             {t('filter.sizeLabel')}
           </span>
           {STANDARD_SIZES.map((size) => {
@@ -464,10 +464,10 @@ export function ProductGrid({
                   // shrink-0 is load-bearing: `size-7` sets the width, but a flex item
                   // still shrinks, and in this wrapped row on a 375px screen these
                   // measured 8-9px wide — a size filter nobody could reliably hit.
-                  'tap-safe flex size-7 shrink-0 items-center justify-center border text-[11px] font-medium transition-colors duration-200',
+                  'tap-safe flex size-7 shrink-0 items-center justify-center rounded-xl border text-[11px] font-medium transition-colors duration-200',
                   active
                     ? 'border-gold bg-gold text-gold-foreground'
-                    : 'border-border/60 text-muted-foreground/70 hover:border-foreground/40 hover:text-foreground',
+                    : 'border-border/60 text-muted-foreground/85 hover:border-foreground/40 hover:text-foreground',
                 )}
               >
                 {size}
@@ -483,7 +483,7 @@ export function ProductGrid({
           <>
             <span className="mx-1 h-3 w-px bg-border/60" />
             <div className="flex items-center gap-1.5">
-              <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
+              <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/85">
                 {t('filter.colorLabel')}
               </span>
               {paletteColors.map((c) => {
@@ -528,7 +528,7 @@ export function ProductGrid({
           <>
             <span className="mx-1 h-3 w-px bg-border/60" />
             <div className="flex items-center gap-1.5">
-              <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
+              <span className="mr-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/85">
                 {t('filter.priceLabel')}
               </span>
               <PriceInput
@@ -537,7 +537,7 @@ export function ProductGrid({
                 ariaLabel={t('filter.priceMin')}
                 onChange={(v) => setFilter({ ...filter, minPrice: v })}
               />
-              <span className="text-muted-foreground/40">—</span>
+              <span className="text-muted-foreground/85">—</span>
               <PriceInput
                 value={filter.maxPrice}
                 placeholder={String(priceBounds.max)}
@@ -552,7 +552,7 @@ export function ProductGrid({
           <button
             type="button"
             onClick={clearAllFilters}
-            className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50 transition hover:text-destructive"
+            className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/85 transition hover:text-destructive"
           >
             <X className="size-3" />
             {t('filter.clearAll')}
@@ -562,7 +562,7 @@ export function ProductGrid({
 
       {!locked && !hideTaxonomyChips && categories.length > 0 && (
         <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/50">
+          <span className="flex items-center gap-1 text-[11px] uppercase tracking-[0.1em] text-muted-foreground/85">
             <SlidersHorizontal className="size-3" />
             {t('filter.categoryLabel')}
           </span>
@@ -578,7 +578,7 @@ export function ProductGrid({
               }
               small
             >
-              {c.label} <span className="text-muted-foreground/40">· {c.count}</span>
+              {c.label} <span className="text-muted-foreground/85">· {c.count}</span>
             </FilterLink>
           ))}
         </div>
@@ -618,7 +618,7 @@ export function ProductGrid({
               edges with a hairline between the columns, and the grid returns to
               the padded layout at md, where the header's gutter is the design.
               Card TEXT keeps its own inset — see ProductCard. */}
-          <div className="-mx-4 grid grid-cols-2 gap-x-px gap-y-8 transition-all duration-300 sm:-mx-6 sm:gap-y-12 md:mx-0 md:gap-x-7 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 transition-all duration-300 sm:gap-y-12 md:gap-x-7 md:grid-cols-3 xl:grid-cols-4">
             {shown.map((product, i) => (
               <Reveal key={product.id} delay={(i % 8) * 70}>
                 <ProductCard product={product} priority={i < eagerCount} />
@@ -628,13 +628,13 @@ export function ProductGrid({
 
           {visible < filtered.length && (
             <div className="mt-14 flex flex-col items-center gap-3">
-              <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85">
                 {shown.length} / {filtered.length}
               </p>
               <button
                 type="button"
                 onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                className="border border-gold/40 bg-gold/5 px-8 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                className="rounded-xl border border-transparent bg-gold-gradient px-8 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
               >
                 {t('filter.showMore')}
               </button>
@@ -676,7 +676,7 @@ function PriceInput({
         const raw = e.target.value.trim()
         onChange(raw === '' ? null : Math.max(0, Number(raw) || 0))
       }}
-      className="w-20 border border-border/60 bg-transparent px-2 py-1 text-[12px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-gold"
+      className="w-20 rounded-xl border border-border/60 bg-transparent px-2 py-1 text-[12px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
     />
   )
 }
@@ -708,8 +708,8 @@ function FilterLink({
             ? 'text-gold'
             : 'text-foreground'
           : accent
-            ? 'text-muted-foreground/60 hover:text-gold/80'
-            : 'text-muted-foreground/60 hover:text-foreground',
+            ? 'text-muted-foreground/85 hover:text-gold'
+            : 'text-muted-foreground/85 hover:text-foreground',
       )}
     >
       {children}

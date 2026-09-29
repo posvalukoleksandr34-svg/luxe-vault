@@ -112,7 +112,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
         </div>
         <Link
           href="/stylist"
-          className="tap-safe hidden shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold sm:flex"
+          className="tap-safe hidden shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:text-gold sm:flex"
         >
           <Sparkles className="size-3.5" strokeWidth={1.5} />
           {t('vault.styleNew')}
@@ -128,7 +128,7 @@ export function CuratedVaults({ compact = false }: { compact?: boolean }) {
           className={compact ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}
         >
           {[0, 1].map((i) => (
-            <div key={i} className="border border-border/60">
+            <div key={i} className="rounded-xl border border-border/60">
               <Skeleton className="aspect-[3/1] w-full" />
               <div className="space-y-2 p-4">
                 <Skeleton className="h-3 w-1/2" />
@@ -166,13 +166,13 @@ function EmptyVaults() {
   const { t } = useStore()
   return (
     <div className="flex flex-col items-center gap-4 py-12 text-center">
-      <Bookmark className="size-8 text-muted-foreground/25" strokeWidth={1.25} />
+      <Bookmark className="size-8 text-muted-foreground/85" strokeWidth={1.25} />
       <p className="max-w-xs text-[13px] font-light leading-relaxed text-muted-foreground">
         {t('vault.empty')}
       </p>
       <Link
         href="/stylist"
-        className="border border-gold/40 bg-gold/5 px-6 py-3 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+        className="rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
       >
         {t('vault.emptyCta')}
       </Link>
@@ -212,7 +212,7 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
   }
 
   return (
-    <li className="group flex flex-col border border-border/60 transition-colors duration-300 hover:border-gold/40">
+    <li className="group flex flex-col rounded-xl border border-border/60 transition-colors duration-300 hover:border-gold/40">
       {/* The capsule at a glance: up to four pieces, in the order they were
           saved. A link, so the whole strip opens the capsule. */}
       <Link
@@ -244,14 +244,14 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
             <p className="truncate font-serif text-[15px] font-medium text-foreground">
               {row.title?.trim() || t('looks.capsule')}
             </p>
-            <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+            <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85">
               {tf('vault.pieces', { n: found.length })}
               {date && ` · ${date}`}
             </p>
           </div>
           {/* Only when the engine recorded one — never a fabricated number. */}
           {typeof row.match_score === 'number' && (
-            <span className="shrink-0 border border-gold/40 bg-gold/[0.06] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-gold">
+            <span className="shrink-0 rounded-xl border border-gold/40 bg-gold/[0.06] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-gold">
               {tf('vault.match', { n: row.match_score })}
             </span>
           )}
@@ -264,7 +264,7 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
         )}
 
         {missing > 0 && (
-          <p className="text-[11px] font-light text-muted-foreground/60">
+          <p className="text-[11px] font-light text-muted-foreground/85">
             {tf('vault.missing', { n: missing })}
           </p>
         )}
@@ -274,7 +274,7 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
           <div className="flex items-center gap-2">
             <Link
               href={`/stylist/share/${encodeURIComponent(row.id)}`}
-              className="border border-gold/30 bg-gold/5 px-4 py-2 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+              className="rounded-xl border border-transparent bg-gold-gradient px-4 py-2 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
             >
               {t('vault.open')}
             </Link>
@@ -283,7 +283,7 @@ function VaultCard({ row, onDelete }: { row: VaultRow; onDelete: () => void }) {
               onClick={() => (confirming ? onDelete() : setConfirming(true))}
               aria-label={t('vault.delete')}
               className={cn(
-                'tap-safe flex items-center gap-1.5 border px-3 py-2 text-[11px] uppercase tracking-[0.12em] transition-colors duration-200',
+                'tap-safe flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] uppercase tracking-[0.12em] transition-colors duration-200',
                 confirming
                   ? 'border-destructive/60 bg-destructive/10 text-destructive'
                   : 'border-border/60 text-muted-foreground hover:border-destructive/50 hover:text-destructive',

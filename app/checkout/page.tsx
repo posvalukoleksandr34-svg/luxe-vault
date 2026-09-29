@@ -116,13 +116,13 @@ export default function CheckoutPage() {
                       alt={cartLineName(item)}
                       width={48}
                       height={48}
-                      className="size-12 shrink-0 border border-border/60 object-cover"
+                      className="size-12 shrink-0 rounded-xl border border-border/60 object-cover"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[12px] font-light text-foreground">
                         {cartLineName(item)}
                       </p>
-                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-muted-foreground/70">
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-muted-foreground/85">
                         {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                       </p>
                     </div>

@@ -232,12 +232,12 @@ export function ProductReviews({ productId }: { productId: string }) {
                   <StarRow value={r.rating} />
                   <span className="text-[13px] text-foreground">{r.author}</span>
                   {r.verified && (
-                    <span className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-gold/80">
+                    <span className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-gold">
                       <BadgeCheck className="size-3" />
                       {t('review.verified')}
                     </span>
                   )}
-                  <span className="ml-auto text-[11px] tabular-nums text-muted-foreground/60">
+                  <span className="ml-auto text-[11px] tabular-nums text-muted-foreground/85">
                     {new Date(r.createdAt).toLocaleDateString(locale)}
                   </span>
                 </div>
@@ -254,7 +254,7 @@ export function ProductReviews({ productId }: { productId: string }) {
 
       {/* Write a review — only for someone who can. */}
       {submitted && (
-        <p className="mt-8 border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold">
+        <p className="mt-8 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold">
           {t('review.pending')}
         </p>
       )}
@@ -265,7 +265,7 @@ export function ProductReviews({ productId }: { productId: string }) {
             <button
               type="button"
               onClick={() => setWriting(true)}
-              className="border border-gold/40 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+              className="rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
             >
               {t('review.write')}
             </button>
@@ -287,7 +287,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                     <Star
                       className={cn(
                         'size-5',
-                        n <= draftRating ? 'fill-gold text-gold' : 'text-muted-foreground/40',
+                        n <= draftRating ? 'fill-gold text-gold' : 'text-muted-foreground/85',
                       )}
                     />
                   </button>
@@ -301,7 +301,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                 maxLength={4000}
                 placeholder={t('review.placeholder')}
                 aria-label={t('review.placeholder')}
-                className="w-full border border-border bg-background px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] text-foreground outline-none transition focus:border-gold"
               />
 
               {error && (
@@ -317,7 +317,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                     setWriting(false)
                     setError(null)
                   }}
-                  className="border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
+                  className="rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
                 >
                   {t('common.cancel')}
                 </button>
@@ -325,7 +325,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                   type="button"
                   onClick={submit}
                   disabled={submitting}
-                  className="flex items-center gap-2 border border-gold/40 bg-gold/5 px-6 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:opacity-50"
+                  className="rounded-xl flex items-center gap-2 border border-transparent bg-gold-gradient px-6 py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:opacity-50 shadow-gold"
                 >
                   {submitting && <Loader2 className="size-3.5 animate-spin" />}
                   {t('review.submit')}
@@ -352,7 +352,7 @@ function StarRow({ value, className }: { value: number; className?: string }) {
           aria-hidden
           className={cn(
             'size-3.5',
-            n <= value ? 'fill-gold text-gold' : 'text-muted-foreground/30',
+            n <= value ? 'fill-gold text-gold' : 'text-muted-foreground/85',
           )}
         />
       ))}

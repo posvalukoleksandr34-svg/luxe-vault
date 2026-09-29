@@ -13,9 +13,9 @@ const STATUS_LABELS: Record<ReviewStatus, string> = {
 }
 
 const STATUS_COLORS: Record<ReviewStatus, string> = {
-  pending: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  approved: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-  rejected: 'text-red-400 bg-red-400/10 border-red-400/30',
+  pending: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  approved: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  rejected: 'text-red-700 bg-red-500/10 border-red-500/30',
 }
 
 /** Lightweight review moderation queue — submissions land here as `pending`
@@ -105,7 +105,7 @@ export function ReviewsManager() {
                           key={n}
                           className={cn(
                             'size-3',
-                            n <= review.rating ? 'fill-gold text-gold' : 'fill-transparent text-muted-foreground/30',
+                            n <= review.rating ? 'fill-gold text-gold' : 'fill-transparent text-muted-foreground/85',
                           )}
                         />
                       ))}
@@ -132,7 +132,7 @@ export function ReviewsManager() {
                   type="button"
                   onClick={() => updateStatus(review.id, 'approved')}
                   disabled={review.status === 'approved'}
-                  className="flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-medium text-emerald-400 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Check className="size-3.5" />
                   Одобрить

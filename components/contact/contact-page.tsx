@@ -68,14 +68,14 @@ export function ContactPage() {
           <p className="mt-4 max-w-xl text-[15px] font-light leading-relaxed text-foreground/70">{c.pageIntro}</p>
           <Link
             href="/support"
-            className="group mt-6 inline-flex min-h-[44px] items-center gap-2 text-[13px] text-foreground/85 underline decoration-white/25 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-white"
+            className="group mt-6 inline-flex min-h-[44px] items-center gap-2 text-[13px] text-foreground/85 underline decoration-foreground/30 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-gold"
           >
             {c.helpCenter}
             <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={1.25} aria-hidden />
           </Link>
         </header>
 
-        <section aria-labelledby="contact-title" className="border-t border-white/10 py-12 lg:py-16">
+        <section aria-labelledby="contact-title" className="border-t border-border py-12 lg:py-16">
           <h2
             id="contact-title"
             className="mb-8 font-serif text-[28px] font-normal leading-tight tracking-tight text-foreground sm:text-[32px]"

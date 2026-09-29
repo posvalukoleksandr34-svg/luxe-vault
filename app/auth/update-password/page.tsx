@@ -92,7 +92,7 @@ export default function UpdatePasswordPage() {
         </p>
         <Link
           href="/auth/forgot-password"
-          className="mt-2 border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+          className="rounded-xl mt-2 border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
         >
           {t('pw.requestLink')}
         </Link>
@@ -103,7 +103,7 @@ export default function UpdatePasswordPage() {
   if (done) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-        <CheckCircle2 className="h-8 w-8 text-emerald-400" strokeWidth={1.25} />
+        <CheckCircle2 className="h-8 w-8 text-emerald-700" strokeWidth={1.25} />
         <h1 className="font-serif text-2xl font-bold text-foreground">{t('account.passwordChanged')}</h1>
         <p className="text-sm font-light text-muted-foreground">
           {t('pw.returningToShop')}
@@ -161,7 +161,7 @@ export default function UpdatePasswordPage() {
           <button
             type="submit"
             disabled={busy || !password || !confirm || mismatch || tooShort}
-            className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+            className="rounded-xl flex w-full items-center justify-center gap-2 border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {t('pw.save')}

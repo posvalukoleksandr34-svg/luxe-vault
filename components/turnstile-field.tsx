@@ -61,7 +61,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, Props>(function T
         ref={widget}
         siteKey={TURNSTILE_SITE_KEY}
         options={{
-          theme: 'dark',
+          theme: 'light',
           // Matches the drawer's own compact rhythm; the widget stretches to
           // the column width rather than sitting in a fixed 300px box.
           size: 'flexible',

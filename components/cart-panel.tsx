@@ -262,7 +262,7 @@ export function CartPanel() {
               <p
                 className={cn(
                   'mb-2.5 flex items-center gap-2 text-[12px] font-light',
-                  shippingGap ? 'text-muted-foreground' : 'text-emerald-300/90',
+                  shippingGap ? 'text-muted-foreground' : 'text-emerald-700/90',
                 )}
               >
                 {shippingGap ? (
@@ -274,7 +274,7 @@ export function CartPanel() {
                 ) : (
                   <>
                     <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                      <Check className="size-3 text-emerald-400" strokeWidth={2.5} />
+                      <Check className="size-3 text-emerald-700" strokeWidth={2.5} />
                     </span>
                     {t('cart.freeShippingCongrats')}
                   </>
@@ -291,7 +291,7 @@ export function CartPanel() {
                 <div
                   className={cn(
                     'h-full rounded-full transition-[width,background-color] duration-500 ease-out',
-                    shippingGap ? 'bg-gold' : 'bg-emerald-400/80',
+                    shippingGap ? 'bg-gold' : 'bg-emerald-500/80',
                   )}
                   style={{ width: `${shippingProgress}%` }}
                 />
@@ -319,7 +319,7 @@ export function CartPanel() {
                           alt=""
                           width={96}
                           height={96}
-                          className="size-24 object-cover"
+                          className="size-24 rounded-xl object-cover"
                         />
                       </Link>
                       <div className="flex min-w-0 flex-1 flex-col">
@@ -335,23 +335,23 @@ export function CartPanel() {
                             type="button"
                             onClick={() => removeFromCart(item.key)}
                             aria-label={`${t('cart.remove')}: ${name}`}
-                            className="-mr-1 flex size-7 shrink-0 items-center justify-center text-muted-foreground/50 transition hover:text-destructive"
+                            className="-mr-1 flex size-7 shrink-0 items-center justify-center text-muted-foreground/85 transition hover:text-destructive"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
                         </div>
-                        <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/50">
+                        <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/85">
                           {[item.size, colorName(item.color)].filter(Boolean).join(' · ')}
                         </p>
                         {atMax && (
-                          <p className="mt-1 text-[10px] font-light text-gold/75">
+                          <p className="mt-1 text-[10px] font-light text-gold">
                             {limit === 0
                               ? t('sold.out')
                               : tf('stock.onlyInSize', { n: limit as number, size: item.size })}
                           </p>
                         )}
                         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
-                          <div className="flex items-center border border-border">
+                          <div className="flex items-center rounded-xl border border-border">
                             <button
                               type="button"
                               onClick={() => updateCartQty(item.key, item.qty - 1)}
@@ -380,7 +380,7 @@ export function CartPanel() {
                               {formatPrice(item.price * item.qty)}
                             </p>
                             {item.qty > 1 && (
-                              <p className="text-[10px] font-light tabular-nums text-muted-foreground/60">
+                              <p className="text-[10px] font-light tabular-nums text-muted-foreground/85">
                                 {formatPrice(item.price)} × {item.qty}
                               </p>
                             )}
@@ -407,13 +407,13 @@ export function CartPanel() {
                   entered later can still push the basket over the threshold. */}
               <div className="mb-4 flex items-center justify-between text-[12px] font-light">
                 <span className="text-muted-foreground">{t('cart.shipping')}</span>
-                <span className={estimatedShipping === 0 ? 'text-emerald-300/90' : 'text-muted-foreground'}>
+                <span className={estimatedShipping === 0 ? 'text-emerald-700/90' : 'text-muted-foreground'}>
                   {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping, true)}
                 </span>
               </div>
               {/* How converted prices are paid: by card in this currency, crypto in CHF. */}
               {currency !== 'CHF' && (
-                <p className="-mt-2 mb-4 text-[10px] font-light leading-relaxed text-muted-foreground/60">
+                <p className="-mt-2 mb-4 text-[10px] font-light leading-relaxed text-muted-foreground/85">
                   {tf('cart.indicativeCurrency', { currency })}
                 </p>
               )}
@@ -425,14 +425,14 @@ export function CartPanel() {
                   if (currentUser) goToCheckout(false)
                   else setChoosing(true)
                 }}
-                className="w-full bg-gold py-4 text-[13px] font-medium uppercase tracking-[0.18em] text-gold-foreground transition-all duration-300 hover:bg-gold/90 hover:shadow-gold"
+                className="rounded-xl w-full bg-gold-gradient py-4 text-[13px] font-medium uppercase tracking-[0.18em] text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
               >
                 {t('cart.checkout')} · {formatPrice(cartSubtotal)}
               </button>
               <button
                 type="button"
                 onClick={clearCart}
-                className="mt-2 w-full py-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition hover:text-foreground"
+                className="mt-2 w-full py-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-foreground"
               >
                 {t('cart.clear')}
               </button>

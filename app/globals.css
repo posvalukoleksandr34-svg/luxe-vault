@@ -132,44 +132,58 @@
 
 @layer base {
   :root {
-    /* Smoked-charcoal palette. Every ground tone carries a little warm hue
-       (~36deg) rather than sitting at 0% saturation — that is what reads as
-       "rich charcoal" instead of "grey", because a true neutral next to a gold
-       accent looks dead. Lightness is lifted off pure black so surfaces
-       separate from one another without any of them approaching white. */
-    --background: 36 8% 7%;
-    --foreground: 40 25% 95%;
-    --card: 36 8% 10%;
-    --card-foreground: 40 25% 95%;
-    --popover: 36 9% 9%;
-    --popover-foreground: 40 25% 95%;
-    --primary: 40 25% 95%;
-    --primary-foreground: 36 8% 7%;
-    --secondary: 36 7% 14%;
-    --secondary-foreground: 40 25% 95%;
-    --muted: 36 7% 15%;
-    --muted-foreground: 40 8% 66%;
-    --accent: 36 7% 18%;
-    --accent-foreground: 40 25% 95%;
-    --destructive: 8 70% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 40 12% 26%;
-    --input: 40 12% 26%;
-    /* Hairline gold for card edges — visible enough to catch the eye, far
-       below the accent's saturation so it never competes with a CTA. */
-    --gold-hairline: 43 45% 40%;
-    --ring: 43 74% 56%;
-    --gold: 43 74% 56%;
-    --gold-foreground: 0 0% 3%;
-    --gold-light: 45 80% 68%;
-    --gold-dark: 38 70% 42%;
-    --chart-1: 43 74% 56%;
-    --chart-2: 160 50% 42%;
-    --chart-3: 197 37% 48%;
-    --chart-4: 280 60% 58%;
-    --chart-5: 340 70% 52%;
-    /* Fashion-house geometry: absolute, sharp corners everywhere. */
-    --radius: 0px;
+    /* Light Luxury Gold. An ivory ground (#FAF8F5), white surfaces for the
+       things a customer reads and fills in, and near-black text (#1A1A1A,
+       16:1 on the ground). Every neutral carries a little warm hue (~38deg):
+       a true grey beside gold looks cold and cheap.
+
+       TWO GOLDS, on purpose. Gold as a FILL, border or icon glow (--gold,
+       #C5A059; --gold-light #D4AF37; --gold-dark #B8912F) is bright, and what
+       sits on it is dark (#1A1A1A reads 7:1 on --gold). Gold as TEXT
+       (--gold-ink, #8A6A1C) is deeper, because bright gold on ivory is 2:1 —
+       unreadable at label sizes. tailwind.config.ts routes text-gold* to the
+       ink and bg-/border-/fill-gold* to the fill, so components keep writing
+       "gold" and get the legible one for each job. */
+    --background: 36 33% 97%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 36 33% 97%;
+    --secondary: 38 37% 92%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 38 30% 94%;
+    /* #5E574D — 6.7:1 on the ground, 7.1:1 on white; still 4.8:1 at the
+       /85 the lightest secondary text now uses. */
+    --muted-foreground: 35 10% 33%;
+    --accent: 38 35% 93%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 62% 44%;
+    --destructive-foreground: 0 0% 100%;
+    /* Soft warm hairlines (#E8E1D5): edges that separate without drawing a
+       hard line; depth comes from shadow (--shadow-soft) instead. */
+    --border: 38 29% 87%;
+    --input: 38 22% 82%;
+    --gold-hairline: 39 45% 72%;
+    --ring: 39 48% 56%;
+    --gold: 39 48% 56%;
+    --gold-foreground: 0 0% 10%;
+    --gold-light: 46 65% 52%;
+    --gold-dark: 43 59% 45%;
+    /* Gold for text and small icons: #8A6A1C, 4.7:1 on the ground. */
+    --gold-ink: 43 66% 33%;
+    --chart-1: 39 48% 56%;
+    --chart-2: 160 50% 36%;
+    --chart-3: 197 45% 40%;
+    --chart-4: 280 45% 48%;
+    --chart-5: 340 60% 46%;
+    /* Soft, rounded geometry: fields and buttons at 12px, cards and panels at
+       16px (rounded-2xl), and a shadow instead of a hard frame. */
+    --radius: 12px;
+    --shadow-soft: 0 4px 12px rgba(26, 20, 10, 0.05);
+    --shadow-lift: 0 10px 30px -12px rgba(26, 20, 10, 0.14);
   }
 }
 
@@ -183,13 +197,13 @@
     -moz-osx-font-smoothing: grayscale;
   }
   ::selection {
-    background: hsl(var(--gold) / 0.25);
-    color: hsl(var(--gold-light));
+    background: hsl(var(--gold) / 0.3);
+    color: hsl(var(--foreground));
   }
 }
 
 @layer utilities {
-  .text-gold { color: hsl(var(--gold)); }
+  .text-gold { color: hsl(var(--gold-ink)); }
   .bg-gold { background-color: hsl(var(--gold)); }
   .border-gold { border-color: hsl(var(--gold)); }
   .fill-gold { fill: hsl(var(--gold)); }
@@ -201,10 +215,14 @@
   .border-gold\/30 { border-color: hsl(var(--gold) / 0.3); }
   .border-gold\/50 { border-color: hsl(var(--gold) / 0.5); }
   .border-gold\/60 { border-color: hsl(var(--gold) / 0.6); }
-  .text-gold\/70 { color: hsl(var(--gold) / 0.7); }
-  .text-gold\/80 { color: hsl(var(--gold) / 0.8); }
+  /* Gold text is never faded: the ink is already as light as legibility
+     allows (4.8:1), and any opacity drops it below AA. */
+  .text-gold\/70,
+  .text-gold\/80 { color: hsl(var(--gold-ink)); }
   .ring-gold\/40 { --tw-ring-color: hsl(var(--gold) / 0.4); }
-  .shadow-gold { box-shadow: 0 0 24px hsl(var(--gold) / 0.12); }
+  .shadow-gold { box-shadow: 0 8px 24px -8px hsl(var(--gold) / 0.45); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-lift { box-shadow: var(--shadow-lift); }
   /* Frosted editorial header ground. Semi-transparent + blurred so the ambient
      gold pools behind it bleed through the bar instead of stopping at it. */
   .glass {
@@ -214,11 +232,27 @@
   }
 }
 
-/* Fashion-house geometry, enforced globally: every rounded-* utility (and
-   any component library default) collapses to a hard, absolute corner.
-   Square badges and hairline frames instead of pills and soft cards. */
-* {
-  border-radius: 0 !important;
+/* Soft geometry. This used to force `border-radius: 0 !important` on every
+   element — square corners as the house style. Now the controls a customer
+   touches are rounded by default (12px), and cards and panels carry 16px
+   (.card-gold, .panel-gold, .product-card). Rounded-* utilities still win,
+   since they come later than this base layer. */
+@layer base {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea,
+  button {
+    border-radius: 12px;
+  }
+
+  /* ...except where the button is a ROW, not a control: an item in a list
+     ruled by divide-* lines (the mobile menu, the account menu), or a button
+     edged on one side only (accordion rows). A radius there bends the ends of
+     the rule into arcs. Both selectors out-rank `button` above. */
+  :where([class*='divide-y'], [class*='divide-x']) > button,
+  button:where([class~='border-t'], [class~='border-b'], [class~='border-y'], [class~='border-l'], [class~='border-r'], [class~='border-x']):not([class~='border']) {
+    border-radius: 0;
+  }
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -274,9 +308,10 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 
-  /* The site is dark only: native scrollbars, form controls, date pickers and
-     autofill render in their dark variants instead of flashing light ones. */
-  color-scheme: dark;
+  /* The site is light only: native scrollbars, form controls, date pickers
+     and autofill render in their light variants, never a dark one that
+     would flash inside the ivory page on a phone set to dark mode. */
+  color-scheme: light;
 
   /* Reserves the scrollbar's width whether or not a scrollbar is present, so
      the content column never changes width.
@@ -352,7 +387,7 @@ input[type='password']::-webkit-textfield-decoration-container {
    ---------------------------------------------------------------------------
    Four very wide, very low-opacity pools behind everything: three gold, one
    cool, and a faint vertical wash. They give the page depth without lifting any
-   surface toward white — the ground still reads as charcoal, but it is lit
+   surface out of its ivory — the ground still reads as one warm tone, but lit
    rather than flat. The cool pool is what makes the gold ones read as *light*
    rather than as a stain; without a cooler neighbour the eye normalises the
    warmth away and the page looks flat brown again.
@@ -367,11 +402,10 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 55% at 18% 0%, hsl(var(--gold) / 0.075) 0%, transparent 62%),
-    radial-gradient(60% 50% at 88% 22%, hsl(var(--gold) / 0.05) 0%, transparent 60%),
-    radial-gradient(55% 45% at 8% 62%, hsl(210 40% 45% / 0.035) 0%, transparent 62%),
-    radial-gradient(80% 60% at 50% 100%, hsl(38 60% 35% / 0.055) 0%, transparent 65%),
-    linear-gradient(180deg, hsl(36 10% 11%) 0%, hsl(36 8% 7%) 45%, hsl(36 9% 9%) 100%);
+    radial-gradient(70% 55% at 18% 0%, hsl(var(--gold) / 0.10) 0%, transparent 62%),
+    radial-gradient(60% 50% at 88% 22%, hsl(var(--gold-light) / 0.07) 0%, transparent 60%),
+    radial-gradient(80% 60% at 50% 100%, hsl(38 45% 80% / 0.35) 0%, transparent 65%),
+    linear-gradient(180deg, hsl(40 60% 98.5%) 0%, hsl(36 33% 97%) 45%, hsl(38 35% 95%) 100%);
 }
 
 /* ---------------------------------------------------------------------------
@@ -406,10 +440,13 @@ body::before {
   position: absolute;
   /* `screen` makes overlapping gold accumulate into brighter cores the way
      backlit smoke does; plain alpha compositing just muddies it. */
-  mix-blend-mode: screen;
+  /* multiply, on the light ground: warm gold pools tint the ivory the way
+     light through amber glass does. (It was `screen` on the dark theme,
+     which on a light ground brightens toward white and shows nothing.) */
+  mix-blend-mode: multiply;
   will-change: transform;
   /* Softens the gradient's own banding, which is very visible at these low
-     alphas on a dark ground. */
+     alphas on a plain ground. */
   filter: blur(28px);
   /* Half strength: atmosphere, never an effect. */
   opacity: 0.5;
@@ -422,8 +459,8 @@ body::before {
   height: 78vh;
   background: radial-gradient(
     closest-side,
-    hsl(43 74% 56% / 0.13) 0%,
-    hsl(40 70% 50% / 0.06) 45%,
+    hsl(43 70% 62% / 0.16) 0%,
+    hsl(40 60% 72% / 0.08) 45%,
     transparent 74%
   );
   animation: smoke-a 92s ease-in-out infinite alternate;
@@ -436,8 +473,8 @@ body::before {
   height: 88vh;
   background: radial-gradient(
     closest-side,
-    hsl(45 80% 62% / 0.1) 0%,
-    hsl(38 70% 46% / 0.05) 48%,
+    hsl(46 70% 62% / 0.13) 0%,
+    hsl(38 55% 72% / 0.07) 48%,
     transparent 72%
   );
   animation: smoke-b 116s ease-in-out infinite alternate;
@@ -453,8 +490,8 @@ body::before {
   height: 72vh;
   background: radial-gradient(
     closest-side,
-    hsl(200 45% 42% / 0.05) 0%,
-    hsl(38 60% 40% / 0.055) 52%,
+    hsl(200 30% 72% / 0.06) 0%,
+    hsl(38 50% 74% / 0.07) 52%,
     transparent 76%
   );
   animation: smoke-c 136s ease-in-out infinite alternate;
@@ -469,12 +506,11 @@ body::before {
   left: -60%;
   width: 120vw;
   height: 180vh;
-  mix-blend-mode: screen;
   will-change: transform, opacity;
   background: linear-gradient(
     103deg,
     transparent 38%,
-    hsl(45 80% 62% / 0.025) 50%,
+    hsl(48 90% 88% / 0.22) 50%,
     transparent 62%
   );
   animation: sheen-sweep 180s ease-in-out infinite;
@@ -498,8 +534,8 @@ body::before {
      rounded dot. This also gives each mote a soft halo for free. */
   background: radial-gradient(
     circle,
-    hsl(45 82% 70% / 0.95) 0%,
-    hsl(43 74% 56% / 0.4) 42%,
+    hsl(43 70% 52% / 0.75) 0%,
+    hsl(41 60% 55% / 0.3) 42%,
     transparent 70%
   );
   animation: mote-rise calc(var(--d) * 2) linear var(--delay) infinite;
@@ -584,14 +620,14 @@ body::before {
   }
 }
 
-/* Corners settle back to charcoal. Also hides the point where a mote loops. */
+/* Corners warm slightly toward cream. Also hides the point where a mote loops. */
 .ambient__vignette {
   position: absolute;
   inset: 0;
   background: radial-gradient(
     ellipse 120% 90% at 50% 45%,
-    transparent 42%,
-    hsl(36 8% 7% / 0.55) 100%
+    transparent 48%,
+    hsl(38 40% 88% / 0.45) 100%
   );
 }
 
@@ -738,22 +774,26 @@ body::before {
 
      Cards used to be frosted glass that lifted 2px and pulsed a gold glow for
      as long as the pointer rested on them — the vocabulary of a dashboard, not
-     of a fashion house. A card is now a charcoal plane with a hairline edge;
+     of a fashion house. A card is now a white plane with a soft edge;
      hover warms the edge and deepens the ground a step, and the photograph
      inside does the rest. */
   .card-gold {
     @apply border;
-    border-color: hsl(var(--gold-hairline) / 0.22);
-    background-color: hsl(var(--card) / 0.55);
+    /* A white plane on the ivory ground, 16px corners, and a soft shadow
+       doing the separating that a hard frame used to. */
+    border-radius: 16px;
+    border-color: hsl(var(--border) / 0.8);
+    background-color: hsl(var(--card));
+    box-shadow: var(--shadow-soft);
     transition:
       border-color 400ms cubic-bezier(0.2, 0, 0, 1),
-      background-color 400ms cubic-bezier(0.2, 0, 0, 1);
+      box-shadow 400ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   .card-gold:hover,
   .card-gold:focus-within {
-    border-color: hsl(var(--gold-hairline) / 0.45);
-    background-color: hsl(var(--card) / 0.7);
+    border-color: hsl(var(--gold-hairline) / 0.7);
+    box-shadow: var(--shadow-lift);
   }
 
   .card-gold:focus-visible {
@@ -764,14 +804,16 @@ body::before {
   /* The same plane for containers inside drawers and modals. */
   .panel-gold {
     @apply border;
-    border-color: hsl(var(--gold-hairline) / 0.2);
-    background-color: hsl(var(--card) / 0.5);
+    border-radius: 16px;
+    border-color: hsl(var(--border) / 0.8);
+    background-color: hsl(var(--card));
+    box-shadow: var(--shadow-soft);
     transition: border-color 400ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   .panel-gold:hover,
   .panel-gold:focus-within {
-    border-color: hsl(var(--gold-hairline) / 0.38);
+    border-color: hsl(var(--gold-hairline) / 0.7);
   }
 
   /* Formerly an always-on pulse. The class stays so its call sites remain
@@ -814,8 +856,8 @@ body::before {
   .glow-breathe {
     animation: none;
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.22),
-      0 8px 30px -12px hsl(var(--gold) / 0.34);
+      0 0 0 1px hsl(var(--gold) / 0.35),
+      var(--shadow-lift);
   }
 }
 
@@ -852,16 +894,16 @@ body::before {
     backdrop-filter: blur(3px) saturate(115%);
     -webkit-backdrop-filter: blur(3px) saturate(115%);
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.22),
-      0 8px 30px -12px hsl(var(--gold) / 0.34);
+      0 0 0 1px hsl(var(--gold) / 0.35),
+      var(--shadow-lift);
   }
 
   .panel-gold:hover,
   .panel-gold:focus-within {
     animation: none;
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.22),
-      0 8px 30px -12px hsl(var(--gold) / 0.34);
+      0 0 0 1px hsl(var(--gold) / 0.35),
+      var(--shadow-lift);
   }
 }
 
@@ -960,7 +1002,7 @@ iframe[src*="elements-inner-easel"] {
   display: block;
   /* Centred on the wrapper's origin, which is the point the script moves. */
   transform: translate(-50%, -50%);
-  mix-blend-mode: screen;
+  mix-blend-mode: multiply;
   border-radius: 0;
 }
 
@@ -972,9 +1014,9 @@ iframe[src*="elements-inner-easel"] {
   height: 780px;
   background: radial-gradient(
     ellipse at center,
-    hsl(43 74% 56% / 0.105) 0%,
-    hsl(38 70% 46% / 0.062) 34%,
-    hsl(36 60% 30% / 0.028) 58%,
+    hsl(43 68% 60% / 0.14) 0%,
+    hsl(40 55% 68% / 0.08) 34%,
+    hsl(38 40% 75% / 0.04) 58%,
     transparent 74%
   );
   filter: blur(46px);
@@ -988,8 +1030,8 @@ iframe[src*="elements-inner-easel"] {
   height: 380px;
   background: radial-gradient(
     ellipse at center,
-    hsl(45 80% 62% / 0.15) 0%,
-    hsl(41 76% 52% / 0.082) 40%,
+    hsl(45 70% 58% / 0.16) 0%,
+    hsl(41 60% 64% / 0.08) 40%,
     transparent 72%
   );
   filter: blur(34px);
@@ -1004,8 +1046,8 @@ iframe[src*="elements-inner-easel"] {
   height: 200px;
   background: radial-gradient(
     ellipse at center,
-    hsl(46 88% 70% / 0.15) 0%,
-    hsl(43 80% 58% / 0.07) 45%,
+    hsl(46 75% 55% / 0.14) 0%,
+    hsl(43 60% 66% / 0.07) 45%,
     transparent 70%
   );
   filter: blur(22px);
@@ -1117,13 +1159,13 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
 }
 
-/* Cool wash across the lower two-thirds. Gold reads as LIGHT only when it has
-   something cooler to fall on; over neutral charcoal it reads as a tint. */
+/* A cream floor across the lower two-thirds: the light ground the gold
+   stands on, a shade deeper than the page so the hero has depth. */
 .hero__floor {
   background: radial-gradient(
     ellipse 120% 70% at 50% 118%,
-    hsl(210 22% 16% / 0.55) 0%,
-    hsl(215 18% 11% / 0.28) 38%,
+    hsl(38 42% 88% / 0.75) 0%,
+    hsl(38 36% 92% / 0.4) 38%,
     transparent 70%
   );
 }
@@ -1131,8 +1173,8 @@ iframe[src*="elements-inner-easel"] {
 /* Key light, from above and slightly behind. */
 .hero__key {
   background:
-    radial-gradient(ellipse 90% 46% at 50% -8%, hsl(43 70% 56% / 0.09) 0%, transparent 62%),
-    radial-gradient(ellipse 40% 30% at 78% 12%, hsl(40 65% 50% / 0.045) 0%, transparent 70%);
+    radial-gradient(ellipse 90% 46% at 50% -8%, hsl(43 70% 60% / 0.16) 0%, transparent 62%),
+    radial-gradient(ellipse 40% 30% at 78% 12%, hsl(40 65% 62% / 0.1) 0%, transparent 70%);
 }
 
 /* The lit surface the wordmark stands on. Deliberately a thin, wide band
@@ -1140,8 +1182,8 @@ iframe[src*="elements-inner-easel"] {
 .hero__horizon {
   background: radial-gradient(
     ellipse 62% 12% at 50% 62%,
-    hsl(45 78% 58% / 0.1) 0%,
-    hsl(40 70% 48% / 0.04) 45%,
+    hsl(45 72% 56% / 0.16) 0%,
+    hsl(40 60% 66% / 0.07) 45%,
     transparent 72%
   );
 }
@@ -1149,8 +1191,8 @@ iframe[src*="elements-inner-easel"] {
 .hero__vignette {
   background: radial-gradient(
     ellipse 92% 78% at 50% 50%,
-    transparent 46%,
-    hsl(36 8% 5% / 0.5) 100%
+    transparent 50%,
+    hsl(38 38% 90% / 0.55) 100%
   );
 }
 
@@ -1186,11 +1228,11 @@ iframe[src*="elements-inner-easel"] {
 .hero__sheen {
   background: linear-gradient(
     100deg,
-    hsl(38 68% 44%) 0%,
-    hsl(43 74% 56%) 26%,
-    hsl(48 96% 82%) 42%,
-    hsl(43 74% 56%) 58%,
-    hsl(38 68% 44%) 100%
+    hsl(38 66% 30%) 0%,
+    hsl(42 64% 40%) 26%,
+    hsl(46 72% 54%) 42%,
+    hsl(42 64% 40%) 58%,
+    hsl(38 66% 30%) 100%
   );
   background-size: 260% 100%;
   background-position: 100% 0;
@@ -1299,9 +1341,11 @@ iframe[src*="elements-inner-easel"] {
 .product-card {
   position: relative;
   isolation: isolate;
-  box-shadow:
-    0 14px 34px -22px hsl(36 30% 3% / 0.9),
-    0 2px 10px -6px hsl(36 30% 3% / 0.6);
+  /* Rounded, and lifted off the ivory by a soft warm shadow. overflow:
+     hidden clips the photograph and the specular pass to the corners. */
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
   transition:
     box-shadow 620ms cubic-bezier(0.16, 1, 0.3, 1),
     transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -1314,8 +1358,8 @@ iframe[src*="elements-inner-easel"] {
      this class sits alongside — adding a second ring here made the hover
      read as an outline rather than as light. */
   box-shadow:
-    0 30px 60px -30px hsl(36 40% 2% / 0.95),
-    0 10px 44px -20px hsl(43 74% 46% / 0.22);
+    0 22px 44px -24px rgba(26, 20, 10, 0.22),
+    0 8px 28px -16px hsl(var(--gold) / 0.35);
 }
 
 /* The pass. Skewed, so it crosses as a raking highlight rather than as a
@@ -1332,9 +1376,9 @@ iframe[src*="elements-inner-easel"] {
   background: linear-gradient(
     100deg,
     transparent 0%,
-    hsl(45 85% 72% / 0.05) 38%,
-    hsl(48 92% 82% / 0.085) 50%,
-    hsl(45 85% 72% / 0.05) 62%,
+    hsl(0 0% 100% / 0.12) 38%,
+    hsl(0 0% 100% / 0.28) 50%,
+    hsl(0 0% 100% / 0.12) 62%,
     transparent 100%
   );
   transform: translateX(0) skewX(-14deg);
@@ -1453,11 +1497,12 @@ iframe[src*="elements-inner-easel"] {
     border-color 600ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Once the page moves under it, the bar becomes a solid charcoal band with a
-   single neutral hairline — present, never ornamental. */
+/* Once the page moves under it, the bar becomes a frosted ivory band with a
+   soft shadow instead of a line — present, never ornamental. */
 .site-header[data-scrolled='true'] {
-  background-color: hsl(var(--background) / 0.94);
-  border-color: hsl(var(--foreground) / 0.07);
+  background-color: hsl(var(--background) / 0.9);
+  border-color: hsl(var(--border) / 0.6);
+  box-shadow: var(--shadow-soft);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -1481,15 +1526,15 @@ iframe[src*="elements-inner-easel"] {
    One inline SVG turbulence, tiled. Generated by the browser at load and then
    composited like any other image — no canvas, no animation, no per-frame
    cost. Its job is to keep the large gradients from banding on a wide display
-   and to give the flat charcoal a surface.
+   and to give the flat ivory a paper-like surface.
 --------------------------------------------------------------------------- */
 
 .ambient__grain {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.025;
-  mix-blend-mode: overlay;
+  opacity: 0.02;
+  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
 }
@@ -1500,8 +1545,8 @@ iframe[src*="elements-inner-easel"] {
 .product-card.group:hover,
 .product-card.group:focus-visible {
   box-shadow:
-    0 30px 60px -30px hsl(36 40% 2% / 0.95),
-    0 10px 44px -20px hsl(43 74% 46% / 0.22);
+    0 22px 44px -24px rgba(26, 20, 10, 0.22),
+    0 8px 28px -16px hsl(var(--gold) / 0.35);
 }
 
 .product-card.group:hover::after,
@@ -1655,9 +1700,9 @@ iframe[src*="elements-inner-easel"] {
 /* ---------------------------------------------------------------------------
    Skeletons
    ---------------------------------------------------------------------------
-   A warm charcoal bar with a slow gold sheen crossing it, rather than the
-   grey pulse a default skeleton uses — on a near-black ground a pulsing grey
-   block reads as a failed image, not as loading.
+   A warm cream bar with a slow gold sheen crossing it, rather than the grey
+   pulse a default skeleton uses — a flat grey block reads as a failed image,
+   not as loading.
 
    The sheen is a background-position animation on a small element, which
    repaints only that element. Skeletons are on screen for a second or two at
@@ -1668,13 +1713,14 @@ iframe[src*="elements-inner-easel"] {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background-color: hsl(var(--muted) / 0.55);
+  border-radius: 12px;
+  background-color: hsl(var(--muted));
   background-image: linear-gradient(
     100deg,
     transparent 20%,
-    hsl(var(--gold) / 0.07) 42%,
-    hsl(var(--gold) / 0.12) 50%,
-    hsl(var(--gold) / 0.07) 58%,
+    hsl(var(--gold) / 0.1) 42%,
+    hsl(var(--gold) / 0.18) 50%,
+    hsl(var(--gold) / 0.1) 58%,
     transparent 80%
   );
   background-size: 220% 100%;

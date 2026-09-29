@@ -120,7 +120,7 @@ export function OrderTracker({ order }: { order: Order }) {
       <header className="card-gold p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-gold/70">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-gold">
               {t('track.title')}
             </p>
             {/* Monospaced and large: the order number is the one string a
@@ -139,7 +139,7 @@ export function OrderTracker({ order }: { order: Order }) {
             </span>
             <span
               className={cn(
-                'border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]',
+                'rounded-xl border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]',
                 // Cancelled and refunded are outcomes, not alarms: a quiet
                 // neutral badge rather than the old red one.
                 terminal
@@ -176,17 +176,17 @@ export function OrderTracker({ order }: { order: Order }) {
       ) : (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-            <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
-              <MapPin className="size-3 text-gold/60" strokeWidth={1.5} />
+            <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">
+              <MapPin className="size-3 text-gold" strokeWidth={1.5} />
               {tf('track.timeline', promisedDays)}
             </p>
             {/* The projected date, computed from this order's own timestamps.
                 A range of days is abstract; "12 — 27 October" is the answer
                 the customer came for. */}
             {eta && (
-              <p className="text-[11px] text-muted-foreground/70">
+              <p className="text-[11px] text-muted-foreground/85">
                 {t(order.status === 'delivered' ? 'track.deliveredOn' : 'track.expected')}{' '}
-                <span className="text-gold/90">{formatDeliveryWindow(eta, locale)}</span>
+                <span className="text-gold">{formatDeliveryWindow(eta, locale)}</span>
               </p>
             )}
           </div>
@@ -220,7 +220,7 @@ export function OrderTracker({ order }: { order: Order }) {
 
                   <div
                     className={cn(
-                      'relative flex items-start gap-4 border p-4 transition-all duration-500 sm:p-5',
+                      'relative flex items-start gap-4 rounded-xl border p-4 transition-all duration-500 sm:p-5',
                       active
                         // The active step breathes, so on a page a customer
                         // revisits for weeks the eye lands on "where is it
@@ -233,12 +233,12 @@ export function OrderTracker({ order }: { order: Order }) {
                   >
                     <span
                       className={cn(
-                        'flex size-8 shrink-0 items-center justify-center border transition-colors duration-500',
+                        'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-colors duration-500',
                         active
                           ? 'border-gold bg-gold/15 text-gold'
                           : reached
-                            ? 'border-gold/40 bg-gold/5 text-gold/80'
-                            : 'border-border text-muted-foreground/40',
+                            ? 'border-gold/40 bg-gold/5 text-gold'
+                            : 'border-border text-muted-foreground/85',
                       )}
                     >
                       {reached && !active ? (
@@ -257,13 +257,13 @@ export function OrderTracker({ order }: { order: Order }) {
                               ? 'text-gold'
                               : reached
                                 ? 'text-foreground'
-                                : 'text-muted-foreground/50',
+                                : 'text-muted-foreground/85',
                           )}
                         >
                           {t(ORDER_STATUS_KEYS[status])}
                         </p>
                         {at && (
-                          <span className="text-[11px] tabular-nums text-muted-foreground/60">
+                          <span className="text-[11px] tabular-nums text-muted-foreground/85">
                             {new Date(at).toLocaleDateString(locale)}
                           </span>
                         )}
@@ -271,7 +271,7 @@ export function OrderTracker({ order }: { order: Order }) {
                       <p
                         className={cn(
                           'mt-1.5 text-[12px] font-light leading-relaxed',
-                          reached ? 'text-muted-foreground' : 'text-muted-foreground/45',
+                          reached ? 'text-muted-foreground' : 'text-muted-foreground/85',
                         )}
                       >
                         {subtitle === 'track.step.delivered.sub'
@@ -298,7 +298,7 @@ export function OrderTracker({ order }: { order: Order }) {
       {/* -------------------------------------------------------------- items */}
       <section className="card-gold p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          <PackageCheck className="size-3.5 text-gold/60" strokeWidth={1.5} />
+          <PackageCheck className="size-3.5 text-gold" strokeWidth={1.5} />
           {t('track.items')}
         </h2>
         <ul className="divide-y divide-border/40">
@@ -309,11 +309,11 @@ export function OrderTracker({ order }: { order: Order }) {
                 alt={item.name}
                 width={64}
                 height={64}
-                className="size-16 shrink-0 border border-border/60 object-cover"
+                className="size-16 shrink-0 rounded-xl border border-border/60 object-cover"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-light text-foreground">{item.name}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
+                <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
                   {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                 </p>
               </div>
@@ -331,7 +331,7 @@ export function OrderTracker({ order }: { order: Order }) {
           arithmetic error. */}
       <section className="card-gold p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          <Receipt className="size-3.5 text-gold/60" strokeWidth={1.5} />
+          <Receipt className="size-3.5 text-gold" strokeWidth={1.5} />
           {t('track.summary')}
         </h2>
         <dl className="space-y-2 text-[13px] font-light">
@@ -344,7 +344,7 @@ export function OrderTracker({ order }: { order: Order }) {
               <dt className="text-muted-foreground">
                 {t('track.discount')}
                 {order.promo && (
-                  <span className="ml-1.5 font-mono text-[11px] text-gold/70">{order.promo}</span>
+                  <span className="ml-1.5 font-mono text-[11px] text-gold">{order.promo}</span>
                 )}
               </dt>
               <dd className="tabular-nums text-destructive">−{formatChf(order.discount)}</dd>
@@ -372,7 +372,7 @@ export function OrderTracker({ order }: { order: Order }) {
               <span className="block font-serif text-xl text-gold">{formatChf(order.total)}</span>
               {/* Paid by card in another currency: what the card was charged. */}
               {orderCharge(order).converted && (
-                <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/70">
+                <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/85">
                   {tf('orders.chargedAs', {
                     amount: formatCharged(orderCharge(order).amount, orderCharge(order).currency),
                   })}
@@ -381,7 +381,7 @@ export function OrderTracker({ order }: { order: Order }) {
             </dd>
           </div>
           <div className="flex justify-between pt-1">
-            <dt className="text-[11px] text-muted-foreground/60">{t('track.paymentMethod')}</dt>
+            <dt className="text-[11px] text-muted-foreground/85">{t('track.paymentMethod')}</dt>
             <dd className="text-[11px] text-muted-foreground">{paymentMethodLabel(order.payment, t)}</dd>
           </div>
         </dl>
@@ -390,7 +390,7 @@ export function OrderTracker({ order }: { order: Order }) {
       {/* ------------------------------------------------------------ address */}
       <section className="card-gold p-5 sm:p-6">
         <h2 className="mb-4 flex items-center gap-2 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          <MapPin className="size-3.5 text-gold/60" strokeWidth={1.5} />
+          <MapPin className="size-3.5 text-gold" strokeWidth={1.5} />
           {t('track.shippingTo')}
         </h2>
         <address className="not-italic text-[13px] font-light leading-relaxed text-muted-foreground">

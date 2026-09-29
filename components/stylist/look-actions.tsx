@@ -207,7 +207,7 @@ export function LookActions({
   }
 
   const secondary =
-    'inline-flex items-center justify-center gap-2 border border-border/60 px-5 py-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-foreground disabled:opacity-50'
+    'inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 px-5 py-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-foreground disabled:opacity-50'
 
   return (
     <>

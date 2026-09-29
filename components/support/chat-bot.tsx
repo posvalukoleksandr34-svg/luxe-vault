@@ -205,8 +205,8 @@ export function ChatBot() {
             className={cn(
               'max-w-[85%] px-3.5 py-2.5 text-[13px] font-light leading-relaxed',
               m.from === 'bot'
-                ? 'border border-border/60 bg-background/60 text-foreground/90'
-                : 'ml-auto border border-gold/40 bg-gold/10 text-foreground',
+                ? 'rounded-xl border border-border/60 bg-background/60 text-foreground/90'
+                : 'ml-auto rounded-xl border border-gold/40 bg-gold/10 text-foreground',
             )}
           >
             {m.text}
@@ -223,7 +223,7 @@ export function ChatBot() {
                 key={item}
                 type="button"
                 onClick={() => pickTopic(item)}
-                className="border border-border px-3 py-1.5 text-[11px] text-foreground/80 transition-colors duration-200 hover:border-gold/60 hover:text-gold"
+                className="rounded-xl border border-border px-3 py-1.5 text-[11px] text-foreground/80 transition-colors duration-200 hover:border-gold/60 hover:text-gold"
               >
                 {c.topics[item]}
               </button>
@@ -232,7 +232,7 @@ export function ChatBot() {
                 key={item.id}
                 type="button"
                 onClick={() => pickQuestion(item)}
-                className="border border-border px-3 py-1.5 text-left text-[11px] text-foreground/80 transition-colors duration-200 hover:border-gold/60 hover:text-gold"
+                className="rounded-xl border border-border px-3 py-1.5 text-left text-[11px] text-foreground/80 transition-colors duration-200 hover:border-gold/60 hover:text-gold"
               >
                 {item.q[locale]}
               </button>
@@ -241,7 +241,7 @@ export function ChatBot() {
           <button
             type="button"
             onClick={toHuman}
-            className="border border-gold/50 bg-gold/5 px-3 py-1.5 text-[11px] text-gold transition-colors duration-200 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl border border-transparent bg-gold-gradient px-3 py-1.5 text-[11px] font-medium text-gold-foreground transition-colors duration-200 hover:brightness-[1.05] shadow-gold"
           >
             {t('chat.toHuman')}
           </button>
@@ -255,13 +255,13 @@ export function ChatBot() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('chat.placeholder')}
           aria-label={t('chat.placeholder')}
-          className="h-10 w-full border border-border bg-background px-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/50 focus:border-gold"
+          className="h-10 w-full rounded-xl border border-border bg-card px-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
         />
         <button
           type="submit"
           disabled={!query.trim()}
           aria-label={t('chat.send')}
-          className="flex size-10 shrink-0 items-center justify-center border border-gold/50 text-gold transition-colors duration-200 enabled:hover:bg-gold enabled:hover:text-gold-foreground disabled:opacity-40"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-gold/50 text-gold transition-colors duration-200 enabled:hover:bg-gold enabled:hover:text-gold-foreground disabled:opacity-40"
         >
           <Send className="size-4" />
         </button>
