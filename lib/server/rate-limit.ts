@@ -55,6 +55,11 @@ const LIMITS = {
   'auth.recovery': { max: 5, windowSeconds: 900 },
 
   /** Support tickets. */
+  /** The chat concierge (/api/support/assistant). Each message is one model
+   *  call, so this is also the cost ceiling per visitor: a real conversation
+   *  is a dozen messages, not forty in ten minutes. */
+  'support.assistant': { max: 40, windowSeconds: 600 },
+
   'support.create': { max: 5, windowSeconds: 900 },
 
   /** Newsletter sign-ups. Every accepted address is someone we may email, so

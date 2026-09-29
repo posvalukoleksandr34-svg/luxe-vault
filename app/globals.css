@@ -1995,3 +1995,47 @@ html[data-keyboard='open'] .hide-with-keyboard {
 .scroll-picker.is-unset .scroll-picker__item[data-centre='true'] .scroll-picker__num {
   color: hsl(var(--foreground) / 0.5);
 }
+
+/* The chat concierge's typing indicator (components/support/chat-bot.tsx):
+   three dots rising in turn. Still dots under reduced motion. */
+.chat-typing span {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: hsl(var(--gold));
+  opacity: 0.35;
+  animation: chat-typing 1.2s ease-in-out infinite;
+}
+
+.chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing span {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+:root[data-motion='reduce'] .chat-typing span {
+  animation: none;
+  opacity: 0.6;
+}
