@@ -99,7 +99,20 @@ export function Header() {
       data-scrolled={scrolled}
       className="site-header sticky top-0 z-50 border-b"
     >
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6 lg:px-10">
+      {/* On a phone the row did not fit: menu, wordmark and five controls
+          came to ~372px (414px signed in, with the bell), so the page
+          scrolled sideways on 360–390px screens, the checkout included. Below
+          md the cart and profile icons are left out, exactly as the wishlist
+          already was — the bottom tab bar (components/bottom-nav.tsx, phones
+          only) carries all three, badges included — and below 380px the gaps
+          and the wordmark tighten as well.
+
+          overflow-x: clip — the icons' invisible 44px tap areas (.tap-safe)
+          reach past the last icon, and at the screen edge that alone widened
+          the page by a few pixels. `clip`, not `hidden`: it cuts one axis
+          only and makes no scroll container, so the menus that open below
+          the row are untouched. */}
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-2 overflow-x-clip px-4 min-[380px]:gap-4 sm:px-6 lg:px-10">
         <button
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
@@ -128,10 +141,10 @@ export function Header() {
               whole PAGE sideways — the wordmark's 0.22em tracking was the
               cheapest 40px to reclaim, and shrinking it costs less than
               hiding a control the customer came to use. */}
-          <span className="font-serif text-lg font-bold tracking-[0.1em] text-foreground sm:text-xl sm:tracking-[0.22em]">
+          <span className="font-serif text-base font-bold tracking-[0.06em] text-foreground min-[380px]:text-lg min-[380px]:tracking-[0.1em] sm:text-xl sm:tracking-[0.22em]">
             LUXE
           </span>
-          <span className="font-serif text-lg font-bold tracking-[0.1em] text-gold sm:text-xl sm:tracking-[0.22em]">
+          <span className="font-serif text-base font-bold tracking-[0.06em] text-gold min-[380px]:text-lg min-[380px]:tracking-[0.1em] sm:text-xl sm:tracking-[0.22em]">
             VAULT
           </span>
         </Link>
@@ -199,8 +212,12 @@ export function Header() {
             )}
           </button>
 
-          {/* Signed in: the account menu. Signed out: the drawer's sign-in. */}
-          <AccountMenu />
+          {/* Signed in: the account menu. Signed out: the drawer's sign-in.
+              Desktop only, like the wishlist below: on a phone the bottom tab
+              bar's Profile tab is the way in. */}
+          <div className="hidden md:contents">
+            <AccountMenu />
+          </div>
 
           {/* Saved items. A real link, not a drawer: the wishlist is a page
               with its own address, which is also what the bottom bar's tab
@@ -230,7 +247,9 @@ export function Header() {
           <button
             type="button"
             onClick={() => setPanel('cart')}
-            className="tap-safe relative flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
+            // Desktop only, like the wishlist: on a phone the bottom tab bar's
+            // Cart tab, with the same badge, is the way in.
+            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
             aria-label={t('cart.title')}
           >
             <ShoppingBag className="size-[18px]" />

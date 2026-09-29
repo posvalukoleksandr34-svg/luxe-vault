@@ -635,7 +635,7 @@ export function CheckoutFlow({
             }}
           />
         ) : cardOrder && clientSecret ? (
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="w-full min-w-0">
             <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               {t('orders.payingFor')} <span className="text-foreground">{cardOrder.id}</span>
             </p>
@@ -683,7 +683,7 @@ export function CheckoutFlow({
             />
           </div>
         ) : showCrypto && cryptoOrder?.lookupToken ? (
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="w-full min-w-0">
             <p className="mb-4 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               {t('orders.payingFor')} <span className="text-foreground">{cryptoOrder.id}</span>
             </p>
@@ -743,7 +743,7 @@ export function CheckoutFlow({
               {/* Two fields, as on a parcel label: the carrier and the
                   invoice need the surname on its own. Side by side from
                   small tablets up, stacked on a phone. */}
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid w-full grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-2">
                 <Field
                   label={t('checkout.firstName')}
                   value={form.firstName}
@@ -805,7 +805,7 @@ export function CheckoutFlow({
                 placeholder={t('checkout.streetPlaceholder')}
               />
 
-              <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-3">
+              <div className="grid w-full grid-cols-2 gap-3">
                 <Field
                   label={t('checkout.postalCode')}
                   value={form.postalCode}
@@ -863,7 +863,7 @@ export function CheckoutFlow({
                 <label htmlFor="checkout-promo" className="mb-2.5 block text-[11px] uppercase tracking-[0.15em] text-foreground">
                   {t('checkout.promo')}
                 </label>
-                <div className="flex gap-2">
+                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2">
                   <input
                     id="checkout-promo"
                     type="text"
@@ -871,14 +871,14 @@ export function CheckoutFlow({
                     onChange={(e) => update('promo', e.target.value)}
                     placeholder={t('checkout.promoPlaceholder')}
                     className={cn(
-                      'flex-1 border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40',
+                      'w-full min-w-0 border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40',
                       promoError ? 'border-destructive' : 'border-border',
                     )}
                   />
                   <button
                     type="button"
                     onClick={handleApplyPromo}
-                    className="border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] text-foreground transition hover:bg-accent"
+                    className="shrink-0 whitespace-nowrap border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] text-foreground transition hover:bg-accent"
                   >
                     {t('checkout.applyPromo')}
                   </button>
@@ -891,7 +891,7 @@ export function CheckoutFlow({
               </div>
             </div>
 
-            <div className="border-t border-border/40 px-6 py-5">
+            <div className="mt-5 w-full border-t border-border/40 pt-5">
               <div className="mb-2 flex justify-between text-[13px]">
                 <span className="font-light text-muted-foreground">{t('cart.subtotal')}</span>
                 <span className="font-light text-foreground">{summaryPrice(cartSubtotal)}</span>
@@ -1090,7 +1090,7 @@ function Field({
   const errorId = useId()
 
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
         {required && <span className="text-gold/70">*</span>}
@@ -1105,7 +1105,7 @@ function Field({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         className={cn(
-          'w-full border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/40',
+          'w-full min-w-0 border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/40',
           error ? 'border-destructive focus:border-destructive' : 'border-border focus:border-gold/40',
         )}
       />
