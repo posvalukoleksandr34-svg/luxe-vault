@@ -4,6 +4,7 @@ import { ArrowDown } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/lib/store'
+import { HeroRibbons } from '@/components/hero-ribbons'
 
 /**
  * The hero.
@@ -80,6 +81,15 @@ export function Hero() {
 
       {/* 2. Key light from above. */}
       <div className="hero__key" />
+
+      {/* Ribbon glow: slow bands of champagne and gold light drifting across
+          the frame, like light across silk (components/hero-ribbons.tsx).
+          Behind everything that can be read or clicked. */}
+      <HeroRibbons />
+
+      {/* A soft ivory veil behind the wordmark and the buttons, so the
+          ribbons pass BEHIND the text rather than through it. */}
+      <div className="hero__veil" />
 
       {/* 3. Horizon glow, sitting just under the wordmark's baseline so the
              letters appear to stand on a lit surface. */}
