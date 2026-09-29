@@ -138,7 +138,7 @@ export function PhoneInput({
                   setOpen(false)
                 }
               }}
-              className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/85"
+              className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/55"
             />
           </div>
           <div className="max-h-56 overflow-y-auto">

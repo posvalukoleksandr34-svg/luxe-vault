@@ -334,7 +334,7 @@ export function Consultation({
           placeholder={t('stylist.notesPlaceholder')}
           rows={4}
           maxLength={300}
-          className="w-full rounded-xl border border-border/60 bg-transparent p-4 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
+          className="w-full rounded-xl border border-border/60 bg-transparent p-4 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold"
         />
       )}
 

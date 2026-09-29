@@ -277,7 +277,7 @@ export function ReturnRequestModal({
               rows={3}
               maxLength={2000}
               placeholder={t('rma.commentHint')}
-              className="mt-3 w-full resize-none rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
+              className="mt-3 w-full resize-none rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold"
             />
           </div>
 

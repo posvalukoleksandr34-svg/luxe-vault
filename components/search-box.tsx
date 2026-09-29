@@ -311,7 +311,7 @@ export function SearchBox({
         placeholder={t('filter.search')}
         className={cn(
           // outline-none is replaced, not dropped: focus draws a gold border.
-          'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/85',
+          'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/55',
           variant === 'desktop'
             ? 'w-36 rounded-xl border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-gold focus:ring-4 focus:ring-gold/15'
             : 'w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-8 text-sm focus:border-gold focus:ring-4 focus:ring-gold/15',

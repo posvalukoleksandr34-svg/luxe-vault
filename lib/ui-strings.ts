@@ -117,6 +117,7 @@ export const UI = {
   'checkout.saveDetails': { ru: 'Сохранить данные для следующих покупок', en: 'Save these details for next time', it: 'Salva questi dati per la prossima volta', fr: 'Enregistrer ces informations pour la prochaine fois', de: 'Diese Daten für das nächste Mal speichern' },
   'checkout.saveDetailsHint': { ru: 'Имя, телефон, email и адрес сохранятся только в этом браузере. Данные карты не сохраняются здесь никогда.', en: 'Name, phone, email and address are stored in this browser only. Card details are never stored here.', it: 'Nome, telefono, email e indirizzo restano solo in questo browser. I dati della carta non vengono mai salvati qui.', fr: 'Nom, téléphone, e-mail et adresse sont conservés uniquement dans ce navigateur. Les données de carte n’y sont jamais stockées.', de: 'Name, Telefon, E-Mail und Adresse werden nur in diesem Browser gespeichert. Kartendaten werden hier niemals gespeichert.' },
   'checkout.autofill': { ru: 'Заполнить сохранёнными данными', en: 'Use saved details', it: 'Usa i dati salvati', fr: 'Utiliser les informations enregistrées', de: 'Gespeicherte Daten verwenden' },
+  'checkout.useBookAddress': { ru: 'Использовать сохранённый адрес', en: 'Use my saved address', it: 'Usa il mio indirizzo salvato', fr: 'Utiliser mon adresse enregistrée', de: 'Meine gespeicherte Adresse verwenden' },
   'checkout.forgetSaved': { ru: 'Удалить сохранённое', en: 'Delete saved details', it: 'Elimina i dati salvati', fr: 'Supprimer les informations', de: 'Gespeicherte Daten löschen' },
   'checkout.savedApplied': { ru: 'Данные подставлены', en: 'Saved details applied', it: 'Dati salvati applicati', fr: 'Informations appliquées', de: 'Gespeicherte Daten übernommen' },
   'checkout.savedCleared': { ru: 'Сохранённые данные удалены', en: 'Saved details deleted', it: 'Dati salvati eliminati', fr: 'Informations supprimées', de: 'Gespeicherte Daten gelöscht' },
@@ -336,6 +337,7 @@ export const UI = {
   // reworded the account.
   'common.loading': { ru: 'Загрузка...', en: 'Loading...', it: 'Caricamento...', fr: 'Chargement...', de: 'Wird geladen...' },
   'common.back': { ru: 'Назад', en: 'Back', it: 'Indietro', fr: 'Retour', de: 'Zurück' },
+  'common.eg': { ru: 'напр.', en: 'e.g.', it: 'es.', fr: 'ex.', de: 'z. B.' },
   'common.retry': { ru: 'Повторить', en: 'Try again', it: 'Riprova', fr: 'Réessayer', de: 'Erneut versuchen' },
   'common.home': { ru: 'Главная', en: 'Home', it: 'Home', fr: 'Accueil', de: 'Startseite' },
   // Failure is NOT emptiness. Both of these replace a state that previously
@@ -608,7 +610,7 @@ export const UI = {
   'footer.newsBody': { ru: 'Новинки, лимитированные серии и специальные предложения — первыми.', en: 'New arrivals, limited editions and special offers — first.', it: 'Nuovi arrivi, edizioni limitate e offerte speciali, in anteprima.', fr: 'Nouveautés, éditions limitées et offres spéciales — en avant-première.', de: 'Neuheiten, limitierte Auflagen und besondere Angebote – als Erste.' },
   'footer.newsPlaceholder': { ru: 'Ваш e-mail', en: 'Your email', it: 'La tua email', fr: 'Votre e-mail', de: 'Ihre E-Mail' },
   'footer.newsCta': { ru: 'Подписаться', en: 'Subscribe', it: 'Iscriviti', fr: 'S\'abonner', de: 'Abonnieren' },
-  'footer.newsDone': { ru: 'Готово — вы подписаны.', en: 'Done — you\'re subscribed.', it: 'Fatto: sei iscritto.', fr: 'C\'est fait : vous êtes abonné.', de: 'Erledigt – Sie sind angemeldet.' },
+  'footer.newsThanks': { ru: 'Спасибо за подписку!', en: 'Thank you for subscribing!', it: 'Grazie per esserti iscritto!', fr: 'Merci pour votre inscription !', de: 'Danke für Ihre Anmeldung!' },
   'footer.newsAlready': { ru: 'Этот адрес уже подписан.', en: 'This address is already subscribed.', it: 'Questo indirizzo è già iscritto.', fr: 'Cette adresse est déjà abonnée.', de: 'Diese Adresse ist bereits angemeldet.' },
   'footer.newsInvalid': { ru: 'Проверьте адрес электронной почты', en: 'Check the email address', it: 'Controlla l\'indirizzo email', fr: 'Vérifiez l\'adresse e-mail', de: 'Prüfen Sie die E-Mail-Adresse' },
   'footer.newsError': { ru: 'Не получилось подписаться. Попробуйте ещё раз.', en: 'We couldn\'t subscribe you. Please try again.', it: 'Iscrizione non riuscita. Riprova.', fr: 'L\'inscription a échoué. Réessayez.', de: 'Die Anmeldung hat nicht geklappt. Bitte erneut versuchen.' },
@@ -785,6 +787,7 @@ export const UI = {
   'fit.footWidth.wide': { ru: 'Широкая', en: 'Wide', it: 'Larga', fr: 'Large', de: 'Breit' },
   'fit.sizeChartLink': { ru: 'Открыть таблицу размеров', en: 'Open the size chart', it: 'Apri la tabella taglie', fr: 'Ouvrir le guide des tailles', de: 'Größentabelle öffnen' },
   'fit.saved': { ru: 'Мерки сохранены на этом устройстве', en: 'Measurements saved on this device', it: 'Misure salvate su questo dispositivo', fr: 'Mesures enregistrées sur cet appareil', de: 'Maße auf diesem Gerät gespeichert' },
+  'fit.useSaved': { ru: 'Использовать сохранённые мерки', en: 'Use my saved measurements', it: 'Usa le mie misure salvate', fr: 'Utiliser mes mesures enregistrées', de: 'Meine gespeicherten Maße verwenden' },
   'fit.clearSaved': { ru: 'Удалить', en: 'Delete', it: 'Elimina', fr: 'Supprimer', de: 'Löschen' },
   'fit.rating': { ru: 'Как сядет', en: 'How it will sit', it: 'Come veste', fr: 'Comment ça tombe', de: 'Wie es sitzt' },
   'fit.area.chest': { ru: 'В груди', en: 'Chest', it: 'Torace', fr: 'Poitrine', de: 'Brust' },

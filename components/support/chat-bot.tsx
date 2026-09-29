@@ -255,7 +255,7 @@ export function ChatBot() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('chat.placeholder')}
           aria-label={t('chat.placeholder')}
-          className="h-10 w-full rounded-xl border border-border bg-card px-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
+          className="h-10 w-full rounded-xl border border-border bg-card px-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold"
         />
         <button
           type="submit"

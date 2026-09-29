@@ -2,7 +2,7 @@
 
 import { Check, Loader2 } from 'lucide-react'
 import { Link } from '@/components/locale-link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { isValidEmail } from '@/lib/validation'
@@ -18,13 +18,16 @@ type State = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; already: b
  * applies to (the request sends `consent: true` only from here).
  */
 export function FooterNewsletter() {
-  const { t, locale, currentUser } = useStore()
+  const { t, locale, currentUser, pushToast } = useStore()
   const [email, setEmail] = useState('')
   const [invalid, setInvalid] = useState(false)
   const [state, setState] = useState<State>({ kind: 'idle' })
+  // Set once a subscription went through, so the account email below is not
+  // written back into the field the success just emptied.
+  const subscribed = useRef(false)
 
   useEffect(() => {
-    if (currentUser?.email) setEmail((v) => v || currentUser.email)
+    if (currentUser?.email && !subscribed.current) setEmail((v) => v || currentUser.email)
   }, [currentUser])
 
   async function submit(e: React.FormEvent) {
@@ -44,7 +47,17 @@ export function FooterNewsletter() {
         body: JSON.stringify({ email: value, locale, consent: true, source: 'footer' }),
       })
       const data = await res.json().catch(() => null)
-      if (res.ok) return setState({ kind: 'done', already: Boolean(data?.already) })
+      if (res.ok) {
+        const already = Boolean(data?.already)
+        // Success empties the field and says so: a toast, and the inline
+        // confirmation that stands in the form's place for a few seconds
+        // before the (now empty) form comes back.
+        subscribed.current = true
+        setEmail('')
+        setState({ kind: 'done', already })
+        pushToast({ title: already ? t('footer.newsAlready') : t('footer.newsThanks'), variant: already ? 'default' : 'success' })
+        return
+      }
       if (data?.error === 'INVALID_EMAIL') {
         setInvalid(true)
         return setState({ kind: 'idle' })
@@ -54,6 +67,12 @@ export function FooterNewsletter() {
       setState({ kind: 'error', message: t('footer.newsError') })
     }
   }
+
+  useEffect(() => {
+    if (state.kind !== 'done') return
+    const timer = setTimeout(() => setState({ kind: 'idle' }), 6000)
+    return () => clearTimeout(timer)
+  }, [state])
 
   const sending = state.kind === 'sending'
 
@@ -73,7 +92,7 @@ export function FooterNewsletter() {
         {state.kind === 'done' ? (
           <p role="status" className="flex min-h-[46px] items-center gap-3 rounded-xl border border-border/60 px-4 text-[13px] font-light text-foreground">
             <Check className="size-4 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
-            {state.already ? t('footer.newsAlready') : t('footer.newsDone')}
+            {state.already ? t('footer.newsAlready') : t('footer.newsThanks')}
           </p>
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-0">
@@ -97,7 +116,7 @@ export function FooterNewsletter() {
               aria-invalid={invalid}
               aria-describedby={invalid ? 'footer-newsletter-error' : undefined}
               className={cn(
-                'min-h-[46px] w-full min-w-0 rounded-xl border bg-card px-4 text-base font-light text-foreground outline-none transition-colors placeholder:text-muted-foreground/85 focus:border-foreground/40 sm:border-r-0 sm:text-[13px]',
+                'min-h-[46px] w-full min-w-0 rounded-xl border bg-card px-4 text-base font-light text-foreground outline-none transition-colors placeholder:text-muted-foreground/55 focus:border-foreground/40 sm:border-r-0 sm:text-[13px]',
                 invalid ? 'border-destructive/70' : 'border-border/60',
               )}
             />
