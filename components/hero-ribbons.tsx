@@ -3,8 +3,14 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Ribbon glow — slow bands of light drifting behind the hero, like light
+ * Ribbon glow — slow bands of light drifting behind the page, like light
  * passing across silk.
+ *
+ * WHERE. Once for the whole storefront (layer "page", from the root layout
+ * via SiteRibbonsLazy): a fixed canvas the size of the window, just above the
+ * ambient smoke and below everything else, so every page — the hero included
+ * — sits on the same drifting silk. Not in the admin console. Layer "hero"
+ * draws it inside a single section instead.
  *
  * Tuned for the light theme: the ribbons are champagne and soft gold at very
  * low opacity with pearl-white highlights along one edge, and a single faint
@@ -62,7 +68,7 @@ const RENDER_SCALE = 0.35
 const FRAME_MS = 1000 / 30
 const SEGMENTS = 48
 
-export function HeroRibbons() {
+export function HeroRibbons({ layer = 'hero' }: { layer?: 'hero' | 'page' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -183,7 +189,7 @@ export function HeroRibbons() {
     }
     const onVisibility = () => (document.hidden ? pause() : play())
 
-    // Only while the hero is on screen.
+    // Only while it is on screen (always, for the fixed page layer).
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting
       if (visible) play()
@@ -205,5 +211,5 @@ export function HeroRibbons() {
     }
   }, [])
 
-  return <canvas ref={canvasRef} aria-hidden className="hero__ribbons" />
+  return <canvas ref={canvasRef} aria-hidden className={layer === 'page' ? 'site-ribbons' : 'hero__ribbons'} />
 }
