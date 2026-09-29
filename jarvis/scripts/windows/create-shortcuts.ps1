@@ -1,5 +1,5 @@
 <#
-  Creates "JARVIS" and "JARVIS Mini" (compact voice window) shortcuts on the Desktop and in the Start menu. They open JARVIS in its own
+  Creates "JARVIS", "JARVIS Mini" (compact voice window) and "JARVIS Widget" (desktop widget) shortcuts on the Desktop and in the Start menu. They open JARVIS in its own
   window (Edge/Chrome app mode: no address bar, no tabs, own taskbar icon). Pin it to the taskbar
   from the Start menu entry. Re-run after changing JARVIS_PUBLIC_URL / HTTP_PORT in .env.
 #>
@@ -15,7 +15,8 @@ $places = @(
 )
 $variants = @(
     @{ Name = 'JARVIS'; Url = $url; Size = '1400,900'; Desc = 'JARVIS - personal AI agent' },
-    @{ Name = 'JARVIS Mini'; Url = ($url.TrimEnd('/') + '/mini'); Size = '380,600'; Desc = 'JARVIS - compact voice window' }
+    @{ Name = 'JARVIS Mini'; Url = ($url.TrimEnd('/') + '/mini'); Size = '380,600'; Desc = 'JARVIS - compact voice window' },
+    @{ Name = 'JARVIS Widget'; Url = ($url.TrimEnd('/') + '/widget'); Size = '1280,720'; Desc = 'JARVIS - desktop voice widget' }
 )
 foreach ($dir in $places) {
     foreach ($v in $variants) {

@@ -9,6 +9,9 @@ Database migrations: **0002** (custom commands), **0003** (accounts, subscriptio
 support reports). They run automatically when the api starts; back up first (`scripts/update.sh` does).
 
 ### Added
+- **Desktop widget** (`/widget`, shortcut «JARVIS Widget»): glass three-column window — session timer, monthly
+  usage, weather (new `GET /api/weather`, Open-Meteo), live voice dialog with an animated microphone
+  (Framer Motion), dock (full UI, send clipboard, reminders, voice settings, type), dialog panel.
 - **Computer control.** Desktop agent (`desktop/`, Windows/Linux/macOS) connects to `/api/ws/device` with a
   `computer` device token. New skill `computer` (13 tools): open/close apps, media keys, volume, open sites and
   searches (web, YouTube, maps, Spotify), windows, typing, hotkeys, mouse, clipboard, screenshots (the model can

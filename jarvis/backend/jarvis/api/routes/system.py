@@ -232,6 +232,33 @@ async def events_socket(ws: WebSocket) -> None:
             await pumper
 
 
+_WEATHER_CACHE: dict[str, tuple[float, dict]] = {}
+
+
+@router.get("/api/weather")
+async def weather(place: str = Query(..., min_length=1, max_length=100), p: Principal = Depends(current),
+                  app: AppContext = Depends(get_app)) -> dict:
+    """Current weather for the desktop widget (Open-Meteo, cached 10 minutes per place)."""
+    from jarvis.integrations.openmeteo import forecast
+    from jarvis.tools.base import ToolError
+
+    key = place.strip().lower()
+    hit = _WEATHER_CACHE.get(key)
+    if hit and time.monotonic() - hit[0] < 600:
+        return hit[1]
+    if not await app.ratelimiter.hit(f"weather:{p.user_id}", limit=30, window_s=600):
+        raise HTTPException(429, "too many weather requests")
+    try:
+        data = await forecast(place, days=1)
+    except ToolError as exc:
+        raise HTTPException(404 if "not found" in str(exc) else 502, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — network to Open-Meteo
+        raise HTTPException(502, "weather service unavailable") from exc
+    out = {"place": data["place"], **data["now"]}
+    _WEATHER_CACHE[key] = (time.monotonic(), out)
+    return out
+
+
 @router.get("/api/voice/config")
 async def voice_config(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
     return {"stt": await app.voice.stt_provider(p.user_id), "tts": await app.voice.tts_provider(p.user_id),

@@ -24,6 +24,7 @@ import { SkillsPage } from "./pages/Skills";
 import { TasksPage } from "./pages/Tasks";
 import { ToolsPage } from "./pages/Tools";
 import { VoicePage } from "./pages/Voice";
+import { WidgetPage } from "./pages/Widget";
 
 /** Keeps react-query caches in sync with server events so every screen is live. */
 function LiveSync() {
@@ -107,6 +108,7 @@ export function App() {
       <Route path="/reset" element={<ResetPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/legal/:doc" element={<LegalPage />} />
+      <Route path="/widget" element={<RequireAuth><WidgetPage /></RequireAuth>} />
       <Route path="/mini" element={<RequireAuth><div className="h-dvh"><VoicePage compact /></div></RequireAuth>} />
       <Route
         element={
