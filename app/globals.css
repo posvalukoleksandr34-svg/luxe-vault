@@ -1180,60 +1180,16 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
 }
 
-/* A light halo right behind the text block — just enough that the small type
-   stays readable where a ribbon crosses it. The ribbons still show through
-   it, so they pass BEHIND the words rather than disappearing near them. */
+/* Keeps the centre of the frame calm: an ivory wash behind the wordmark,
+   subtitle and buttons, fading out toward the edges where the ribbons play. */
 .hero__veil {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: radial-gradient(
-    ellipse 30% 24% at 50% 52%,
-    hsl(var(--background) / 0.5) 0%,
-    hsl(var(--background) / 0.26) 60%,
-    transparent 100%
-  );
-}
-
-@media (max-width: 640px) {
-  .hero__veil {
-    background: radial-gradient(
-      ellipse 52% 28% at 50% 54%,
-      hsl(var(--background) / 0.5) 0%,
-      hsl(var(--background) / 0.26) 60%,
-      transparent 100%
-    );
-  }
-}
-
-/* The small type in the hero carries its own soft ivory aura, so it reads on
-   bronze as well as on ivory without a wash over the whole centre. */
-.hero__legible {
-  text-shadow:
-    0 0 3px hsl(var(--background)),
-    0 0 8px hsl(var(--background)),
-    0 0 18px hsl(var(--background)),
-    0 0 32px hsl(var(--background) / 0.85);
-}
-
-/* The two lines of small grey type (eyebrow and subtitle) also get a soft
-   glow of ivory light behind them — feathered to nothing at its edges, so it
-   reads as light behind the words, not as a box — because a bronze fold can
-   pass right behind them. */
-.hero__plate {
-  position: relative;
-}
-
-.hero__plate::before {
-  content: '';
-  position: absolute;
-  inset: -14px -36px;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-    closest-side,
-    hsl(var(--background) / 0.9) 0%,
-    hsl(var(--background) / 0.82) 55%,
+    ellipse 46% 40% at 50% 50%,
+    hsl(var(--background) / 0.78) 0%,
+    hsl(var(--background) / 0.45) 55%,
     transparent 100%
   );
 }
@@ -1258,9 +1214,9 @@ iframe[src*="elements-inner-easel"] {
 
 .hero__vignette {
   background: radial-gradient(
-    ellipse 96% 84% at 50% 50%,
-    transparent 64%,
-    hsl(38 38% 90% / 0.22) 100%
+    ellipse 92% 78% at 50% 50%,
+    transparent 50%,
+    hsl(38 38% 90% / 0.55) 100%
   );
 }
 

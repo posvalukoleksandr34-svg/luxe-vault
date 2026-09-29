@@ -87,8 +87,8 @@ export function Hero() {
           Behind everything that can be read or clicked. */}
       <HeroRibbons />
 
-      {/* A light halo behind the text block: the ribbons stay visible
-          through it and read as passing BEHIND the words. */}
+      {/* A soft ivory veil behind the wordmark and the buttons, so the
+          ribbons pass BEHIND the text rather than through it. */}
       <div className="hero__veil" />
 
       {/* 3. Horizon glow, sitting just under the wordmark's baseline so the
@@ -101,7 +101,7 @@ export function Hero() {
       >
         <div className="animate-reveal-up mb-7 flex items-center gap-4">
           <span className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
-          <span className="hero__legible hero__plate t-eyebrow text-muted-foreground">{t('hero.eyebrow')}</span>
+          <span className="t-eyebrow text-muted-foreground">{t('hero.eyebrow')}</span>
           <span className="h-px w-10 bg-gradient-to-l from-transparent to-gold/40" />
         </div>
 
@@ -112,7 +112,7 @@ export function Hero() {
           <span className="hero__word hero__word--2 hero__sheen block sm:inline">VAULT</span>
         </h1>
 
-        <p className="hero__legible hero__plate animate-reveal-up mt-9 max-w-sm text-[13px] font-light leading-relaxed tracking-[0.02em] text-muted-foreground sm:text-[15px]">
+        <p className="animate-reveal-up mt-9 max-w-sm text-[13px] font-light leading-relaxed tracking-[0.02em] text-muted-foreground sm:text-[15px]">
           {t('hero.subtitle')}
         </p>
 
@@ -133,7 +133,7 @@ export function Hero() {
 
           {/* Secondary, not competing with the primary CTA: someone who knows
               what they want browses; someone who does not asks the stylist. */}
-          <Link href="/stylist" className="hero__legible nav-link t-label tap-safe">
+          <Link href="/stylist" className="nav-link t-label tap-safe">
             {t('stylist.cta')}
           </Link>
         </div>
