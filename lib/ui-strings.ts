@@ -787,6 +787,7 @@ export const UI = {
   'fit.footWidth.wide': { ru: 'Широкая', en: 'Wide', it: 'Larga', fr: 'Large', de: 'Breit' },
   'fit.sizeChartLink': { ru: 'Открыть таблицу размеров', en: 'Open the size chart', it: 'Apri la tabella taglie', fr: 'Ouvrir le guide des tailles', de: 'Größentabelle öffnen' },
   'fit.saved': { ru: 'Мерки сохранены на этом устройстве', en: 'Measurements saved on this device', it: 'Misure salvate su questo dispositivo', fr: 'Mesures enregistrées sur cet appareil', de: 'Maße auf diesem Gerät gespeichert' },
+  'fit.swipeHint': { ru: 'Проведите, чтобы выбрать', en: 'Swipe to choose', it: 'Scorri per scegliere', fr: 'Faites glisser pour choisir', de: 'Zum Auswählen wischen' },
   'fit.useSaved': { ru: 'Использовать сохранённые мерки', en: 'Use my saved measurements', it: 'Usa le mie misure salvate', fr: 'Utiliser mes mesures enregistrées', de: 'Meine gespeicherten Maße verwenden' },
   'fit.clearSaved': { ru: 'Удалить', en: 'Delete', it: 'Elimina', fr: 'Supprimer', de: 'Löschen' },
   'fit.rating': { ru: 'Как сядет', en: 'How it will sit', it: 'Come veste', fr: 'Comment ça tombe', de: 'Wie es sitzt' },
