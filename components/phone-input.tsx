@@ -84,8 +84,10 @@ export function PhoneInput({
     <div ref={containerRef} className="relative">
       <div
         className={cn(
-          'grid w-full grid-cols-[auto_minmax(0,1fr)] border transition',
-          error ? 'border-destructive' : 'border-border focus-within:border-gold/40',
+          // One control: the outer frame is rounded and clips; the dial-code
+          // button and the number field inside stay square against it.
+          'grid w-full grid-cols-[auto_minmax(0,1fr)] overflow-hidden rounded-xl border bg-card transition',
+          error ? 'border-destructive' : 'border-border focus-within:border-gold focus-within:ring-4 focus-within:ring-gold/15',
         )}
       >
         <button
@@ -96,7 +98,7 @@ export function PhoneInput({
           }}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex shrink-0 items-center gap-1.5 border-r border-border px-3 py-3 text-[13px] font-light text-foreground transition hover:bg-accent"
+          className="flex shrink-0 items-center gap-1.5 rounded-none border-r border-border px-3 py-3 text-[13px] font-light text-foreground transition hover:bg-accent"
         >
           <span className="text-[15px] leading-none">{flagEmoji(country)}</span>
           <span className="font-mono text-[12px] text-muted-foreground">{active?.dial}</span>
@@ -110,12 +112,12 @@ export function PhoneInput({
           autoComplete="tel-national"
           value={value}
           onChange={(e) => onChange(formatAsYouType(e.target.value, country))}
-          className="w-full min-w-0 bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none"
+          className="w-full min-w-0 rounded-none bg-card px-3 py-3 text-[13px] font-light text-foreground outline-none"
         />
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 border border-border bg-popover shadow-2xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-border bg-popover shadow-2xl">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
@@ -136,7 +138,7 @@ export function PhoneInput({
                   setOpen(false)
                 }
               }}
-              className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/50"
+              className="w-full bg-transparent text-[12px] font-light text-foreground outline-none placeholder:text-muted-foreground/85"
             />
           </div>
           <div className="max-h-56 overflow-y-auto">

@@ -243,7 +243,7 @@ export function ReturnRequestModal({
                 <label
                   key={value}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 border px-4 py-3 text-[13px] font-light transition-colors duration-200',
+                    'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-[13px] font-light transition-colors duration-200',
                     reason === value
                       ? 'border-gold/50 bg-gold/5 text-foreground'
                       : 'border-border/60 text-foreground/70 hover:border-gold/30',
@@ -277,7 +277,7 @@ export function ReturnRequestModal({
               rows={3}
               maxLength={2000}
               placeholder={t('rma.commentHint')}
-              className="mt-3 w-full resize-none border border-border bg-background px-3.5 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/50 focus:border-gold"
+              className="mt-3 w-full resize-none rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
             />
           </div>
 
@@ -285,14 +285,14 @@ export function ReturnRequestModal({
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               {t('rma.photos')}
             </p>
-            <p className="mt-1.5 text-[12px] font-light text-muted-foreground/80">{t('rma.photosHint')}</p>
+            <p className="mt-1.5 text-[12px] font-light text-muted-foreground/90">{t('rma.photosHint')}</p>
 
             <div className="mt-3 flex flex-wrap gap-2">
               {photos.map((photo) => (
                 <div
                   key={photo.id}
                   className={cn(
-                    'relative size-20 overflow-hidden border bg-muted/30',
+                    'relative size-20 overflow-hidden rounded-xl border bg-muted/30',
                     photo.status === 'error' ? 'border-destructive/60' : 'border-border',
                   )}
                   title={photo.error}
@@ -332,7 +332,7 @@ export function ReturnRequestModal({
                 <button
                   type="button"
                   onClick={() => fileInput.current?.click()}
-                  className="flex size-20 flex-col items-center justify-center gap-1 border border-dashed border-border text-[10px] uppercase tracking-wider text-muted-foreground transition-colors duration-200 hover:border-gold/50 hover:text-gold"
+                  className="flex size-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-[10px] uppercase tracking-wider text-muted-foreground transition-colors duration-200 hover:border-gold/50 hover:text-gold"
                 >
                   <ImagePlus aria-hidden className="size-4" />
                   {t('rma.addPhotos')}
@@ -378,7 +378,7 @@ export function ReturnRequestModal({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="tap-safe min-h-[44px] border border-border px-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
+              className="tap-safe min-h-[44px] rounded-xl border border-border px-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               {t('rma.cancel')}
             </button>
@@ -389,7 +389,7 @@ export function ReturnRequestModal({
               type="submit"
               disabled={saving || !agreed || uploading}
               title={uploading ? t('rma.photosUploading') : undefined}
-              className="tap-safe no-juice inline-flex min-h-[44px] items-center justify-center gap-2 border border-gold bg-gold px-8 text-[11px] uppercase tracking-[0.2em] text-gold-foreground transition-colors duration-300 enabled:hover:bg-transparent enabled:hover:text-gold disabled:cursor-not-allowed disabled:opacity-40"
+              className="tap-safe no-juice inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-gold bg-gold-gradient px-8 text-[11px] uppercase tracking-[0.2em] text-gold-foreground transition-colors duration-300 enabled:hover:bg-transparent enabled:hover:text-gold disabled:cursor-not-allowed disabled:opacity-40 shadow-gold"
             >
               {saving ? (
                 <Loader2 aria-hidden className="size-3.5 animate-spin" />

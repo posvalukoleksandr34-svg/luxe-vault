@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
               VAULT
             </span>
           </div>
-          <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-muted-foreground/60">
+          <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-muted-foreground/85">
             Private Access
           </p>
         </div>
@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
         <button
           type="submit"
           disabled={loading || !password}
-          className="mt-6 w-full border border-gold/30 bg-gold/5 py-3.5 text-[12px] uppercase tracking-[0.2em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+          className="mt-6 w-full border border-gold/30 bg-gold/5 py-3.5 text-[12px] uppercase tracking-[0.2em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/85"
         >
           {loading ? '...' : 'Войти'}
         </button>

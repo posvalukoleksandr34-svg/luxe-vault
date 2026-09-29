@@ -22,7 +22,7 @@ export function ToastViewport() {
         >
           {toast.variant === 'success' && (
             <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
-              <Check className="size-3.5 text-emerald-400" />
+              <Check className="size-3.5 text-emerald-700" />
             </div>
           )}
           {toast.variant === 'gold' && (

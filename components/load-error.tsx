@@ -77,13 +77,13 @@ export function LoadError({
         className,
       )}
     >
-      <AlertTriangle className="size-8 text-gold/40" strokeWidth={1.25} />
+      <AlertTriangle className="size-8 text-gold" strokeWidth={1.25} />
 
       <p className="text-sm font-light text-foreground">{offline ? t('state.offlineTitle') : title || t('error.loadFailed')}</p>
 
       {/* The reassurance is the point: the most common worry when an order
           list fails to load is that the orders are gone. */}
-      <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/70">
+      <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/85">
         {offline ? t('state.offlineHint') : t('error.loadFailedHint')}
       </p>
 
@@ -91,7 +91,7 @@ export function LoadError({
         type="button"
         onClick={() => void retry()}
         disabled={retrying}
-        className="mt-1 inline-flex items-center gap-2 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-1 inline-flex items-center gap-2 rounded-xl border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-50 shadow-gold"
       >
         <RefreshCw className={cn('size-3.5', retrying && 'animate-spin')} />
         {t('common.retry')}

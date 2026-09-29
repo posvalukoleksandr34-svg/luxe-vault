@@ -73,16 +73,16 @@ export function StylistSummary({
   const anchor = useProductsById(brief.anchorProductId ? [brief.anchorProductId] : []).products[0]
 
   return (
-    <section aria-labelledby="stylist-summary" className="mb-12 border border-border/60 p-5 sm:p-6">
+    <section aria-labelledby="stylist-summary" className="mb-12 rounded-xl border border-border/60 p-5 sm:p-6">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="stylist-summary" className="text-[11px] uppercase tracking-[0.3em] text-gold/80">
+        <h2 id="stylist-summary" className="text-[11px] uppercase tracking-[0.3em] text-gold">
           {t('stylist.summaryTitle')}
         </h2>
         {onEdit && (
           <button
             type="button"
             onClick={onEdit}
-            className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition hover:text-gold"
+            className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-gold"
           >
             {t('stylist.editAnswers')}
           </button>
@@ -98,9 +98,9 @@ export function StylistSummary({
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (
           <div key={r.key} className="min-w-0">
-            <dt className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">{r.label}</dt>
+            <dt className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">{r.label}</dt>
             <dd className="mt-1 break-words text-[13px] font-light text-foreground">
-              {r.value ?? <span className="text-muted-foreground/50">{t('stylist.skipped')}</span>}
+              {r.value ?? <span className="text-muted-foreground/85">{t('stylist.skipped')}</span>}
             </dd>
           </div>
         ))}
@@ -167,12 +167,12 @@ export function StylistFallback({
             : { label: t('state.goToCatalog'), href: '/catalog', icon: LayoutGrid }
         }
         secondary={onRetry ? { label: t('state.goToCatalog'), href: '/catalog' } : undefined}
-        className="border border-border/60 px-6"
+        className="rounded-xl border border-border/60 px-6"
       />
 
       {picks.length > 0 && (
         <section className="mt-12">
-          <h2 className="mb-6 text-[11px] uppercase tracking-[0.3em] text-gold/80">
+          <h2 className="mb-6 text-[11px] uppercase tracking-[0.3em] text-gold">
             {t('stylist.fallbackPicks')}
           </h2>
           <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:gap-x-7 md:grid-cols-4">

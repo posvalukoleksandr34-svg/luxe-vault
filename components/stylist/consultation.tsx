@@ -175,12 +175,12 @@ export function Consultation({
               setIndex((i) => Math.max(0, i - 1))
             }}
             disabled={index === 0}
-            className="tap-safe flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 transition hover:text-foreground disabled:invisible"
+            className="tap-safe flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-foreground disabled:invisible"
           >
             <ChevronLeft className="size-3.5" />
             {t('stylist.back')}
           </button>
-          <span className="shrink-0 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">
+          <span className="shrink-0 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85">
             {t('stylist.step')} {index + 1}/{STEPS.length}
           </span>
         </div>
@@ -263,14 +263,14 @@ export function Consultation({
                   // No `capitalize`: labels arrive correctly cased per
                   // locale, and title-casing "Bleu marine" or "Blu navy"
                   // would be wrong in French and Italian.
-                  'flex min-h-[56px] items-center gap-3 border px-4 text-left text-[13px] transition-all duration-300',
+                  'flex min-h-[56px] items-center gap-3 rounded-xl border px-4 text-left text-[13px] transition-all duration-300',
                   on
                     ? 'border-gold/60 bg-gold/[0.06] text-foreground'
                     : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
                 )}
               >
                 <span
-                  className="size-5 shrink-0 border border-border/60"
+                  className="size-5 shrink-0 rounded-xl border border-border/60"
                   style={{ backgroundColor: COLOR_SWATCHES[c] }}
                   aria-hidden
                 />
@@ -313,7 +313,7 @@ export function Consultation({
                 onMouseEnter={playHoverSound}
                 aria-pressed={on}
                 className={cn(
-                  'flex size-14 shrink-0 items-center justify-center border text-[13px] font-medium transition-all duration-300',
+                  'flex size-14 shrink-0 items-center justify-center rounded-xl border text-[13px] font-medium transition-all duration-300',
                   on
                     ? 'border-gold bg-gold text-gold-foreground'
                     : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
@@ -334,7 +334,7 @@ export function Consultation({
           placeholder={t('stylist.notesPlaceholder')}
           rows={4}
           maxLength={300}
-          className="w-full border border-border/60 bg-transparent p-4 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-gold"
+          className="w-full rounded-xl border border-border/60 bg-transparent p-4 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
         />
       )}
 
@@ -348,7 +348,7 @@ export function Consultation({
           // Next keeps an answer, so it needs one; the last step's notes are
           // optional, so "Build my look" is always available.
           disabled={!last && !answered}
-          className="hero__cta group inline-flex items-center gap-2.5 border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="hero__cta group inline-flex items-center gap-2.5 rounded-xl border border-gold/30 px-8 py-3.5 text-[11px] uppercase tracking-[0.2em] text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           {last ? t('stylist.finish') : t('stylist.next')}
         </button>
@@ -358,7 +358,7 @@ export function Consultation({
             playClickSound()
             skip()
           }}
-          className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 transition hover:text-foreground"
+          className="tap-safe text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-foreground"
         >
           {t('stylist.skip')}
         </button>
@@ -394,7 +394,7 @@ function Choice({
       onMouseEnter={playHoverSound}
       aria-pressed={selected}
       className={cn(
-        'flex min-h-[64px] items-center justify-between gap-2 border px-4 text-left text-[13px] leading-tight transition-all duration-300',
+        'flex min-h-[64px] items-center justify-between gap-2 rounded-xl border px-4 text-left text-[13px] leading-tight transition-all duration-300',
         selected
           ? 'border-gold/60 bg-gold/[0.06] text-foreground'
           : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',

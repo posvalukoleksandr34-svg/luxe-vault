@@ -185,7 +185,7 @@ export const metadata: Metadata = {
    */
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
   // The browser chrome on mobile in the storefront's black.
-  themeColor: '#000000',
+  themeColor: '#FAF8F5',
   // iOS otherwise turns sizes, prices and article numbers that look like
   // phone numbers into tel: links.
   formatDetection: { telephone: false, email: false, address: false },
@@ -222,7 +222,7 @@ export default async function RootLayout({
     // before anyone's stored choice is known, so this is what a crawler and a
     // screen reader get; the client updates nothing, because every language
     // the switcher offers is written in the same Latin script.
-    <html lang={DEFAULT_LOCALE} className="dark" suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <head>
         {/* Before first paint: a visitor who chose "reduce animations" must
             not see a single frame of the entrance animations. See

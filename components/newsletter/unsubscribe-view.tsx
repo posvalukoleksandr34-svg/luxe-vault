@@ -59,7 +59,7 @@ export function UnsubscribeView() {
   }, [token, call])
 
   const button =
-    'inline-flex min-h-[46px] items-center justify-center gap-2 border px-7 text-[11px] uppercase tracking-[0.2em] transition-colors disabled:opacity-60'
+    'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl border px-7 text-[11px] uppercase tracking-[0.2em] transition-colors disabled:opacity-60'
 
   if (state === 'working') {
     return (

@@ -90,11 +90,11 @@ export function CategoryNav({
                     'flex items-baseline justify-between gap-2 text-[12px] uppercase tracking-[0.15em] transition-colors duration-200',
                     isActive
                       ? 'text-gold'
-                      : 'text-muted-foreground/70 hover:text-foreground',
+                      : 'text-muted-foreground/85 hover:text-foreground',
                   )}
                 >
                   <span>{node.label}</span>
-                  <span className="text-[11px] text-muted-foreground/40">{node.count}</span>
+                  <span className="text-[11px] text-muted-foreground/85">{node.count}</span>
                 </Link>
 
                 {/* Only the collection you are in expands. An always-open tree
@@ -110,11 +110,11 @@ export function CategoryNav({
                           'flex items-baseline justify-between gap-2 text-[12px] font-light transition-colors duration-200',
                           !category
                             ? 'text-foreground'
-                            : 'text-muted-foreground/60 hover:text-foreground',
+                            : 'text-muted-foreground/85 hover:text-foreground',
                         )}
                       >
                         <span>{t('filter.all')}</span>
-                        <span className="text-[11px] text-muted-foreground/40">{node.count}</span>
+                        <span className="text-[11px] text-muted-foreground/85">{node.count}</span>
                       </Link>
                     </li>
                     {node.items.map((item) => {
@@ -128,13 +128,13 @@ export function CategoryNav({
                               'flex items-baseline justify-between gap-2 text-[12px] font-light transition-colors duration-200',
                               on
                                 ? 'text-foreground'
-                                : 'text-muted-foreground/60 hover:text-foreground',
+                                : 'text-muted-foreground/85 hover:text-foreground',
                             )}
                           >
                             <span className={cn(on && 'border-b border-gold pb-0.5')}>
                               {item.label}
                             </span>
-                            <span className="text-[11px] text-muted-foreground/40">
+                            <span className="text-[11px] text-muted-foreground/85">
                               {item.count}
                             </span>
                           </Link>
@@ -168,9 +168,9 @@ export function CategoryNav({
               <li key={node.slug}>
                 <Link
                   href={`/category/${node.slug}`}
-                  className="whitespace-nowrap pb-1 text-[12px] uppercase tracking-[0.1em] text-muted-foreground/70 transition-colors duration-200 hover:text-foreground"
+                  className="whitespace-nowrap pb-1 text-[12px] uppercase tracking-[0.1em] text-muted-foreground/85 transition-colors duration-200 hover:text-foreground"
                 >
-                  {node.label} <span className="text-muted-foreground/40">· {node.count}</span>
+                  {node.label} <span className="text-muted-foreground/85">· {node.count}</span>
                 </Link>
               </li>
             ))}
@@ -192,7 +192,7 @@ export function CategoryNav({
                   'whitespace-nowrap text-[12px] uppercase tracking-[0.1em] transition-colors duration-200',
                   !category
                     ? 'border-b border-gold pb-1 text-foreground'
-                    : 'pb-1 text-muted-foreground/60',
+                    : 'pb-1 text-muted-foreground/85',
                 )}
               >
                 {t('filter.all')}
@@ -209,11 +209,11 @@ export function CategoryNav({
                       'whitespace-nowrap text-[12px] uppercase tracking-[0.1em] transition-colors duration-200',
                       on
                         ? 'border-b border-gold pb-1 text-foreground'
-                        : 'pb-1 text-muted-foreground/60',
+                        : 'pb-1 text-muted-foreground/85',
                     )}
                   >
                     {item.label}{' '}
-                    <span className="text-muted-foreground/40">· {item.count}</span>
+                    <span className="text-muted-foreground/85">· {item.count}</span>
                   </Link>
                 </li>
               )

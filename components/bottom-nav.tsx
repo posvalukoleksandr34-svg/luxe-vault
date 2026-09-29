@@ -57,12 +57,15 @@ export function BottomNav() {
     cn(
       'no-juice relative flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-[10px] tracking-[0.06em] transition-colors duration-200',
       'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-gold',
-      on ? 'text-gold' : 'text-neutral-400 hover:text-neutral-100',
+      // The active tab: gold, with a short gold bar above its icon.
+      on
+        ? "font-medium text-gold before:absolute before:left-1/2 before:top-0 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-gold-gradient before:content-['']"
+        : 'text-muted-foreground hover:text-foreground',
     )
 
   const badge = (count: number) =>
     count > 0 ? (
-      <span className="absolute right-[18%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold tabular-nums text-gold-foreground">
+      <span className="absolute right-[18%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-gradient px-1 text-[9px] font-bold tabular-nums text-gold-foreground shadow-sm">
         {count > 99 ? '99+' : count}
       </span>
     ) : null
@@ -70,7 +73,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t('tab.nav')}
-      className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-white/10 bg-black/90 backdrop-blur-md md:hidden"
+      className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-border/70 bg-background/95 shadow-[0_-4px_16px_rgba(26,20,10,0.06)] backdrop-blur-md md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <ul className="grid h-16 grid-cols-5">

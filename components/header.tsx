@@ -290,7 +290,7 @@ export function Header() {
             <button onClick={goReviews} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
               {t('reviews.title')}
             </button>
-            <button onClick={goSale} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-gold/90 transition-colors hover:text-gold">
+            <button onClick={goSale} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-gold transition-colors hover:text-gold">
               {t('filter.sale')}
             </button>
             <button
@@ -339,7 +339,7 @@ function NavLink({
         'nav-link t-label',
         // Sale is the one nav item allowed its gold: warmer at rest, so it
         // reads as the priority without a different size or a badge.
-        accent && 'text-gold/90 hover:text-gold',
+        accent && 'text-gold hover:text-gold',
       )}
     >
       {children}

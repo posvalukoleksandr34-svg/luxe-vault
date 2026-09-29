@@ -99,11 +99,11 @@ function SuccessContent() {
       <>
         <Header />
         <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-5 px-6 text-center">
-          <SearchX className="size-8 text-muted-foreground/40" strokeWidth={1.25} />
+          <SearchX className="size-8 text-muted-foreground/85" strokeWidth={1.25} />
           <p className="text-sm font-light text-muted-foreground">{t('track.notFound')}</p>
           <Link
             href="/"
-            className="border border-gold/40 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
           >
             {t('cart.continueShopping')}
           </Link>
@@ -134,13 +134,13 @@ function SuccessContent() {
           {/* The payment's own state, as the webhook recorded it. A fast
               customer can land here a second before Stripe's event does, so
               "processing" is said plainly rather than implying success. */}
-          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-gold/80">
+          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-gold">
             {order.paymentStatus === 'paid' ? t('pay.successTitle') : t('pay.processingTitle')}
           </p>
 
           {/* The id a customer quotes to support. Monospaced and selectable. */}
-          <div className="mt-7 inline-flex flex-col items-center gap-1 border border-gold/40 bg-gold/[0.05] px-6 py-4">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-gold/70">
+          <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-gold/40 bg-gold/[0.05] px-6 py-4">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-gold">
               {t('success.orderNumber')}
             </span>
             <span className="select-all font-mono text-xl font-medium tracking-wide text-foreground">
@@ -152,7 +152,7 @@ function SuccessContent() {
         {/* Delivery window, stamped at purchase */}
         {eta && (
           <section className="card-gold mt-8 flex items-start gap-3 p-5">
-            <Truck className="mt-0.5 size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+            <Truck className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} />
             <div>
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {t('success.expectedDelivery')}
@@ -167,7 +167,7 @@ function SuccessContent() {
         {/* Itemised summary */}
         <section className="card-gold mt-4 p-5 sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <Package className="size-3.5 text-gold/60" strokeWidth={1.5} />
+            <Package className="size-3.5 text-gold" strokeWidth={1.5} />
             {t('track.items')}
           </h2>
           <ul className="divide-y divide-border/40">
@@ -178,11 +178,11 @@ function SuccessContent() {
                   alt={item.name}
                   width={56}
                   height={56}
-                  className="size-14 shrink-0 border border-border/60 object-cover"
+                  className="size-14 shrink-0 rounded-xl border border-border/60 object-cover"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-light text-foreground">{item.name}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
                     {[item.size, colorName(item.color), `×${item.qty}`].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -203,7 +203,7 @@ function SuccessContent() {
                 <dt className="text-muted-foreground">
                   {t('track.discount')}
                   {order.promo && (
-                    <span className="ml-1.5 font-mono text-[11px] text-gold/70">{order.promo}</span>
+                    <span className="ml-1.5 font-mono text-[11px] text-gold">{order.promo}</span>
                   )}
                 </dt>
                 <dd className="tabular-nums text-destructive">−{formatChf(order.discount)}</dd>
@@ -232,7 +232,7 @@ function SuccessContent() {
                   {formatCharged(charge.amount, charge.currency)}
                 </span>
                 {charge.converted && (
-                  <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/70">
+                  <span className="mt-0.5 block text-[11px] font-light text-muted-foreground/85">
                     {tf('success.convertedFrom', { amount: formatChf(order.total, true) })}
                   </span>
                 )}
@@ -244,7 +244,7 @@ function SuccessContent() {
         {/* Shipping address */}
         <section className="card-gold mt-4 p-5 sm:p-6">
           <h2 className="mb-3 flex items-center gap-2 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <MapPin className="size-3.5 text-gold/60" strokeWidth={1.5} />
+            <MapPin className="size-3.5 text-gold" strokeWidth={1.5} />
             {t('track.shippingTo')}
           </h2>
           <address className="not-italic text-[13px] font-light leading-relaxed text-muted-foreground">
@@ -257,21 +257,21 @@ function SuccessContent() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/order/${encodeURIComponent(order.id)}`}
-            className="flex flex-1 items-center justify-center gap-2 border border-gold/40 bg-gold/10 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl flex flex-1 items-center justify-center gap-2 border border-transparent bg-gold-gradient py-3.5 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
           >
             <Truck className="size-3.5" />
             {t('success.trackOrder')}
           </Link>
           <Link
             href="/catalog"
-            className="flex flex-1 items-center justify-center gap-2 border border-border py-3.5 text-[12px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border py-3.5 text-[12px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
           >
             {t('cart.continueShopping')}
             <ArrowRight className="size-3.5" />
           </Link>
         </div>
 
-        <p className="mt-6 text-center text-[11px] font-light leading-relaxed text-muted-foreground/60">
+        <p className="mt-6 text-center text-[11px] font-light leading-relaxed text-muted-foreground/85">
           {t('success.emailNote')}
         </p>
       </main>

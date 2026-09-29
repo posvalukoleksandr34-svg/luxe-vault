@@ -90,7 +90,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 function Spinner() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
-      <Loader2 className="size-5 animate-spin text-foreground/40" />
+      <Loader2 className="size-5 animate-spin text-foreground/70" />
     </div>
   )
 }
@@ -167,21 +167,21 @@ function Overview() {
       <h1 className="text-balance font-serif text-[36px] font-normal leading-[1.08] tracking-tight text-foreground sm:text-[48px]">
         {tf('acct.greeting', { name: firstName })}
       </h1>
-      <p className="mt-3 text-[13px] font-light text-foreground/50">{currentUser?.email}</p>
+      <p className="mt-3 text-[13px] font-light text-foreground/70">{currentUser?.email}</p>
 
       <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:mt-12">
         {cards.map((s) => (
           <li key={s.key}>
             <Link
               href={accountHref(s.key)}
-              className="group flex h-full min-h-[148px] flex-col border border-white/10 bg-transparent p-6 transition-colors duration-200 hover:border-white/30 focus-visible:border-white/50 focus-visible:outline-none"
+              className="group flex h-full min-h-[148px] flex-col rounded-xl border border-border bg-transparent p-6 transition-colors duration-200 hover:border-gold/60 focus-visible:border-gold/60 focus-visible:outline-none"
             >
               <span className="flex items-start justify-between gap-4">
                 <span className="text-[13px] font-normal uppercase tracking-[0.16em] text-foreground">
                   {t(s.card!.titleKey)}
                 </span>
                 <ArrowRight
-                  className="mt-0.5 size-4 shrink-0 text-foreground/35 transition-[color,transform] duration-300 group-hover:translate-x-1 group-hover:text-foreground/80"
+                  className="mt-0.5 size-4 shrink-0 text-foreground/70 transition-[color,transform] duration-300 group-hover:translate-x-1 group-hover:text-foreground/80"
                   strokeWidth={1.25}
                   aria-hidden
                 />
@@ -195,12 +195,12 @@ function Overview() {
       </ul>
 
       {/* The sections without a card, and sign-out: quiet, below the grid. */}
-      <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-white/10 pt-6">
+      <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-border pt-6">
         {(['settings', 'credits', 'looks'] as AccountSectionKey[]).map((key) => (
           <Link
             key={key}
             href={accountHref(key)}
-            className="inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/65 underline decoration-white/20 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-white"
+            className="inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/65 underline decoration-foreground/30 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-gold"
           >
             {t(ACCOUNT_SECTIONS.find((s) => s.key === key)!.labelKey)}
           </Link>
@@ -208,7 +208,7 @@ function Overview() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="ml-auto inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/50 transition-colors hover:text-foreground"
+          className="ml-auto inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/70 transition-colors hover:text-foreground"
         >
           {t('user.logout')}
         </button>
@@ -237,11 +237,11 @@ function SectionView({ section }: { section: AccountSectionKey }) {
         {/* The rail. A horizontal scroller on phones, where a 240px column
             would take most of the screen. */}
         <nav aria-label={t('acct.sections')} className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
-          <ul className="flex gap-6 border-b border-white/10 lg:flex-col lg:gap-0 lg:border-b-0 lg:border-l">
+          <ul className="flex gap-6 border-b border-border lg:flex-col lg:gap-0 lg:border-b-0 lg:border-l">
             <li>
               <Link
                 href="/account"
-                className="flex min-h-[44px] shrink-0 items-center whitespace-nowrap text-[13px] font-light text-foreground/55 transition-colors hover:text-foreground lg:-ml-px lg:border-l lg:border-transparent lg:pl-5"
+                className="flex min-h-[44px] shrink-0 items-center whitespace-nowrap text-[13px] font-light text-foreground/70 transition-colors hover:text-foreground lg:-ml-px lg:border-l lg:border-transparent lg:pl-5"
               >
                 {t('account.title')}
               </Link>
@@ -257,7 +257,7 @@ function SectionView({ section }: { section: AccountSectionKey }) {
                       'flex min-h-[44px] shrink-0 items-center whitespace-nowrap border-b text-[13px] font-light transition-colors lg:-ml-px lg:border-b-0 lg:border-l lg:pl-5',
                       active
                         ? 'border-foreground text-foreground'
-                        : 'border-transparent text-foreground/55 hover:text-foreground',
+                        : 'border-transparent text-foreground/70 hover:text-foreground',
                     )}
                   >
                     {t(s.labelKey)}
@@ -317,15 +317,15 @@ function CreditsSection() {
   }, [])
 
   return (
-    <div className="max-w-xl border border-white/10 p-6">
+    <div className="max-w-xl rounded-xl border border-border p-6">
       {balance !== null && balance > 0 ? (
         <>
-          <p className="t-label text-foreground/55">{t('acct.creditsBalance')}</p>
+          <p className="t-label text-foreground/70">{t('acct.creditsBalance')}</p>
           <p className="mt-3 font-serif text-[36px] font-normal leading-none tabular-nums text-foreground">
             {formatPrice(balance)}
           </p>
           <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsSpendSoon')}</p>
-          <div className="my-6 border-t border-white/10" />
+          <div className="my-6 border-t border-border" />
         </>
       ) : (
         <p className="text-[15px] font-normal text-foreground">{t('acct.creditsEmpty')}</p>
@@ -333,7 +333,7 @@ function CreditsSection() {
       <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsHint')}</p>
       <Link
         href={accountHref('orders')}
-        className="group mt-5 inline-flex min-h-[44px] items-center gap-2 text-[13px] text-foreground/85 underline decoration-white/25 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-white"
+        className="group mt-5 inline-flex min-h-[44px] items-center gap-2 text-[13px] text-foreground/85 underline decoration-foreground/30 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-gold"
       >
         {t('acct.orders')}
         <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={1.25} aria-hidden />
@@ -348,7 +348,7 @@ function SettingsSection() {
   const { t, locale, setLocale, currency, setCurrency } = useStore()
 
   return (
-    <div className="max-w-xl divide-y divide-white/10 border-y border-white/10">
+    <div className="max-w-xl divide-y divide-border border-y border-border">
       <SettingRow label={t('acct.language')} htmlFor="pref-language">
         <SelectField id="pref-language" value={locale} onChange={(v) => setLocale(v as StorefrontLocale)}>
           {STOREFRONT_LOCALES.map((l) => (
@@ -380,7 +380,7 @@ function SettingsSection() {
         <button
           type="button"
           onClick={openCookieSettings}
-          className="inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/80 underline decoration-white/25 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-white"
+          className="inline-flex min-h-[44px] items-center text-[13px] font-light text-foreground/80 underline decoration-foreground/30 underline-offset-[6px] transition-colors hover:text-foreground hover:decoration-gold"
         >
           {t('acct.cookies')}
         </button>
@@ -401,11 +401,11 @@ function SettingRow({
   return (
     <div className="grid gap-3 py-5 sm:grid-cols-[180px_1fr] sm:items-center sm:gap-6">
       {htmlFor ? (
-        <label htmlFor={htmlFor} className="t-label text-foreground/55">
+        <label htmlFor={htmlFor} className="t-label text-foreground/70">
           {label}
         </label>
       ) : (
-        <span className="t-label text-foreground/55">{label}</span>
+        <span className="t-label text-foreground/70">{label}</span>
       )}
       <div>{children}</div>
     </div>
@@ -429,12 +429,12 @@ function SelectField({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full cursor-pointer appearance-none border border-white/10 bg-transparent pl-4 pr-11 text-base font-light text-foreground outline-none transition-colors hover:border-white/20 focus:border-white/50 focus-visible:outline-none md:text-[14px]"
+        className="h-11 w-full cursor-pointer appearance-none rounded-xl border border-border bg-transparent pl-4 pr-11 text-base font-light text-foreground outline-none transition-colors hover:border-border focus:border-gold focus:ring-4 focus:ring-gold/15 focus-visible:outline-none md:text-[14px]"
       >
         {children}
       </select>
       <ChevronDown
-        className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-foreground/50"
+        className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-foreground/70"
         strokeWidth={1.25}
         aria-hidden
       />

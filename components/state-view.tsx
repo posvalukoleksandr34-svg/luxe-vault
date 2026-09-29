@@ -28,11 +28,11 @@ export type StateAction = {
 
 const ACTION_STYLES = {
   primary:
-    'tap-safe inline-flex items-center justify-center gap-2 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50',
+    'rounded-xl tap-safe inline-flex items-center justify-center gap-2 border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-50 shadow-gold',
   outline:
-    'tap-safe inline-flex items-center justify-center gap-2 border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-foreground transition-colors duration-300 hover:border-gold/50 hover:text-gold',
+    'tap-safe inline-flex items-center justify-center gap-2 rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-foreground transition-colors duration-300 hover:border-gold/50 hover:text-gold',
   secondary:
-    'tap-safe inline-flex items-center gap-1.5 px-2 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/70 transition hover:text-foreground',
+    'tap-safe inline-flex items-center gap-1.5 px-2 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground/85 transition hover:text-foreground',
 } as const
 
 export function StateActionButton({
@@ -103,13 +103,13 @@ export function EmptyState({
       {Icon && (
         <Icon
           aria-hidden
-          className={cn('text-muted-foreground/30', compact ? 'size-6' : 'size-8')}
+          className={cn('text-muted-foreground/85', compact ? 'size-6' : 'size-8')}
           strokeWidth={1.25}
         />
       )}
       <p className={cn('font-light text-foreground', compact ? 'text-[13px]' : 'text-sm')}>{title}</p>
       {hint && (
-        <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/70">
+        <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/85">
           {hint}
         </p>
       )}

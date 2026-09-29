@@ -32,7 +32,7 @@ export function DiscountBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center border border-gold/45 bg-background/85 px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-[0.06em] text-gold tabular-nums',
+        'inline-flex shrink-0 items-center rounded-xl border border-gold/45 bg-background/85 px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-[0.06em] text-gold tabular-nums',
         className,
       )}
     >

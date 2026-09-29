@@ -130,7 +130,7 @@ export function NotificationCenter() {
         <>
           {/* Click-catcher sits below the panel but above the page. */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] border border-border bg-popover shadow-2xl">
+          <div className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {t('notifications.title')}
@@ -139,7 +139,7 @@ export function NotificationCenter() {
                 <button
                   type="button"
                   onClick={() => void markAllRead()}
-                  className="flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold"
+                  className="flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] text-gold transition hover:text-gold"
                 >
                   <Check className="size-3" />
                   {t('notifications.markAllRead')}
@@ -150,7 +150,7 @@ export function NotificationCenter() {
             <div className="max-h-[26rem] overflow-y-auto">
               {loading && items.length === 0 ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="size-4 animate-spin text-gold/60" />
+                  <Loader2 className="size-4 animate-spin text-gold" />
                 </div>
               ) : items.length === 0 ? (
                 <p className="px-4 py-10 text-center text-[12px] font-light text-muted-foreground">
@@ -170,7 +170,7 @@ export function NotificationCenter() {
                         <Icon
                           className={cn(
                             'mt-0.5 size-3.5 shrink-0',
-                            n.type === 'payment_failed' ? 'text-destructive' : 'text-gold/70',
+                            n.type === 'payment_failed' ? 'text-destructive' : 'text-gold',
                           )}
                           strokeWidth={1.5}
                         />
@@ -184,11 +184,11 @@ export function NotificationCenter() {
                             {n.title}
                           </p>
                           {n.body && (
-                            <p className="mt-1 text-[11px] font-light leading-relaxed text-muted-foreground/70">
+                            <p className="mt-1 text-[11px] font-light leading-relaxed text-muted-foreground/85">
                               {n.body}
                             </p>
                           )}
-                          <p className="mt-1.5 text-[10px] tabular-nums text-muted-foreground/50">
+                          <p className="mt-1.5 text-[10px] tabular-nums text-muted-foreground/85">
                             {new Date(n.createdAt).toLocaleString(locale)}
                           </p>
                         </div>

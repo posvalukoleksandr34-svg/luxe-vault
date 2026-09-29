@@ -83,7 +83,7 @@ export function CookieConsent() {
       >
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10">
           <div className="flex items-start gap-3">
-            <Cookie className="mt-0.5 size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+            <Cookie className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} />
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium text-foreground">{t('cookies.title')}</p>
               <p className="mt-1.5 max-w-3xl text-[12px] font-light leading-relaxed text-muted-foreground">
@@ -94,7 +94,7 @@ export function CookieConsent() {
               </p>
 
               {customising && (
-                <div className="mt-4 space-y-3 border border-border/60 p-4">
+                <div className="mt-4 space-y-3 rounded-xl border border-border/60 p-4">
                   <ConsentRow
                     label={t('cookies.necessary')}
                     hint={t('cookies.necessaryHint')}
@@ -122,14 +122,14 @@ export function CookieConsent() {
                 <button
                   type="button"
                   onClick={() => save({ analytics: true, marketing: true })}
-                  className="tap-safe border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                  className="rounded-xl tap-safe border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
                 >
                   {t('cookies.acceptAll')}
                 </button>
                 <button
                   type="button"
                   onClick={() => save({ analytics: false, marketing: false })}
-                  className="tap-safe border border-gold/40 bg-gold/10 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                  className="rounded-xl tap-safe border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
                 >
                   {t('cookies.rejectAll')}
                 </button>
@@ -138,7 +138,7 @@ export function CookieConsent() {
                   <button
                     type="button"
                     onClick={() => save(draft)}
-                    className="tap-safe border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+                    className="tap-safe rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
                   >
                     {t('cookies.savePreferences')}
                   </button>
@@ -146,7 +146,7 @@ export function CookieConsent() {
                   <button
                     type="button"
                     onClick={() => setCustomising(true)}
-                    className="tap-safe border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
+                    className="tap-safe rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground transition-all duration-300 hover:text-foreground"
                   >
                     {t('cookies.customise')}
                   </button>
@@ -160,7 +160,7 @@ export function CookieConsent() {
               type="button"
               onClick={() => save({ analytics: false, marketing: false })}
               aria-label={t('cookies.rejectAll')}
-              className="tap-safe flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-foreground"
+              className="tap-safe flex size-7 shrink-0 items-center justify-center text-muted-foreground/85 transition hover:text-foreground"
             >
               <X className="size-4" />
             </button>
@@ -197,7 +197,7 @@ function ConsentRow({
         <span
           aria-hidden
           className={cn(
-            'flex h-[18px] w-[32px] items-center border p-[2px] transition-all duration-300',
+            'flex h-[18px] w-[32px] items-center rounded-xl border p-[2px] transition-all duration-300',
             'peer-focus-visible:ring-1 peer-focus-visible:ring-gold/60',
             checked ? 'border-gold/60 bg-gold/20' : 'border-border bg-transparent',
             locked && 'opacity-60',
@@ -213,7 +213,7 @@ function ConsentRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[12px] font-light text-foreground">{label}</span>
-        <span className="mt-0.5 block text-[11px] font-light leading-relaxed text-muted-foreground/70">
+        <span className="mt-0.5 block text-[11px] font-light leading-relaxed text-muted-foreground/85">
           {hint}
         </span>
       </span>

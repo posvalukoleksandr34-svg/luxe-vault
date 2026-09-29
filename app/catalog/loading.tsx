@@ -22,13 +22,13 @@ export default function CatalogLoading() {
       <Header />
       <main id="main">
         <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-          <div className="mb-10 h-9 w-48 animate-pulse bg-white/[0.06] sm:h-10" />
+          <div className="mb-10 h-9 w-48 animate-pulse bg-foreground/[0.04] sm:h-10" />
           <div className="flex flex-col lg:flex-row lg:items-start lg:gap-10">
             {/* The sticky sidebar's column, so the grid does not start
                 full-width and then jump inwards when the real nav arrives. */}
             <div className="hidden w-56 shrink-0 space-y-3 lg:block">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-4 w-full animate-pulse bg-white/[0.06]" />
+                <div key={i} className="h-4 w-full animate-pulse bg-foreground/[0.04]" />
               ))}
             </div>
             <div className="min-w-0 flex-1">

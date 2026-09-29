@@ -17,7 +17,7 @@ export default function ProductLoading() {
     <>
       <Header />
       <main id="main" className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-        <div className="mb-8 h-3 w-64 animate-pulse bg-white/[0.06]" />
+        <div className="mb-8 h-3 w-64 animate-pulse bg-foreground/[0.04]" />
         <ProductDetailSkeleton label={translate(UI['state.loadingProduct'], DEFAULT_LOCALE)} />
       </main>
       <Footer />

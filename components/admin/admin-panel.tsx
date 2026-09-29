@@ -414,7 +414,7 @@ export function AdminPanel() {
                     aria-pressed={gapsOnly}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
                       gapsOnly
-                        ? 'border-amber-400/60 bg-amber-400/10 text-amber-300'
+                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-700'
                         : 'border-border text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -457,7 +457,7 @@ export function AdminPanel() {
                                   {productGaps(p).map((g) => (
                                     <span
                                       key={g}
-                                      className="rounded border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] text-amber-300"
+                                      className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700"
                                     >
                                       {GAP_LABELS[g]}
                                     </span>

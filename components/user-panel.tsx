@@ -36,7 +36,7 @@ import type { Order } from '@/lib/types'
  * desktop design is unchanged.
  */
 const FIELD =
-  'h-11 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm'
+  'h-11 w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-sm'
 
 export function UserPanel() {
   const {
@@ -286,7 +286,7 @@ export function UserPanel() {
               <form
                 onSubmit={handleVerifySignup}
                 noValidate
-                className="animate-fade-up w-full max-w-sm space-y-4 border border-gold/40 bg-gold/[0.06] p-5"
+                className="animate-fade-up w-full max-w-sm space-y-4 rounded-xl border border-gold/40 bg-gold/[0.06] p-5"
               >
                 <div className="flex items-start gap-3">
                   <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-gold" strokeWidth={1.5} />
@@ -314,7 +314,7 @@ export function UserPanel() {
                 <button
                   type="submit"
                   disabled={authBusy || !isOtpComplete(signupCode)}
-                  className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
                 >
                   {authBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   {t('signup.verify.submit')}
@@ -322,7 +322,7 @@ export function UserPanel() {
 
                 <div className="flex flex-col gap-2 border-t border-gold/20 pt-3">
                   {resendCooldown > 0 ? (
-                    <p className="text-center text-[11px] font-light text-muted-foreground/70">
+                    <p className="text-center text-[11px] font-light text-muted-foreground/85">
                       {tf('otp.step2.resendIn', { n: resendCooldown })}
                     </p>
                   ) : (
@@ -425,7 +425,7 @@ export function UserPanel() {
                   customer needs to still be reading while they switch to the
                   sign-in tab. */}
               {authError && (
-                <div className="border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+                <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2.5">
                   <p className="text-[12px] leading-relaxed text-destructive">
                     {authError}
                   </p>
@@ -463,7 +463,7 @@ export function UserPanel() {
                 type="submit"
                 disabled={authBusy || captchaPending}
                 aria-describedby={captchaPending ? 'auth-captcha-wait' : undefined}
-                className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
               >
                 {authBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {mode === 'login' ? t('user.login') : t('user.register')}
@@ -539,7 +539,7 @@ export function UserPanel() {
               <TabButton active={tab === 'orders'} onClick={() => setTab('orders')} icon={<Package className="size-4" />}>
                 {t('user.orders')}
                 {unpaidCount > 0 && (
-                  <span className="ml-1 border border-gold/40 bg-gold/10 px-1.5 text-[10px] text-gold">
+                  <span className="ml-1 rounded-xl border border-gold/40 bg-gold/10 px-1.5 text-[10px] text-gold">
                     {unpaidCount}
                   </span>
                 )}

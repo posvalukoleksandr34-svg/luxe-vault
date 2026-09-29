@@ -68,7 +68,7 @@ export function SavedCards() {
       <h3 className="mb-3 font-serif text-base font-medium text-foreground">{t('cards.title')}</h3>
 
       {loading ? (
-        <Loader2 className="size-4 animate-spin text-gold/60" />
+        <Loader2 className="size-4 animate-spin text-gold" />
       ) : cards.length === 0 ? (
         <p className="text-[12px] font-light leading-relaxed text-muted-foreground">
           {t('cards.empty')}
@@ -78,16 +78,16 @@ export function SavedCards() {
           {cards.map((card) => (
             <li
               key={card.id}
-              className="flex items-center gap-3 border border-border/60 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2.5"
             >
-              <CreditCard className="size-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+              <CreditCard className="size-4 shrink-0 text-gold" strokeWidth={1.5} />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-light text-foreground">
                   <span className="uppercase">{card.brand}</span>
-                  <span className="mx-1.5 text-muted-foreground/50">••••</span>
+                  <span className="mx-1.5 text-muted-foreground/85">••••</span>
                   {card.last4}
                 </p>
-                <p className="text-[11px] text-muted-foreground/60">
+                <p className="text-[11px] text-muted-foreground/85">
                   {t('cards.expires')} {String(card.expMonth).padStart(2, '0')}/
                   {String(card.expYear).slice(-2)}
                 </p>
@@ -98,7 +98,7 @@ export function SavedCards() {
                 disabled={removing === card.id}
                 aria-label={t('cards.remove')}
                 title={t('cards.remove')}
-                className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-destructive disabled:opacity-40"
+                className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/85 transition hover:text-destructive disabled:opacity-40"
               >
                 {removing === card.id ? (
                   <Loader2 className="size-3.5 animate-spin" />

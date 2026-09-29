@@ -40,7 +40,7 @@ export function GuestCheckoutChoice({
         <button
           type="button"
           onClick={onGuest}
-          className="flex w-full items-center justify-center gap-2.5 border border-gold bg-gold px-5 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90"
+          className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gold bg-gold-gradient px-5 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90 shadow-gold"
         >
           <User className="size-4 shrink-0" strokeWidth={1.5} />
           {t('checkout.continueAsGuest')}
@@ -48,7 +48,7 @@ export function GuestCheckoutChoice({
         <button
           type="button"
           onClick={onSignIn}
-          className="flex w-full items-center justify-center gap-2.5 border border-gold/40 bg-gold/5 px-5 py-3.5 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+          className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-transparent bg-gold-gradient px-5 py-3.5 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
         >
           <LogIn className="size-4 shrink-0" strokeWidth={1.5} />
           {t('checkout.signInOrRegister')}
@@ -59,7 +59,7 @@ export function GuestCheckoutChoice({
         <button
           type="button"
           onClick={onBack}
-          className="tap-safe flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 transition hover:text-foreground"
+          className="tap-safe flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85 transition hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" />
           {t('checkout.backToCart')}

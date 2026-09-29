@@ -39,20 +39,20 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
       <body className="font-sans">
         <main
           id="main"
-          className="flex min-h-[100svh] w-full items-center justify-center bg-[#000000] px-6 py-16 text-[#CCCCCC]"
+          className="flex min-h-[100svh] w-full items-center justify-center bg-background px-6 py-16 text-foreground/80"
         >
           <div role="alert" className="flex max-w-md flex-col items-center text-center">
-            <span aria-hidden className="h-px w-12 bg-[#D4AF37]/60" />
-            <h1 className="mt-6 font-serif text-2xl tracking-wide text-[#CCCCCC] sm:text-3xl">
+            <span aria-hidden className="h-px w-12 bg-gold/60" />
+            <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground/80 sm:text-3xl">
               {defaultDictionary['state.catalogUnavailableTitle']}
             </h1>
-            <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-[#CCCCCC]">
+            <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
               {defaultDictionary['state.catalogUnavailableHint']}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="tap-safe no-juice mt-10 inline-flex items-center justify-center border border-[#D4AF37] bg-transparent px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] transition-colors duration-300 hover:bg-[#D4AF37] hover:text-[#000000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#000000]"
+              className="tap-safe no-juice mt-10 inline-flex items-center justify-center rounded-xl border border-gold bg-transparent px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {defaultDictionary['common.retry']}
             </button>

@@ -18,7 +18,7 @@ export function About() {
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
           <Reveal>
-            <p className="mb-4 text-[11px] uppercase tracking-[0.4em] text-gold/70">
+            <p className="mb-4 text-[11px] uppercase tracking-[0.4em] text-gold">
               {t('about.subtitle')}
             </p>
             <h2 className="font-serif text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl">
@@ -39,7 +39,7 @@ export function About() {
         <div className="mt-16 grid grid-cols-2 gap-8 border-t border-border pt-10 md:grid-cols-4">
           {stats.map((stat, i) => (
             <Reveal key={i} delay={i * 100} className="flex flex-col items-center text-center">
-              <span className="font-serif text-3xl font-bold text-gold/80">
+              <span className="font-serif text-3xl font-bold text-gold">
                 0{i + 1}
               </span>
               <span className="mt-3 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">

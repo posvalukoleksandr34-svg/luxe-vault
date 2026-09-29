@@ -38,8 +38,8 @@ export function CountrySelect({
       value={value}
       onChange={(e) => onChange(e.target.value as CountryCode)}
       className={cn(
-        'w-full border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition',
-        error ? 'border-destructive' : 'border-border focus:border-gold/40',
+        'w-full rounded-xl border bg-card px-3 py-3 text-[13px] font-light text-foreground outline-none transition',
+        error ? 'border-destructive' : 'border-border focus:border-gold focus:ring-4 focus:ring-gold/15',
       )}
     >
       {countries.map((c) => (

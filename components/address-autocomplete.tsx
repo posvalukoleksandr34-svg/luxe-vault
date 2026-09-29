@@ -128,7 +128,7 @@ export function AddressAutocomplete({
     <div ref={containerRef} className="relative block">
       <label htmlFor={inputId} className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
-        {required && <span aria-hidden className="text-gold/70">*</span>}
+        {required && <span aria-hidden className="text-gold">*</span>}
       </label>
 
       <div className="relative">
@@ -151,12 +151,12 @@ export function AddressAutocomplete({
           aria-controls={listboxId}
           aria-autocomplete="list"
           className={cn(
-            'w-full border bg-background px-3 py-3 pr-9 text-[13px] font-light text-foreground outline-none transition',
-            error ? 'border-destructive' : 'border-border focus:border-gold/40',
+            'w-full rounded-xl border bg-card px-3 py-3 pr-9 text-[13px] font-light text-foreground outline-none transition',
+            error ? 'border-destructive' : 'border-border focus:border-gold focus:ring-4 focus:ring-gold/15',
           )}
         />
         {loading && (
-          <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-gold/60" />
+          <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-gold" />
         )}
       </div>
 
@@ -166,7 +166,7 @@ export function AddressAutocomplete({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto border border-border bg-popover shadow-2xl"
+          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover shadow-2xl"
         >
           {suggestions.map((s, i) => (
             <li key={`${s.label}-${i}`}>
@@ -186,7 +186,7 @@ export function AddressAutocomplete({
                   i === highlighted ? 'bg-accent text-foreground' : 'text-muted-foreground',
                 )}
               >
-                <MapPin className="mt-0.5 size-3 shrink-0 text-gold/60" />
+                <MapPin className="mt-0.5 size-3 shrink-0 text-gold" />
                 <span className="flex-1">{s.label}</span>
               </button>
             </li>

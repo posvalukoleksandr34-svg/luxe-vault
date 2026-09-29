@@ -112,14 +112,14 @@ export function ProductCard({
           />
 
           {product.limited && !outOfStock && (
-            <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.15em] text-gold/90">
+            <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.15em] text-gold">
               {t('card.limited')}
             </span>
           )}
 
           {!outOfStock && (
             <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-4 opacity-0 transition-all duration-500 group-hover:opacity-100">
-              <span className="border border-gold/40 bg-background/85 px-5 py-2 text-[11px] uppercase tracking-[0.2em] text-gold backdrop-blur-md">
+              <span className="rounded-xl border border-gold/40 bg-background/85 px-5 py-2 text-[11px] uppercase tracking-[0.2em] text-gold backdrop-blur-md">
                 {t('product.addToCart')}
               </span>
             </div>
@@ -135,13 +135,13 @@ export function ProductCard({
               products are branded does not render as a ragged grid — and no
               empty row where a brand would have been. */}
           {product.brand ? (
-            <p className="text-[10px] uppercase tracking-[0.2em] text-gold/80">{product.brand}</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-gold">{product.brand}</p>
           ) : (
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">
               {localize(categoryLabels[product.category] ?? {})}
             </p>
           )}
-          <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-500 group-hover:text-gold/90">
+          <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-500 group-hover:text-gold">
             <span className="product-card-name">{localize(product.name)}</span>
           </h3>
           <div className="mt-1 flex items-baseline gap-2">
@@ -149,7 +149,7 @@ export function ProductCard({
               {formatPrice(product.price)}
             </span>
             {discount > 0 && (
-              <span className="text-[11px] font-light text-muted-foreground/50 line-through">
+              <span className="text-[11px] font-light text-muted-foreground/85 line-through">
                 {formatPrice(product.oldPrice as number)}
               </span>
             )}

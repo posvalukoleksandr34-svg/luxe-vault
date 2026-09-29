@@ -175,7 +175,7 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
         )}
 
         {emailPending && (
-          <p className="border border-gold/40 bg-gold/5 px-3 py-2.5 text-[12px] font-light text-gold">
+          <p className="rounded-xl border border-gold/40 bg-gold/5 px-3 py-2.5 text-[12px] font-light text-gold">
             {t('account.emailPending')}
           </p>
         )}
@@ -191,7 +191,7 @@ export function ProfileForm({ compact = false }: { compact?: boolean }) {
           // Disabled while unchanged: a Save button that does nothing still
           // shows a success toast, which teaches people to distrust it.
           disabled={saving || !dirty}
-          className="flex w-full items-center justify-center gap-2 border border-gold/40 bg-gold/5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-xl flex w-full items-center justify-center gap-2 border border-transparent bg-gold-gradient py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-40 shadow-gold"
         >
           {saving && <Loader2 className="size-3.5 animate-spin" />}
           {t('account.save')}
@@ -232,7 +232,7 @@ function Field({
         max={max}
         // 44px / 16px below md — the iOS zoom threshold; the desktop field is
         // unchanged.
-        className="h-11 w-full border border-border bg-background px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]"
+        className="h-11 w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-base leading-normal text-foreground outline-none transition focus:border-gold md:h-10 md:px-3 md:text-[13px]"
       />
     </label>
   )

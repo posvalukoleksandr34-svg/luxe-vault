@@ -115,7 +115,7 @@ export function Hero() {
               homepage, where #collections always exists. */}
           <a
             href="#collections"
-            className="hero__cta t-cta group inline-flex items-center gap-3 border border-foreground/20 px-9 py-4 text-foreground/90"
+            className="hero__cta t-cta group inline-flex items-center gap-3 rounded-xl border border-foreground/20 px-9 py-4 text-foreground/90"
           >
             {t('nav.collections')}
             <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />

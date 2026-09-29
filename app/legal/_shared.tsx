@@ -82,7 +82,7 @@ export function Footer() {
   const { locale } = useStore()
   const c = FOOTER[locale] ?? FOOTER.en
   return (
-    <p className="mt-12 border-t border-border/40 pt-6 text-[12px] text-muted-foreground/60">
+    <p className="mt-12 border-t border-border/40 pt-6 text-[12px] text-muted-foreground/85">
       {c.updated}: {LAST_UPDATED[locale] ?? LAST_UPDATED.en}. {c.questions}:{' '}
       <a href={`mailto:${OPERATOR.support}`}>{OPERATOR.support}</a>
     </p>

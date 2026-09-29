@@ -652,7 +652,7 @@ export function CheckoutFlow({
                   </span>
                 </div>
                 {charge.currency !== 'CHF' && (
-                  <p className="mt-1.5 text-right text-[11px] font-light text-muted-foreground/70">
+                  <p className="mt-1.5 text-right text-[11px] font-light text-muted-foreground/85">
                     {tf('checkout.convertedAt', {
                       amount: formatChf(cardOrder.total, true),
                       rate: String(charge.rate),
@@ -701,14 +701,14 @@ export function CheckoutFlow({
                   record will be — and can still sign in without losing what
                   they have typed. */}
               {!currentUser && (
-                <div className="flex items-start gap-3 border border-border/60 bg-card/40 px-3.5 py-3">
+                <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-card/40 px-3.5 py-3">
                   <p className="flex-1 text-[12px] font-light leading-relaxed text-muted-foreground">
                     {t('checkout.guestNote')}
                   </p>
                   <button
                     type="button"
                     onClick={() => openAuth('login')}
-                    className="tap-safe flex shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold/80 transition hover:text-gold"
+                    className="tap-safe flex shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:text-gold"
                   >
                     <LogIn className="size-3.5" strokeWidth={1.5} />
                     {t('user.login')}
@@ -719,7 +719,7 @@ export function CheckoutFlow({
                   form is disorienting, and someone shipping a gift elsewhere
                   would have to clear it field by field. */}
               {hasSaved && (
-                <div className="flex items-center gap-2 border border-gold/25 bg-gold/[0.04] px-3 py-2.5">
+                <div className="flex items-center gap-2 rounded-xl border border-gold/25 bg-gold/[0.04] px-3 py-2.5">
                   <button
                     type="button"
                     onClick={applySaved}
@@ -733,7 +733,7 @@ export function CheckoutFlow({
                     onClick={forgetSaved}
                     aria-label={t('checkout.forgetSaved')}
                     title={t('checkout.forgetSaved')}
-                    className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/60 transition hover:text-destructive"
+                    className="flex size-7 shrink-0 items-center justify-center text-muted-foreground/85 transition hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" strokeWidth={1.5} />
                   </button>
@@ -783,7 +783,7 @@ export function CheckoutFlow({
                 autoComplete="email"
               />
               {/* Says what the address is used for beyond this order. */}
-              <p className="text-[11px] font-light leading-relaxed text-muted-foreground/70">
+              <p className="text-[11px] font-light leading-relaxed text-muted-foreground/85">
                 {t('checkout.cartReminderNote')}
               </p>
 
@@ -839,10 +839,10 @@ export function CheckoutFlow({
                       type="button"
                       onClick={() => update('payment', method)}
                       className={cn(
-                        'flex w-full items-center justify-between border px-4 py-3 text-[13px] font-light transition-all duration-200',
+                        'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-[13px] font-light transition-all duration-200',
                         form.payment === method
-                          ? 'border-gold/40 bg-gold/5 text-gold'
-                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                          ? 'border-gold bg-gold/[0.08] font-normal text-foreground shadow-soft ring-1 ring-gold/40'
+                          : 'border-border bg-card text-muted-foreground hover:border-gold/60 hover:text-foreground',
                       )}
                     >
                       {/* The value is a Russian string the server validates
@@ -853,7 +853,7 @@ export function CheckoutFlow({
                         : method === CRYPTO_PAYMENT_METHOD
                           ? t('checkout.methodCrypto')
                           : method}
-                      {form.payment === method && <Check className="size-4" />}
+                      {form.payment === method && <Check className="size-4 text-gold" strokeWidth={2} />}
                     </button>
                   ))}
                 </div>
@@ -871,14 +871,14 @@ export function CheckoutFlow({
                     onChange={(e) => update('promo', e.target.value)}
                     placeholder={t('checkout.promoPlaceholder')}
                     className={cn(
-                      'w-full min-w-0 border bg-background px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold/40',
+                      'w-full min-w-0 rounded-xl border bg-card px-3 py-2.5 text-[13px] font-light text-foreground outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15',
                       promoError ? 'border-destructive' : 'border-border',
                     )}
                   />
                   <button
                     type="button"
                     onClick={handleApplyPromo}
-                    className="shrink-0 whitespace-nowrap border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] text-foreground transition hover:bg-accent"
+                    className="shrink-0 whitespace-nowrap rounded-xl border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.1em] text-foreground transition hover:bg-accent"
                   >
                     {t('checkout.applyPromo')}
                   </button>
@@ -972,7 +972,7 @@ export function CheckoutFlow({
               <button
                 type="submit"
                 disabled={cart.length === 0 || submitting}
-                className="w-full border border-gold/30 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+                className="w-full rounded-xl border border-transparent bg-gold-gradient py-4 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
               >
                 {t('checkout.placeOrder')}
               </button>
@@ -1016,22 +1016,22 @@ function SaveToggle({
         <span
           aria-hidden
           className={cn(
-            'flex h-[18px] w-[32px] items-center border p-[2px] transition-all duration-300',
-            'peer-focus-visible:ring-1 peer-focus-visible:ring-gold/60',
-            checked ? 'border-gold/60 bg-gold/20' : 'border-border bg-transparent',
+            'flex h-[20px] w-[36px] items-center rounded-full border p-[2px] transition-all duration-300',
+            'peer-focus-visible:ring-2 peer-focus-visible:ring-gold/50',
+            checked ? 'border-transparent bg-gold-gradient' : 'border-border bg-muted',
           )}
         >
           <span
             className={cn(
-              'size-[12px] transition-all duration-300',
-              checked ? 'translate-x-[14px] bg-gold' : 'translate-x-0 bg-muted-foreground/40',
+              'size-[14px] rounded-full shadow-sm transition-all duration-300',
+              checked ? 'translate-x-[16px] bg-white' : 'translate-x-0 bg-muted-foreground/60',
             )}
           />
         </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[12px] font-light leading-snug text-foreground">{label}</span>
-        <span className="mt-1 block text-[11px] font-light leading-relaxed text-muted-foreground/70">
+        <span className="mt-1 block text-[11px] font-light leading-relaxed text-muted-foreground/85">
           {hint}
         </span>
       </span>
@@ -1057,7 +1057,7 @@ function FieldShell({
     <div className="block">
       <label htmlFor={htmlFor} className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
-        {required && <span aria-hidden className="text-gold/70">*</span>}
+        {required && <span aria-hidden className="text-gold">*</span>}
       </label>
       {children}
       {error && <span className="mt-1.5 block text-[11px] text-destructive">{error}</span>}
@@ -1093,7 +1093,7 @@ function Field({
     <label className="block min-w-0">
       <span className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-foreground">
         {label}
-        {required && <span className="text-gold/70">*</span>}
+        {required && <span className="text-gold">*</span>}
       </span>
       <input
         type={type}
@@ -1105,8 +1105,8 @@ function Field({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         className={cn(
-          'w-full min-w-0 border bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/40',
-          error ? 'border-destructive focus:border-destructive' : 'border-border focus:border-gold/40',
+          'w-full min-w-0 rounded-xl border bg-card px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85',
+          error ? 'border-destructive focus:border-destructive' : 'border-border focus:border-gold focus:ring-4 focus:ring-gold/15',
         )}
       />
       {error && (

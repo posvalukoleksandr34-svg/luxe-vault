@@ -37,12 +37,12 @@ export function WishlistButton({
       aria-pressed={saved}
       aria-label={tf(saved ? 'wishlist.remove' : 'wishlist.add', { name: productName })}
       className={cn(
-        'no-juice group/wish flex items-center justify-center border transition-colors duration-300',
+        'no-juice group/wish flex items-center justify-center rounded-xl border transition-colors duration-300',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         size === 'sm' ? 'size-9' : 'size-10',
         saved
           ? 'border-gold/60 bg-background/80 text-gold'
-          : 'border-white/15 bg-background/60 text-neutral-300 backdrop-blur-sm hover:border-gold/50 hover:text-gold',
+          : 'border-border bg-background/60 text-foreground/85 backdrop-blur-sm hover:border-gold/50 hover:text-gold',
         className,
       )}
     >

@@ -243,7 +243,7 @@ export function InventoryManager() {
   if (unavailable) {
     return (
       <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">
-        <Boxes className="mx-auto mb-3 size-6 text-muted-foreground/30" strokeWidth={1.25} />
+        <Boxes className="mx-auto mb-3 size-6 text-muted-foreground/85" strokeWidth={1.25} />
         <p className="text-[13px] text-muted-foreground">
           Учёт остатков не настроен. Примените миграцию 0012_inventory.sql.
         </p>
@@ -353,7 +353,7 @@ export function InventoryManager() {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <Boxes className="size-6 text-muted-foreground/25" strokeWidth={1.25} />
+          <Boxes className="size-6 text-muted-foreground/85" strokeWidth={1.25} />
           <p className="text-[13px] text-muted-foreground">
             {variants.length === 0
               ? 'Остатки ещё не заданы — укажите их в карточке товара'
@@ -380,7 +380,7 @@ export function InventoryManager() {
                   <tr key={`${row.slug}-${row.color}`} className="border-t border-border/60">
                     <td className="px-4 py-2.5">
                       <span className="block truncate text-foreground">{row.name}</span>
-                      <span className="block font-mono text-[10px] text-muted-foreground/60">
+                      <span className="block font-mono text-[10px] text-muted-foreground/85">
                         {row.slug}
                       </span>
                     </td>
@@ -394,7 +394,7 @@ export function InventoryManager() {
                       // which is a state an admin needs to be able to tell apart.
                       if (!v) {
                         return (
-                          <td key={size} className="px-2 py-2.5 text-center text-muted-foreground/25">
+                          <td key={size} className="px-2 py-2.5 text-center text-muted-foreground/85">
                             —
                           </td>
                         )
@@ -411,8 +411,8 @@ export function InventoryManager() {
                             className={cn(
                               'min-w-11 rounded border px-2 py-1.5 text-[11px] tabular-nums transition disabled:opacity-50',
                               inStock
-                                ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400 hover:border-emerald-400/60'
-                                : 'border-red-400/30 bg-red-400/10 text-red-400 line-through hover:border-red-400/60',
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:border-emerald-500/60'
+                                : 'border-red-500/30 bg-red-500/10 text-red-700 line-through hover:border-red-500/60',
                             )}
                           >
                             {savingId === v.id ? '…' : inStock ? v.stock : 0}
@@ -445,14 +445,14 @@ export function InventoryManager() {
                   <tr key={v.id} className="border-t border-border/60">
                     <td className="px-4 py-3">
                       <span className="block truncate text-foreground">{v.name}</span>
-                      <span className="block font-mono text-[10px] text-muted-foreground/60">
+                      <span className="block font-mono text-[10px] text-muted-foreground/85">
                         {v.slug}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {v.size} · {v.color}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground/70">
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground/85">
                       {v.sku ?? '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -489,12 +489,12 @@ export function InventoryManager() {
         )
       )}
 
-      <p className="mt-3 text-[11px] text-muted-foreground/60">
+      <p className="mt-3 text-[11px] text-muted-foreground/85">
         {view === 'matrix'
           ? 'Клик по размеру переключает наличие. «В наличии» ставит 1, если было 0, и не трогает реальный остаток. «—» означает, что такого варианта у товара нет.'
           : 'Изменения сохраняются при уходе с поля или по Enter. Остаток уменьшается автоматически при оплаченном заказе и возвращается при отмене.'}
       </p>
-      <p className="mt-1 text-[11px] text-muted-foreground/60">
+      <p className="mt-1 text-[11px] text-muted-foreground/85">
         CSV: <code className="font-mono">product_id,size,in_stock</code> — например{' '}
         <code className="font-mono">p-hoodie-noir,M,false</code>. Необязательная колонка{' '}
         <code className="font-mono">color</code> ограничивает строку одним цветом; без неё правило
@@ -507,20 +507,20 @@ export function InventoryManager() {
 function StateBadge({ state, lowAt }: { state: Variant['state']; lowAt: number }) {
   if (state === 'out') {
     return (
-      <span className="inline-flex items-center gap-1 rounded border border-red-400/30 bg-red-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-400">
+      <span className="inline-flex items-center gap-1 rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-700">
         Нет
       </span>
     )
   }
   if (state === 'low') {
     return (
-      <span className="inline-flex items-center gap-1 rounded border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-400">
+      <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-700">
         <AlertTriangle className="size-3" />
         ≤ {lowAt}
       </span>
     )
   }
-  return <span className="text-[11px] text-muted-foreground/50">—</span>
+  return <span className="text-[11px] text-muted-foreground/85">—</span>
 }
 
 function Stat({
@@ -538,7 +538,7 @@ function Stat({
       <p
         className={cn(
           'text-lg',
-          tone === 'bad' ? 'text-red-400' : tone === 'warn' ? 'text-amber-400' : 'text-foreground',
+          tone === 'bad' ? 'text-red-700' : tone === 'warn' ? 'text-amber-700' : 'text-foreground',
         )}
       >
         {value}

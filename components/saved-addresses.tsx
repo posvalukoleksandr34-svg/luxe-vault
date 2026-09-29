@@ -132,7 +132,7 @@ export function SavedAddresses() {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:text-gold/80"
+            className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:text-gold"
           >
             <Plus className="size-3.5" />
             {t('address.add')}
@@ -159,7 +159,7 @@ export function SavedAddresses() {
               <li
                 key={a.id}
                 className={cn(
-                  'border p-3 transition-colors',
+                  'rounded-xl border p-3 transition-colors',
                   a.isDefault ? 'border-gold/40 bg-gold/[0.04]' : 'border-border',
                 )}
               >
@@ -176,7 +176,7 @@ export function SavedAddresses() {
                     <p className="mt-1 text-[11px] font-light leading-relaxed text-muted-foreground">
                       {a.street}, {a.postalCode} {a.city}, {a.country}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-light tabular-nums text-muted-foreground/70">
+                    <p className="mt-0.5 text-[11px] font-light tabular-nums text-muted-foreground/85">
                       {a.phone}
                     </p>
                   </div>
@@ -189,7 +189,7 @@ export function SavedAddresses() {
                         disabled={busyId === a.id}
                         aria-label={t('address.makeDefault')}
                         title={t('address.makeDefault')}
-                        className="flex size-7 items-center justify-center text-muted-foreground/60 transition hover:text-gold disabled:opacity-40"
+                        className="flex size-7 items-center justify-center text-muted-foreground/85 transition hover:text-gold disabled:opacity-40"
                       >
                         <Check className="size-3.5" />
                       </button>
@@ -200,7 +200,7 @@ export function SavedAddresses() {
                       disabled={busyId === a.id}
                       aria-label={t('address.remove')}
                       title={t('address.remove')}
-                      className="flex size-7 items-center justify-center text-muted-foreground/60 transition hover:text-destructive disabled:opacity-40"
+                      className="flex size-7 items-center justify-center text-muted-foreground/85 transition hover:text-destructive disabled:opacity-40"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -265,7 +265,7 @@ export function SavedAddresses() {
                     setError(null)
                     setForm(EMPTY)
                   }}
-                  className="border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
+                  className="rounded-xl border border-border px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
                 >
                   {t('common.cancel')}
                 </button>
@@ -273,7 +273,7 @@ export function SavedAddresses() {
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="flex flex-1 items-center justify-center gap-2 border border-gold/40 bg-gold/5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:opacity-50 shadow-gold"
                 >
                   {saving && <Loader2 className="size-3.5 animate-spin" />}
                   {t('address.save')}
@@ -306,7 +306,7 @@ function Field({
       placeholder={placeholder}
       aria-label={placeholder}
       className={cn(
-        'w-full border border-border bg-background px-3 py-2.5 text-[12px] text-foreground outline-none transition focus:border-gold',
+        'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] text-foreground outline-none transition focus:border-gold',
         className,
       )}
     />

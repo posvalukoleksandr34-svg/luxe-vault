@@ -131,7 +131,7 @@ export function AppPromoBanner() {
             separates it from the page without becoming a black box. Built from
             the tokens rather than hex, so it tracks the theme; deliberately
             never #000000, which is colder than anything else on the page. */}
-        <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden border border-border/70 bg-[linear-gradient(135deg,hsl(36_8%_11%)_0%,hsl(var(--card))_45%,hsl(36_8%_8.5%)_100%)] px-6 py-10 text-foreground sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
+        <div className="relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,hsl(36_8%_11%)_0%,hsl(var(--card))_45%,hsl(36_8%_8.5%)_100%)] px-6 py-10 text-foreground sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
           {/* A single gold pool behind the artwork, and a hairline along the
               top edge — the same two devices the rest of the storefront uses
               to lift a dark panel off a dark page. */}
@@ -145,7 +145,7 @@ export function AppPromoBanner() {
           />
 
           <div className="relative max-w-xl">
-            <p className="text-[10px] uppercase tracking-[0.34em] text-gold/80">LUXE VAULT</p>
+            <p className="text-[10px] uppercase tracking-[0.34em] text-gold">LUXE VAULT</p>
             <h2
               id="app-promo-title"
               className="mt-4 font-sans text-2xl font-bold uppercase leading-tight tracking-[0.08em] text-foreground sm:text-3xl"
@@ -167,7 +167,7 @@ export function AppPromoBanner() {
                   onClick={install}
                   disabled={!promptEvent || pending}
                   aria-busy={pending}
-                  className="no-juice inline-flex w-full items-center justify-center gap-2.5 border border-gold bg-gold px-8 py-4 text-[11px] font-medium uppercase tracking-[0.2em] text-gold-foreground transition-colors duration-300 enabled:hover:bg-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                  className="rounded-xl no-juice inline-flex w-full items-center justify-center gap-2.5 border border-gold bg-gold-gradient px-8 py-4 text-[11px] font-medium uppercase tracking-[0.2em] text-gold-foreground transition-colors duration-300 enabled:hover:bg-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 md:w-auto shadow-gold"
                 >
                   <Smartphone aria-hidden strokeWidth={1.5} className="size-4" />
                   {t('app.install')}
@@ -177,8 +177,8 @@ export function AppPromoBanner() {
             )}
 
             {mode === 'ios' && (
-              <div className="border border-gold/25 bg-white/[0.04] px-5 py-4">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-gold/80">{t('app.install')}</p>
+              <div className="rounded-xl border border-gold/25 bg-foreground/[0.04] px-5 py-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-gold">{t('app.install')}</p>
                 <p className="mt-2 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground">
                   {t('app.iosHint')}
                 </p>
@@ -191,7 +191,7 @@ export function AppPromoBanner() {
                     that is what every phone camera is built to read, and an
                     inverted one is a coin flip on older scanners. The gold
                     hairline is what ties it to the panel. */}
-                <div className="flex size-[104px] items-center justify-center border border-gold/30 bg-[#F2EDE3] p-2 shadow-[0_0_24px_-12px_hsl(var(--gold)/0.6)]">
+                <div className="flex size-[104px] items-center justify-center rounded-xl border border-gold/30 bg-[#F2EDE3] p-2 shadow-[0_0_24px_-12px_hsl(var(--gold)/0.6)]">
                   {qr ? (
                     // eslint-disable-next-line @next/next/no-img-element -- a data: URI generated in the browser; the optimiser cannot serve it.
                     <img src={qr} alt={t('app.qrAlt')} width={88} height={88} className="size-full object-contain" />

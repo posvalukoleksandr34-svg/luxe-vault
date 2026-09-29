@@ -458,7 +458,7 @@ export function NewsletterManager() {
                 sandbox=""
                 srcDoc={previewHtml}
                 className={cn(
-                  'h-[640px] rounded-lg border border-border bg-black transition-[width] duration-300 lg:h-[calc(100vh-15rem)]',
+                  'h-[640px] rounded-lg border border-border bg-background transition-[width] duration-300 lg:h-[calc(100vh-15rem)]',
                   previewWidth === 'desktop' ? 'w-full' : 'w-[375px] max-w-full',
                 )}
               />
@@ -555,7 +555,7 @@ export function NewsletterManager() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
-              <Users className="size-6 text-muted-foreground/25" strokeWidth={1.25} />
+              <Users className="size-6 text-muted-foreground/85" strokeWidth={1.25} />
               <p className="text-[13px] text-muted-foreground">
                 {data && data.rows.length > 0 ? 'Ничего не найдено' : 'Подписчиков пока нет'}
               </p>
@@ -623,7 +623,7 @@ export function NewsletterManager() {
         }}
       >
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm" />
+          <Dialog.Overlay className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm" />
           <Dialog.Content
             className="fixed left-1/2 top-1/2 z-[121] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none"
             onEscapeKeyDown={(e) => {
@@ -725,7 +725,7 @@ function StatCard({ label, value, accent, loading }: { label: string; value: str
     <div className="rounded-2xl border border-border bg-card p-5">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
       {loading ? (
-        <Loader2 className="mt-3 size-5 animate-spin text-muted-foreground/50" />
+        <Loader2 className="mt-3 size-5 animate-spin text-muted-foreground/85" />
       ) : (
         <p className={cn('mt-2 font-serif text-3xl tabular-nums', accent ? 'text-gold' : 'text-foreground')}>{value}</p>
       )}
@@ -764,7 +764,7 @@ function Field({
           {label}
         </label>
         {count && (
-          <span className={cn('text-[11px] tabular-nums', count[0] > count[1] ? 'text-destructive' : 'text-muted-foreground/60')}>
+          <span className={cn('text-[11px] tabular-nums', count[0] > count[1] ? 'text-destructive' : 'text-muted-foreground/85')}>
             {count[0]}/{count[1]}
           </span>
         )}
@@ -773,7 +773,7 @@ function Field({
       {error ? (
         <p className="mt-1.5 text-xs text-destructive">{error}</p>
       ) : hint ? (
-        <p className="mt-1.5 text-[11px] text-muted-foreground/70">{hint}</p>
+        <p className="mt-1.5 text-[11px] text-muted-foreground/85">{hint}</p>
       ) : null}
     </div>
   )
@@ -921,7 +921,7 @@ function ImageUpload({
           {message}
         </p>
       ) : (
-        <p id="nl-image-hint" className="mt-1.5 text-[11px] text-muted-foreground/70">
+        <p id="nl-image-hint" className="mt-1.5 text-[11px] text-muted-foreground/85">
           Необязательно. JPEG, PNG или GIF до 5 МБ, ширина от 1160px.
         </p>
       )}

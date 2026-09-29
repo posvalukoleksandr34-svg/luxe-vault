@@ -35,10 +35,10 @@ const CATEGORY_RU: Record<SupportCategory, string> = {
 }
 
 const STATUS_STYLE: Record<SupportTicketStatus, string> = {
-  open: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  in_progress: 'text-sky-400 bg-sky-400/10 border-sky-400/30',
+  open: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  in_progress: 'text-sky-700 bg-sky-500/10 border-sky-500/30',
   waiting_user: 'text-gold bg-gold/10 border-gold/30',
-  resolved: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
+  resolved: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
   closed: 'text-muted-foreground bg-muted/30 border-border',
 }
 
@@ -428,7 +428,7 @@ function AdminTicket({
             <dt className="text-muted-foreground">Клиент</dt>
             <dd className="min-w-0 text-foreground">
               {ticket.name} ·{' '}
-              <a href={`mailto:${ticket.email}`} className="inline-flex items-center gap-1 text-gold/90 hover:text-gold">
+              <a href={`mailto:${ticket.email}`} className="inline-flex items-center gap-1 text-gold hover:text-gold">
                 <Mail className="size-3" />
                 {ticket.email}
               </a>

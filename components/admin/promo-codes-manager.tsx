@@ -34,9 +34,9 @@ const INPUT =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold'
 
 const STATE_BADGE: Record<PromoState, { label: string; className: string }> = {
-  active: { label: 'Действует', className: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' },
-  exhausted: { label: 'Лимит исчерпан', className: 'border-amber-400/30 bg-amber-400/10 text-amber-300' },
-  expired: { label: 'Истёк', className: 'border-red-400/30 bg-red-400/10 text-red-300' },
+  active: { label: 'Действует', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' },
+  exhausted: { label: 'Лимит исчерпан', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700' },
+  expired: { label: 'Истёк', className: 'border-red-500/30 bg-red-500/10 text-red-700' },
   inactive: { label: 'Выключен', className: 'border-border text-muted-foreground' },
 }
 
@@ -292,7 +292,7 @@ function CreateForm() {
               Без лимита
             </label>
           </div>
-          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+          <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground/85">
             Например, 100 — только первые сто заказов. Неоплаченный заказ возвращает использование.
           </span>
         </fieldset>
@@ -366,7 +366,7 @@ function CreateForm() {
           Создать промокод
         </button>
         {error && (
-          <p role="alert" className="text-xs text-red-400">
+          <p role="alert" className="text-xs text-red-700">
             {error}
           </p>
         )}
@@ -501,7 +501,7 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
             className="h-1.5 overflow-hidden rounded-full bg-muted"
           >
             <div
-              className={cn('h-full rounded-full transition-all', pct >= 100 ? 'bg-amber-400' : pct >= 80 ? 'bg-gold' : 'bg-emerald-400')}
+              className={cn('h-full rounded-full transition-all', pct >= 100 ? 'bg-amber-500' : pct >= 80 ? 'bg-gold' : 'bg-emerald-500')}
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -536,13 +536,13 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
             Сохранить
           </button>
           {promo.maxUses !== null && Number(maxUses) > 0 && Number(maxUses) < promo.used && (
-            <span className="text-[11px] text-amber-300">Меньше уже использованного — код сразу станет исчерпан</span>
+            <span className="text-[11px] text-amber-700">Меньше уже использованного — код сразу станет исчерпан</span>
           )}
         </div>
       )}
 
       {error && (
-        <p role="alert" className="mt-3 text-xs text-red-400">
+        <p role="alert" className="mt-3 text-xs text-red-700">
           {error}
         </p>
       )}
@@ -703,7 +703,7 @@ function AppCodeSettings({
             {status && (
               <p
                 role={status.kind === 'error' ? 'alert' : 'status'}
-                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-400')}
+                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-700')}
               >
                 {status.text}
               </p>
@@ -727,7 +727,7 @@ function AppCodeSettings({
                   <span className={cn('rounded-full border px-2 py-0.5 text-[10px]', STATE_BADGE[s].className)}>
                     {p.used > 0 ? 'Использован' : STATE_BADGE[s].label}
                   </span>
-                  <span className="text-muted-foreground/70">выдан {formatDate(p.createdAt)}</span>
+                  <span className="text-muted-foreground/85">выдан {formatDate(p.createdAt)}</span>
                 </li>
               )
             })}

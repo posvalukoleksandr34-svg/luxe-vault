@@ -162,7 +162,7 @@ export function StylistExperience({ anchorProductId }: { anchorProductId?: strin
             </div>
           )}
           {busy && (
-            <p className="mb-6 text-[12px] uppercase tracking-[0.25em] text-gold/70">
+            <p className="mb-6 text-[12px] uppercase tracking-[0.25em] text-gold">
               {t('stylist.loading')}
             </p>
           )}

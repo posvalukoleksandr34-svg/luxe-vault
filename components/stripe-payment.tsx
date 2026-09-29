@@ -39,33 +39,35 @@ import type { Order } from '@/lib/types'
  * either.
  */
 const appearance: Appearance = {
-  theme: 'night',
+  // The light theme's colours (app/globals.css :root): white fields on the
+  // ivory page, near-black text, gold for focus and the selected state.
+  theme: 'stripe',
   variables: {
-    colorPrimary: '#d4af37',
-    colorBackground: '#16150f',
-    colorText: '#f2ecdc',
-    colorTextSecondary: '#a8a296',
-    colorDanger: '#c4462f',
+    colorPrimary: '#b8912f',
+    colorBackground: '#ffffff',
+    colorText: '#1a1a1a',
+    colorTextSecondary: '#5e574d',
+    colorDanger: '#b52a2a',
     fontFamily: 'Inter, system-ui, sans-serif',
     fontSizeBase: '13px',
     spacingUnit: '4px',
-    // Matches the app's hard-cornered, fashion-house geometry.
-    borderRadius: '0px',
+    // Matches the site's rounded fields (12px).
+    borderRadius: '12px',
   },
   rules: {
     '.Input': {
-      border: '1px solid rgba(148, 122, 56, 0.35)',
+      border: '1px solid #ddd5c6',
       boxShadow: 'none',
     },
     '.Input:focus': {
-      border: '1px solid rgba(212, 175, 55, 0.55)',
-      boxShadow: '0 0 0 1px rgba(212, 175, 55, 0.18)',
+      border: '1px solid #c5a059',
+      boxShadow: '0 0 0 4px rgba(197, 160, 89, 0.15)',
     },
     '.Label': {
       fontSize: '11px',
       textTransform: 'uppercase',
       letterSpacing: '0.15em',
-      color: '#f2ecdc',
+      color: '#1a1a1a',
     },
   },
 }
@@ -80,10 +82,10 @@ const appearance: Appearance = {
  * lib/server/stripe.ts); the domain must also be registered in the Stripe
  * Dashboard (Settings → Payment method domains) for them to appear on it.
  *
- * Styled to each brand's rules for a dark page: WHITE buttons — Apple and
- * Google both ask for the white style on dark backgrounds, where a black
- * button disappears — at 48px, the plain variant (the wallet mark alone), and
- * square corners from the Elements appearance above (borderRadius 0).
+ * Styled to each brand's rules for a light page: BLACK buttons — the style
+ * Apple and Google both ask for on light backgrounds — at 48px, the plain
+ * variant (the wallet mark alone), with the 12px corners of the Elements
+ * appearance above.
  * Link, PayPal and Amazon Pay stay off: the card form below covers them.
  */
 const EXPRESS_OPTIONS: StripeExpressCheckoutElementOptions = {
@@ -96,7 +98,8 @@ const EXPRESS_OPTIONS: StripeExpressCheckoutElementOptions = {
   },
   paymentMethodOrder: ['apple_pay', 'google_pay'],
   buttonType: { applePay: 'plain', googlePay: 'plain' },
-  buttonTheme: { applePay: 'white', googlePay: 'white' },
+  // Black on the light page, as Apple's and Google's guidelines ask for.
+  buttonTheme: { applePay: 'black', googlePay: 'black' },
   buttonHeight: 48,
   layout: { maxColumns: 2, maxRows: 1, overflow: 'never' },
 }
@@ -181,7 +184,7 @@ export function StripePayment({
     // name is for whoever reads the console, not for the customer.
     console.error('[stripe] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set.')
     return (
-      <div className="border border-destructive/40 bg-destructive/5 p-4">
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
         <p className="text-[12px] font-light text-destructive">{t('checkout.paymentUnavailable')}</p>
       </div>
     )
@@ -384,7 +387,7 @@ function CheckoutForm({
       <button
         type="submit"
         disabled={!stripe || !elements || !ready || submitting || disabled}
-        className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-4 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+        className="rounded-xl flex w-full items-center justify-center gap-2 border border-transparent bg-gold-gradient py-4 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
       >
         {submitting && <Loader2 className="size-3.5 animate-spin" />}
         {submitting
@@ -398,14 +401,14 @@ function CheckoutForm({
         type="button"
         onClick={onBack}
         disabled={submitting}
-        className="flex w-full items-center justify-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85 disabled:opacity-40"
       >
         <ArrowLeft className="size-3" />
         {t('checkout.payLater')}
       </button>
 
-      <p className="flex items-start gap-2 text-[11px] font-light leading-relaxed text-muted-foreground/60">
-        <ShieldCheck className="mt-0.5 size-3 shrink-0 text-gold/50" strokeWidth={1.5} />
+      <p className="flex items-start gap-2 text-[11px] font-light leading-relaxed text-muted-foreground/85">
+        <ShieldCheck className="mt-0.5 size-3 shrink-0 text-gold" strokeWidth={1.5} />
         {t('checkout.cardSecurity')}
       </p>
     </form>

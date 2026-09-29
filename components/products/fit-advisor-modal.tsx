@@ -348,7 +348,7 @@ export function FitAdvisorModal({
   const verdicts: AreaVerdict[] = result && row ? fitBreakdown(result.input, row, preference) : []
 
   const inputClass =
-    'w-full border border-border bg-background px-3 py-2.5 text-[14px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-gold'
+    'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold'
   const labelClass = 'mb-1.5 block text-[11px] uppercase tracking-[0.12em] text-foreground'
 
   return (
@@ -356,7 +356,7 @@ export function FitAdvisorModal({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 text-[11px] text-gold/70 transition hover:text-gold"
+          className="flex items-center gap-1 text-[11px] text-gold transition hover:text-gold"
         >
           <Ruler aria-hidden className="size-3" />
           {t('fit.cta')}
@@ -397,7 +397,7 @@ export function FitAdvisorModal({
                   placeholder="26.5"
                   className={inputClass}
                 />
-                <span className="mt-1.5 block text-[11px] font-light leading-relaxed text-muted-foreground/80">
+                <span className="mt-1.5 block text-[11px] font-light leading-relaxed text-muted-foreground/90">
                   {t('fit.footHint')}
                 </span>
               </label>
@@ -411,7 +411,7 @@ export function FitAdvisorModal({
                       onClick={() => edit(() => setFootWidth(w))}
                       aria-pressed={footWidth === w}
                       className={cn(
-                        'min-h-[44px] border px-2 text-[12px] transition-colors duration-200',
+                        'min-h-[44px] rounded-xl border px-2 text-[12px] transition-colors duration-200',
                         footWidth === w
                           ? 'border-gold bg-gold/5 text-gold'
                           : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -472,7 +472,7 @@ export function FitAdvisorModal({
                       onClick={() => edit(() => setGender(g))}
                       aria-pressed={gender === g}
                       className={cn(
-                        'min-h-[40px] border px-2 text-[11px] leading-tight transition-colors duration-200',
+                        'min-h-[40px] rounded-xl border px-2 text-[11px] leading-tight transition-colors duration-200',
                         gender === g
                           ? 'border-gold bg-gold/5 text-gold'
                           : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -494,7 +494,7 @@ export function FitAdvisorModal({
                       onClick={() => edit(() => setBodyType(b))}
                       aria-pressed={bodyType === b}
                       className={cn(
-                        'min-h-[44px] border px-1 text-[11px] leading-tight transition-colors duration-200',
+                        'min-h-[44px] rounded-xl border px-1 text-[11px] leading-tight transition-colors duration-200',
                         bodyType === b
                           ? 'border-gold bg-gold/5 text-gold'
                           : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -513,7 +513,7 @@ export function FitAdvisorModal({
           <fieldset>
             <legend className={labelClass}>
               {t('fit.usual')}{' '}
-              <span className="normal-case tracking-normal text-muted-foreground/80">· {t('fit.optional')}</span>
+              <span className="normal-case tracking-normal text-muted-foreground/90">· {t('fit.optional')}</span>
             </legend>
             <div className="grid grid-cols-7 gap-1">
               {LETTER_SIZES.map((s) => (
@@ -523,7 +523,7 @@ export function FitAdvisorModal({
                   onClick={() => edit(() => setUsual(usual === s ? null : s))}
                   aria-pressed={usual === s}
                   className={cn(
-                    'min-h-[40px] border text-[12px] transition-colors duration-200',
+                    'min-h-[40px] rounded-xl border text-[12px] transition-colors duration-200',
                     usual === s
                       ? 'border-gold bg-gold/5 text-gold'
                       : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -539,7 +539,7 @@ export function FitAdvisorModal({
               not have a tape to hand, and the finder works without them — but
               a measured chest is what turns an estimate into an answer. */}
           {!shoeMode && (
-            <div className="border border-border/60">
+            <div className="rounded-xl border border-border/60">
               <button
                 type="button"
                 onClick={() => setShowMore((v) => !v)}
@@ -590,7 +590,7 @@ export function FitAdvisorModal({
                   onClick={() => edit(() => setPreference(p))}
                   aria-pressed={preference === p}
                   className={cn(
-                    'min-h-[44px] border px-2 text-[12px] leading-tight transition-colors duration-200',
+                    'min-h-[44px] rounded-xl border px-2 text-[12px] leading-tight transition-colors duration-200',
                     preference === p
                       ? 'border-gold bg-gold/5 text-gold'
                       : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
@@ -610,14 +610,14 @@ export function FitAdvisorModal({
 
           <button
             type="submit"
-            className="w-full border border-gold/40 bg-gold/5 px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
+            className="rounded-xl w-full border border-transparent bg-gold-gradient px-5 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-colors duration-300 hover:brightness-[1.05] shadow-gold"
           >
             {t('fit.calculate')}
           </button>
         </form>
 
         {shoe && (
-          <div role="status" className="border border-gold/30 bg-gold/[0.04] p-5">
+          <div role="status" className="rounded-xl border border-gold/30 bg-gold/[0.04] p-5">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               {t('fit.recommendedLabel')}
             </p>
@@ -639,7 +639,7 @@ export function FitAdvisorModal({
             <button
               type="button"
               onClick={() => apply(shoe.size)}
-              className="mt-4 w-full border border-gold bg-gold px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90"
+              className="rounded-xl mt-4 w-full border border-gold bg-gold-gradient px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90 shadow-gold"
             >
               {tf('fit.apply', { size: shoe.size })}
             </button>
@@ -647,7 +647,7 @@ export function FitAdvisorModal({
         )}
 
         {result && (
-          <div role="status" className="border border-gold/30 bg-gold/[0.04] p-5">
+          <div role="status" className="rounded-xl border border-gold/30 bg-gold/[0.04] p-5">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               {t('fit.recommendedLabel')}
             </p>
@@ -672,7 +672,7 @@ export function FitAdvisorModal({
               </p>
             )}
             {result.fit.kind === 'none' && (
-              <p className="mt-3 text-[12px] font-light text-destructive/80">{t('fit.none')}</p>
+              <p className="mt-3 text-[12px] font-light text-destructive">{t('fit.none')}</p>
             )}
 
             {productCut && productCut !== 'regular' && (
@@ -732,7 +732,7 @@ export function FitAdvisorModal({
               <button
                 type="button"
                 onClick={() => apply(selectable)}
-                className="mt-4 w-full border border-gold bg-gold px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90"
+                className="rounded-xl mt-4 w-full border border-gold bg-gold-gradient px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold-foreground transition-opacity duration-300 hover:opacity-90 shadow-gold"
               >
                 {tf('fit.apply', { size: selectable })}
               </button>
@@ -770,7 +770,7 @@ export function FitAdvisorModal({
           )}
         </div>
 
-        <p className="text-[11px] font-light leading-relaxed text-muted-foreground/80">
+        <p className="text-[11px] font-light leading-relaxed text-muted-foreground/90">
           {t('fit.disclaimer')}
         </p>
       </DialogContent>

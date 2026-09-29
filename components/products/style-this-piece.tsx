@@ -26,7 +26,7 @@ export function StyleThisPiece({ product }: { product: Product }) {
       </p>
       <Link
         href={`/stylist?product=${encodeURIComponent(product.id)}`}
-        className="tap-safe inline-flex items-center gap-2 border border-gold/30 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+        className="rounded-xl tap-safe inline-flex items-center gap-2 border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
       >
         <Sparkles className="size-3.5" />
         {t('stylist.stylePiece')}

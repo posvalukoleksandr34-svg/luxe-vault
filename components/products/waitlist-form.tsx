@@ -90,19 +90,19 @@ export function WaitlistForm({
   }
 
   return (
-    <div className={cn('border border-border/70 p-4 sm:p-5', className)}>
+    <div className={cn('rounded-xl border border-border/70 p-4 sm:p-5', className)}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           {t('sold.out')} · {tf('stockAlert.forSize', { size, color })}
         </p>
-        <BellRing className="size-3.5 shrink-0 text-gold/70" aria-hidden />
+        <BellRing className="size-3.5 shrink-0 text-gold" aria-hidden />
       </div>
       <p className="mt-2 text-[12px] font-light leading-relaxed text-muted-foreground">{t('stockAlert.body')}</p>
 
       {done ? (
         <p
           role="status"
-          className="mt-4 flex items-center gap-2 border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold"
+          className="mt-4 flex items-center gap-2 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold"
         >
           <Check className="size-4 shrink-0" />
           {t(done === 'already' ? 'stockAlert.already' : 'stockAlert.confirmed')}
@@ -124,7 +124,7 @@ export function WaitlistForm({
             placeholder={t('checkout.email')}
             aria-invalid={Boolean(error)}
             className={cn(
-              'min-w-0 flex-1 border border-border bg-background px-3.5 py-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/50 focus:border-gold',
+              'min-w-0 flex-1 rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold',
               signedIn && 'text-muted-foreground',
               error && 'border-destructive/60',
             )}
@@ -132,7 +132,7 @@ export function WaitlistForm({
           <button
             type="submit"
             disabled={pending || !email.trim()}
-            className="flex shrink-0 items-center justify-center gap-2 border border-gold/40 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:opacity-50 shadow-gold"
           >
             {pending ? <Loader2 className="size-3.5 animate-spin" /> : <BellRing className="size-3.5" />}
             {t('stockAlert.notify')}
@@ -141,7 +141,7 @@ export function WaitlistForm({
       )}
 
       {signedIn && !done && (
-        <p className="mt-1.5 text-[11px] font-light text-muted-foreground/70">{t('stockAlert.accountEmail')}</p>
+        <p className="mt-1.5 text-[11px] font-light text-muted-foreground/85">{t('stockAlert.accountEmail')}</p>
       )}
       {error && (
         <p role="alert" className="mt-2 text-[12px] text-destructive">

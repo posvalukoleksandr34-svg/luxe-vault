@@ -74,7 +74,7 @@ export function LookSkeleton() {
   const { t } = useStore()
   return (
     <div role="status" aria-busy="true" aria-label={t('stylist.loading')}>
-      <p className="mb-8 text-[12px] uppercase tracking-[0.25em] text-gold/70">
+      <p className="mb-8 text-[12px] uppercase tracking-[0.25em] text-gold">
         {t('stylist.loading')}
       </p>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -111,9 +111,9 @@ export function LookView({
   if (!result.looks.length) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <AlertTriangle className="size-8 text-gold/40" strokeWidth={1.25} />
+        <AlertTriangle className="size-8 text-gold" strokeWidth={1.25} />
         <p className="text-sm font-light text-foreground">{t('stylist.empty')}</p>
-        <p className="max-w-sm text-[12px] font-light leading-relaxed text-muted-foreground/70">
+        <p className="max-w-sm text-[12px] font-light leading-relaxed text-muted-foreground/85">
           {result.catalogSize === 0
             ? t('error.loadFailedHint')
             : `${t('stylist.missing')} ${result.missingSlots
@@ -123,7 +123,7 @@ export function LookView({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-2 border border-gold/40 bg-gold/5 px-6 py-2.5 text-[11px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+          className="mt-2 rounded-xl border border-transparent bg-gold-gradient px-6 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
         >
           {t('stylist.restart')}
         </button>
@@ -153,7 +153,7 @@ export function LookView({
               type="button"
               onClick={() => onRefine(r.key)}
               disabled={busy}
-              className="tap-safe border border-border/60 px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-foreground disabled:opacity-40"
+              className="tap-safe rounded-xl border border-border/60 px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-all duration-300 hover:border-gold/50 hover:text-foreground disabled:opacity-40"
             >
               {t(r.label)}
             </button>
@@ -162,7 +162,7 @@ export function LookView({
             <button
               type="button"
               onClick={onRestart}
-              className="tap-safe px-2 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/50 transition hover:text-foreground"
+              className="tap-safe px-2 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85 transition hover:text-foreground"
             >
               {t('stylist.restart')}
             </button>
@@ -241,7 +241,7 @@ export function LookBlock({
         <h2 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {heading ?? (look.kind === 'premium' ? t('stylist.premiumAlt') : t('stylist.yourFit'))}
         </h2>
-        <p className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground/60">
+        <p className="text-[12px] uppercase tracking-[0.15em] text-muted-foreground/85">
           {t('stylist.total')} — <span className="text-gold">{formatPrice(look.total)}</span>
         </p>
       </div>
@@ -265,7 +265,7 @@ export function LookBlock({
       )}
 
       {missing.length > 0 && look.kind === 'primary' && (
-        <p className="mt-4 text-[12px] font-light text-muted-foreground/60">
+        <p className="mt-4 text-[12px] font-light text-muted-foreground/85">
           {t('stylist.missing')}{' '}
           {missing.map((m) => t(`stylist.slot.${m}` as Parameters<typeof t>[0])).join(', ')}
         </p>
@@ -279,7 +279,7 @@ export function LookBlock({
           type="button"
           onClick={addOutfit}
           disabled={buyable.length === 0}
-          className="inline-flex w-full items-center justify-center gap-2.5 border border-gold/40 bg-gold/5 px-8 py-4 text-[12px] uppercase tracking-[0.2em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-transparent bg-gold-gradient px-8 py-4 text-[12px] uppercase tracking-[0.2em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 sm:w-auto shadow-gold"
         >
           <ShoppingBag className="size-4" />
           {added ? `${t('stylist.addOutfit')} ✓` : `${t('stylist.addOutfit')} — ${formatPrice(look.total)}`}
@@ -327,7 +327,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
       <div className="mt-3">
         <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground">{name}</h3>
         {item.reasons.length > 0 && (
-          <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/50">
+          <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85">
             {item.reasons.map((r) => reasonLabel(r, localize)).join(' · ')}
           </p>
         )}
@@ -337,7 +337,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
 
         {soldOut ? (
           <>
-            <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-destructive/80">
+            <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-destructive">
               {t('stylist.unavailable')}
             </p>
             <NotifyWhenAvailable
@@ -360,7 +360,7 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
                   onClick={() => setSize(s)}
                   onMouseEnter={playHoverSound}
                   className={cn(
-                    'flex size-8 items-center justify-center border text-[11px] transition-colors duration-200',
+                    'flex size-8 items-center justify-center rounded-xl border text-[11px] transition-colors duration-200',
                     size === s
                       ? 'border-gold bg-gold text-gold-foreground'
                       : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
@@ -386,13 +386,13 @@ function PieceCard({ item, wantedSizes }: { item: LookItem; wantedSizes?: string
                     color: item.suggestedColor,
                   }, item.product)
                 }}
-                className="border border-gold/30 bg-gold/5 px-4 py-2 text-[11px] uppercase tracking-[0.12em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+                className="rounded-xl border border-transparent bg-gold-gradient px-4 py-2 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
               >
                 {t('product.addToCart')}
               </button>
               <Link
                 href={`/product/${encodeURIComponent(item.product.id)}`}
-                className="tap-safe text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 transition hover:text-foreground"
+                className="tap-safe text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85 transition hover:text-foreground"
               >
                 {t('stylist.viewProduct')}
               </Link>

@@ -34,7 +34,7 @@ export function OrderListSkeleton({ rows = 2, label }: { rows?: number; label: s
   return (
     <Region label={label} className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="border border-border/50 p-4">
+        <div key={i} className="rounded-xl border border-border/50 p-4">
           <div className="flex items-center justify-between gap-3">
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-3 w-20" />
@@ -83,7 +83,7 @@ export function AddressListSkeleton({ rows = 2, label }: { rows?: number; label:
   return (
     <Region label={label} className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="border border-border/50 p-4">
+        <div key={i} className="rounded-xl border border-border/50 p-4">
           <Skeleton className="h-3 w-24" />
           <div className="mt-3 space-y-2">
             <Skeleton className="h-2.5 w-3/4" />
@@ -138,7 +138,7 @@ export function OrderDetailSkeleton({ label }: { label: string }) {
           </div>
         ))}
       </div>
-      <div className="space-y-3 border border-border/50 p-5">
+      <div className="space-y-3 rounded-xl border border-border/50 p-5">
         <Skeleton className="h-3 w-28" />
         <Skeleton className="h-2.5 w-2/3" />
         <Skeleton className="h-2.5 w-1/2" />

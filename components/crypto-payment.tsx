@@ -177,7 +177,7 @@ export function CryptoPayment({
 
   if (stage === 'unavailable') {
     return (
-      <div className="flex flex-col items-center gap-5 border border-border py-12 text-center">
+      <div className="flex flex-col items-center gap-5 rounded-xl border border-border py-12 text-center">
         <AlertTriangle className="size-6 text-muted-foreground" />
         <p className="max-w-xs text-[13px] font-light text-muted-foreground">{t('crypto.unavailable')}</p>
         <button
@@ -212,7 +212,7 @@ export function CryptoPayment({
               key={opt.id}
               type="button"
               onClick={() => selectOption(opt)}
-              className="flex flex-col items-start gap-0.5 border border-border px-4 py-3 text-left transition-all duration-200 hover:border-gold/50 hover:bg-gold/5"
+              className="flex flex-col items-start gap-0.5 rounded-xl border border-border px-4 py-3 text-left transition-all duration-200 hover:border-gold/50 hover:bg-gold/5"
             >
               <span className="font-mono text-sm font-medium text-foreground">{opt.label}</span>
               <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{opt.network}</span>
@@ -234,7 +234,7 @@ export function CryptoPayment({
 
   if (stage === 'error') {
     return (
-      <div className="flex flex-col items-center gap-5 border border-destructive/30 py-12 text-center">
+      <div className="flex flex-col items-center gap-5 rounded-xl border border-destructive/30 py-12 text-center">
         <AlertTriangle className="size-6 text-destructive" />
         <p className="max-w-xs text-[13px] font-light text-muted-foreground">{errorMessage}</p>
         <div className="flex gap-3">
@@ -267,7 +267,7 @@ export function CryptoPayment({
 
       {paymentStatus !== 'paid' && (
         <>
-          <div className="mt-5 flex size-[168px] items-center justify-center border border-border bg-background p-2">
+          <div className="mt-5 flex size-[168px] items-center justify-center rounded-xl border border-border bg-background p-2">
             {qrDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrDataUrl} alt={t('crypto.address')} className="size-full" />
@@ -276,17 +276,17 @@ export function CryptoPayment({
             )}
           </div>
 
-          <p className="mt-6 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+          <p className="mt-6 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">
             {t('crypto.amountDue')}
           </p>
           <p className="mt-1 font-mono text-xl font-medium text-gold">
             {order.paymentAmount} {order.paymentCurrency?.toUpperCase()}
           </p>
 
-          <p className="mt-5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+          <p className="mt-5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">
             {t('crypto.address')}
           </p>
-          <div className="mt-2 flex w-full items-center gap-2 border border-border bg-background px-3 py-2.5">
+          <div className="mt-2 flex w-full items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5">
             <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] text-foreground">
               {order.paymentAddress}
             </span>
@@ -294,7 +294,7 @@ export function CryptoPayment({
               type="button"
               onClick={copyAddress}
               className={cn(
-                'flex shrink-0 items-center gap-1 border px-2 py-1 text-[10px] uppercase tracking-wider transition',
+                'flex shrink-0 items-center gap-1 rounded-xl border px-2 py-1 text-[10px] uppercase tracking-wider transition',
                 copied
                   ? 'border-gold/50 text-gold'
                   : 'border-border text-muted-foreground hover:border-gold/40 hover:text-gold',
@@ -305,15 +305,15 @@ export function CryptoPayment({
             </button>
           </div>
 
-          <p className="mt-4 max-w-xs text-[11px] font-light leading-relaxed text-muted-foreground/70">
+          <p className="mt-4 max-w-xs text-[11px] font-light leading-relaxed text-muted-foreground/85">
             {t('crypto.sendExactly')}
           </p>
           {expiresAt && (
-            <p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-muted-foreground/50">
+            <p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-muted-foreground/85">
               {new Date(expiresAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
-          <p className="mt-5 text-[10px] uppercase tracking-[0.15em] text-gold/70">
+          <p className="mt-5 text-[10px] uppercase tracking-[0.15em] text-gold">
             {t('crypto.doNotClose')}
           </p>
         </>
@@ -334,7 +334,7 @@ function StatusIndicator({ status }: { status: PaymentStatus }) {
   const config: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
     pending_payment: { label: t('crypto.waiting'), dot: 'bg-gold animate-pulse', text: 'text-gold' },
     confirming: { label: t('crypto.confirming'), dot: 'bg-gold animate-pulse', text: 'text-gold' },
-    paid: { label: t('crypto.paid'), dot: 'bg-emerald-400', text: 'text-emerald-400' },
+    paid: { label: t('crypto.paid'), dot: 'bg-emerald-500', text: 'text-emerald-700' },
     failed: { label: t('crypto.failed'), dot: 'bg-destructive', text: 'text-destructive' },
     expired: { label: t('crypto.expired'), dot: 'bg-destructive', text: 'text-destructive' },
     // Unreachable in the crypto flow today, but the map must stay total or
@@ -345,7 +345,7 @@ function StatusIndicator({ status }: { status: PaymentStatus }) {
   const c = config[status]
 
   return (
-    <div className="flex items-center gap-2 border border-border px-4 py-2">
+    <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-2">
       <span className={cn('size-1.5 rounded-full', c.dot)} />
       <span className={cn('text-[11px] uppercase tracking-[0.15em]', c.text)}>{c.label}</span>
     </div>

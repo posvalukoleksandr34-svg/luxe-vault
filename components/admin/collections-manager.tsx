@@ -228,7 +228,7 @@ function CategorySlot({
         <img src={image} alt={label} className="size-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/90">
             {count} {count === 1 ? 'товар' : 'товаров'}
           </p>
           <h3 className="font-serif text-xl font-semibold text-foreground">{label}</h3>
@@ -343,7 +343,7 @@ function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void 
 
               <div className="flex flex-wrap gap-2">
                 {items.length === 0 && (
-                  <span className="text-xs text-muted-foreground/60">Категорий пока нет</span>
+                  <span className="text-xs text-muted-foreground/85">Категорий пока нет</span>
                 )}
                 {items.map((slug) => {
                   const label = localize(categoryLabels[slug] ?? {}) || slug
@@ -355,14 +355,14 @@ function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void 
                       className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground"
                     >
                       {label}
-                      <span className="font-mono text-[10px] text-muted-foreground/60">
+                      <span className="font-mono text-[10px] text-muted-foreground/85">
                         {slug} · {count}
                       </span>
                       {deletable && (
                         <button
                           type="button"
                           onClick={() => void remove(slug, label)}
-                          className="text-muted-foreground/60 transition hover:text-destructive"
+                          className="text-muted-foreground/85 transition hover:text-destructive"
                           aria-label={`Удалить категорию ${label}`}
                         >
                           <X className="size-3" />
@@ -485,7 +485,7 @@ function NewCategoryForm({
           />
         </label>
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground/60">
+      <p className="mt-2 text-[11px] text-muted-foreground/85">
         Slug нельзя изменить после создания — на него ссылаются товары и адреса страниц.
       </p>
       <div className="mt-3 flex gap-3">

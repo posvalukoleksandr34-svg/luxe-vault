@@ -129,11 +129,11 @@ export function PasswordRecoveryModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="recovery-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         {done ? (
           <div className="flex flex-col items-center gap-4 py-4 text-center">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" strokeWidth={1.25} />
+            <CheckCircle2 className="h-8 w-8 text-emerald-700" strokeWidth={1.25} />
             <h2 id="recovery-title" className="font-serif text-xl font-bold text-foreground">
               {t('account.passwordChanged')}
             </h2>
@@ -143,7 +143,7 @@ export function PasswordRecoveryModal() {
             <button
               type="button"
               onClick={close}
-              className="mt-2 border border-gold/30 bg-gold/5 px-6 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+              className="mt-2 rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
             >
               {t('pw.continue')}
             </button>
@@ -213,7 +213,7 @@ export function PasswordRecoveryModal() {
               <button
                 type="submit"
                 disabled={busy || !password || !confirm || mismatch || tooShort}
-                className="flex w-full items-center justify-center gap-2 border border-gold/30 bg-gold/5 py-3 text-[12px] uppercase tracking-[0.15em] text-gold transition-all duration-300 hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground/40"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-gold-gradient py-3 text-[12px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:cursor-not-allowed disabled:border-border disabled:bg-none disabled:bg-muted disabled:shadow-none disabled:text-muted-foreground/85 shadow-gold"
               >
                 {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {t('pw.save')}

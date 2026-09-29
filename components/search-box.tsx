@@ -311,10 +311,10 @@ export function SearchBox({
         placeholder={t('filter.search')}
         className={cn(
           // outline-none is replaced, not dropped: focus draws a gold border.
-          'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/60',
+          'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/85',
           variant === 'desktop'
-            ? 'w-36 border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-gold/50'
-            : 'w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-8 text-sm focus:border-gold/60',
+            ? 'w-36 rounded-xl border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-gold focus:ring-4 focus:ring-gold/15'
+            : 'w-full rounded-full border border-border bg-card/50 py-2.5 pl-9 pr-8 text-sm focus:border-gold focus:ring-4 focus:ring-gold/15',
         )}
       />
 
@@ -326,7 +326,7 @@ export function SearchBox({
             setFound(NOTHING)
           }}
           aria-label={t('search.clear')}
-          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-muted-foreground/60 transition hover:text-foreground"
+          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center text-muted-foreground/85 transition hover:text-foreground"
         >
           <X className="size-3.5" />
         </button>
@@ -350,7 +350,7 @@ export function SearchBox({
           role="region"
           aria-label={t('search.panel')}
           className={cn(
-            'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto overscroll-contain border border-border bg-popover shadow-xl',
+            'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover shadow-xl',
             variant === 'desktop' ? 'right-0 w-[24rem]' : 'left-0 right-0 w-full',
           )}
         >
@@ -376,7 +376,7 @@ export function SearchBox({
                         clearRecentSearches()
                         setRecent([])
                       }}
-                      className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80 transition hover:text-foreground"
+                      className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/90 transition hover:text-foreground"
                     >
                       {t('search.clearRecent')}
                     </button>
@@ -400,7 +400,7 @@ export function SearchBox({
                   {t('search.hint')}
                 </p>
               )}
-              <p className="mt-3 border-t border-border/40 pt-2.5 text-[11px] font-light text-muted-foreground/80">
+              <p className="mt-3 border-t border-border/40 pt-2.5 text-[11px] font-light text-muted-foreground/90">
                 {t('search.hintSmart')}
               </p>
             </div>
@@ -425,7 +425,7 @@ export function SearchBox({
                       aria-label={`${t('search.removeFilter')}: ${label}`}
                       // The chip stays slim; its tap target is 26px tall
                       // through an invisible band above and below.
-                      className="group relative flex items-center gap-1 border border-gold/30 px-2 py-[3px] text-[10px] uppercase tracking-[0.14em] text-gold/90 transition-colors before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] hover:border-gold hover:text-gold"
+                      className="group relative flex items-center gap-1 border border-gold/30 px-2 py-[3px] text-[10px] uppercase tracking-[0.14em] text-gold transition-colors before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] hover:border-gold hover:text-gold"
                     >
                       {label}
                       <X aria-hidden className="size-2.5 opacity-50 transition-opacity group-hover:opacity-100" />
@@ -462,7 +462,7 @@ export function SearchBox({
                         onClick={close}
                         className="flex items-center gap-3 border-b border-border/40 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40"
                       >
-                        <span className="relative size-11 shrink-0 overflow-hidden border border-border/60">
+                        <span className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-border/60">
                           <Image
                             src={productImage(p.image)}
                             alt=""
@@ -475,9 +475,9 @@ export function SearchBox({
                           <span className="block truncate text-[13px] font-light text-foreground">
                             {localize(p.name)}
                           </span>
-                          <span className="block text-[11px] tabular-nums text-muted-foreground/80">
+                          <span className="block text-[11px] tabular-nums text-muted-foreground/90">
                             {formatPrice(p.price)}
-                            {!buyable && <span className="text-muted-foreground/80"> · {t('sold.out')}</span>}
+                            {!buyable && <span className="text-muted-foreground/90"> · {t('sold.out')}</span>}
                           </span>
                         </span>
                       </Link>
@@ -491,13 +491,13 @@ export function SearchBox({
           {/* Nothing found — never a dead end */}
           {showEmptyState && (
             <div className="flex flex-col items-center gap-3 px-4 py-7 text-center">
-              <SearchX aria-hidden className="size-6 text-muted-foreground/30" strokeWidth={1.25} />
+              <SearchX aria-hidden className="size-6 text-muted-foreground/85" strokeWidth={1.25} />
               <p className="text-[12px] font-light text-muted-foreground">
                 {t('search.noResults')}
               </p>
               {popular.length > 0 && (
                 <div className="w-full">
-                  <span className="mb-1.5 block text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80">
+                  <span className="mb-1.5 block text-[10px] uppercase tracking-[0.15em] text-muted-foreground/90">
                     {t('search.tryInstead')}
                   </span>
                   <TermList terms={popular} onPick={choose} />
@@ -506,7 +506,7 @@ export function SearchBox({
               <Link
                 href="/catalog"
                 onClick={close}
-                className="mt-1 border border-gold/40 bg-gold/5 px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
+                className="rounded-xl mt-1 border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-colors duration-300 hover:brightness-[1.05] shadow-gold"
               >
                 {t('search.browseAll')}
               </Link>
@@ -526,7 +526,7 @@ function TermList({ terms, onPick }: { terms: string[]; onPick: (t: string) => v
           key={term}
           type="button"
           onClick={() => onPick(term)}
-          className="border border-border px-2.5 py-1 text-[11px] font-light text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground"
+          className="rounded-xl border border-border px-2.5 py-1 text-[11px] font-light text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground"
         >
           {term}
         </button>
