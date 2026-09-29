@@ -1180,6 +1180,18 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
 }
 
+/* The same canvas as the site-wide layer (SiteRibbonsLazy in the root
+   layout): fixed to the window, just above the ambient smoke, below all
+   content. */
+.site-ribbons {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
 /* Keeps the centre of the frame calm: an ivory wash behind the wordmark,
    subtitle and buttons, fading out toward the edges where the ribbons play. */
 .hero__veil {

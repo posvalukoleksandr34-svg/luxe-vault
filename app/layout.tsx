@@ -5,7 +5,7 @@ import { StoreProvider } from '@/lib/store';
 import { readTaxonomyLists } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
 import { AmbientBackground } from '@/components/ambient-background';
-import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
+import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy, SiteRibbonsLazy } from '@/components/deferred-ui';
 import { PageTransition } from '@/components/page-transition';
 import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { GlobalPanels } from '@/components/global-panels';
@@ -244,6 +244,11 @@ export default async function RootLayout({
             and sits at z-index -1 so it never participates in the app's own
             stacking or event handling. */}
         <AmbientBackground />
+
+        {/* The ribbon glow, behind every storefront page: above the smoke,
+            below the cursor light and all content. Outside StoreProvider for
+            the same reasons as the layers around it. */}
+        <SiteRibbonsLazy />
 
         {/* Rendered AFTER the ambient layer and at the same negative z-index,
             so the cursor light pools on top of the drifting smoke rather than
