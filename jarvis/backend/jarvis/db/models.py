@@ -62,6 +62,10 @@ class User(TimestampMixin, Base):
     settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     failed_logins: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # accounts (0003): owner-created and setup accounts count as verified
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    onboarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AuthSession(Base):
@@ -423,6 +427,75 @@ class CustomCommand(TimestampMixin, Base):
     run_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_status: Mapped[str | None] = mapped_column(String(24))
+
+
+class AuthToken(Base):
+    """One-time tokens: e-mail verification, password reset, sign-up invites. Only the hash is stored."""
+
+    __tablename__ = "auth_tokens"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID | None] = _fk("users.id", nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320))
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)  # verify | reset | invite
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class Subscription(TimestampMixin, Base):
+    """The account's plan. Written only by the server: billing webhooks or an owner/admin — never the client."""
+
+    __tablename__ = "subscriptions"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                                               unique=True, nullable=False)
+    plan: Mapped[str] = mapped_column(String(32), nullable=False)
+    # active | trialing | past_due | canceled | unpaid | incomplete | manual
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    provider: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")  # manual | stripe
+    customer_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    subscription_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UsageCounter(Base):
+    """Monthly usage per account and metric (messages, command runs, voice sessions, product events)."""
+
+    __tablename__ = "usage_counters"
+    __table_args__ = (UniqueConstraint("user_id", "period", "metric", name="uq_usage_user_period_metric"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = _fk("users.id")
+    period: Mapped[str] = mapped_column(String(7), nullable=False)  # YYYY-MM (UTC)
+    metric: Mapped[str] = mapped_column(String(64), nullable=False)
+    value: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class BillingEvent(Base):
+    """Processed payment-provider webhook events (idempotency: each event id is applied once)."""
+
+    __tablename__ = "billing_events"
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class SupportReport(TimestampMixin, Base):
+    """Bug reports / feedback / support requests from inside the app."""
+
+    __tablename__ = "support_reports"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID | None] = _fk("users.id", nullable=True, ondelete="SET NULL")
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # bug | feedback | support
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)  # version, page, browser — no secrets
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)  # open | resolved
 
 
 class Notification(Base):

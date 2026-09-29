@@ -820,6 +820,9 @@ class Agent:
                 if code == 4401:
                     log.error("the server rejected the device token (needs the 'computer' scope) — fix the token")
                     delay = 60.0
+                elif code == 4402:
+                    log.error("the JARVIS plan of this account does not allow (more) computers — see Settings → Account")
+                    delay = 300.0
                 else:
                     log.warning("disconnected: %s", exc)
             if time.monotonic() - started > 30:

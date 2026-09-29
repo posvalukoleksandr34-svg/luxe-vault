@@ -61,7 +61,7 @@ async def resolve_token(app: AppContext, token: str | None) -> Principal | None:
         if row is None or row.revoked_at is not None or (row.expires_at and row.expires_at < utcnow()):
             return None
         user = await session.get(User, row.user_id)
-        if user is None:
+        if user is None or user.disabled_at is not None:  # disabled by the owner: every token stops working
             return None
         if (utcnow() - row.last_seen_at) > timedelta(minutes=5):
             await session.execute(update(AuthSession).where(AuthSession.id == row.id).values(last_seen_at=utcnow()))
@@ -93,6 +93,13 @@ def require_scope(scope: str):
         return p
 
     return dep
+
+
+async def require_owner(p: Principal = Depends(current)) -> Principal:
+    """Instance-wide settings (skills, keys, users, billing, flags) belong to the instance owner."""
+    if not p.user.is_owner:
+        raise HTTPException(403, "owner only")
+    return p
 
 
 def origin_allowed(app: AppContext, origin: str | None) -> bool:

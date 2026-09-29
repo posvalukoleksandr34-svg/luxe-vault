@@ -14,7 +14,7 @@ class ListArgs(BaseModel):
 
 @tool(name="files_list", description="List files and folders in the workspace.", activity="Смотрю файлы")
 async def files_list(ctx: ToolContext, args: ListArgs) -> dict:
-    return {"items": ctx.app.files.list(args.path, recursive=args.recursive)}
+    return {"items": (await ctx.app.user_files(ctx.user_id)).list(args.path, recursive=args.recursive)}
 
 
 class ReadArgs(BaseModel):
@@ -25,7 +25,7 @@ class ReadArgs(BaseModel):
 @tool(name="files_read", description="Read a file as text (PDF, DOCX, Markdown, CSV, code…).", activity="Читаю файл",
       untrusted_output=True, max_output_chars=60000)
 async def files_read(ctx: ToolContext, args: ReadArgs) -> dict:
-    return ctx.app.files.read_text(args.path, max_chars=args.max_chars)
+    return (await ctx.app.user_files(ctx.user_id)).read_text(args.path, max_chars=args.max_chars)
 
 
 class WriteArgs(BaseModel):
@@ -37,7 +37,7 @@ class WriteArgs(BaseModel):
 @tool(name="files_write", description="Create or overwrite a text file in the workspace.", risk=Risk.WRITE,
       activity="Сохраняю файл", idempotent=True, summarize=lambda a: f"Записать файл {a.get('path')}")
 async def files_write(ctx: ToolContext, args: WriteArgs) -> dict:
-    return ctx.app.files.write_text(args.path, args.content, overwrite=args.overwrite)
+    return (await ctx.app.user_files(ctx.user_id)).write_text(args.path, args.content, overwrite=args.overwrite)
 
 
 class MoveArgs(BaseModel):
@@ -47,7 +47,7 @@ class MoveArgs(BaseModel):
 
 @tool(name="files_move", description="Move or rename a file/folder.", risk=Risk.WRITE, activity="Перемещаю файл")
 async def files_move(ctx: ToolContext, args: MoveArgs) -> dict:
-    return ctx.app.files.move(args.source, args.destination)
+    return (await ctx.app.user_files(ctx.user_id)).move(args.source, args.destination)
 
 
 class DeleteArgs(BaseModel):
@@ -57,7 +57,7 @@ class DeleteArgs(BaseModel):
 @tool(name="files_delete", description="Delete a file or folder (moved to .trash, recoverable).", risk=Risk.WRITE,
       activity="Удаляю файл", summarize=lambda a: f"Удалить {a.get('path')}")
 async def files_delete(ctx: ToolContext, args: DeleteArgs) -> dict:
-    ctx.app.files.delete(args.path)
+    (await ctx.app.user_files(ctx.user_id)).delete(args.path)
     return {"deleted": args.path, "recoverable_from": ".trash/"}
 
 
@@ -68,4 +68,4 @@ class SearchArgs(BaseModel):
 
 @tool(name="files_search", description="Find files by name or content.", activity="Ищу в файлах")
 async def files_search(ctx: ToolContext, args: SearchArgs) -> dict:
-    return {"matches": ctx.app.files.search(args.query, rel=args.path)}
+    return {"matches": (await ctx.app.user_files(ctx.user_id)).search(args.query, rel=args.path)}

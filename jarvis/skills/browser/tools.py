@@ -62,5 +62,5 @@ async def browser_type(ctx: ToolContext, args: TypeArgs) -> dict:
 async def browser_screenshot(ctx: ToolContext, args: NoArgs) -> dict:
     png = await ctx.app.browser.screenshot(ctx.user_id)
     rel = f"screenshots/{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
-    info = ctx.app.files.write_bytes(rel, png)
+    info = (await ctx.app.user_files(ctx.user_id)).write_bytes(rel, png)
     return {"path": info["path"], "size": info["size"]}

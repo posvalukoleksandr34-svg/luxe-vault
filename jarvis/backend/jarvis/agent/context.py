@@ -219,7 +219,7 @@ class ContextAssembler:
 
         content: list[dict[str, Any]] = [{"type": "text", "text": "\n".join(ctx_lines)}]
         for att in attachments or []:
-            block = self.app.attachment_block(att)
+            block = await self.app.attachment_block(att, user.id)
             if block is not None:
                 content.append(block)
         content.append({"type": "text", "text": user_content or "(empty message)"})

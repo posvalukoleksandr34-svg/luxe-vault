@@ -14,6 +14,7 @@ from jarvis.core.timeparse import parse_local
 from jarvis.db.base import utcnow
 from jarvis.db.models import Automation
 from jarvis.integrations.calendar import get_calendar
+from jarvis.billing.service import QuotaExceeded
 from jarvis.tasks.scheduler import compute_next, serialize_automation
 from jarvis.tools.base import ToolError
 
@@ -53,6 +54,8 @@ async def create_automation(body: AutomationIn, p: Principal = Depends(current),
         a = await app.automations.create(user_id=p.user_id, name=body.name, kind=body.kind,
                                          timezone_name=p.user.timezone, payload=payload, channels=body.channels,
                                          created_by="user", **kw)
+    except QuotaExceeded:
+        raise
     except ToolError as exc:
         raise HTTPException(400, str(exc)) from exc
     return serialize_automation(a)

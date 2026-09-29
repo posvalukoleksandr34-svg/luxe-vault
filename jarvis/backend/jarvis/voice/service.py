@@ -105,9 +105,15 @@ class VoiceService:
             await session.commit()
         return merged
 
+    async def _premium(self, user_id: uuid.UUID | None) -> bool:
+        """Server-side STT/TTS costs money per minute: only plans with voice_premium get it."""
+        if user_id is None or getattr(self.app, "billing", None) is None:
+            return True
+        return await self.app.billing.allowed(user_id, "voice_premium")
+
     async def stt_provider(self, user_id: uuid.UUID | None = None) -> str:
         chosen = (await self.profile(user_id)).stt_provider if user_id else "auto"
-        if chosen == "browser":
+        if chosen == "browser" or not await self._premium(user_id):
             return "browser"
         if chosen == "deepgram" and await self.app.secrets.get("deepgram_api_key"):
             return "deepgram"
@@ -124,7 +130,7 @@ class VoiceService:
 
     async def tts_provider(self, user_id: uuid.UUID | None = None) -> str:
         chosen = (await self.profile(user_id)).tts_provider if user_id else "auto"
-        if chosen == "browser":
+        if chosen == "browser" or not await self._premium(user_id):
             return "browser"
         if chosen == "elevenlabs" and await self.app.secrets.get("elevenlabs_api_key"):
             return "elevenlabs"

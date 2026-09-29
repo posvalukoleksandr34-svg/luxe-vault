@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from jarvis.api.deps import COOKIE, Principal, current, get_app
 from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
+from jarvis.core.mailer import Mailer
 from jarvis.db.base import utcnow
 from jarvis.db.models import AuthSession, User
 from jarvis.security.crypto import constant_time_equals, new_token, token_hash
@@ -46,11 +47,15 @@ async def ensure_setup_code(app: AppContext) -> str | None:
     return code
 
 
-async def create_user(app: AppContext, *, email: str, password: str, name: str, timezone: str, owner: bool) -> User:
+async def create_user(app: AppContext, *, email: str, password: str, name: str, timezone: str, owner: bool,
+                      verified: bool | None = None) -> User:
     async with app.sessionmaker() as session:
         user = User(email=email.lower(), display_name=name, password_hash=hash_password(password), is_owner=owner,
                     timezone=timezone, locale=app.settings.locale,
-                    settings={"notify_channels": ["web", "telegram", "whatsapp"]})
+                    settings={"notify_channels": ["web", "telegram", "whatsapp"]},
+                    # the owner and accounts the owner creates are trusted; self sign-ups verify by e-mail
+                    email_verified_at=utcnow() if (owner if verified is None else verified) else None,
+                    onboarded_at=utcnow() if owner else None)
         session.add(user)
         await session.flush()
         await audit(session, action="user.created", actor="system", user_id=user.id, target=user.email)
@@ -140,6 +145,9 @@ async def login(body: LoginIn, request: Request, response: Response, app: AppCon
                 await audit(session, action="auth.login_failed", actor="user", user_id=user.id, data={"ip": ip})
                 await session.commit()
             raise HTTPException(401, "invalid credentials")
+        if not user.is_owner and user.email_verified_at is None and Mailer(app).configured():
+            raise HTTPException(403, {"code": "email_not_verified",
+                                      "message": "confirm your e-mail first (check your inbox)"})
         user.failed_logins = 0
         if needs_rehash(user.password_hash):
             user.password_hash = hash_password(body.password)

@@ -10,6 +10,7 @@ import uuid
 from fastapi import APIRouter, Depends, WebSocket
 
 from jarvis.api.deps import Principal, current, get_app, ws_principal
+from jarvis.billing.service import QuotaExceeded
 from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
 from jarvis.core.events import make_event
@@ -49,6 +50,18 @@ async def device_socket(ws: WebSocket) -> None:
     if hello.get("type") != "hello":
         await ws.close(code=4400)
         return
+    if app.billing is not None:  # plan: computer control included? how many computers at once?
+        try:
+            await app.billing.require(principal.user_id, "computer")
+            plan = await app.billing.plan(principal.user_id)
+            limit = plan.limit("devices")
+            others = [d for d in await app.devices.devices(principal.user_id) if d.id != str(principal.session.id)]
+            if limit is not None and len(others) + 1 > limit:
+                raise QuotaExceeded("devices", limit, plan)
+        except QuotaExceeded as exc:
+            await ws.send_json({"type": "error", "code": "plan", "message": str(exc)})
+            await ws.close(code=4402)
+            return
     caps = [c for c in hello.get("capabilities") or [] if c in CAPABILITIES]
     info = DeviceInfo(id=str(principal.session.id), user_id=str(principal.user_id),
                       name=str(hello.get("name") or principal.session.name or "computer")[:80],

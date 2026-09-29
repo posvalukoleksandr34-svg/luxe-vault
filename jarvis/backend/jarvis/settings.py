@@ -112,6 +112,22 @@ class Settings(BaseSettings):
     spotify_client_id: str | None = Field(default=None, validation_alias=_alias("SPOTIFY_CLIENT_ID"))
     spotify_client_secret: str | None = Field(default=None, validation_alias=_alias("SPOTIFY_CLIENT_SECRET"))
 
+    # ---- product / accounts / billing ----------------------------------------------------------
+    # closed: only the owner creates accounts (default, personal install) · invite: sign-up needs an invite
+    # code from the owner · open: anyone can sign up (public SaaS; configure SMTP for e-mail verification)
+    signup_mode: Literal["closed", "invite", "open"] = "closed"
+    product_name: str = "JARVIS"  # white-label: shown in the UI, e-mails and legal pages
+    support_email: str | None = None
+    legal_entity: str | None = None  # operator name shown on the Terms / Privacy pages
+    smtp_host: str | None = Field(default=None, validation_alias=_alias("SMTP_HOST", "JARVIS_SMTP_HOST"))
+    smtp_port: int = Field(default=587, validation_alias=_alias("SMTP_PORT", "JARVIS_SMTP_PORT"))
+    smtp_user: str | None = Field(default=None, validation_alias=_alias("SMTP_USER", "JARVIS_SMTP_USER"))
+    smtp_password: str | None = Field(default=None, validation_alias=_alias("SMTP_PASSWORD", "JARVIS_SMTP_PASSWORD"))
+    smtp_from: str | None = Field(default=None, validation_alias=_alias("SMTP_FROM", "JARVIS_SMTP_FROM"))
+    smtp_tls: Literal["starttls", "ssl", "none"] = Field(default="starttls", validation_alias=_alias("SMTP_TLS", "JARVIS_SMTP_TLS"))
+    stripe_secret_key: str | None = Field(default=None, validation_alias=_alias("STRIPE_SECRET_KEY"))
+    stripe_webhook_secret: str | None = Field(default=None, validation_alias=_alias("STRIPE_WEBHOOK_SECRET"))
+
     # ---- isolated tool runtimes ----------------------------------------------------------------
     browser_ws_endpoint: str | None = None  # e.g. ws://browser:3000/
     sandbox_url: str | None = None  # e.g. http://sandbox:8090

@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { Badge, Button, Card, ErrorNote, Field, Input, Modal, PageHeader, Select, Spinner } from "../components/ui";
+import { AccountSettings } from "../components/AccountSettings";
 import { VoiceSettings } from "../components/VoiceSettings";
 import { del, get, patch, post, put } from "../lib/api";
 import { useMe } from "../lib/auth";
@@ -222,6 +223,7 @@ function LinkCard({ to, title, text }: { to: string; title: string; text: string
 
 const SECTIONS = [
   { id: "general", label: "Общие" },
+  { id: "account", label: "Аккаунт и тариф" },
   { id: "voice", label: "Голос" },
   { id: "ai", label: "ИИ" },
   { id: "appearance", label: "Внешний вид" },
@@ -254,7 +256,7 @@ export function SettingsPage() {
     <>
       <PageHeader title="Настройки" description="Всё в одном месте: профиль, голос, ИИ, внешний вид, устройства, ключи и безопасность." />
       <nav className="-mx-1 mb-5 flex gap-1 overflow-x-auto pb-1" aria-label="Разделы настроек">
-        {SECTIONS.map((x) => (
+        {SECTIONS.filter((x) => x.id !== "keys" || user.is_owner).map((x) => (
           <button key={x.id} onClick={() => nav({ hash: x.id }, { replace: true })}
             className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${section === x.id ? "bg-elevated text-text shadow-sm" : "text-muted hover:text-text"}`}>
             {x.label}
@@ -288,6 +290,8 @@ export function SettingsPage() {
           </Card>
         </div>
       )}
+
+      {section === "account" && <AccountSettings />}
 
       {section === "voice" && (
         <Card title="Голос и голосовой ассистент" subtitle="Голос, скорость, стиль, режим без рук. Действует во всех голосовых окнах.">

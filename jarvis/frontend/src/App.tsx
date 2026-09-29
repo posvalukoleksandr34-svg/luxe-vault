@@ -8,6 +8,7 @@ import { Spinner } from "./components/ui";
 import { setUnauthorizedHandler } from "./lib/api";
 import { useMe } from "./lib/auth";
 import { connectRealtime, disconnectRealtime, onEvent } from "./lib/realtime";
+import { AdminPage } from "./pages/Admin";
 import { AutomationsPage } from "./pages/Automations";
 import { CommandsPage } from "./pages/Commands";
 import { ChatPage } from "./pages/Chat";
@@ -17,6 +18,7 @@ import { LoginPage } from "./pages/Login";
 import { LogsPage } from "./pages/Logs";
 import { MemoryPage } from "./pages/Memory";
 import { PermissionsPage } from "./pages/Permissions";
+import { ForgotPage, LegalPage, PricingPage, ResetPage, SignupPage, VerifyPage } from "./pages/Public";
 import { SettingsPage } from "./pages/Settings";
 import { SkillsPage } from "./pages/Skills";
 import { TasksPage } from "./pages/Tasks";
@@ -99,6 +101,12 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/verify" element={<VerifyPage />} />
+      <Route path="/forgot" element={<ForgotPage />} />
+      <Route path="/reset" element={<ResetPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/legal/:doc" element={<LegalPage />} />
       <Route path="/mini" element={<RequireAuth><div className="h-dvh"><VoicePage compact /></div></RequireAuth>} />
       <Route
         element={
@@ -121,6 +129,7 @@ export function App() {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="logs" element={<LogsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

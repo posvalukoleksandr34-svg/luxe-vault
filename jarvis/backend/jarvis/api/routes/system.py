@@ -8,13 +8,14 @@ import hmac
 import json
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from fastapi.responses import PlainTextResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 
 import jarvis
 from jarvis.api.deps import Principal, current, get_app, ws_principal
@@ -24,10 +25,10 @@ from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
 from jarvis.core.logging import log
 from jarvis.core.secrets import KNOWN_SECRETS
-from jarvis.core.version import schema_revision
 from jarvis.core.timeparse import tz
+from jarvis.core.version import schema_revision
 from jarvis.db.base import utcnow
-from jarvis.db.models import Notification, User
+from jarvis.db.models import LLMCall, Notification, User
 from jarvis.voice.service import VoiceError, VoiceProfile, VoiceProfilePatch
 from jarvis.voice.session import VoiceSession
 
@@ -71,6 +72,13 @@ async def metrics(request: Request, app: AppContext = Depends(get_app)) -> Respo
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
+async def _own_spend_today(app: AppContext, user_id) -> float:
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    async with app.sessionmaker() as session:
+        return float((await session.execute(select(func.coalesce(func.sum(LLMCall.cost_usd), 0.0)).where(
+            LLMCall.user_id == user_id, LLMCall.created_at >= start))).scalar_one())
+
+
 @router.get("/api/system/status")
 async def system_status(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
     workers = []
@@ -87,11 +95,13 @@ async def system_status(p: Principal = Depends(current), app: AppContext = Depen
                   "provider": app.settings.llm_provider, "key_name": app.brain_key_name,
                   "main_model": main.model, "routes": {n: {"provider": r.provider, "model": r.model, "effort": r.effort}
                                                        for n, r in app.router.routes.items()}},
-        "workers": workers, "embedded_worker": app.settings.embedded_worker,
+        "workers": workers if p.user.is_owner else [], "embedded_worker": app.settings.embedded_worker,
         "queue_depth": await app.tasks.queue_depth(),
         "embeddings": {"model": app.embedder.model, "enabled": app.embedder.enabled},
         "skills": len(app.skills.enabled()), "tools": len(app.registry.all()),
-        "spend_today_usd": round(await app.spend_today(), 4), "daily_limit_usd": app.settings.daily_cost_limit_usd,
+        # instance-wide spend is the owner's business; other accounts see their own
+        "spend_today_usd": round(await app.spend_today() if p.user.is_owner else await _own_spend_today(app, p.user_id), 4),
+        "daily_limit_usd": app.settings.daily_cost_limit_usd if p.user.is_owner else None,
         "public_url": app.settings.public_url, "schema": await schema_revision(app),
     }
 

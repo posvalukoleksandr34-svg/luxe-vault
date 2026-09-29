@@ -70,8 +70,13 @@ class ConversationService:
             note = await self._store(conv, "notice", f"Остановлено задач: {stopped}", channel, meta)
             return note, None
 
+        if self.app.billing is not None:  # plan limits (raises QuotaExceeded before any work or storage)
+            await self.app.billing.before_turn(user_id)
         msg = await self._store(conv, "user", text, channel, meta, attachments)
         command = await self.app.commands.match(user_id, text) if not attachments and self.app.commands else None
+        if command is not None and self.app.billing is not None \
+                and not await self.app.billing.allowed(user_id, "custom_commands"):
+            command = None
         if command is not None:  # a user-defined trigger phrase: run the macro directly, no model call
             task = await self.app.commands.start(user_id, command, channel=channel, conversation_id=conv.id,
                                                  message_id=str(msg.id), reply_to=reply_to)
@@ -86,6 +91,8 @@ class ConversationService:
             conv_row.updated_at = utcnow()
             await session.commit()
         msg.task_id = task.id
+        if self.app.billing is not None:
+            await self.app.billing.record(user_id, "messages")
         return msg, task
 
     async def _agent_turn(self, user_id: uuid.UUID, conv: Conversation, msg: Message, text: str, channel: str,

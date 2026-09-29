@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from jarvis.api.deps import Principal, current, get_app
+from jarvis.api.deps import Principal, current, get_app, require_owner
 from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
 from jarvis.db.models import PermissionRule
@@ -36,7 +36,7 @@ class SkillPatch(BaseModel):
 
 
 @router.patch("/skills/{name}")
-async def patch_skill(name: str, body: SkillPatch, p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+async def patch_skill(name: str, body: SkillPatch, p: Principal = Depends(require_owner), app: AppContext = Depends(get_app)) -> dict:
     if name not in app.skills.skills:
         raise HTTPException(404, "unknown skill")
     if body.enabled is not None:
@@ -51,7 +51,7 @@ async def patch_skill(name: str, body: SkillPatch, p: Principal = Depends(curren
 
 
 @router.post("/skills/reload")
-async def reload_skills(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+async def reload_skills(p: Principal = Depends(require_owner), app: AppContext = Depends(get_app)) -> dict:
     app.skills.discover()
     await app.skills.refresh_state()
     return {"skills": sorted(app.skills.skills)}

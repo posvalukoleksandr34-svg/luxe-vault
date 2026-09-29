@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from jarvis.billing.service import QuotaExceeded
 from jarvis.channels.hub import ChannelAdapter, approval_text, split_text
 from jarvis.core.logging import log
 from jarvis.db.models import Approval
@@ -127,5 +128,8 @@ class WhatsAppAdapter(ChannelAdapter):
         if not text:
             await self.send_text(wa_id, "Пока я понимаю текст и голосовые сообщения.")
             return
-        await self.app.conversations.submit(user_id=link.user_id, text=text, channel="whatsapp", reply_to=wa_id,
-                                            meta={"whatsapp_message_id": msg.get("id")})
+        try:
+            await self.app.conversations.submit(user_id=link.user_id, text=text, channel="whatsapp", reply_to=wa_id,
+                                                meta={"whatsapp_message_id": msg.get("id")})
+        except QuotaExceeded as exc:
+            await self.send_text(wa_id, str(exc))

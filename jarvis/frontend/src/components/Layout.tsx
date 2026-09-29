@@ -6,6 +6,7 @@ import {
   Brain,
   CalendarClock,
   Command,
+  Crown,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -33,7 +34,7 @@ import { ApprovalCard } from "./Approvals";
 import { Orb } from "./Orb";
 import { Button, Empty, Kbd, Modal } from "./ui";
 
-export const NAV: { group: string; items: { to: string; label: string; icon: ReactNode }[] }[] = [
+export const NAV: { group: string; items: { to: string; label: string; icon: ReactNode; owner?: boolean }[] }[] = [
   {
     group: "Ядро",
     items: [
@@ -65,6 +66,7 @@ export const NAV: { group: string; items: { to: string; label: string; icon: Rea
       { to: "/integrations", label: "Интеграции", icon: <Plug className="size-4" /> },
       { to: "/logs", label: "Журнал", icon: <ScrollText className="size-4" /> },
       { to: "/settings", label: "Настройки", icon: <Settings className="size-4" /> },
+      { to: "/admin", label: "Админка", icon: <Crown className="size-4" />, owner: true },
     ],
   },
 ];
@@ -91,7 +93,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <div key={g.group}>
             <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{g.group}</p>
             <ul className="space-y-0.5">
-              {g.items.map((it) => (
+              {g.items.filter((it) => !it.owner || me.data?.user.is_owner).map((it) => (
                 <li key={it.to}>
                   <NavLink
                     to={it.to}

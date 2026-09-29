@@ -21,15 +21,33 @@ TEXT_EXT = {".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".py", ".js", ".ts"
 MAX_READ = 2_000_000
 
 
+TENANTS = "tenants"  # <root>/tenants/<user_id>: workspaces of non-owner accounts
+
+
 class FileStore:
-    def __init__(self, root: Path):
+    """One workspace. The instance owner uses the root (backwards compatible with single-user installs); every
+    other account gets `<root>/tenants/<user_id>` via `for_tenant`, and the owner's store refuses that subtree,
+    so no account can reach another account's files."""
+
+    def __init__(self, root: Path, *, reserved: tuple[str, ...] = (TENANTS,)):
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
+        self.reserved = reserved
+
+    def for_tenant(self, user_id: object) -> "FileStore":
+        return FileStore(self.root / TENANTS / str(user_id), reserved=())
+
+    def _hidden(self, p: Path) -> bool:
+        if not self.reserved or p == self.root:
+            return False
+        return p.relative_to(self.root).parts[0] in self.reserved
 
     def path(self, rel: str) -> Path:
         rel = (rel or "").strip().lstrip("/")
         target = (self.root / rel).resolve()
         if target != self.root and self.root not in target.parents:
+            raise ToolError("path escapes the workspace")
+        if self._hidden(target):
             raise ToolError("path escapes the workspace")
         return target
 
@@ -49,7 +67,7 @@ class FileStore:
         it = base.rglob("*") if recursive else base.iterdir()
         items = []
         for p in sorted(it):
-            if p.name.startswith("."):
+            if p.name.startswith(".") or self._hidden(p):
                 continue
             items.append(self.info(p))
             if len(items) >= limit:
@@ -105,7 +123,7 @@ class FileStore:
         q = query.lower()
         out = []
         for p in base.rglob("*"):
-            if not p.is_file() or ".trash" in p.parts or p.name.startswith("."):
+            if not p.is_file() or ".trash" in p.parts or p.name.startswith(".") or self._hidden(p):
                 continue
             hit = {"path": self.rel(p), "match": "name"} if q in p.name.lower() else None
             if hit is None and p.suffix.lower() in TEXT_EXT | {".pdf", ".docx"} and p.stat().st_size < 5_000_000:

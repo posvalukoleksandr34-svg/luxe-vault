@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from jarvis.billing.service import QuotaExceeded
 from jarvis.channels.hub import ChannelAdapter, approval_text, split_text
 from jarvis.core.logging import log
 from jarvis.db.models import Approval
@@ -122,8 +123,11 @@ class TelegramAdapter(ChannelAdapter):
             return
         with contextlib.suppress(Exception):
             await self.call("sendChatAction", chat_id=int(chat_id), action="typing")
-        await self.app.conversations.submit(user_id=link.user_id, text=text, channel="telegram", reply_to=chat_id,
-                                            meta={"telegram_message_id": msg.get("message_id")})
+        try:
+            await self.app.conversations.submit(user_id=link.user_id, text=text, channel="telegram", reply_to=chat_id,
+                                                meta={"telegram_message_id": msg.get("message_id")})
+        except QuotaExceeded as exc:
+            await self.send_text(chat_id, str(exc))
 
     async def _on_callback(self, cq: dict[str, Any]) -> None:
         data = cq.get("data") or ""

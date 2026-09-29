@@ -31,6 +31,7 @@ from sqlalchemy import select
 
 from jarvis.agent.context import ContextAssembler
 from jarvis.agent.profiles import AgentProfile, get_profile
+from jarvis.billing.service import QuotaExceeded
 from jarvis.core.audit import audit
 from jarvis.core.logging import log
 from jarvis.db.base import utcnow
@@ -66,6 +67,11 @@ class AgentRuntime:
             conversation = await session.get(Conversation, task.conversation_id) if task.conversation_id else None
         if user is None:
             raise LLMError("task owner no longer exists")
+        if self.app.billing is not None and task.kind != "subagent":
+            try:  # monthly model budget of the plan (automations and background work included)
+                await self.app.billing.check(user.id, "llm_usd_month", adding=0)
+            except QuotaExceeded as exc:
+                raise LLMError(str(exc)) from exc
         # Skill on/off and settings are changed through the API process; a separate worker picks them up here.
         await self.app.skills.refresh_state()
         profile = get_profile(task.input.get("agent"))

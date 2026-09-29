@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from jarvis.billing.service import QuotaExceeded
 from jarvis.core.logging import log
 from jarvis.permissions.approvals import ApprovalError
 from jarvis.voice.service import SentenceBuffer, VoiceError, VoiceProfile
@@ -155,8 +156,12 @@ class VoiceSession:
             self.pending_approval = None
             return
         await self._interrupt(silent=True)
-        _, task = await self.app.conversations.submit(user_id=self.user_id, text=text, channel="voice",
-                                                      conversation_id=self.conversation_id)
+        try:
+            _, task = await self.app.conversations.submit(user_id=self.user_id, text=text, channel="voice",
+                                                          conversation_id=self.conversation_id)
+        except QuotaExceeded as exc:  # plan limit: say so instead of silently doing nothing
+            await self._say(str(exc))
+            task = None
         self.current_task = task.id if task else None
         self.buffer = SentenceBuffer()
         self.streamed = False

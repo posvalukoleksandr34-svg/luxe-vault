@@ -20,7 +20,7 @@ from jarvis.core.events import EventBus, MemoryEventBus, RedisEventBus
 from jarvis.core.logging import log
 from jarvis.core.secrets import SecretStore
 from jarvis.db.base import make_engine, make_sessionmaker
-from jarvis.db.models import Integration, LLMCall
+from jarvis.db.models import Integration, LLMCall, User
 from jarvis.llm.router import CallRecord, ModelRouter, load_routes
 from jarvis.llm.types import LLMProvider, RouteConfig
 from jarvis.memory.embeddings import Embedder, build_embedder
@@ -62,6 +62,7 @@ class AppContext:
     worker_id: str = field(default_factory=lambda: f"w-{uuid.uuid4().hex[:8]}")
     _availability: dict[uuid.UUID, tuple[float, dict[str, bool]]] = field(default_factory=dict)
     _spend: tuple[float, float] = (0.0, -1.0)
+    _owners: set[uuid.UUID] = field(default_factory=set)
 
     # late-bound services (set in build_app)
     tasks: Any = None
@@ -80,6 +81,7 @@ class AppContext:
     files: Any = None
     mcp: Any = None
     devices: Any = None
+    billing: Any = None
     commands: Any = None
 
     # ------------------------------------------------------------------ availability
@@ -113,7 +115,8 @@ class AppContext:
         avail["computer"] = bool(online)
         for cap in ("apps", "media", "volume", "browser", "input", "clipboard", "windows", "screen", "shell"):
             avail[f"computer.{cap}"] = any(cap in d.capabilities for d in online)
-        return avail
+        # plan features and owner kill switches: an unentitled tool is simply not offered
+        return await self.billing.mask(user_id, avail) if self.billing is not None else avail
 
     @property
     def brain_key_name(self) -> str:
@@ -137,11 +140,19 @@ class AppContext:
 
     # ------------------------------------------------------------------ attachments
 
-    def attachment_block(self, att: dict[str, Any]) -> dict[str, Any] | None:
+    async def user_files(self, user_id: uuid.UUID):
+        """The file workspace of this account (owner: the root; everyone else: their own tenant folder)."""
+        if user_id not in self._owners:
+            async with self.sessionmaker() as session:
+                if (await session.execute(select(User.is_owner).where(User.id == user_id))).scalar_one_or_none():
+                    self._owners.add(user_id)
+        return self.files if user_id in self._owners else self.files.for_tenant(user_id)
+
+    async def attachment_block(self, att: dict[str, Any], user_id: uuid.UUID) -> dict[str, Any] | None:
         if self.files is None or not att.get("path"):
             return None
         try:
-            p = self.files.path(att["path"])
+            p = (await self.user_files(user_id)).path(att["path"])
             data = p.read_bytes()
         except Exception:  # noqa: BLE001
             return None
@@ -225,6 +236,8 @@ async def build_app(
     from jarvis.channels.telegram import TelegramAdapter
     from jarvis.channels.whatsapp import WhatsAppAdapter
     from jarvis.core.conversations import ConversationService
+    from jarvis.billing.plans import Catalog
+    from jarvis.billing.service import BillingService
     from jarvis.commands.service import CommandService
     from jarvis.devices.hub import DeviceHub
     from jarvis.integrations.browser import BrowserPool
@@ -299,6 +312,7 @@ async def build_app(
     app.files = FileStore(settings.files_dir)
     app.mcp = McpManager(app)
     app.devices = DeviceHub(redis)
+    app.billing = BillingService(app, Catalog.load(settings.config_dir / "plans.yaml"))
     app.commands = CommandService(app)
     try:
         await app.skills.refresh_state()

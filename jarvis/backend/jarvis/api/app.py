@@ -16,8 +16,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import func, select
 
 import jarvis
-from jarvis.api.routes import (auth, automations, capabilities, chat, commands, devices, integrations, memory,
-                               observability, system, tasks)
+from jarvis.api.deps import COOKIE, _bearer, resolve_token
+from jarvis.api.routes import (account, admin, auth, automations, billing, capabilities, chat, commands, devices,
+                               integrations, memory, observability, public, system, tasks)
+from jarvis.billing.service import QuotaExceeded
 from jarvis.core.container import AppContext, build_app
 from jarvis.core.logging import configure_logging, log
 from jarvis.core.metrics import HTTP_LATENCY, HTTP_REQUESTS
@@ -82,6 +84,31 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
                    docs_url="/api/docs" if settings.env != "production" else None, redoc_url=None,
                    openapi_url="/api/openapi.json" if settings.env != "production" else None)
 
+    # Maintenance mode: the API answers 503 to everyone but the owner; sign-in, health, public config,
+    # admin and payment webhooks keep working so the owner can switch it off and no payment event is lost.
+    open_paths = ("/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/me", "/api/auth/setup",
+                  "/api/public/", "/api/admin/", "/api/billing/webhook", "/api/version")
+
+    @fapp.middleware("http")
+    async def maintenance(request: Request, call_next):
+        path = request.url.path
+        ctx = getattr(request.app.state, "jarvis", None)
+        if ctx is not None and ctx.billing is not None and path.startswith("/api/") \
+                and not path.startswith(open_paths):
+            m = await ctx.billing.maintenance()
+            if m["enabled"]:
+                token = _bearer(request.headers.get("authorization")) or request.cookies.get(COOKIE)
+                principal = await resolve_token(ctx, token)
+                if principal is None or not principal.user.is_owner:
+                    return JSONResponse({"detail": {"code": "maintenance", "message": m["message"] or
+                                                    "Идут технические работы. Попробуйте чуть позже."}},
+                                        status_code=503, headers={"Retry-After": "300"})
+        return await call_next(request)
+
+    @fapp.exception_handler(QuotaExceeded)
+    async def quota(request: Request, exc: QuotaExceeded):
+        return JSONResponse({"detail": exc.payload()}, status_code=402)
+
     @fapp.middleware("http")
     async def observe(request: Request, call_next):
         started = time.perf_counter()
@@ -101,7 +128,7 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
         return response
 
     for r in (auth, chat, tasks, memory, capabilities, integrations, automations, observability, system, devices,
-              commands):
+              commands, account, admin, billing, public):
         fapp.include_router(r.router)
 
     # Optional: serve a built frontend directly (single-container dev). In production Caddy serves it.

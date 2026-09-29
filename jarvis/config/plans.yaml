@@ -1,0 +1,55 @@
+# Subscription plans — the ONE place plans, limits and features are defined. Edit freely; restart the API.
+#
+# The plan of an account is decided on the server only: the instance owner always gets `owner_plan`; other
+# accounts get the plan of their subscription (set by the payment webhook or by the owner in Admin), otherwise
+# `default_plan`. The browser is never trusted with the plan.
+#
+# limits (omit = unlimited):
+#   messages_month        messages handled by the assistant per calendar month (UTC)
+#   messages_per_minute   burst protection
+#   llm_usd_month         model cost budget per month, USD (measured from real token usage)
+#   custom_commands       saved custom commands
+#   automations           active automations / reminders
+#   devices               computers connected with the desktop agent at the same time
+# features: which capability groups the plan unlocks ("*" = all). Known groups:
+#   computer (desktop agent), spotify, google, browser, sandbox, voice_premium (server-side STT/TTS),
+#   custom_commands, automations, api (personal API tokens)
+#
+# Prices here are what the pricing page displays. They are EXAMPLES — set your own before selling anything,
+# and create matching recurring prices in Stripe (the price id goes into the env var named by stripe_price_env).
+
+default_plan: free
+owner_plan: owner
+trial_days: 0          # >0: new sign-ups get this many days of `trial_plan`
+trial_plan: pro
+
+plans:
+  free:
+    title: Free
+    description: Попробовать JARVIS в браузере
+    price_month: 0
+    currency: USD
+    limits: {messages_month: 200, messages_per_minute: 10, llm_usd_month: 1, custom_commands: 3, automations: 3, devices: 1}
+    features: [custom_commands, automations]
+  pro:
+    title: Pro
+    description: Личный ассистент на каждый день
+    price_month: 15
+    currency: USD
+    stripe_price_env: STRIPE_PRICE_PRO
+    limits: {messages_month: 3000, messages_per_minute: 30, llm_usd_month: 15, custom_commands: 50, automations: 50, devices: 3}
+    features: [custom_commands, automations, computer, spotify, google, voice_premium, api]
+  business:
+    title: Business
+    description: Максимум возможностей и лимитов
+    price_month: 45
+    currency: USD
+    stripe_price_env: STRIPE_PRICE_BUSINESS
+    limits: {messages_month: 15000, messages_per_minute: 60, llm_usd_month: 60, custom_commands: 200, automations: 200, devices: 10}
+    features: ["*"]
+  owner:
+    title: Owner
+    description: Владелец установки — без ограничений
+    hidden: true
+    limits: {}
+    features: ["*"]

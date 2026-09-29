@@ -65,6 +65,9 @@ class AutomationService:
             raise ToolError("kind must be reminder or agent")
         if schedule_type == "interval" and (interval_seconds or 0) < 300:
             raise ToolError("interval must be at least 5 minutes")
+        if self.app.billing is not None:
+            await self.app.billing.require(user_id, "automations")
+            await self.app.billing.check(user_id, "automations")
         a = Automation(user_id=user_id, name=name[:300], kind=kind, schedule_type=schedule_type, cron=cron,
                        run_at=run_at, interval_seconds=interval_seconds, timezone=timezone_name, payload=payload,
                        channels=channels or [], created_by=created_by, conversation_id=conversation_id,

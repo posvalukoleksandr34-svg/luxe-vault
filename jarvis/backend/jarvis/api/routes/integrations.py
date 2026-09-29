@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
-from jarvis.api.deps import Principal, current, get_app, resolve_token
+from jarvis.api.deps import Principal, current, get_app, require_owner, resolve_token
 from jarvis.channels.hub import link_payload
 from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
@@ -133,7 +133,7 @@ async def unlink(link_id: uuid.UUID, p: Principal = Depends(current), app: AppCo
 
 
 @router.post("/telegram/webhook")
-async def telegram_set_webhook(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+async def telegram_set_webhook(p: Principal = Depends(require_owner), app: AppContext = Depends(get_app)) -> dict:
     if app.settings.telegram_mode != "webhook":
         raise HTTPException(400, "JARVIS_TELEGRAM_MODE is not 'webhook'")
     try:

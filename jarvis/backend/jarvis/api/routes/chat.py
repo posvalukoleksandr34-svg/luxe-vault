@@ -108,8 +108,9 @@ class ChatIn(BaseModel):
 async def chat(body: ChatIn, p: Principal = Depends(require_scope("chat")), app: AppContext = Depends(get_app)) -> dict:
     if not body.text.strip() and not body.attachments:
         raise HTTPException(400, "empty message")
+    files = await app.user_files(p.user_id)
     for att in body.attachments:
-        app.files.path(str(att.get("path", "")))  # confinement check
+        files.path(str(att.get("path", "")))  # confinement check (the caller's own workspace only)
     channel = body.channel if body.channel in ("web", "voice") else "web"
     try:
         msg, task = await app.conversations.submit(user_id=p.user_id, text=body.text, channel=channel,
@@ -130,5 +131,5 @@ async def upload(file: UploadFile = File(...), p: Principal = Depends(current), 
         raise HTTPException(413, "file too large (25 MB max)")
     name = _SAFE.sub("_", file.filename or "upload.bin")[:120]
     rel = f"uploads/{datetime.now().strftime('%Y%m%d')}/{uuid.uuid4().hex[:8]}_{name}"
-    info = app.files.write_bytes(rel, data)
+    info = (await app.user_files(p.user_id)).write_bytes(rel, data)
     return {"path": info["path"], "name": file.filename, "mime": file.content_type, "size": info["size"]}

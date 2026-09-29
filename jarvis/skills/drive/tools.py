@@ -70,7 +70,7 @@ class UploadArgs(BaseModel):
       activity="Загружаю в Google Drive", requires=("google",), idempotent=False, timeout_s=120,
       summarize=lambda a: f"Загрузить {a.get('path')} в Google Drive")
 async def drive_upload(ctx: ToolContext, args: UploadArgs) -> dict:
-    p = ctx.app.files.path(args.path)
+    p = (await ctx.app.user_files(ctx.user_id)).path(args.path)
     if not p.is_file():
         raise ToolError(f"{args.path} is not a file")
     meta = {"name": args.name or p.name}

@@ -167,6 +167,9 @@ class CommandService:
                 if body.preapproved and not row.preapproved and not elevated:
                     raise CommandError("pre-approving requires re-authentication")
             else:
+                if self.app.billing is not None:
+                    await self.app.billing.require(user_id, "custom_commands")
+                    await self.app.billing.check(user_id, "custom_commands")
                 count = (await session.execute(select(func.count()).select_from(CustomCommand)
                                                .where(CustomCommand.user_id == user_id))).scalar_one()
                 if count >= max_commands:
