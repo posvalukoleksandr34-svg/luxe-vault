@@ -74,8 +74,9 @@ const LEVEL_KEY = {
 const STORAGE_KEY = 'lv.fit.v1'
 
 /** What the wheel pickers offer, in whole centimetres and kilograms. */
-const HEIGHT_PICKER = { min: 140, max: 220, restAt: 170 } as const
-const WEIGHT_PICKER = { min: 40, max: 150, restAt: 70 } as const
+// restAt: where an unchosen strip opens — the start of each range.
+const HEIGHT_PICKER = { min: 140, max: 220, restAt: 140 } as const
+const WEIGHT_PICKER = { min: 40, max: 150, restAt: 40 } as const
 
 type Result = {
   rec: FitRecommendation
