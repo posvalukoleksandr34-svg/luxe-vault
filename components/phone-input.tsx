@@ -84,7 +84,7 @@ export function PhoneInput({
     <div ref={containerRef} className="relative">
       <div
         className={cn(
-          'flex border transition',
+          'grid w-full grid-cols-[auto_minmax(0,1fr)] border transition',
           error ? 'border-destructive' : 'border-border focus-within:border-gold/40',
         )}
       >
@@ -110,7 +110,7 @@ export function PhoneInput({
           autoComplete="tel-national"
           value={value}
           onChange={(e) => onChange(formatAsYouType(e.target.value, country))}
-          className="w-full bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none"
+          className="w-full min-w-0 bg-background px-3 py-3 text-[13px] font-light text-foreground outline-none"
         />
       </div>
 
