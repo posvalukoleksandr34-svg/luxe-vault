@@ -109,3 +109,56 @@ export function subscribeToWishlist(listener: (ids: string[]) => void): () => vo
     window.removeEventListener('storage', onStorage)
   }
 }
+
+// ------------------------------------------------------------ account cache
+
+/**
+ * A signed-in customer's list, as this browser last saw it.
+ *
+ * The account's list lives in the database, and before this nothing of it was
+ * kept here: every full page load started from the (deliberately empty) guest
+ * list, so the wishlist page said "empty" until the server answered — and for
+ * good if it did not. The store now shows this copy the moment the session is
+ * restored and replaces it with the server's answer.
+ *
+ * Keyed by user id, so it is only ever shown to the account it belongs to, and
+ * removed on sign-out (forgetAccountWishlists) for the reason the guest list is
+ * cleared at sign-in: a shared computer must not show the next person what the
+ * previous one was saving.
+ */
+const ACCOUNT_PREFIX = 'lv.wishlist.account.'
+
+/** The cached list for this account, or null when there is none. */
+export function readAccountWishlist(userId: string): string[] | null {
+  if (typeof window === 'undefined' || !userId) return null
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_PREFIX + userId)
+    return raw === null ? null : parse(raw)
+  } catch {
+    return null
+  }
+}
+
+export function writeAccountWishlist(userId: string, ids: string[]): void {
+  if (typeof window === 'undefined' || !userId) return
+  try {
+    window.localStorage.setItem(ACCOUNT_PREFIX + userId, JSON.stringify(ids.slice(0, MAX_ITEMS)))
+  } catch {
+    // Storage full or blocked: the next page load waits for the server.
+  }
+}
+
+/** Every account's cached list, gone — at sign-out. */
+export function forgetAccountWishlists(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key && key.startsWith(ACCOUNT_PREFIX)) keys.push(key)
+    }
+    keys.forEach((key) => window.localStorage.removeItem(key))
+  } catch {
+    // Blocked storage holds nothing to forget.
+  }
+}
