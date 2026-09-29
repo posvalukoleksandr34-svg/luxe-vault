@@ -20,11 +20,14 @@ import { useProductsById, useStore } from '@/lib/store'
  * visitor keeps track, and demanding an account first is what loses them.
  */
 export function WishlistView() {
-  const { wishlist, wishlistCount, t, tf } = useStore()
+  const { wishlist, wishlistCount, wishlistStatus, reloadWishlist, t, tf } = useStore()
 
   // The saved products, looked up by id — a few products, not the catalogue.
   // Resolving them is also what settles the header badge (wishlistCount).
   const { products: saved, pending, missing } = useProductsById(wishlist)
+  // "Empty" only when it is known to be: never while a signed-in customer's
+  // list is still on its way, nor while saved ids are being looked up.
+  const loading = wishlistStatus === 'loading' || (pending && wishlist.length > 0)
 
 
   return (
@@ -43,14 +46,29 @@ export function WishlistView() {
         )}
       </header>
 
-      {saved.length === 0 ? (
-        // `pending` matters here: before the lookup answers, every saved id
-        // looks withdrawn, and claiming the list is empty would be wrong.
+      {saved.length === 0 && loading ? (
+        <div className="flex justify-center py-24" role="status" aria-live="polite">
+          <Heart aria-hidden strokeWidth={1.25} className="size-9 animate-pulse text-gold/60" />
+          <span className="sr-only">{t('wishlist.title')}</span>
+        </div>
+      ) : saved.length === 0 && wishlistStatus === 'error' ? (
+        <div className="flex flex-col items-center py-16 text-center" role="alert">
+          <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold/70" />
+          <p className="mt-6 max-w-sm text-[14px] font-light leading-relaxed text-foreground">
+            {t('wishlist.loadFailed')}
+          </p>
+          <button
+            type="button"
+            onClick={reloadWishlist}
+            className="mt-8 inline-flex items-center justify-center border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors duration-300 hover:bg-gold hover:text-gold-foreground"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
+      ) : saved.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
           <Heart aria-hidden strokeWidth={1.25} className="size-9 text-gold/70" />
-          <p className="mt-6 font-serif text-xl text-foreground">
-            {pending && wishlist.length > 0 ? '…' : t('wishlist.empty')}
-          </p>
+          <p className="mt-6 font-serif text-xl text-foreground">{t('wishlist.empty')}</p>
           <p className="mt-3 max-w-sm text-[13px] font-light leading-relaxed text-muted-foreground">
             {t('wishlist.emptyHint')}
           </p>

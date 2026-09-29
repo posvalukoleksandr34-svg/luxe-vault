@@ -2,7 +2,9 @@
 
 import { z } from 'zod'
 
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * The saved-products list, server side.
@@ -41,14 +43,36 @@ export type WishlistResult =
   | { ok: true; wishlist: string[]; saved?: boolean }
   | { ok: false; reason: 'signedOut' | 'invalid' | 'failed' }
 
-/** Everything this customer has saved, newest first. */
-export async function fetchWishlist(): Promise<WishlistResult> {
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, reason: 'signedOut' }
+/**
+ * The signed-in customer and the ONE client every statement of an action runs
+ * on.
+ *
+ * One client, not one per step. These actions used to check the user with one
+ * client (getCurrentUser) and query with another (a fresh createClient), up to
+ * four per toggle. With an expired access token each client refreshed the
+ * session on its own, from the same request cookies; the first refresh rotates
+ * the refresh token, so a later client could end up querying without a
+ * session. Under RLS that is not an error — the SELECT simply returns no rows —
+ * so the customer's list came back EMPTY and the browser believed it. Here the
+ * client that proved who the customer is (getUser verifies the token with the
+ * auth server, refreshing it first if needed) is the client that reads and
+ * writes, so every statement carries that same session.
+ */
+async function session(): Promise<{ supabase: SupabaseClient; userId: string } | null> {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return user ? { supabase, userId: user.id } : null
+}
 
-  const { data, error } = await createClient()
+async function readList(supabase: SupabaseClient, userId: string): Promise<WishlistResult> {
+  const { data, error } = await supabase
     .from('wishlist_items')
     .select('product_id')
+    // Redundant with RLS on purpose: a row that is not this customer's can
+    // never be in the answer, even if a policy is ever loosened.
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -56,6 +80,13 @@ export async function fetchWishlist(): Promise<WishlistResult> {
     return { ok: false, reason: 'failed' }
   }
   return { ok: true, wishlist: (data ?? []).map((row) => row.product_id as string) }
+}
+
+/** Everything this customer has saved, newest first. */
+export async function fetchWishlist(): Promise<WishlistResult> {
+  const auth = await session()
+  if (!auth) return { ok: false, reason: 'signedOut' }
+  return readList(auth.supabase, auth.userId)
 }
 
 /**
@@ -74,13 +105,14 @@ export async function toggleWishlist(input: { productId: string }): Promise<Wish
   const parsed = toggleInput.safeParse(input)
   if (!parsed.success) return { ok: false, reason: 'invalid' }
 
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, reason: 'signedOut' }
+  const auth = await session()
+  if (!auth) return { ok: false, reason: 'signedOut' }
+  const { supabase, userId } = auth
 
-  const supabase = createClient()
   const { data: removed, error: deleteError } = await supabase
     .from('wishlist_items')
     .delete()
+    .eq('user_id', userId)
     .eq('product_id', parsed.data.productId)
     .select('id')
 
@@ -97,7 +129,7 @@ export async function toggleWishlist(input: { productId: string }): Promise<Wish
     const { error: insertError } = await supabase
       .from('wishlist_items')
       .upsert(
-        { user_id: user.id, product_id: parsed.data.productId },
+        { user_id: userId, product_id: parsed.data.productId },
         { onConflict: 'user_id,product_id', ignoreDuplicates: true },
       )
 
@@ -108,7 +140,7 @@ export async function toggleWishlist(input: { productId: string }): Promise<Wish
     saved = true
   }
 
-  const list = await fetchWishlist()
+  const list = await readList(supabase, userId)
   return list.ok ? { ...list, saved } : list
 }
 
@@ -128,14 +160,15 @@ export async function mergeWishlist(input: { ids: string[] }): Promise<WishlistR
   const parsed = mergeInput.safeParse(input)
   if (!parsed.success) return { ok: false, reason: 'invalid' }
 
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, reason: 'signedOut' }
+  const auth = await session()
+  if (!auth) return { ok: false, reason: 'signedOut' }
+  const { supabase, userId } = auth
 
   if (parsed.data.ids.length > 0) {
-    const { error } = await createClient()
+    const { error } = await supabase
       .from('wishlist_items')
       .upsert(
-        parsed.data.ids.map((id) => ({ user_id: user.id, product_id: id })),
+        parsed.data.ids.map((id) => ({ user_id: userId, product_id: id })),
         { onConflict: 'user_id,product_id', ignoreDuplicates: true },
       )
 
@@ -147,5 +180,5 @@ export async function mergeWishlist(input: { ids: string[] }): Promise<WishlistR
     }
   }
 
-  return fetchWishlist()
+  return readList(supabase, userId)
 }

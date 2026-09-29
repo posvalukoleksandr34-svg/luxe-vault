@@ -16,7 +16,15 @@ import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
 import { fetchWishlist, mergeWishlist, toggleWishlist as toggleWishlistOnServer } from '@/app/actions/wishlist'
-import { clearWishlist, readWishlist, subscribeToWishlist, toggleWishlistItem } from '@/lib/wishlist'
+import {
+  clearWishlist,
+  forgetAccountWishlists,
+  readAccountWishlist,
+  readWishlist,
+  subscribeToWishlist,
+  toggleWishlistItem,
+  writeAccountWishlist,
+} from '@/lib/wishlist'
 import {
   BASE_CURRENCY,
   CURRENCY_STORAGE_KEY,
@@ -251,6 +259,11 @@ type StoreContextValue = {
   /** Saved product ids, newest first (lib/wishlist.ts). */
   wishlist: string[]
   wishlistCount: number
+  /** 'loading' while a signed-in customer's list is on its way — the
+   *  wishlist page shows that, not "empty". 'error' when it could not be
+   *  loaded; reloadWishlist() tries again. */
+  wishlistStatus: 'loading' | 'ready' | 'error'
+  reloadWishlist: () => void
   isWishlisted: (productId: string) => boolean
   toggleWishlist: (productId: string) => void
   cartCount: number
@@ -779,8 +792,28 @@ function maybeSendWelcome() {
     return subscribeToWishlist(setWishlist)
   }, [wishlistOwner])
 
+  /** Where the list stands: see StoreContextValue.wishlistStatus. */
+  const [wishlistStatus, setWishlistStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  /** Bumped by reloadWishlist() to run the account load again. */
+  const [wishlistAttempt, setWishlistAttempt] = useState(0)
+  const reloadWishlist = useCallback(() => setWishlistAttempt((n) => n + 1), [])
+  /** The account last signed in here, so signing out can forget its cache. */
+  const lastUserId = useRef<string | null>(null)
+
+  // A guest's list is ready as soon as it has been read — once it is known
+  // that nobody is signed in (a session being restored would replace it).
+  useEffect(() => {
+    if (wishlistOwner === 'guest' && !authLoading && !currentUserId) setWishlistStatus('ready')
+  }, [wishlistOwner, authLoading, currentUserId])
+
+  // The account's list, kept for the next page load (readAccountWishlist).
+  useEffect(() => {
+    if (wishlistOwner === 'account' && currentUserId) writeAccountWishlist(currentUserId, wishlist)
+  }, [wishlistOwner, currentUserId, wishlist])
+
   /**
-   * Sign-in folds this browser's saved items into the account, once.
+   * Sign-in folds this browser's saved items into the account, once, and
+   * every page load of a signed-in customer loads the account's list.
    *
    * ADDITIVE: the coat saved on a phone last week and the bag saved on this
    * laptop five minutes ago both survive — see mergeWishlist. The local list
@@ -789,39 +822,67 @@ function maybeSendWelcome() {
    * do there is show a stranger on a shared computer what the previous person
    * had been saving.
    *
-   * A failure leaves the local list exactly as it was and the owner as
-   * 'guest', so the customer keeps their saved items and the next sign-in
-   * tries again. A wishlist must never be the reason a sign-in looks broken.
+   * NEVER "EMPTY" WHILE LOADING. The account's list is shown at once from this
+   * browser's copy of it (readAccountWishlist) and then replaced with the
+   * server's; without a copy the status is 'loading', which the wishlist page
+   * shows as such. Before, the page rendered the empty guest list until the
+   * server answered, and kept it if the server did not — the list looked
+   * wiped on every full page load.
+   *
+   * A failure is retried (RETRY_MS) and then reported as 'error', leaving the
+   * local list exactly as it was and the owner as 'guest', so nothing saved is
+   * lost and the next attempt merges it. A wishlist must never be the reason a
+   * sign-in looks broken.
    */
   useEffect(() => {
     if (!currentUserId) {
-      // Signed out: back to whatever this browser holds, which is nothing
-      // immediately after a merge.
+      // Signed out (not merely "not restored yet"): forget the account's copy.
+      if (lastUserId.current) forgetAccountWishlists()
+      lastUserId.current = null
       setWishlistOwner('guest')
       return
     }
+    lastUserId.current = currentUserId
     if (wishlistOwner === 'account') return
 
+    const cached = readAccountWishlist(currentUserId)
+    if (cached) setWishlist(cached)
+    setWishlistStatus(cached ? 'ready' : 'loading')
+
+    const RETRY_MS = [1500, 4000]
     let active = true
-    void (async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const attempt = async (n: number) => {
       const local = readWishlist()
-      const result = local.length > 0 ? await mergeWishlist({ ids: local }) : await fetchWishlist()
+      let result: Awaited<ReturnType<typeof fetchWishlist>>
+      try {
+        result = local.length > 0 ? await mergeWishlist({ ids: local }) : await fetchWishlist()
+      } catch {
+        // A server action that never answered (offline, a deploy mid-request).
+        result = { ok: false, reason: 'failed' }
+      }
       if (!active) return
       if (!result.ok) {
-        if (result.reason !== 'signedOut') {
-          console.warn(`[wishlist] could not load the account's list (${result.reason})`)
+        if (n < RETRY_MS.length) {
+          timer = setTimeout(() => void attempt(n + 1), RETRY_MS[n])
+          return
         }
+        console.warn(`[wishlist] could not load the account's list (${result.reason})`)
+        setWishlistStatus('error')
         return
       }
       if (local.length > 0) clearWishlist()
       setWishlist(result.wishlist)
       setWishlistOwner('account')
-    })()
+      setWishlistStatus('ready')
+    }
+    void attempt(0)
 
     return () => {
       active = false
+      if (timer) clearTimeout(timer)
     }
-  }, [currentUserId, wishlistOwner])
+  }, [currentUserId, wishlistOwner, wishlistAttempt])
 
 
   const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
@@ -2025,6 +2086,8 @@ function maybeSendWelcome() {
       wishlist,
       wishlistCount,
       isWishlisted,
+      wishlistStatus,
+      reloadWishlist,
       toggleWishlist,
       cartCount,
       cartSubtotal,
@@ -2051,7 +2114,7 @@ function maybeSendWelcome() {
       setCurrency, exchangeRates, t, tf, localize, colorName, cartLineName, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
-      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, isWishlisted, toggleWishlist,
+      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, wishlistStatus, reloadWishlist, isWishlisted, toggleWishlist,
       cartCount, cartSubtotal, applyPromo,
       login, register, resendConfirmation, verifySignupCode, signInWithGoogle,
       requestRecoveryCode, verifyRecoveryCode, updatePassword, logout, addProduct,
