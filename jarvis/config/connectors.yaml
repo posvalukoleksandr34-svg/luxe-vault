@@ -1,0 +1,9 @@
+# REST APIs available to the `apis` skill (api_list / api_get / api_call). No code needed.
+connectors: []
+# connectors:
+#   - name: home_assistant
+#     description: Smart home. GET states/<entity_id>; POST services/<domain>/<service> {"entity_id": "..."}
+#     base_url: http://homeassistant.local:8123/api
+#     auth: {type: bearer, env: HOME_ASSISTANT_TOKEN}
+#     allow: ["states*", "services/light/*", "services/climate/*", "services/media_player/*"]
+#     allow_private_network: true

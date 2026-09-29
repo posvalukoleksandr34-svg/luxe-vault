@@ -1,0 +1,8 @@
+name: spotify
+version: 1.0.0
+title: Spotify
+icon: music
+description: Play songs, artists, albums and playlists on Spotify, pause/skip/volume/shuffle, what is playing now (Spotify Web API, OAuth; playback control needs Spotify Premium).
+triggers: [spotify, спотифай, музык, песн, трек, плейлист, альбом, включи, поставь, что играет, music, song, playlist, album, play]
+tools: [spotify_play, spotify_control, spotify_now_playing, spotify_search]
+requires: [spotify]

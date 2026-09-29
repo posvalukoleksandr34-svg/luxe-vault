@@ -1,0 +1,9 @@
+name: research
+version: 1.0.0
+title: Исследования
+icon: search
+description: Web search, reading pages and multi-source research reports with citations.
+triggers: [найди, поищи, исследуй, изучи, сравни, отчёт, отчет, новост, research, find, search, compare, report, news, look up]
+tools:
+  - web_search
+  - web_fetch

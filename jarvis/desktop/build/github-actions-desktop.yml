@@ -1,0 +1,42 @@
+# GitHub Actions: build JARVIS-Setup-<version>.exe on a Windows runner.
+# To use: copy this file to .github/workflows/desktop.yml in the repository whose root is the jarvis folder
+# (the Jarvin repository), and set the repository variable JARVIS_SERVER_URL (Settings → Secrets and
+# variables → Actions → Variables), e.g. https://api.myjarvis.com.
+# Optional code signing: secrets SIGN_PFX_BASE64 (the .pfx, base64) and SIGN_PASSWORD.
+name: desktop-installer
+on:
+  workflow_dispatch:
+    inputs:
+      version: { description: "App version", required: true, default: "1.0.0" }
+  push:
+    tags: ["desktop-v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:  # secrets cannot be tested in `if:` directly
+      SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Signing certificate (optional)
+        if: env.SIGN_PFX_BASE64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\sign.pfx", [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+          "SIGN_PFX=$env:RUNNER_TEMP\sign.pfx" >> $env:GITHUB_ENV
+          "SIGN_PASSWORD=${{ secrets.SIGN_PASSWORD }}" >> $env:GITHUB_ENV
+      - name: Build
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          if (-not $version) { $version = "${{ github.ref_name }}".Replace("desktop-v", "") }
+          .\build\build.ps1 -ServerUrl "${{ vars.JARVIS_SERVER_URL }}" -Version $version -Python "python"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Setup
+          path: desktop/dist/JARVIS-Setup-*.exe

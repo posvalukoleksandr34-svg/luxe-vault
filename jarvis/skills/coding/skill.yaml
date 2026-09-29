@@ -1,0 +1,10 @@
+name: coding
+version: 1.0.0
+title: Код и команды
+icon: terminal
+description: Write and run code or shell commands in an isolated sandbox container; data analysis, scripts, conversions.
+triggers: [код, скрипт, программ, запусти, python, bash, посчитай, проанализируй данные, code, script, run, compute, analyse data]
+tools: [sandbox_exec]
+requires: [sandbox]
+permissions:
+  sandbox_exec: confirm

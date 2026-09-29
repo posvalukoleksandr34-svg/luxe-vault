@@ -1,0 +1,25 @@
+# Cloud server with a managed database (Supabase / Neon / RDS …) instead of the bundled Postgres.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.cloud.yml up -d
+#
+# .env additions:
+#   DATABASE_URL=postgresql+asyncpg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?ssl=require
+#   (Supabase "Session pooler", port 5432 — the transaction pooler on 6543 breaks asyncpg prepared statements)
+#
+# The local postgres and backup containers move to the "local-db" profile, so they are not started.
+# Back up the database with the provider's backups (Supabase: Database → Backups / PITR).
+services:
+  api:
+    environment:
+      JARVIS_DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env (managed Postgres with pgvector)}
+    depends_on: !override
+      redis: { condition: service_healthy }
+  worker:
+    environment:
+      JARVIS_DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env (managed Postgres with pgvector)}
+    depends_on: !override
+      redis: { condition: service_healthy }
+  postgres:
+    profiles: [local-db]
+  backup:
+    profiles: [local-db]

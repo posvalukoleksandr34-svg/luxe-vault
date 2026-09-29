@@ -1,0 +1,32 @@
+# Optional override for networks with a TLS-intercepting proxy (corporate networks, some clouds):
+# trusts an extra CA during image builds and at runtime.
+#
+#   EXTRA_CA_CERT=/path/to/ca.pem docker compose -f docker-compose.yml \
+#       -f infrastructure/docker-compose.proxy-ca.yml up -d --build
+x-ca-runtime: &ca-runtime
+  volumes:
+    - ${EXTRA_CA_CERT:?set EXTRA_CA_CERT}:/etc/ssl/certs/extra-ca.pem:ro
+  environment:
+    SSL_CERT_FILE: /etc/ssl/certs/extra-ca.pem
+    REQUESTS_CA_BUNDLE: /etc/ssl/certs/extra-ca.pem
+    NODE_EXTRA_CA_CERTS: /etc/ssl/certs/extra-ca.pem
+
+services:
+  api:
+    build: { secrets: [ca] }
+    <<: *ca-runtime
+  worker:
+    build: { secrets: [ca] }
+    <<: *ca-runtime
+  caddy:
+    build: { secrets: [ca] }
+  backup:
+    build: { secrets: [ca] }
+  sandbox:
+    build: { secrets: [ca] }
+  browser:
+    <<: *ca-runtime
+
+secrets:
+  ca:
+    file: ${EXTRA_CA_CERT:?set EXTRA_CA_CERT}

@@ -1,0 +1,9 @@
+name: apis
+version: 1.0.0
+title: Внешние API
+icon: plug
+description: Call REST APIs the owner registered in config/connectors.yaml (home automation, CRM, internal services) without writing code.
+triggers: [api, умный дом, home assistant, crm, вебхук, webhook, сервис]
+tools: [api_list, api_get, api_call]
+permissions:
+  api_call: confirm
