@@ -724,7 +724,7 @@ export function ProductForm({
                 onChange={(e) => setForm({ ...form, deliveryMin: e.target.value })}
                 placeholder={`от · ${DEFAULT_DELIVERY_DAYS.min}`}
                 aria-label="Срок доставки: от, дней"
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
               />
               <input
                 type="number"
@@ -735,7 +735,7 @@ export function ProductForm({
                 onChange={(e) => setForm({ ...form, deliveryMax: e.target.value })}
                 placeholder={`до · ${DEFAULT_DELIVERY_DAYS.max}`}
                 aria-label="Срок доставки: до, дней"
-                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
+                className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-gold ${deliveryInvalid ? 'border-destructive' : 'border-border'}`}
               />
             </div>
             <p className="mt-1.5 text-[11px] text-muted-foreground/85">
@@ -1284,7 +1284,7 @@ function Input({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/85 focus:border-gold"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-gold"
       />
     </label>
   )

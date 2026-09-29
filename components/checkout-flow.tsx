@@ -186,6 +186,16 @@ export function CheckoutFlow({
   const [saveDetails, setSaveDetails] = useState(false)
   const [saveCard, setSaveCard] = useState(false)
   const [hasSaved, setHasSaved] = useState(false)
+  /** The signed-in customer's default address-book entry — offered, not applied. */
+  type BookAddress = {
+    name: string
+    phone?: string | null
+    street?: string | null
+    postalCode?: string | null
+    city?: string | null
+    country?: string | null
+  }
+  const [bookAddress, setBookAddress] = useState<BookAddress | null>(null)
 
   /**
    * Checking out without an account, chosen explicitly — at the cart's
@@ -210,13 +220,15 @@ export function CheckoutFlow({
   }, [])
 
   /**
-   * The signed-in customer's default address, if they have one.
+   * The signed-in customer's default address, if they have one — OFFERED as
+   * a one-tap "use my saved address", never filled in by itself.
    *
-   * Prefilling from the server rather than from localStorage is what makes the
-   * address book worth having: it follows the customer to a second device.
-   * Only the DEFAULT is applied, and only when the form is still untouched —
-   * overwriting something already typed would be hostile, and someone sending
-   * a gift elsewhere would have to clear it.
+   * It used to prefill the form, which left the address fields looking
+   * pre-populated with whatever the address book held (a test entry, an old
+   * flat). The form now always opens empty, with example placeholders, and
+   * the saved address is one tap away — the same treatment as this browser's
+   * remembered details (applySaved). It still comes from the server, so it
+   * follows the customer to a second device.
    */
   useEffect(() => {
     if (!currentUser) return
@@ -227,23 +239,7 @@ export function CheckoutFlow({
       .then((data) => {
         if (!active || !data?.addresses?.length) return
         const preferred = data.addresses.find((a: { isDefault: boolean }) => a.isDefault)
-        if (!preferred) return
-        setForm((prev) =>
-          prev.firstName || prev.lastName || prev.street
-            ? prev
-            : {
-                ...prev,
-                // The address book stores one name; split as a starting point
-                // the customer can correct (see splitFullName).
-                ...splitFullName(preferred.name),
-                phone: preferred.phone ?? '',
-                street: preferred.street ?? '',
-                postalCode: preferred.postalCode ?? '',
-                city: preferred.city ?? '',
-                country: (preferred.country ?? prev.country) as CountryCode,
-                phoneCountry: (preferred.country ?? prev.phoneCountry) as CountryCode,
-              },
-        )
+        if (preferred) setBookAddress(preferred as BookAddress)
       })
       .catch(() => {})
 
@@ -553,6 +549,25 @@ export function CheckoutFlow({
     pushToast({ title: t('checkout.savedApplied'), variant: 'success' })
   }
 
+  function applyBookAddress() {
+    const a = bookAddress
+    if (!a) return
+    setForm((prev) => ({
+      ...prev,
+      // The address book stores one name; split as a starting point the
+      // customer can correct (see splitFullName).
+      ...splitFullName(a.name),
+      phone: a.phone ?? '',
+      street: a.street ?? '',
+      postalCode: a.postalCode ?? '',
+      city: a.city ?? '',
+      country: (a.country ?? prev.country) as CountryCode,
+      phoneCountry: (a.country ?? prev.phoneCountry) as CountryCode,
+    }))
+    setErrors({})
+    setBookAddress(null)
+  }
+
   function forgetSaved() {
     clearSavedProfile()
     setHasSaved(false)
@@ -718,6 +733,16 @@ export function CheckoutFlow({
               {/* Offered, never applied automatically — a silently repopulated
                   form is disorienting, and someone shipping a gift elsewhere
                   would have to clear it field by field. */}
+              {bookAddress && !hasSaved && (
+                <button
+                  type="button"
+                  onClick={applyBookAddress}
+                  className="flex w-full items-center gap-2 rounded-xl border border-gold/40 bg-gold/[0.06] px-3 py-2.5 text-left text-[12px] text-gold"
+                >
+                  <Wand2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  {t('checkout.useBookAddress')}
+                </button>
+              )}
               {hasSaved && (
                 <div className="flex items-center gap-2 rounded-xl border border-gold/25 bg-gold/[0.04] px-3 py-2.5">
                   <button
@@ -802,7 +827,7 @@ export function CheckoutFlow({
                 country={form.country}
                 required
                 error={errors.street}
-                placeholder={t('checkout.streetPlaceholder')}
+                placeholder={`${t('common.eg')} ${t('checkout.streetPlaceholder')}`}
               />
 
               <div className="grid w-full grid-cols-2 gap-3">
@@ -813,6 +838,7 @@ export function CheckoutFlow({
                   required
                   error={errors.postalCode}
                   autoComplete="postal-code"
+                  placeholder={`${t('common.eg')} 8001`}
                 />
                 <Field
                   label={t('checkout.city')}
@@ -821,6 +847,7 @@ export function CheckoutFlow({
                   required
                   error={errors.city}
                   autoComplete="address-level2"
+                  placeholder={`${t('common.eg')} Zürich`}
                 />
               </div>
 
@@ -1105,7 +1132,7 @@ function Field({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         className={cn(
-          'w-full min-w-0 rounded-xl border bg-card px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85',
+          'w-full min-w-0 rounded-xl border bg-card px-3 py-3 text-[13px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/55',
           error ? 'border-destructive focus:border-destructive' : 'border-border focus:border-gold focus:ring-4 focus:ring-gold/15',
         )}
       />

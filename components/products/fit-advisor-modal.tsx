@@ -113,16 +113,19 @@ export function FitAdvisorModal({
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
   const [usual, setUsual] = useState<LetterSize | null>(null)
-  const [preference, setPreference] = useState<FitPreference>('regular')
-  const [gender, setGender] = useState<Gender>('unspecified')
-  const [bodyType, setBodyType] = useState<BodyType>('average')
+  // Nothing is pre-selected: the finder starts blank every time it opens, and
+  // an option left unchosen counts as the neutral one (see neutral(), below).
+  const [preference, setPreference] = useState<FitPreference | null>(null)
+  const [gender, setGender] = useState<Gender | null>(null)
+  const [bodyType, setBodyType] = useState<BodyType | null>(null)
   const [chest, setChest] = useState('')
   const [waist, setWaist] = useState('')
   const [hips, setHips] = useState('')
   const [inseam, setInseam] = useState('')
   const [foot, setFoot] = useState('')
-  const [footWidth, setFootWidth] = useState<FootWidth>('regular')
+  const [footWidth, setFootWidth] = useState<FootWidth | null>(null)
   const [showMore, setShowMore] = useState(false)
+  /** Measurements from an earlier visit exist on this device — offered, not applied. */
   const [savedNote, setSavedNote] = useState(false)
   const [stat, setStat] = useState<{ size: string; percent: number; sample: number } | null>(null)
   const [shoe, setShoe] = useState<ShoeFit | null>(null)
@@ -131,7 +134,41 @@ export function FitAdvisorModal({
   const heightRef = useRef<HTMLInputElement>(null)
   const weightRef = useRef<HTMLInputElement>(null)
 
+  // Whether this device remembers earlier measurements. They are OFFERED
+  // (applySaved, the "use my saved measurements" button) and never filled in
+  // on their own: the finder opens blank, so a shopper measuring for someone
+  // else — or a second person on the same phone — starts from their own
+  // numbers, not the last visitor's.
   useEffect(() => {
+    try {
+      setSavedNote(localStorage.getItem(STORAGE_KEY) !== null)
+    } catch {
+      // Storage unavailable (private mode, blocked): nothing to offer.
+    }
+  }, [])
+
+  /** Every field back to empty and every option unselected. */
+  function resetAll() {
+    setHeight('')
+    setWeight('')
+    setUsual(null)
+    setPreference(null)
+    setGender(null)
+    setBodyType(null)
+    setChest('')
+    setWaist('')
+    setHips('')
+    setInseam('')
+    setFoot('')
+    setFootWidth(null)
+    setShowMore(false)
+    setResult(null)
+    setShoe(null)
+    setError(null)
+  }
+
+  /** Fills the form from this device's remembered measurements. */
+  function applySaved() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
       if (saved && typeof saved === 'object') {
@@ -160,12 +197,13 @@ export function FitAdvisorModal({
           if (typeof saved[key] === 'string') set(len(saved[key]))
         }
         if (saved.chest || saved.waist || saved.hips || saved.inseam) setShowMore(true)
-        setSavedNote(true)
       }
     } catch {
-      // Storage unavailable (private mode, blocked) — start blank.
+      // Unreadable: the form simply stays as it is.
     }
-  }, [])
+    setResult(null)
+    setError(null)
+  }
 
   // The most-bought size, once the dialog is actually opened — a product page
   // should not spend a request on a dialog nobody opens.
@@ -224,7 +262,7 @@ export function FitAdvisorModal({
         setError(t('fit.needFoot'))
         return
       }
-      setShoe(fitShoeToProduct(footCm, sizes, isAvailable, footWidth))
+      setShoe(fitShoeToProduct(footCm, sizes, isAvailable, footWidth ?? 'regular'))
       setResult(null)
       setError(null)
       persist()
@@ -235,10 +273,12 @@ export function FitAdvisorModal({
       heightCm: lengthCm(height),
       weightKg: massKg(weight),
       usualSize: usual ?? undefined,
-      preference,
+      // An option left unchosen is the neutral one — exactly what the finder
+      // assumed when these were pre-selected.
+      preference: preference ?? 'regular',
       productCut,
-      gender,
-      bodyType,
+      gender: gender ?? 'unspecified',
+      bodyType: bodyType ?? 'average',
       chestCm: lengthCm(chest),
       waistCm: lengthCm(waist),
       hipsCm: lengthCm(hips),
@@ -268,7 +308,7 @@ export function FitAdvisorModal({
 
     // A measured chest against this product's own chart beats height and
     // weight, which only ever approximated it. Only when both exist.
-    const measured = input.chestCm ? sizeFromChest(input.chestCm, sizeChart ?? [], preference) : null
+    const measured = input.chestCm ? sizeFromChest(input.chestCm, sizeChart ?? [], input.preference) : null
     if (measured && indexOfSize(measured.size) !== -1) {
       const fromChart = indexOfSize(measured.size)
       // The tape wins — it compares the garment's own number against the
@@ -345,14 +385,21 @@ export function FitAdvisorModal({
 
   // The size chart row for the size actually offered, and the verdicts that
   // compare the shopper's own measurements against it.
-  const verdicts: AreaVerdict[] = result && row ? fitBreakdown(result.input, row, preference) : []
+  const verdicts: AreaVerdict[] = result && row ? fitBreakdown(result.input, row, result.input.preference) : []
 
   const inputClass =
-    'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold'
+    'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold'
   const labelClass = 'mb-1.5 block text-[11px] uppercase tracking-[0.12em] text-foreground'
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Blank on every open: the shopper enters their own numbers.
+        if (next) resetAll()
+        setOpen(next)
+      }}
+    >
       <DialogTrigger asChild>
         <button
           type="button"
@@ -437,7 +484,7 @@ export function FitAdvisorModal({
                 aria-describedby={error ? 'fit-error' : undefined}
                 value={height}
                 onChange={(e) => edit(() => setHeight(e.target.value))}
-                placeholder="178"
+                placeholder={`${t('common.eg')} 178`}
                 className={inputClass}
               />
             </label>
@@ -453,7 +500,7 @@ export function FitAdvisorModal({
                 aria-describedby={error ? 'fit-error' : undefined}
                 value={weight}
                 onChange={(e) => edit(() => setWeight(e.target.value))}
-                placeholder="72"
+                placeholder={`${t('common.eg')} 72`}
                 className={inputClass}
               />
             </label>
@@ -757,7 +804,15 @@ export function FitAdvisorModal({
             </button>
           )}
           {savedNote && (
-            <span className="flex items-center gap-2 text-[11px] font-light text-muted-foreground">
+            <span className="flex flex-wrap items-center gap-2 text-[11px] font-light text-muted-foreground">
+              <button
+                type="button"
+                onClick={applySaved}
+                className="text-gold underline underline-offset-4 transition hover:text-foreground"
+              >
+                {t('fit.useSaved')}
+              </button>
+              <span aria-hidden>·</span>
               {t('fit.saved')}
               <button
                 type="button"

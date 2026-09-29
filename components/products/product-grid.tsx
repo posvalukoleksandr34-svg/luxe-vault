@@ -676,7 +676,7 @@ function PriceInput({
         const raw = e.target.value.trim()
         onChange(raw === '' ? null : Math.max(0, Number(raw) || 0))
       }}
-      className="w-20 rounded-xl border border-border/60 bg-transparent px-2 py-1 text-[12px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold"
+      className="w-20 rounded-xl border border-border/60 bg-transparent px-2 py-1 text-[12px] tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold"
     />
   )
 }

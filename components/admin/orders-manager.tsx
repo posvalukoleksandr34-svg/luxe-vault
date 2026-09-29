@@ -279,7 +279,7 @@ export function OrdersManager({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Номер, имя, email, трек"
                 aria-label="Поиск заказа"
-                className="w-52 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/85"
+                className="w-52 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/55"
               />
             </label>
           </div>

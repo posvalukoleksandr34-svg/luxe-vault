@@ -124,7 +124,7 @@ export function WaitlistForm({
             placeholder={t('checkout.email')}
             aria-invalid={Boolean(error)}
             className={cn(
-              'min-w-0 flex-1 rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold',
+              'min-w-0 flex-1 rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold',
               signedIn && 'text-muted-foreground',
               error && 'border-destructive/60',
             )}

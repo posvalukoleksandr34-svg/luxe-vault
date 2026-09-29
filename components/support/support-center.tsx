@@ -388,7 +388,7 @@ function HomeView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={c.searchPlaceholder}
-            className="w-full border-b border-border bg-transparent py-3 pl-7 pr-2 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/85 focus:border-gold focus:ring-4 focus:ring-gold/15"
+            className="w-full border-b border-border bg-transparent py-3 pl-7 pr-2 text-[14px] font-light text-foreground outline-none transition placeholder:text-muted-foreground/55 focus:border-gold focus:ring-4 focus:ring-gold/15"
           />
         </label>
       </section>
@@ -802,7 +802,7 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
 // placeholders, a crisp white/15 hairline and a quiet amber edge on focus. The
 // border change is the focus indicator, so the global gold outline is off here.
 const FIELD =
-  'w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground/85 outline-none transition-colors placeholder:text-muted-foreground/85 focus:border-gold focus:ring-4 focus:ring-gold/15 focus:ring-0 focus-visible:outline-none'
+  'w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground/85 outline-none transition-colors placeholder:text-muted-foreground/55 focus:border-gold focus:ring-4 focus:ring-gold/15 focus:ring-0 focus-visible:outline-none'
 const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-foreground/85'
 
 function NewTicketForm({
