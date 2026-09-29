@@ -6,15 +6,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
 import { App } from "./App";
+import { applyAppearance, watchSystemTheme } from "./lib/theme";
 
-const theme = (() => {
-  try {
-    return localStorage.getItem("jarvis.theme");
-  } catch {
-    return null;
-  }
-})();
-if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+applyAppearance();
+watchSystemTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, refetchOnWindowFocus: false, retry: 1 } },

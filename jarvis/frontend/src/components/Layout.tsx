@@ -5,6 +5,7 @@ import {
   Bell,
   Brain,
   CalendarClock,
+  Command,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -46,6 +47,7 @@ export const NAV: { group: string; items: { to: string; label: string; icon: Rea
     items: [
       { to: "/tasks", label: "Задачи", icon: <ListChecks className="size-4" /> },
       { to: "/automations", label: "Автоматизации", icon: <CalendarClock className="size-4" /> },
+      { to: "/commands", label: "Команды", icon: <Command className="size-4" /> },
     ],
   },
   {

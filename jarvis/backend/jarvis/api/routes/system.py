@@ -24,9 +24,11 @@ from jarvis.core.audit import audit
 from jarvis.core.container import AppContext
 from jarvis.core.logging import log
 from jarvis.core.secrets import KNOWN_SECRETS
+from jarvis.core.version import schema_revision
 from jarvis.core.timeparse import tz
 from jarvis.db.base import utcnow
 from jarvis.db.models import Notification, User
+from jarvis.voice.service import VoiceError, VoiceProfile, VoiceProfilePatch
 from jarvis.voice.session import VoiceSession
 
 router = APIRouter(tags=["system"])
@@ -90,7 +92,7 @@ async def system_status(p: Principal = Depends(current), app: AppContext = Depen
         "embeddings": {"model": app.embedder.model, "enabled": app.embedder.enabled},
         "skills": len(app.skills.enabled()), "tools": len(app.registry.all()),
         "spend_today_usd": round(await app.spend_today(), 4), "daily_limit_usd": app.settings.daily_cost_limit_usd,
-        "public_url": app.settings.public_url,
+        "public_url": app.settings.public_url, "schema": await schema_revision(app),
     }
 
 
@@ -222,9 +224,44 @@ async def events_socket(ws: WebSocket) -> None:
 
 @router.get("/api/voice/config")
 async def voice_config(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
-    return {"stt": await app.voice.stt_provider(), "tts": await app.voice.tts_provider(),
+    return {"stt": await app.voice.stt_provider(p.user_id), "tts": await app.voice.tts_provider(p.user_id),
+            "profile": (await app.voice.profile(p.user_id)).model_dump(),
+            "providers": await app.voice.available_providers(),
             "vad": {"positive_threshold": 0.6, "negative_threshold": 0.4, "min_speech_ms": 250,
                     "redemption_ms": 600}}
+
+
+@router.put("/api/voice/profile")
+async def voice_profile_save(body: VoiceProfilePatch, p: Principal = Depends(current),
+                             app: AppContext = Depends(get_app)) -> dict:
+    profile = await app.voice.save_profile(p.user_id, body)
+    return {"profile": profile.model_dump(), "tts": await app.voice.tts_provider(p.user_id),
+            "stt": await app.voice.stt_provider(p.user_id)}
+
+
+@router.get("/api/voice/voices")
+async def voice_list(provider: str, p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+    try:
+        return {"provider": provider, "voices": await app.voice.list_voices(provider)}
+    except VoiceError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+class PreviewIn(VoiceProfilePatch):
+    text: str = Field("Добрый вечер. Я JARVIS — чем могу помочь?", max_length=300)
+
+
+@router.post("/api/voice/preview")
+async def voice_preview(body: PreviewIn, p: Principal = Depends(current), app: AppContext = Depends(get_app)):
+    """Speak a sample with the given (unsaved) settings. Browser voices are previewed client-side."""
+    if not await app.ratelimiter.hit(f"voice-preview:{p.user_id}", limit=20, window_s=600):
+        raise HTTPException(429, "too many previews, wait a few minutes")
+    current_profile = (await app.voice.profile(p.user_id)).model_dump()
+    profile = VoiceProfile.model_validate({**current_profile, **body.model_dump(exclude_unset=True, exclude={"text"})})
+    if await app.voice._provider_for(profile) == "browser":
+        raise HTTPException(400, "this voice is played by the browser")
+    chunks = [c async for c in app.voice.synthesize(body.text, profile)]
+    return Response(content=b"".join(chunks), media_type="audio/mpeg")
 
 
 @router.websocket("/api/ws/voice")

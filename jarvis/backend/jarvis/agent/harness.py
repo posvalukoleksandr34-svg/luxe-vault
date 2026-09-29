@@ -364,7 +364,7 @@ class AgentRuntime:
                             data={"ok": outcome.ok, "risk": spec.risk.value, "task_id": str(task.id),
                                   "args": args, "error": outcome.error}, trace_id=task.trace_id)
                 await session.commit()
-        return _result(tu["id"], outcome.content, error=not outcome.ok)
+        return _result(tu["id"], outcome.content, error=not outcome.ok, images=outcome.images)
 
     async def _prior_call(self, tool_use_id: str) -> ToolCall | None:
         async with self.app.sessionmaker() as session:
@@ -458,8 +458,14 @@ class AgentRuntime:
         return msg
 
 
-def _result(tool_use_id: str, content: str, *, error: bool) -> dict[str, Any]:
-    block: dict[str, Any] = {"type": "tool_result", "tool_use_id": tool_use_id, "content": content or "(no output)"}
+def _result(tool_use_id: str, content: str, *, error: bool,
+            images: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    body: Any = content or "(no output)"
+    if images:  # e.g. a screenshot: text + image blocks so the model can see the screen
+        body = [{"type": "text", "text": body}] + [
+            {"type": "image", "source": {"type": "base64", "media_type": im["media_type"], "data": im["data"]}}
+            for im in images]
+    block: dict[str, Any] = {"type": "tool_result", "tool_use_id": tool_use_id, "content": body}
     if error:
         block["is_error"] = True
     return block

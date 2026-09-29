@@ -9,6 +9,7 @@ import { setUnauthorizedHandler } from "./lib/api";
 import { useMe } from "./lib/auth";
 import { connectRealtime, disconnectRealtime, onEvent } from "./lib/realtime";
 import { AutomationsPage } from "./pages/Automations";
+import { CommandsPage } from "./pages/Commands";
 import { ChatPage } from "./pages/Chat";
 import { DashboardPage } from "./pages/Dashboard";
 import { IntegrationsPage } from "./pages/Integrations";
@@ -98,6 +99,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/mini" element={<RequireAuth><div className="h-dvh"><VoicePage compact /></div></RequireAuth>} />
       <Route
         element={
           <RequireAuth>
@@ -111,6 +113,7 @@ export function App() {
         <Route path="voice" element={<VoicePage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="automations" element={<AutomationsPage />} />
+        <Route path="commands" element={<CommandsPage />} />
         <Route path="memory" element={<MemoryPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="tools" element={<ToolsPage />} />

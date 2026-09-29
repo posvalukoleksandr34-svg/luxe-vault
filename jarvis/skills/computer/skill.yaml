@@ -1,0 +1,17 @@
+name: computer
+version: 1.0.0
+title: Компьютер
+icon: monitor
+description: Control the user's own PC through the JARVIS desktop agent — open/close apps, play/pause/next, volume, open sites and searches in the user's browser, type and press keys, mouse, clipboard, windows, screenshots.
+triggers: [открой, запусти, закрой, громкост, пауз, следующ, трек, музык, выключи звук, включи звук, скриншот, экран, окно, open, launch, close, volume, pause, resume, next track, mute, screenshot, window]
+tools: [computer_status, computer_open_app, computer_close_app, computer_open_url, computer_media, computer_volume,
+        computer_windows, computer_type_text, computer_hotkey, computer_mouse, computer_clipboard, computer_screenshot,
+        computer_run]
+requires: [computer]
+permissions:
+  computer_close_app: confirm    # unsaved work could be lost
+  computer_type_text: confirm    # types into whatever window has focus
+  computer_hotkey: confirm
+  computer_mouse: confirm
+  computer_clipboard: confirm    # clipboard may hold passwords
+  computer_screenshot: confirm   # what is on screen is private

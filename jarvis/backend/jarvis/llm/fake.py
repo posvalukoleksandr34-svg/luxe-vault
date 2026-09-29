@@ -181,6 +181,10 @@ class DemoBrain(LLMProvider):
                 return text_response("Когда напомнить? Скажите, например: «завтра в 10».")
             return tool_response("reminder_create", {"text": what, "when": when.strftime("%Y-%m-%dT%H:%M")})
 
+        computer = self._computer(text, tools)
+        if computer is not None:
+            return computer
+
         wd = next((v for k, v in _WEEKDAYS.items() if re.search(rf"(кажд\w+|every)\s+{k}", low)), None)
         if wd is not None and "automation_create" in tools:
             hm = re.search(r"\b(?:в|at)\s+(\d{1,2})(?::(\d{2}))?", text)
@@ -229,6 +233,48 @@ class DemoBrain(LLMProvider):
             "«что у меня завтра в календаре?», «напиши письмо … о …», «каждую пятницу …». "
             "Добавьте ANTHROPIC_API_KEY, чтобы включить полноценный интеллект.")
 
+    @staticmethod
+    def _computer(text: str, tools: set[str]) -> LLMResponse | None:
+        """Voice-style commands for the user's PC (desktop agent)."""
+        t = re.sub(r"^\s*(?:hey\s+|эй\s+)?(?:jarvis|джарвис)[,!.]?\s*", "", text.strip(), flags=re.I).rstrip(".!? ")
+        low = t.lower().rstrip(".!?")
+        if "computer_volume" in tools:
+            m = re.search(r"громкост\w*\s+(?:на\s+)?(\d{1,3})|volume\s+(?:to\s+)?(\d{1,3})", low)
+            if m:
+                return tool_response("computer_volume", {"action": "set", "level": min(100, int(m.group(1) or m.group(2)))})
+            if re.search(r"^(выключи звук|без звука|mute)$", low):
+                return tool_response("computer_volume", {"action": "mute"})
+            if re.search(r"^(включи звук|unmute)$", low):
+                return tool_response("computer_volume", {"action": "unmute"})
+            if re.search(r"(сделай )?(погромче|громче)|volume up", low):
+                return tool_response("computer_volume", {"action": "up"})
+            if re.search(r"(сделай )?(потише|тише)|volume down", low):
+                return tool_response("computer_volume", {"action": "down"})
+        if "computer_media" in tools:
+            for pattern, action in ((r"^(пауза|поставь (музыку )?на паузу|останови музыку|выключи музыку|pause)$", "pause"),
+                                    (r"^(продолжи|продолжай|играй|resume|play)$", "play"),
+                                    (r"следующ\w* (трек|песн\w*)|^дальше$|next track|^next$", "next"),
+                                    (r"предыдущ\w* (трек|песн\w*)|previous track|^previous$", "previous")):
+                if re.search(pattern, low):
+                    return tool_response("computer_media", {"action": action})
+        if "computer_open_url" in tools:
+            m = re.search(r"(?:найди|поищи|ищи)\s+(?:в|на)\s+(?:ютубе|youtube)\s+(.+)|search youtube for\s+(.+)", t, re.I)
+            if m:
+                return tool_response("computer_open_url", {"search": (m.group(1) or m.group(2)).strip(), "site": "youtube"})
+            m = re.search(r"^(?:открой|open)\s+(?:сайт\s+)?(ютуб|youtube|[\w-]+\.[\w.]+)$", low)
+            if m:
+                site = m.group(1)
+                return tool_response("computer_open_url", {"url": "https://www.youtube.com" if site in ("ютуб", "youtube") else site})
+        if "computer_close_app" in tools:
+            m = re.search(r"^(?:закрой|close|quit)\s+(.+)$", t, re.I)
+            if m:
+                return tool_response("computer_close_app", {"name": m.group(1).strip()})
+        if "computer_open_app" in tools:
+            m = re.search(r"^(?:открой|запусти|включи|open|launch|start)\s+(.+)$", t, re.I)
+            if m and not re.search(r"музык|звук|напомин|встреч", m.group(1).lower()):
+                return tool_response("computer_open_app", {"name": m.group(1).strip()})
+        return None
+
     def _after_tools(self, req: LLMRequest, results: list[dict[str, Any]]) -> LLMResponse:
         # find the tool_use blocks of the previous assistant message
         prev = req.messages[-2] if len(req.messages) >= 2 else {"content": []}
@@ -249,6 +295,20 @@ class DemoBrain(LLMProvider):
             return text_response("Хорошо, не выполняю это действие.")
         if name == "memory_remember":
             return text_response(f"Запомнил: {data.get('content', '')}")
+        if name == "computer_open_app":
+            return text_response(f"Открыл {data.get('opened', use['input'].get('name'))}.")
+        if name == "computer_close_app":
+            return text_response(f"Закрыл {data.get('closed', use['input'].get('name'))}.")
+        if name == "computer_open_url":
+            return text_response(f"Открыл: {data.get('opened')}")
+        if name == "computer_volume":
+            if data.get("muted") is not None and use["input"].get("action") in ("mute", "unmute"):
+                return text_response("Звук выключен." if data.get("muted") else "Звук включён.")
+            return text_response(f"Громкость {data.get('volume')}%." if data.get("volume") is not None else "Готово.")
+        if name == "computer_media":
+            words = {"pause": "Пауза.", "play": "Продолжаю.", "play_pause": "Готово.", "next": "Следующий трек.",
+                     "previous": "Предыдущий трек.", "stop": "Остановил."}
+            return text_response(words.get(use["input"].get("action"), "Готово."))
         if name == "memory_search":
             items = data.get("results", [])
             if not items:

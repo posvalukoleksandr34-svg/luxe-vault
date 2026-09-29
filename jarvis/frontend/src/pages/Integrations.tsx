@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, Bot, Cloud, Globe, Copy, Link2, MessageCircle, Send, Terminal, Unlink } from "lucide-react";
+import { AudioLines, Bot, Cloud, Globe, Copy, Link2, MessageCircle, Monitor, Music, Send, Terminal, Unlink } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link as RouterLink, useSearchParams } from "react-router";
 
 import { Badge, Button, Card, ErrorNote, PageHeader, Spinner } from "../components/ui";
 import { del, get, post } from "../lib/api";
 import { ago } from "../lib/format";
+import type { DeviceInfo } from "../lib/types";
 
 interface Link {
   id: string;
@@ -17,6 +18,8 @@ interface Link {
 
 interface Overview {
   google: { configured: boolean; connected: boolean; status: string; account: string | null; scopes: string[]; redirect_uri: string };
+  spotify: { configured: boolean; connected: boolean; status: string; account: string | null; premium: boolean; redirect_uri: string };
+  computer: { devices: DeviceInfo[] };
   telegram: { configured: boolean; mode: string; links: Link[] };
   whatsapp: { configured: boolean; webhook_url: string; links: Link[] };
   voice: { stt: string; tts: string };
@@ -85,14 +88,19 @@ export function IntegrationsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["integrations"], queryFn: () => get<Overview>("/api/integrations") });
   const connect = useMutation({ mutationFn: () => get<{ url: string }>("/api/integrations/google/connect"), onSuccess: (r) => (location.href = r.url) });
   const disconnect = useMutation({ mutationFn: () => del("/api/integrations/google"), onSuccess: () => qc.invalidateQueries({ queryKey: ["integrations"] }) });
+  const spConnect = useMutation({ mutationFn: () => get<{ url: string }>("/api/integrations/spotify/connect"), onSuccess: (r) => (location.href = r.url) });
+  const spDisconnect = useMutation({ mutationFn: () => del("/api/integrations/spotify"), onSuccess: () => qc.invalidateQueries({ queryKey: ["integrations"] }) });
   const webhook = useMutation({ mutationFn: () => post("/api/integrations/telegram/webhook") });
   if (isLoading || !data) return <div className="flex justify-center p-10"><Spinner /></div>;
   const g = data.google;
+  const sp = data.spotify;
   return (
     <>
       <PageHeader title="Интеграции" description="Каналы связи и сервисы. Все каналы — это двери в один и тот же JARVIS: общая память, задачи и разрешения." />
       {params.get("google") === "connected" && <p className="mb-4 rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">Google подключён.</p>}
       {params.get("google") === "error" && <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">Не удалось подключить Google — попробуйте ещё раз.</p>}
+      {params.get("spotify") === "connected" && <p className="mb-4 rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">Spotify подключён.</p>}
+      {params.get("spotify") === "error" && <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">Не удалось подключить Spotify — попробуйте ещё раз.</p>}
       <div className="grid gap-4 lg:grid-cols-2">
         <Row icon={<Cloud className="size-4" />} title="Google — Gmail, Calendar, Drive"
           status={g.connected ? <Badge tone="ok" dot>подключён</Badge> : g.status === "error" ? <Badge tone="danger" dot>нужно переподключить</Badge> : <Badge dot>не подключён</Badge>}>
@@ -113,6 +121,38 @@ export function IntegrationsPage() {
             </p>
           )}
           <ErrorNote error={connect.error} />
+        </Row>
+
+        <Row icon={<Monitor className="size-4" />} title="Компьютер (desktop-агент)"
+          status={data.computer.devices.length ? <Badge tone="ok" dot>подключено: {data.computer.devices.length}</Badge> : <Badge dot>нет подключённых</Badge>}>
+          {data.computer.devices.map((d) => (
+            <div key={d.id} className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">
+              <span className="text-text">{d.name}</span> · {d.platform} · {d.capabilities.join(", ")}
+            </div>
+          ))}
+          <p>
+            Приложения, музыка, громкость, сайты, окна — на вашем ПК. Агент запускается на компьютере и подключается к JARVIS по токену
+            с правом <code className="font-mono text-text">computer</code>: <RouterLink to="/settings#devices" className="text-accent">Настройки → Устройства</RouterLink>, инструкция: desktop/README.md.
+          </p>
+        </Row>
+
+        <Row icon={<Music className="size-4" />} title="Spotify"
+          status={sp.connected ? <Badge tone="ok" dot>подключён{sp.premium ? " · Premium" : ""}</Badge> : sp.status === "error" ? <Badge tone="danger" dot>нужно переподключить</Badge> : <Badge dot>не подключён</Badge>}>
+          {sp.connected ? (
+            <>
+              <p>Аккаунт: <span className="text-text">{sp.account}</span>. {sp.premium ? "Управление воспроизведением доступно." : "Без Premium Spotify не разрешает управлять воспроизведением через API — JARVIS будет открывать поиск в приложении и использовать медиа-клавиши ПК."}</p>
+              <Button size="sm" variant="danger" loading={spDisconnect.isPending} onClick={() => confirm("Отключить Spotify?") && spDisconnect.mutate()}>Отключить</Button>
+            </>
+          ) : sp.configured ? (
+            <Button size="sm" variant="primary" loading={spConnect.isPending} onClick={() => spConnect.mutate()}>Подключить Spotify</Button>
+          ) : (
+            <p>
+              Создайте приложение на developer.spotify.com и задайте <code className="font-mono text-text">SPOTIFY_CLIENT_ID</code> и{" "}
+              <code className="font-mono text-text">SPOTIFY_CLIENT_SECRET</code>; redirect URI: <code className="font-mono text-xs break-all text-text">{sp.redirect_uri}</code>.
+              Без Spotify музыка управляется медиа-клавишами через desktop-агент.
+            </p>
+          )}
+          <ErrorNote error={spConnect.error} />
         </Row>
 
         <Row icon={<Send className="size-4" />} title="Telegram"

@@ -20,6 +20,7 @@ tools:
   drive_upload: confirm
   browser_type: confirm
   api_call: confirm
+  command_create: confirm         # a new macro can later act on its own — ask once
 
 # Glob patterns that are never exposed to the model.
 forbidden:
@@ -38,7 +39,8 @@ channels:
 # confirmation — a prompt-injection cannot silently plant memories or automations.
 taint:
   write: confirm
-  exempt: [reminder_create, notify_user, skill_load, task_status, time_now, files_write]
+  exempt: [reminder_create, notify_user, skill_load, task_status, time_now, files_write, computer_media, computer_volume,
+           computer_status]
 
 elevation_minutes: 10
 allow_always: true   # "always allow" button on confirm-tier approvals (never for high-risk tools)

@@ -1,13 +1,15 @@
 import clsx from "clsx";
-import { Hand, Mic, MicOff, Send } from "lucide-react";
+import { Ear, Hand, Maximize2, Mic, MicOff, Send, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
 import { Markdown } from "../components/Markdown";
 import { Orb } from "../components/Orb";
-import { Badge, Button } from "../components/ui";
+import { Badge, Button, Drawer } from "../components/ui";
+import { VoiceSettings } from "../components/VoiceSettings";
 import { post } from "../lib/api";
 import { type CoreState, useRealtime } from "../lib/realtime";
-import { VoiceClient, type VoicePhase } from "../voice/client";
+import { VoiceClient, type VoicePhase, type VoiceProfile } from "../voice/client";
 
 const PHASE_LABEL: Record<VoicePhase, string> = {
   off: "Нажмите, чтобы начать разговор",
@@ -21,14 +23,15 @@ const PHASE_LABEL: Record<VoicePhase, string> = {
 };
 
 const toCore = (p: VoicePhase): CoreState =>
-  p === "off" || p === "error" ? "idle" : p === "speaking" ? "speaking" : p === "thinking" || p === "transcribing" ? "thinking" : p === "connecting" ? "thinking" : "listening";
+  p === "off" ? "idle" : p === "error" ? "error" : p === "speaking" ? "speaking" : p === "thinking" || p === "transcribing" ? "thinking" : p === "connecting" ? "thinking" : "listening";
 
 interface Turn {
   role: "user" | "assistant";
   text: string;
 }
 
-export function VoicePage() {
+/** Full voice screen; `compact` = the small always-handy window at /mini (no sidebar, fewer turns). */
+export function VoicePage({ compact = false }: { compact?: boolean }) {
   const [phase, setPhase] = useState<VoicePhase>("off");
   const [label, setLabel] = useState<string | undefined>();
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -36,6 +39,10 @@ export function VoicePage() {
   const [error, setError] = useState<string | null>(null);
   const [approval, setApproval] = useState<{ id: string; summary: string; tier: string } | null>(null);
   const [typed, setTyped] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profile, setProfile] = useState<VoiceProfile | null>(null);
+  const [ignored, setIgnored] = useState<string | null>(null);
+  const [awake, setAwake] = useState(false);
   const client = useRef<VoiceClient | null>(null);
   const setVoiceState = useRealtime((s) => s.setVoiceState);
 
@@ -51,7 +58,16 @@ export function VoicePage() {
         setPhase(p);
         setLabel(l);
       },
-      onTranscript: (text) => setTurns((t) => [...t, { role: "user", text }, { role: "assistant", text: "" }]),
+      onTranscript: (text) => {
+        setIgnored(null);
+        setTurns((t) => [...t, { role: "user", text }, { role: "assistant", text: "" }]);
+      },
+      onIgnored: (text) => setIgnored(text),
+      onWake: () => {
+        setAwake(true);
+        setTimeout(() => setAwake(false), 1500);
+      },
+      onProfile: setProfile,
       onDelta: (text) =>
         setTurns((t) => {
           const copy = [...t];
@@ -85,16 +101,29 @@ export function VoicePage() {
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-70" />
-      <div className="relative flex flex-1 flex-col items-center justify-center px-4 pt-8">
+      {compact && (
+        <Link to="/" className="absolute top-3 right-3 z-10 rounded-lg p-2 text-faint hover:text-text" title="Открыть полный интерфейс" aria-label="Открыть полный интерфейс">
+          <Maximize2 className="size-4" />
+        </Link>
+      )}
+      <div className={clsx("relative flex flex-1 flex-col items-center justify-center px-4", compact ? "pt-4" : "pt-8")}>
         <button onClick={on ? stop : start} className="rounded-full focus-visible:outline-offset-8" aria-label={on ? "Завершить разговор" : "Начать разговор"}>
-          <Orb state={toCore(phase)} size={220} level={level} />
+          <Orb state={toCore(phase)} size={compact ? 140 : 220} level={level} />
         </button>
-        <p className={clsx("mt-8 text-sm", phase === "error" ? "text-danger" : "text-muted")}>{label && phase !== "listening" ? label : PHASE_LABEL[phase]}</p>
+        <p className={clsx(compact ? "mt-5 text-sm" : "mt-8 text-sm", phase === "error" ? "text-danger" : "text-muted")}>{label && phase !== "listening" ? label : PHASE_LABEL[phase]}</p>
         {on && mode && (
-          <div className="mt-3 flex gap-1.5">
+          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
             <Badge tone={mode.stt === "browser" ? "muted" : "accent"}>STT: {mode.stt}</Badge>
-            <Badge tone={mode.tts === "browser" ? "muted" : "accent"}>TTS: {mode.tts}</Badge>
+            <Badge tone={mode.tts === "browser" ? "muted" : "accent"}>TTS: {mode.tts}{profile?.voice_name ? ` · ${profile.voice_name}` : ""}</Badge>
+            {profile?.hands_free && (
+              <Badge tone={awake ? "accent" : "muted"} dot>
+                <Ear className="size-3" /> скажите «{profile.wake_words[0] ?? "джарвис"}»
+              </Badge>
+            )}
           </div>
+        )}
+        {ignored && profile?.hands_free && (
+          <p className="mt-2 max-w-md truncate text-center text-[11px] text-faint" title={ignored}>не для меня: «{ignored}»</p>
         )}
         {error && <p className="mt-3 max-w-md text-center text-xs text-danger">{error}</p>}
         {approval && (
@@ -110,9 +139,9 @@ export function VoicePage() {
         )}
       </div>
 
-      <div className="relative mx-auto w-full max-w-2xl px-4 pb-6">
-        <div className="max-h-[32vh] space-y-3 overflow-y-auto pb-4">
-          {turns.slice(-8).map((t, i) => (
+      <div className={clsx("relative mx-auto w-full max-w-2xl px-4", compact ? "pb-3" : "pb-6")}>
+        <div className={clsx("space-y-3 overflow-y-auto pb-4", compact ? "max-h-[28vh]" : "max-h-[32vh]")}>
+          {turns.slice(compact ? -3 : -8).map((t, i) => (
             <div key={i} className={clsx("text-sm", t.role === "user" ? "text-right text-muted" : "text-text")}>
               {t.role === "user" ? <span className="inline-block rounded-2xl bg-elevated px-3 py-1.5">{t.text}</span> : <Markdown text={t.text || "…"} />}
             </div>
@@ -120,13 +149,16 @@ export function VoicePage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant={on ? "danger" : "primary"} size="lg" icon={on ? <MicOff className="size-4" /> : <Mic className="size-4" />} onClick={on ? stop : start}>
-            {on ? "Завершить" : "Говорить"}
+            {compact ? null : on ? "Завершить" : "Говорить"}
           </Button>
-          {on && (
+          {on && !compact && (
             <Button variant="secondary" size="lg" icon={<Hand className="size-4" />} onClick={() => client.current?.interrupt()} title="Перебить">
               Перебить
             </Button>
           )}
+          <Button variant="ghost" size="icon" className="size-11" onClick={() => setSettingsOpen(true)} aria-label="Настройки голоса" title="Голос JARVIS">
+            <SlidersHorizontal className="size-4" />
+          </Button>
           <form
             className="flex flex-1 items-center gap-2"
             onSubmit={(e) => {
@@ -142,11 +174,14 @@ export function VoicePage() {
             <Button type="submit" size="icon" className="size-11" disabled={!on} aria-label="Отправить"><Send className="size-4" /></Button>
           </form>
         </div>
-        <p className="mt-3 text-center text-[11px] text-faint">
+        {!compact && <p className="mt-3 text-center text-[11px] text-faint">
           Микрофон слушает постоянно, но детектор речи (VAD) работает прямо в браузере — на сервер уходят только ваши фразы.
-          Для «Hey JARVIS» без экрана используйте голосовой сателлит (satellite/).
-        </p>
+          Режим без рук и выбор голоса — кнопка настроек. Для «Hey JARVIS» без экрана — голосовой сателлит (satellite/).
+        </p>}
       </div>
+      <Drawer open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Голос JARVIS">
+        <VoiceSettings onSaved={() => client.current?.reloadProfile()} />
+      </Drawer>
     </div>
   );
 }

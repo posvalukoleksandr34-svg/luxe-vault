@@ -402,6 +402,29 @@ class Automation(TimestampMixin, Base):
     conversation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
 
 
+class CustomCommand(TimestampMixin, Base):
+    """A user-defined macro: trigger phrases → a sequence of steps (tools, waits, spoken replies...).
+
+    `steps` is a list of {"type": "tool"|"wait"|"say"|"notify"|"agent", ...}; see jarvis.commands.service.
+    `preapproved`: confirm-tier tool steps may run without a prompt (set only from an elevated session).
+    """
+
+    __tablename__ = "custom_commands"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_custom_commands_user_name"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = _fk("users.id")
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    triggers: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    steps: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    response: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    preapproved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    run_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(24))
+
+
 class Notification(Base):
     __tablename__ = "notifications"
     id: Mapped[uuid.UUID] = _uuid_pk()

@@ -134,7 +134,7 @@ class Worker:
                 await self.app.tasks.heartbeat(task_id, self.app.worker_id)
 
     async def _report_failure(self, task: Task, error: str) -> None:
-        if task.kind == "agent_turn" and task.conversation_id:
+        if task.kind in ("agent_turn", "command_run") and task.conversation_id:
             from jarvis.core.events import make_event
 
             await self.app.bus.publish(task.user_id, make_event(
@@ -154,6 +154,7 @@ class Worker:
             "background": self._background,
             "automation_run": self._automation,
             "memory_extract": self._memory_extract,
+            "command_run": self._command,
         }.get(task.kind)
         if handler is None:
             await self.app.tasks.fail(task.id, f"unknown task kind {task.kind}")
@@ -165,6 +166,13 @@ class Worker:
             await self.app.tasks.complete(task.id, {"text": outcome.text, "message_id": outcome.message_id})
         elif outcome.status == "cancelled":
             await self.app.tasks._finish(task.id, "cancelled", result={"text": outcome.text})
+
+    async def _command(self, task: Task) -> None:
+        result = await self.app.commands.run(task)
+        if await self.app.tasks.is_cancelled(task.id):
+            await self.app.tasks._finish(task.id, "cancelled", result=result)
+        else:
+            await self.app.tasks.complete(task.id, result)
 
     async def _agent(self, task: Task) -> None:
         outcome = await self.app.runtime.run_task(task)

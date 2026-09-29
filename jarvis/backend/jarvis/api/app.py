@@ -16,7 +16,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import func, select
 
 import jarvis
-from jarvis.api.routes import auth, automations, capabilities, chat, integrations, memory, observability, system, tasks
+from jarvis.api.routes import (auth, automations, capabilities, chat, commands, devices, integrations, memory,
+                               observability, system, tasks)
 from jarvis.core.container import AppContext, build_app
 from jarvis.core.logging import configure_logging, log
 from jarvis.core.metrics import HTTP_LATENCY, HTTP_REQUESTS
@@ -99,7 +100,8 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 
-    for r in (auth, chat, tasks, memory, capabilities, integrations, automations, observability, system):
+    for r in (auth, chat, tasks, memory, capabilities, integrations, automations, observability, system, devices,
+              commands):
         fapp.include_router(r.router)
 
     # Optional: serve a built frontend directly (single-container dev). In production Caddy serves it.

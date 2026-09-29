@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import secrets
 import uuid
 from datetime import timedelta
@@ -283,7 +285,8 @@ async def revoke(session_id: uuid.UUID, p: Principal = Depends(current), app: Ap
 
 class DeviceIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    scopes: list[str] = Field(default_factory=lambda: ["voice", "chat"])
+    # voice: satellite/voice WS · chat: /api/chat · computer: desktop agent · *: everything (scripts)
+    scopes: list[Literal["voice", "chat", "computer", "*"]] = Field(default_factory=lambda: ["voice", "chat"])
     ttl_days: int | None = Field(None, ge=1, le=3650)
 
 

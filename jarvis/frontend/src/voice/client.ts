@@ -11,8 +11,26 @@ import type { MicVAD } from "@ricky0123/vad-web";
 
 export type VoicePhase = "off" | "connecting" | "listening" | "hearing" | "transcribing" | "thinking" | "speaking" | "error";
 
+export interface VoiceProfile {
+  tts_provider: "auto" | "elevenlabs" | "openai" | "browser";
+  stt_provider: "auto" | "deepgram" | "openai" | "browser";
+  voice_id: string | null;
+  voice_name: string | null;
+  speed: number;
+  pitch: number;
+  style: string;
+  hands_free: boolean;
+  wake_words: string[];
+  follow_up_s: number;
+}
+
 export interface VoiceCallbacks {
   onPhase: (p: VoicePhase, label?: string) => void;
+  /** hands-free: an utterance without the wake word (not acted on) */
+  onIgnored?: (text: string) => void;
+  /** hands-free: the wake word was heard */
+  onWake?: () => void;
+  onProfile?: (p: VoiceProfile) => void;
   onTranscript: (text: string) => void;
   onDelta: (text: string) => void;
   onDone: (text: string) => void;
@@ -130,6 +148,8 @@ export class VoiceClient {
   private raf = 0;
   private speakingBrowser = false;
   private sentenceBuf = "";
+  private micLevel = 0;
+  profile: VoiceProfile | null = null;
   mode: { stt: string; tts: string } = { stt: "browser", tts: "browser" };
   active = false;
   private cb: VoiceCallbacks;
@@ -151,7 +171,9 @@ export class VoiceClient {
     else await this.startVad();
     this.cb.onPhase("listening");
     const tick = () => {
-      const lvl = this.player?.playing ? this.player.level() : 0;
+      // speaking: JARVIS's own audio; listening: the microphone (VAD frames) — the orb follows whichever is live
+      const lvl = this.player?.playing ? this.player.level() : Math.min(1, this.micLevel * 4);
+      this.micLevel *= 0.85;
       this.cb.onLevel(lvl);
       this.raf = requestAnimationFrame(tick);
     };
@@ -172,8 +194,17 @@ export class VoiceClient {
         switch (msg.type) {
           case "ready":
             this.mode = { stt: msg.stt, tts: msg.tts };
+            this.profile = msg.profile ?? null;
+            if (this.profile) this.cb.onProfile?.(this.profile);
             ws.send(JSON.stringify({ type: "start", conversation_id: this.conversationId, tts: msg.tts === "browser" ? "browser" : "server" }));
             resolve();
+            break;
+          case "ignored":
+            this.cb.onIgnored?.(msg.text);
+            this.cb.onPhase("listening");
+            break;
+          case "wake":
+            this.cb.onWake?.();
             break;
           case "transcript":
             this.cb.onTranscript(msg.text);
@@ -242,6 +273,11 @@ export class VoiceClient {
         this.cb.onPhase("hearing");
       },
       onVADMisfire: () => this.cb.onPhase("listening"),
+      onFrameProcessed: (_probs: unknown, frame: Float32Array) => {
+        let sum = 0;
+        for (let i = 0; i < frame.length; i++) sum += frame[i] * frame[i];
+        this.micLevel = Math.max(this.micLevel, Math.sqrt(sum / frame.length));
+      },
       onSpeechEnd: (audio: Float32Array) => {
         this.cb.onPhase("transcribing");
         this.ws?.send(encodeWav(audio));
@@ -311,7 +347,14 @@ export class VoiceClient {
     if (!clean) return;
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = "ru-RU";
-    u.rate = 1.05;
+    u.rate = this.profile?.speed ?? 1.05;
+    u.pitch = this.profile?.pitch ?? 1;
+    const wanted = this.profile?.tts_provider === "browser" || this.mode.tts === "browser" ? this.profile?.voice_id : null;
+    const voice = wanted ? speechSynthesis.getVoices().find((v) => v.name === wanted) : undefined;
+    if (voice) {
+      u.voice = voice;
+      u.lang = voice.lang;
+    }
     u.onstart = () => {
       this.speakingBrowser = true;
       this.cb.onPhase("speaking");
@@ -323,6 +366,11 @@ export class VoiceClient {
       }
     };
     speechSynthesis.speak(u);
+  }
+
+  /** Settings changed on the page: the server re-reads the profile without dropping the call. */
+  reloadProfile() {
+    this.ws?.send(JSON.stringify({ type: "reload_profile" }));
   }
 
   sendText(text: string) {

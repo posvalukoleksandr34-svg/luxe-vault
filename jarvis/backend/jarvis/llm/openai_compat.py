@@ -62,6 +62,12 @@ def to_openai_messages(system: list[dict], messages: list[dict]) -> list[dict]:
             for b in content:
                 if b.get("type") == "tool_result":
                     out.append({"role": "tool", "tool_call_id": b["tool_use_id"], "content": _text_of(b.get("content"))})
+                    # chat-completions tool messages are text-only: images (screenshots) follow as a user part
+                    for part in b.get("content") if isinstance(b.get("content"), list) else []:
+                        src = part.get("source") or {}
+                        if part.get("type") == "image" and src.get("type") == "base64":
+                            images.append({"type": "image_url",
+                                           "image_url": {"url": f"data:{src['media_type']};base64,{src['data']}"}})
                 elif b.get("type") == "text":
                     texts.append(b.get("text", ""))
                 elif b.get("type") == "image" and (b.get("source") or {}).get("type") == "base64":

@@ -27,6 +27,9 @@ class ToolOutcome:
     error: str | None = None
     duration_ms: int = 0
     attempts: int = 1
+    # Images for the model (e.g. a screenshot): [{"media_type": "image/png", "data": "<base64>"}].
+    # Never persisted or rendered into text.
+    images: list[dict[str, str]] | None = None
 
 
 def _json_default(o: Any) -> Any:
@@ -108,10 +111,14 @@ class ToolExecutor:
                 if spec.output_model is not None and not isinstance(result, spec.output_model):
                     result = spec.output_model.model_validate(result)
                 data = to_jsonable(result)
+                images = None
+                if isinstance(data, dict) and isinstance(data.get("_image"), dict):
+                    images = [data.pop("_image")]  # tools return a screenshot as `_image`; keep it out of the text
                 duration = int((time.monotonic() - started) * 1000)
                 TOOL_CALLS.labels(spec.name, "ok").inc()
                 TOOL_LATENCY.labels(spec.name).observe(duration / 1000)
-                return ToolOutcome(True, self.render(spec, data), data=data, duration_ms=duration, attempts=attempts)
+                return ToolOutcome(True, self.render(spec, data), data=data, duration_ms=duration, attempts=attempts,
+                                   images=images)
             except ToolError as exc:
                 last_error = str(exc) + (f" (hint: {exc.hint})" if exc.hint else "")
                 if not exc.retryable:

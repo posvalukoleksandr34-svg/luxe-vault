@@ -73,18 +73,21 @@ class AppContext:
     pairing: Any = None
     voice: Any = None
     google: Any = None
+    spotify: Any = None
     automations: Any = None
     browser: Any = None
     sandbox: Any = None
     files: Any = None
     mcp: Any = None
+    devices: Any = None
+    commands: Any = None
 
     # ------------------------------------------------------------------ availability
 
     async def availability(self, user_id: uuid.UUID) -> dict[str, bool]:
         hit = self._availability.get(user_id)
         if hit and time.monotonic() - hit[0] < 60:
-            return hit[1]
+            return await self._with_devices(user_id, hit[1])
         async with self.sessionmaker() as session:
             providers = set((await session.execute(select(Integration.provider).where(
                 Integration.user_id == user_id, Integration.status == "connected"))).scalars())
@@ -93,6 +96,7 @@ class AppContext:
                      (s.search_provider == "brave" and await self.secrets.get("brave_api_key"))
         avail = {
             "google": "google" in providers,
+            "spotify": "spotify" in providers,
             "browser": bool(self.browser and self.browser.available),
             "sandbox": bool(self.sandbox and self.sandbox.available),
             # Anthropic-hosted search only exists when Claude is the brain.
@@ -100,6 +104,15 @@ class AppContext:
             "fetch": True,
         }
         self._availability[user_id] = (time.monotonic(), avail)
+        return await self._with_devices(user_id, avail)
+
+    async def _with_devices(self, user_id: uuid.UUID, avail: dict[str, bool]) -> dict[str, bool]:
+        """Device presence changes by the second (agent connects/disconnects): never cached."""
+        avail = dict(avail)
+        online = await self.devices.devices(user_id) if self.devices is not None else []
+        avail["computer"] = bool(online)
+        for cap in ("apps", "media", "volume", "browser", "input", "clipboard", "windows", "screen", "shell"):
+            avail[f"computer.{cap}"] = any(cap in d.capabilities for d in online)
         return avail
 
     @property
@@ -192,9 +205,10 @@ class AppContext:
 
 
 def _builtin_tools() -> list:
-    from jarvis.tools.builtin import automation, core
+    from jarvis.tools.builtin import automation, commands, core, voice
 
-    return [*specs_in_module(core), *specs_in_module(automation)]
+    return [*specs_in_module(core), *specs_in_module(automation), *specs_in_module(commands),
+            *specs_in_module(voice)]
 
 
 async def build_app(
@@ -211,10 +225,13 @@ async def build_app(
     from jarvis.channels.telegram import TelegramAdapter
     from jarvis.channels.whatsapp import WhatsAppAdapter
     from jarvis.core.conversations import ConversationService
+    from jarvis.commands.service import CommandService
+    from jarvis.devices.hub import DeviceHub
     from jarvis.integrations.browser import BrowserPool
     from jarvis.integrations.files import FileStore
     from jarvis.integrations.google.client import GoogleAuth
     from jarvis.integrations.sandbox import SandboxClient
+    from jarvis.integrations.spotify import SpotifyAuth
     from jarvis.llm.anthropic_provider import AnthropicProvider
     from jarvis.llm.fake import DemoBrain
     from jarvis.llm.openai_compat import OpenAICompatProvider
@@ -275,11 +292,14 @@ async def build_app(
     app.pairing = PairingService(app)
     app.voice = VoiceService(app)
     app.google = GoogleAuth(app)
+    app.spotify = SpotifyAuth(app)
     app.automations = AutomationService(app)
     app.browser = BrowserPool(settings.browser_ws_endpoint)
     app.sandbox = SandboxClient(settings.sandbox_url, settings.sandbox_token)
     app.files = FileStore(settings.files_dir)
     app.mcp = McpManager(app)
+    app.devices = DeviceHub(redis)
+    app.commands = CommandService(app)
     try:
         await app.skills.refresh_state()
     except Exception as exc:  # noqa: BLE001 - DB may not be migrated yet (CLI `migrate` path)

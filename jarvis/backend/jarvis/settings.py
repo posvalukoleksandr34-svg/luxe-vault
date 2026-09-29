@@ -109,6 +109,8 @@ class Settings(BaseSettings):
     # ---- integrations --------------------------------------------------------------------------
     google_client_id: str | None = Field(default=None, validation_alias=_alias("GOOGLE_CLIENT_ID"))
     google_client_secret: str | None = Field(default=None, validation_alias=_alias("GOOGLE_CLIENT_SECRET"))
+    spotify_client_id: str | None = Field(default=None, validation_alias=_alias("SPOTIFY_CLIENT_ID"))
+    spotify_client_secret: str | None = Field(default=None, validation_alias=_alias("SPOTIFY_CLIENT_SECRET"))
 
     # ---- isolated tool runtimes ----------------------------------------------------------------
     browser_ws_endpoint: str | None = None  # e.g. ws://browser:3000/

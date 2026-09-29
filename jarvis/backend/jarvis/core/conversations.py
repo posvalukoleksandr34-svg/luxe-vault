@@ -71,12 +71,12 @@ class ConversationService:
             return note, None
 
         msg = await self._store(conv, "user", text, channel, meta, attachments)
-        task = await self.app.tasks.create(
-            user_id=user_id, kind="agent_turn", title=text[:120] or "(attachment)", conversation_id=conv.id,
-            channel=channel, priority=10,
-            input={"text": text, "message_id": str(msg.id), "attachments": attachments or [], "reply_to": reply_to},
-            max_attempts=2,
-        )
+        command = await self.app.commands.match(user_id, text) if not attachments and self.app.commands else None
+        if command is not None:  # a user-defined trigger phrase: run the macro directly, no model call
+            task = await self.app.commands.start(user_id, command, channel=channel, conversation_id=conv.id,
+                                                 message_id=str(msg.id), reply_to=reply_to)
+        else:
+            task = await self._agent_turn(user_id, conv, msg, text, channel, attachments, reply_to)
         async with self.app.sessionmaker() as session:
             row = await session.get(Message, msg.id)
             row.task_id = task.id
@@ -87,6 +87,15 @@ class ConversationService:
             await session.commit()
         msg.task_id = task.id
         return msg, task
+
+    async def _agent_turn(self, user_id: uuid.UUID, conv: Conversation, msg: Message, text: str, channel: str,
+                          attachments: list[dict[str, Any]] | None, reply_to: str | None) -> Task:
+        return await self.app.tasks.create(
+            user_id=user_id, kind="agent_turn", title=text[:120] or "(attachment)", conversation_id=conv.id,
+            channel=channel, priority=10,
+            input={"text": text, "message_id": str(msg.id), "attachments": attachments or [], "reply_to": reply_to},
+            max_attempts=2,
+        )
 
     async def _store(self, conv: Conversation, role: str, text: str, channel: str, meta: dict | None,
                      attachments: list | None = None) -> Message:

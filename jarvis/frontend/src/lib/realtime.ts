@@ -3,7 +3,11 @@ import { create } from "zustand";
 
 import type { JarvisEvent } from "./types";
 
-export type CoreState = "offline" | "idle" | "thinking" | "tool" | "waiting" | "speaking" | "listening";
+/** What the assistant is doing right now — drives the orb everywhere (IDLE / LISTENING / THINKING /
+ * EXECUTING (`tool`) / SPEAKING / ERROR, plus waiting for approval and offline). */
+export type CoreState = "offline" | "idle" | "thinking" | "tool" | "waiting" | "speaking" | "listening" | "error";
+
+const ERROR_SHOW_MS = 6000;
 
 interface StreamState {
   text: string;
@@ -59,7 +63,8 @@ export const useRealtime = create<RealtimeState>((set) => ({
         next.streams = { ...s.streams, [tid]: { ...prev, text: prev.text + (e.data?.text ?? "") } };
       }
       if (e.type === "agent.status" && tid) {
-        next.status = { ...s.status, [tid]: { state: e.data?.state, label: e.data?.label, at: Date.now() } };
+        const state = e.data?.state === "executing" ? "tool" : e.data?.state;
+        next.status = { ...s.status, [tid]: { state, label: e.data?.label, at: Date.now() } };
       }
       if (e.type === "tool.started" && tid) {
         next.status = {
@@ -69,7 +74,8 @@ export const useRealtime = create<RealtimeState>((set) => ({
       }
       if (e.type === "task.updated" && tid && ["succeeded", "failed", "cancelled"].includes(e.data?.status)) {
         const { [tid]: _, ...rest } = s.status;
-        next.status = rest;
+        // a failed task shows ERROR briefly instead of silently returning to idle
+        next.status = e.data?.status === "failed" ? { ...rest, [tid]: { state: "error", label: "Ошибка", at: Date.now() } } : rest;
       }
       if (e.type === "notification") next.unread = s.unread + 1;
       if (FEED_TYPES.has(e.type)) next.events = [e, ...s.events].slice(0, 200);
@@ -80,10 +86,13 @@ export const useRealtime = create<RealtimeState>((set) => ({
 export function coreStateFrom(status: RealtimeState["status"], connected: boolean, voice: CoreState | null): CoreState {
   if (!connected) return "offline";
   if (voice && voice !== "idle") return voice;
-  const states = Object.values(status).filter((s) => Date.now() - s.at < 10 * 60_000).map((s) => s.state);
+  const now = Date.now();
+  const fresh = Object.values(status).filter((s) => now - s.at < (s.state === "error" ? ERROR_SHOW_MS : 10 * 60_000));
+  const states = fresh.map((s) => s.state);
   if (states.includes("waiting_approval")) return "waiting";
   if (states.includes("tool")) return "tool";
   if (states.some((s) => s === "thinking" || s === "transcribing")) return "thinking";
+  if (states.includes("error")) return "error";
   return "idle";
 }
 

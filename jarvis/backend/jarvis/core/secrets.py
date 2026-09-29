@@ -24,6 +24,7 @@ KNOWN_SECRETS: dict[str, str] = {
     "whatsapp_access_token": "whatsapp_access_token",
     "whatsapp_app_secret": "whatsapp_app_secret",
     "google_client_secret": "google_client_secret",
+    "spotify_client_secret": "spotify_client_secret",
 }
 
 

@@ -24,11 +24,18 @@ async def overview(p: Principal = Depends(current), app: AppContext = Depends(ge
             select(Integration).where(Integration.user_id == p.user_id))).scalars()}
     links = await app.channels.links(p.user_id)
     g = integrations.get("google")
+    sp = integrations.get("spotify")
     secrets = await app.secrets.status()
+    devices = await app.devices.devices(p.user_id)
     return {
         "google": {"configured": await app.google.configured(), "connected": bool(g and g.status == "connected"),
                    "status": g.status if g else "disconnected", "account": g.account if g else None,
                    "scopes": g.scopes if g else [], "redirect_uri": app.google.redirect_uri},
+        "spotify": {"configured": await app.spotify.configured(), "connected": bool(sp and sp.status == "connected"),
+                    "status": sp.status if sp else "disconnected", "account": sp.account if sp else None,
+                    "premium": bool(sp and (sp.meta or {}).get("product") == "premium"),
+                    "redirect_uri": app.spotify.redirect_uri},
+        "computer": {"devices": [d.public() for d in devices]},
         "telegram": {"configured": secrets["telegram_bot_token"]["configured"], "mode": app.settings.telegram_mode,
                      "links": [link_payload(link) for link in links if link.channel == "telegram"]},
         "whatsapp": {"configured": await app.channels.adapters["whatsapp"].available(),
@@ -39,7 +46,7 @@ async def overview(p: Principal = Depends(current), app: AppContext = Depends(ge
         "sandbox": {"available": app.sandbox.available},
         "search": {"provider": app.settings.search_provider},
         "mcp": await app.secrets.get_setting("mcp_status", {}),
-        "not_implemented": ["microsoft (Outlook/OneDrive)", "dropbox", "desktop OS control agent"],
+        "not_implemented": ["microsoft (Outlook/OneDrive)", "dropbox"],
     }
 
 
@@ -51,27 +58,53 @@ async def google_connect(p: Principal = Depends(current), app: AppContext = Depe
         raise HTTPException(400, str(exc)) from exc
 
 
-@router.get("/google/callback")
-async def google_callback(request: Request, code: str | None = None, state: str | None = None,
-                          error: str | None = None, app: AppContext = Depends(get_app)):
+async def _oauth_callback(provider: str, auth, request: Request, code: str | None, state: str | None,
+                          error: str | None, app: AppContext) -> RedirectResponse:
     # The browser returns here via a top-level redirect; the session cookie (SameSite=Lax) is present.
     from jarvis.api.deps import COOKIE
 
+    fail = RedirectResponse(f"{app.settings.public_url}/integrations?{provider}=error")
     principal = await resolve_token(app, request.cookies.get(COOKIE))
     if error or not code or not state or principal is None:
-        return RedirectResponse(f"{app.settings.public_url}/integrations?google=error")
+        return fail
     try:
-        integration = await app.google.handle_callback(code, state)
+        integration = await auth.handle_callback(code, state)
     except ToolError:
-        return RedirectResponse(f"{app.settings.public_url}/integrations?google=error")
+        return fail
     if integration.user_id != principal.user_id:
-        return RedirectResponse(f"{app.settings.public_url}/integrations?google=error")
-    return RedirectResponse(f"{app.settings.public_url}/integrations?google=connected")
+        return fail
+    return RedirectResponse(f"{app.settings.public_url}/integrations?{provider}=connected")
+
+
+@router.get("/google/callback")
+async def google_callback(request: Request, code: str | None = None, state: str | None = None,
+                          error: str | None = None, app: AppContext = Depends(get_app)):
+    return await _oauth_callback("google", app.google, request, code, state, error, app)
 
 
 @router.delete("/google")
 async def google_disconnect(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
     await app.google.disconnect(p.user_id)
+    return {"ok": True}
+
+
+@router.get("/spotify/connect")
+async def spotify_connect(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+    try:
+        return {"url": await app.spotify.authorization_url(p.user_id)}
+    except ToolError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/spotify/callback")
+async def spotify_callback(request: Request, code: str | None = None, state: str | None = None,
+                           error: str | None = None, app: AppContext = Depends(get_app)):
+    return await _oauth_callback("spotify", app.spotify, request, code, state, error, app)
+
+
+@router.delete("/spotify")
+async def spotify_disconnect(p: Principal = Depends(current), app: AppContext = Depends(get_app)) -> dict:
+    await app.spotify.disconnect(p.user_id)
     return {"ok": True}
 
 

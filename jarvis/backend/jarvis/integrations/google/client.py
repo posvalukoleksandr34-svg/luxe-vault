@@ -7,10 +7,6 @@ OAuth `state` is an HMAC-signed, expiring token bound to the user.
 
 from __future__ import annotations
 
-import base64
-import hashlib
-import hmac
-import json
 import secrets
 import time
 import uuid
@@ -22,6 +18,7 @@ from sqlalchemy import select
 
 from jarvis.core.audit import audit
 from jarvis.db.models import Integration
+from jarvis.integrations.oauth_state import sign_state, verify_state
 from jarvis.tools.base import ToolError
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -55,28 +52,15 @@ class GoogleAuth:
         return bool(self.app.settings.google_client_id and await self.app.secrets.get("google_client_secret"))
 
     def _sign(self, payload: dict[str, Any]) -> str:
-        raw = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
-        key = hashlib.sha256(self.app.box.keys[0].encode()).digest()
-        sig = hmac.new(key, raw.encode(), hashlib.sha256).hexdigest()[:32]
-        return f"{raw}.{sig}"
+        return sign_state(self.app, payload)
 
     def _verify(self, state: str) -> dict[str, Any]:
-        try:
-            raw, sig = state.rsplit(".", 1)
-        except ValueError as exc:
-            raise ToolError("invalid OAuth state") from exc
-        key = hashlib.sha256(self.app.box.keys[0].encode()).digest()
-        if not hmac.compare_digest(hmac.new(key, raw.encode(), hashlib.sha256).hexdigest()[:32], sig):
-            raise ToolError("invalid OAuth state signature")
-        payload = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)))
-        if payload.get("exp", 0) < time.time():
-            raise ToolError("OAuth state expired — start again")
-        return payload
+        return verify_state(self.app, state)
 
     async def authorization_url(self, user_id: uuid.UUID) -> str:
         if not await self.configured():
             raise ToolError("Google OAuth is not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET")
-        state = self._sign({"uid": str(user_id), "n": secrets.token_urlsafe(8), "exp": int(time.time()) + 600})
+        state = self._sign({"uid": str(user_id), "p": "google", "n": secrets.token_urlsafe(8), "exp": int(time.time()) + 600})
         params = {
             "client_id": self.app.settings.google_client_id, "redirect_uri": self.redirect_uri,
             "response_type": "code", "scope": " ".join(SCOPES), "access_type": "offline",
@@ -86,6 +70,8 @@ class GoogleAuth:
 
     async def handle_callback(self, code: str, state: str) -> Integration:
         payload = self._verify(state)
+        if payload.get("p", "google") != "google":
+            raise ToolError("OAuth state is for another integration")
         user_id = uuid.UUID(payload["uid"])
         secret = await self.app.secrets.get("google_client_secret")
         async with httpx.AsyncClient(timeout=30, transport=self.transport) as client:

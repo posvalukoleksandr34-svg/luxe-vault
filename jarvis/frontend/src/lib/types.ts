@@ -242,6 +242,7 @@ export interface SystemStatus {
   spend_today_usd: number;
   daily_limit_usd: number;
   public_url: string;
+  schema?: string | null;
 }
 
 export interface CalendarEvent {
@@ -263,4 +264,60 @@ export interface JarvisEvent {
   task_id?: string | null;
   conversation_id?: string | null;
   data?: Record<string, any>;
+}
+
+export type StepType = "tool" | "wait" | "say" | "notify" | "agent";
+export type StepCondition = "always" | "device_online" | "device_offline" | "weekday" | "weekend" | "morning" | "afternoon" | "evening";
+export interface CommandStep {
+  type: StepType;
+  tool?: string;
+  args?: Record<string, unknown>;
+  seconds?: number;
+  text?: string;
+  when?: StepCondition;
+  continue_on_error?: boolean;
+}
+export interface CustomCommand {
+  id: string;
+  name: string;
+  description: string;
+  triggers: string[];
+  steps: CommandStep[];
+  response: string;
+  enabled: boolean;
+  preapproved: boolean;
+  run_count: number;
+  last_run_at: string | null;
+  last_status: string | null;
+  updated_at: string | null;
+}
+export interface CatalogTool {
+  name: string;
+  description: string;
+  activity: string;
+  skill: string | null;
+  tier: "autonomous" | "confirm";
+  available: boolean;
+  missing: string[];
+  input_schema: { properties?: Record<string, JsonProp>; required?: string[] };
+}
+export interface JsonProp {
+  type?: string;
+  enum?: string[];
+  description?: string;
+  default?: unknown;
+  minimum?: number;
+  maximum?: number;
+  anyOf?: JsonProp[];
+  items?: JsonProp;
+}
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  platform: string;
+  capabilities: string[];
+  version: string;
+  connected_at: number;
+  seen_at: number;
+  online: boolean;
 }
