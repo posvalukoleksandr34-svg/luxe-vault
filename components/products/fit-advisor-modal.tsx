@@ -74,8 +74,8 @@ const LEVEL_KEY = {
 const STORAGE_KEY = 'lv.fit.v1'
 
 /** What the wheel pickers offer, in whole centimetres and kilograms. */
-const HEIGHT_PICKER = { min: 140, max: 220 } as const
-const WEIGHT_PICKER = { min: 40, max: 150 } as const
+const HEIGHT_PICKER = { min: 140, max: 220, restAt: 170 } as const
+const WEIGHT_PICKER = { min: 40, max: 150, restAt: 70 } as const
 
 type Result = {
   rec: FitRecommendation
@@ -485,8 +485,8 @@ export function FitAdvisorModal({
           <div className="space-y-4">
             {/* Wheel pickers, not number fields: a swipe along a ruler is
                 how phones ask for a height or a weight, and it cannot be
-                mistyped. Each opens on 0 — "not chosen" — and the first
-                swipe right lands on the lowest real value (ScrollPicker). */}
+                mistyped. Each stays unset (muted, reporting nothing) until
+                the shopper touches it — see ScrollPicker. */}
             {(
               [
                 ['fit-height', t('fit.height'), 'cm', height, setHeight, HEIGHT_PICKER, heightRef],
@@ -515,6 +515,7 @@ export function FitAdvisorModal({
                   unit={unit}
                   min={range.min}
                   max={range.max}
+                  restAt={range.restAt}
                   value={val}
                   onChange={(v) => edit(() => set(v))}
                   invalid={Boolean(error) && !val}
