@@ -2,6 +2,7 @@
 
 import { ChevronDown, Ruler } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { ScrollPicker } from '@/components/ui/scroll-picker'
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,10 @@ const LEVEL_KEY = {
  *  again. Local only — body measurements have no business on a server. */
 const STORAGE_KEY = 'lv.fit.v1'
 
+/** What the wheel pickers offer, in whole centimetres and kilograms. */
+const HEIGHT_PICKER = { min: 140, max: 220, restAt: 170 } as const
+const WEIGHT_PICKER = { min: 40, max: 150, restAt: 70 } as const
+
 type Result = {
   rec: FitRecommendation
   fit: ProductFit
@@ -131,8 +136,8 @@ export function FitAdvisorModal({
   const [shoe, setShoe] = useState<ShoeFit | null>(null)
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const heightRef = useRef<HTMLInputElement>(null)
-  const weightRef = useRef<HTMLInputElement>(null)
+  const heightRef = useRef<HTMLDivElement>(null)
+  const weightRef = useRef<HTMLDivElement>(null)
 
   // Whether this device remembers earlier measurements. They are OFFERED
   // (applySaved, the "use my saved measurements" button) and never filled in
@@ -178,8 +183,14 @@ export function FitAdvisorModal({
         const legacyImperial = saved.units === 'imperial'
         const len = (v: string) => (legacyImperial ? String(round1(toCm(Number(v.replace(',', '.'))))) : v)
         const mass = (v: string) => (legacyImperial ? String(Math.round(toKg(Number(v.replace(',', '.'))))) : v)
-        if (typeof saved.height === 'string') setHeight(len(saved.height))
-        if (typeof saved.weight === 'string') setWeight(mass(saved.weight))
+        // Whole numbers inside the pickers' ranges: a saved "72,5" or a value
+        // from before the pickers lands on the nearest number they can show.
+        const into = (v: string, lo: number, hi: number) => {
+          const n = Number(v.replace(',', '.'))
+          return Number.isFinite(n) && v.trim() ? String(Math.min(hi, Math.max(lo, Math.round(n)))) : ''
+        }
+        if (typeof saved.height === 'string') setHeight(into(len(saved.height), HEIGHT_PICKER.min, HEIGHT_PICKER.max))
+        if (typeof saved.weight === 'string') setWeight(into(mass(saved.weight), WEIGHT_PICKER.min, WEIGHT_PICKER.max))
         if ((LETTER_SIZES as readonly string[]).indexOf(saved.usual) !== -1) setUsual(saved.usual)
         if (PREFERENCES.indexOf(saved.preference) !== -1) setPreference(saved.preference)
         // Everything below was added with the advanced finder; an older saved
@@ -471,39 +482,47 @@ export function FitAdvisorModal({
               </fieldset>
             </>
           ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className={labelClass}>{t('fit.height')}</span>
-              <input
-                ref={heightRef}
-                id="fit-height"
-                name="height"
-                autoComplete="off"
-                inputMode="decimal"
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'fit-error' : undefined}
-                value={height}
-                onChange={(e) => edit(() => setHeight(e.target.value))}
-                placeholder={`${t('common.eg')} 178`}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className={labelClass}>{t('fit.weight')}</span>
-              <input
-                ref={weightRef}
-                id="fit-weight"
-                name="weight"
-                autoComplete="off"
-                inputMode="decimal"
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'fit-error' : undefined}
-                value={weight}
-                onChange={(e) => edit(() => setWeight(e.target.value))}
-                placeholder={`${t('common.eg')} 72`}
-                className={inputClass}
-              />
-            </label>
+          <div className="space-y-4">
+            {/* Wheel pickers, not number fields: a swipe along a ruler is
+                how phones ask for a height or a weight, and it cannot be
+                mistyped. Each stays unset (muted, reporting nothing) until
+                the shopper touches it — see ScrollPicker. */}
+            {(
+              [
+                ['fit-height', t('fit.height'), 'cm', height, setHeight, HEIGHT_PICKER, heightRef],
+                ['fit-weight', t('fit.weight'), 'kg', weight, setWeight, WEIGHT_PICKER, weightRef],
+              ] as const
+            ).map(([pickerId, label, unit, val, set, range, pickerRef]) => (
+              <div key={pickerId}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                  <span id={`${pickerId}-label`} className={cn(labelClass, 'mb-0')}>
+                    {label}
+                  </span>
+                  <span className="text-[12px] tabular-nums text-muted-foreground" aria-hidden>
+                    {val ? (
+                      <>
+                        <span className="font-medium text-gold">{val}</span> {unit}
+                      </>
+                    ) : (
+                      t('fit.swipeHint')
+                    )}
+                  </span>
+                </div>
+                <ScrollPicker
+                  ref={pickerRef}
+                  id={pickerId}
+                  label={label}
+                  unit={unit}
+                  min={range.min}
+                  max={range.max}
+                  restAt={range.restAt}
+                  value={val}
+                  onChange={(v) => edit(() => set(v))}
+                  invalid={Boolean(error) && !val}
+                  describedBy={error ? 'fit-error' : undefined}
+                />
+              </div>
+            ))}
           </div>
           )}
 

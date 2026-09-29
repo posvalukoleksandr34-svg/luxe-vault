@@ -1915,3 +1915,47 @@ html[data-keyboard='open'] .hide-with-keyboard {
   outline: 1px solid hsl(var(--gold) / 0.7);
   outline-offset: 1px;
 }
+
+/* ---------------------------------------------------------------------------
+   Scroll picker (components/ui/scroll-picker.tsx)
+   ---------------------------------------------------------------------------
+   The strip scrolls natively with no visible scrollbar; the numbers' scale
+   and opacity are written per frame by the component. Here: colour only.
+   The chosen number is metallic gold — #D4AF37 at its heart, deepening
+   toward the base so a 28px figure stays legible on white.
+--------------------------------------------------------------------------- */
+.scroll-picker {
+  scrollbar-width: none;
+  cursor: grab;
+}
+.scroll-picker::-webkit-scrollbar {
+  display: none;
+}
+.scroll-picker:active {
+  cursor: grabbing;
+}
+.scroll-picker__item {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.2;
+  will-change: opacity;
+}
+.scroll-picker__num {
+  display: block;
+  transform-origin: center 70%;
+  will-change: transform;
+  transition: color 200ms ease;
+}
+.scroll-picker.is-set .scroll-picker__item[data-centre='true'] .scroll-picker__num {
+  font-weight: 600;
+  background: linear-gradient(180deg, #e3c355 0%, #d4af37 42%, #a8842c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.scroll-picker.is-set .scroll-picker__item[data-centre='true'] > span:last-child {
+  background: hsl(var(--gold));
+}
+.scroll-picker.is-unset .scroll-picker__item[data-centre='true'] .scroll-picker__num {
+  color: hsl(var(--foreground) / 0.5);
+}
