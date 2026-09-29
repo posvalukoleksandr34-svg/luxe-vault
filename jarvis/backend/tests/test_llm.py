@@ -206,3 +206,47 @@ def test_image_attachments_become_openai_image_parts():
         {"type": "text", "text": "что на фото?"},
         {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "AAAA"}}]}])
     assert msgs[0]["content"][1] == {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}
+
+
+async def test_openai_function_tools_with_reasoning_effort_rejected_retries_with_none():
+    """gpt-5.6-terra on /chat/completions: "Function tools with reasoning_effort are not supported" → one retry with
+    reasoning_effort=none, remembered for the model; requests without tools keep their effort."""
+    bodies = []
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        body = json.loads(r.content)
+        bodies.append(body)
+        if body.get("tools") and body.get("reasoning_effort") not in (None, "none"):
+            return httpx.Response(400, json={"error": {
+                "message": "Function tools with reasoning_effort are not supported for gpt-5.6-terra in "
+                           "/v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.",
+                "type": "invalid_request_error", "param": "reasoning_effort", "code": None}})
+        chunks = [{"choices": [{"delta": {"content": "ok"}, "finish_reason": "stop"}]}]
+        return httpx.Response(200, text="".join(f"data: {json.dumps(c)}\n\n" for c in chunks) + "data: [DONE]\n")
+
+    p = OpenAICompatProvider("https://api.openai.com/v1", "sk-test", httpx.MockTransport(handler), label="OpenAI",
+                             require_key=True, openai_params=True)
+    route = RouteConfig(name="main", provider="openai", model="gpt-5.6-terra", effort="medium", max_tokens=1000)
+    tool = {"name": "time_now", "description": "time", "input_schema": {"type": "object", "properties": {}}}
+    req = LLMRequest(system=[], messages=[{"role": "user", "content": "hi"}], tools=[tool])
+    assert (await p.generate(route, req)).text == "ok"
+    assert [b["reasoning_effort"] for b in bodies] == ["medium", "none"]
+    await p.generate(route, req)  # learned: no second failing request
+    assert bodies[-1]["reasoning_effort"] == "none" and len(bodies) == 3
+    await p.generate(route, LLMRequest(system=[], messages=[{"role": "user", "content": "hi"}]))
+    assert bodies[-1]["reasoning_effort"] == "medium"  # no tools → reasoning stays on
+
+
+async def test_openai_other_400_is_not_retried():
+    calls = []
+
+    def handler(r):
+        calls.append(1)
+        return httpx.Response(400, json={"error": {"message": "context_length_exceeded"}})
+
+    p = OpenAICompatProvider("https://api.openai.com/v1", "sk-test", httpx.MockTransport(handler), label="OpenAI",
+                             require_key=True, openai_params=True)
+    route = RouteConfig(name="main", provider="openai", model="gpt-5.6-terra", effort="medium", max_tokens=1000)
+    with pytest.raises(LLMError, match="400"):
+        await p.generate(route, LLMRequest(system=[], messages=[{"role": "user", "content": "hi"}]))
+    assert len(calls) == 1

@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from jarvis.core.logging import log
 from jarvis.llm.types import LLMError, LLMNotConfigured, LLMProvider, LLMRequest, LLMResponse, RouteConfig, TextCallback, Usage
 
 
@@ -107,6 +108,10 @@ class OpenAICompatProvider(LLMProvider):
         self.label = label
         self.require_key = require_key
         self.openai_params = openai_params
+        # Models that rejected `reasoning_effort` together with function tools on /chat/completions (e.g.
+        # "Function tools with reasoning_effort are not supported for gpt-5.6-terra"): learned at runtime so
+        # only the first request pays for the retry; models that accept the combination keep reasoning.
+        self._no_effort_with_tools: set[str] = set()
 
     async def _key(self) -> str | None:
         key = self.api_key
@@ -115,6 +120,19 @@ class OpenAICompatProvider(LLMProvider):
             if inspect.isawaitable(key):
                 key = await key
         return key or None
+
+    def _drop_effort(self, status: int, detail: str, body: dict[str, Any], route: RouteConfig, tools: bool) -> bool:
+        """A 400 about `reasoning_effort` → adjust the body for one retry. True if a retry makes sense."""
+        effort = body.get("reasoning_effort")
+        if status != 400 or effort in (None, "none") or "reasoning_effort" not in detail:
+            return False
+        if tools:  # the API's own advice: "use /v1/responses or set reasoning_effort to 'none'"
+            self._no_effort_with_tools.add(route.model)
+            body["reasoning_effort"] = "none"
+        else:  # the model takes no reasoning effort at all
+            body.pop("reasoning_effort")
+        log.warning("llm.reasoning_effort_rejected", model=route.model, effort=effort, with_tools=tools)
+        return True
 
     async def generate(self, route: RouteConfig, req: LLMRequest, *, on_text: TextCallback | None = None) -> LLMResponse:
         if not self.base_url:
@@ -139,6 +157,8 @@ class OpenAICompatProvider(LLMProvider):
         tools = to_openai_tools(req.tools)
         if tools:
             body["tools"] = tools
+            if "reasoning_effort" in body and route.model in self._no_effort_with_tools:
+                body["reasoning_effort"] = "none"
         if req.output_schema:
             body["response_format"] = {"type": "json_schema", "json_schema": {"name": "out", "schema": req.output_schema}}
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
@@ -148,12 +168,19 @@ class OpenAICompatProvider(LLMProvider):
         usage = Usage()
         try:
             async with httpx.AsyncClient(timeout=route.timeout_s, transport=self.transport) as client:
-                async with client.stream("POST", f"{self.base_url}/chat/completions", json=body, headers=headers) as r:
-                    if r.status_code >= 400:
-                        detail = (await r.aread()).decode(errors="replace")[:500]
-                        retryable = r.status_code >= 500 or r.status_code == 429
-                        raise LLMError(f"{self.label} error {r.status_code}: {detail}", retryable=retryable,
-                                       status=r.status_code)
+                for attempt in range(2):
+                    r = await client.send(client.build_request(
+                        "POST", f"{self.base_url}/chat/completions", json=body, headers=headers), stream=True)
+                    if r.status_code < 400:
+                        break
+                    detail = (await r.aread()).decode(errors="replace")[:500]
+                    await r.aclose()
+                    if attempt == 0 and self._drop_effort(r.status_code, detail, body, route, bool(tools)):
+                        continue  # the error came before any output: nothing was streamed yet
+                    retryable = r.status_code >= 500 or r.status_code == 429
+                    raise LLMError(f"{self.label} error {r.status_code}: {detail}", retryable=retryable,
+                                   status=r.status_code)
+                try:
                     async for line in r.aiter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -181,6 +208,8 @@ class OpenAICompatProvider(LLMProvider):
                                 slot["args"] += fn.get("arguments") or ""
                             if choice.get("finish_reason"):
                                 finish = choice["finish_reason"]
+                finally:
+                    await r.aclose()
         except httpx.HTTPError as exc:
             raise LLMError(f"cannot reach {self.label}: {exc}", retryable=True) from exc
 

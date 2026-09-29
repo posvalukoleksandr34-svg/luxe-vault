@@ -6,6 +6,8 @@
 | Симптом | Причина и что делать |
 |---|---|
 | Баннер «нет ключа OPENAI_API_KEY / ANTHROPIC_API_KEY» | Мозг не настроен: ключ активного провайдера (`JARVIS_LLM_PROVIDER`) в `.env` или «Настройки → Ключи». |
+| «OpenAI error 401: Incorrect API key» | Ключ отозван или контейнер видит старый ключ. `.env` читается только при создании контейнера: `docker compose up -d --force-recreate`, а не `restart`. Ключ из `.env` главнее ключа из «Настройки → Ключи». Проверка: `docker compose exec api python -c "import os,httpx; print(httpx.get('https://api.openai.com/v1/models', headers={'Authorization':'Bearer '+os.environ['OPENAI_API_KEY']}).status_code)"` → 200. |
+| «OpenAI error 400: Function tools with reasoning_effort are not supported» | Исправлено в текущей версии (повтор с `reasoning_effort: none`). Обновите код и выполните `docker compose up -d --build`. |
 | «Компьютер не подключён» | Desktop-агент не запущен или токен без права `computer`. На ПК: `desktop/README.md`; токен — «Настройки → Устройства → Компьютер». Лог агента: `%LOCALAPPDATA%\JARVIS\desktop-agent.log`. |
 | Агент пишет «rejected the device token» (4401) | Токен отозван или без scope `computer` — выдайте новый. |
 | Агент пишет «plan … does not allow (more) computers» (4402) | Тариф аккаунта не включает управление компьютером или превышен лимит устройств. |

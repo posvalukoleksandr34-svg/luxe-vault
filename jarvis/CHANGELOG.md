@@ -47,6 +47,9 @@ support reports). They run automatically when the api starts; back up first (`sc
 - OAuth `state` is shared by all OAuth integrations and bound to the integration it was issued for.
 
 ### Fixed
+- OpenAI brain: `gpt-5.6-terra` rejects `reasoning_effort` together with function tools on `/v1/chat/completions`
+  (HTTP 400 "Function tools with reasoning_effort are not supported"). JARVIS now retries once with
+  `reasoning_effort: none` and remembers it for that model; requests without tools keep their reasoning effort.
 - Device calls: no more `TimeoutError` from long Redis blocking reads; a call that timed out can never be
   executed later on the PC (deadline + removal from the queue).
 
