@@ -121,21 +121,22 @@ class LoginIn(BaseModel):
     totp: str | None = None
 
 
-@router.post("/login")
-async def login(body: LoginIn, request: Request, response: Response, app: AppContext = Depends(get_app)) -> dict:
+async def authenticate(app: AppContext, request: Request, email: str, password: str, totp: str | None) -> User:
+    """Password (+ TOTP) check shared by the web login and the desktop app login: rate limit, lockout after
+    failed attempts, disabled accounts, e-mail verification, password rehash."""
     ip = request.client.host if request.client else "-"
     if not await app.ratelimiter.hit(f"login:{ip}", limit=10, window_s=300):
         raise HTTPException(429, "too many attempts, try again in a few minutes")
     async with app.sessionmaker() as session:
-        user = (await session.execute(select(User).where(User.email == body.email.lower()))).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.email == email.lower()))).scalar_one_or_none()
         if user is not None and user.locked_until and user.locked_until > utcnow():
             raise HTTPException(423, "account temporarily locked after failed attempts")
-        ok = user is not None and verify_password(user.password_hash, body.password)
+        ok = user is not None and verify_password(user.password_hash, password)
         if ok and user.totp_enabled:
             secret = app.box.decrypt(user.totp_secret_enc) if user.totp_secret_enc else ""
-            if not body.totp:
+            if not totp:
                 raise HTTPException(401, "totp_required")
-            ok = pyotp.TOTP(secret).verify(body.totp.strip(), valid_window=1)
+            ok = pyotp.TOTP(secret).verify(totp.strip(), valid_window=1)
         if not ok:
             if user is not None:
                 user.failed_logins += 1
@@ -145,13 +146,21 @@ async def login(body: LoginIn, request: Request, response: Response, app: AppCon
                 await audit(session, action="auth.login_failed", actor="user", user_id=user.id, data={"ip": ip})
                 await session.commit()
             raise HTTPException(401, "invalid credentials")
+        if user.disabled_at is not None:
+            raise HTTPException(403, {"code": "account_disabled", "message": "this account is disabled"})
         if not user.is_owner and user.email_verified_at is None and Mailer(app).configured():
             raise HTTPException(403, {"code": "email_not_verified",
                                       "message": "confirm your e-mail first (check your inbox)"})
         user.failed_logins = 0
         if needs_rehash(user.password_hash):
-            user.password_hash = hash_password(body.password)
+            user.password_hash = hash_password(password)
         await session.commit()
+        return user
+
+
+@router.post("/login")
+async def login(body: LoginIn, request: Request, response: Response, app: AppContext = Depends(get_app)) -> dict:
+    user = await authenticate(app, request, body.email, body.password, body.totp)
     _set_cookie(response, app, await _issue(app, request, user))
     return {"ok": True, "user": user_payload(user)}
 

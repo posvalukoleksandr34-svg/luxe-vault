@@ -1,3 +1,6 @@
+> **Установщик JARVIS.exe** (трей, вход логином, «Hey Jarvis», автозапуск) — `desktop/app/` и `desktop/build/`,
+> см. [docs/CLOUD.md](../docs/CLOUD.md). Ниже — запуск одного агента управления ПК вручную (для своего сервера).
+
 # JARVIS desktop agent
 
 Lets JARVIS act on **your own computer**: "открой Chrome", "поставь на паузу", "громкость 40",

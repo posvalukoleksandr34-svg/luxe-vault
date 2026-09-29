@@ -9,6 +9,13 @@ Database migrations: **0002** (custom commands), **0003** (accounts, subscriptio
 support reports). They run automatically when the api starts; back up first (`scripts/update.sh` does).
 
 ### Added
+- **Client/Server:** installable Windows app `JARVIS.exe` (`desktop/app/`): sign-in window, device token in Windows
+  Credential Manager, tray icon, "Hey Jarvis" wake word, computer control, autostart, "Open JARVIS" signed in.
+  Build: `desktop/build/build.ps1` (PyInstaller + Inno Setup), GitHub Actions template.
+- `POST /api/auth/device-login` (e-mail + password → device token) and one-time `POST /api/auth/handoff` links
+  that open the web UI signed in from the desktop app.
+- Cloud deployment: `deploy/docker-compose.cloud.yml` (managed Postgres such as Supabase), `deploy/Dockerfile.cloud`
+  (config and skills baked in) and `render.yaml`; Caddy upstream configurable (`JARVIS_API_UPSTREAM`). docs/CLOUD.md.
 - **Desktop widget** (`/widget`, shortcut «JARVIS Widget»): glass three-column window — session timer, monthly
   usage, weather (new `GET /api/weather`, Open-Meteo), live voice dialog with an animated microphone
   (Framer Motion), dock (full UI, send clipboard, reminders, voice settings, type), dialog panel.
@@ -50,6 +57,9 @@ support reports). They run automatically when the api starts; back up first (`sc
 - OAuth `state` is shared by all OAuth integrations and bound to the integration it was issued for.
 
 ### Fixed
+- Desktop agent: a revoked token is refused at the WebSocket handshake (HTTP 403); the agent now recognises it
+  instead of retrying forever.
+- Disabled accounts can no longer sign in (they already lost every session).
 - Memory: an empty `HF_ENDPOINT=` line in `.env` broke the local embedding model download ("Request URL is
   missing an 'http://' or 'https://' protocol"); empty now means the default huggingface.co.
 - OpenAI brain: `gpt-5.6-terra` rejects `reasoning_effort` together with function tools on `/v1/chat/completions`

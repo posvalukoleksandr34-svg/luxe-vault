@@ -30,7 +30,7 @@
 	}
 
 	handle /api/* {
-		reverse_proxy api:8000 {
+		reverse_proxy {$JARVIS_API_UPSTREAM:api:8000} {
 			flush_interval -1
 			transport http {
 				read_timeout 15m

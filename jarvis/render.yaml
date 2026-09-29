@@ -1,0 +1,84 @@
+# Render Blueprint (render.com → New → Blueprint → this repository).
+# Database: Supabase (or any Postgres with pgvector) — set JARVIS_DATABASE_URL on the jarvis-api service.
+# Status: written against Render's blueprint format; not yet deployed end to end (see docs/CLOUD.md).
+services:
+  # FastAPI + WebSockets + the task worker and scheduler in the same process (JARVIS_EMBEDDED_WORKER):
+  # Render disks belong to one service, and file tools must see the same /data as the API.
+  # Migrations run on start.
+  - type: web
+    name: jarvis-api
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile.cloud
+    dockerContext: .
+    dockerCommand: docker-entrypoint.sh api
+    healthCheckPath: /api/ready
+    plan: starter
+    disk:            # uploaded files, per-user workspaces, the local embedding model
+      name: jarvis-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: JARVIS_DATABASE_URL
+        sync: false   # postgresql+asyncpg://…pooler.supabase.com:5432/postgres?ssl=require
+      - key: JARVIS_REDIS_URL
+        fromService: { type: keyvalue, name: jarvis-redis, property: connectionString }
+      - key: JARVIS_PUBLIC_URL
+        sync: false   # https://app.myjarvis.com (the jarvis-web URL / your domain)
+      - key: JARVIS_MASTER_KEYS
+        sync: false   # Fernet key; keep a copy in your password manager
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: JARVIS_LLM_PROVIDER
+        value: openai
+      - key: JARVIS_SIGNUP_MODE
+        value: open
+      - key: JARVIS_ENV
+        value: production
+      - key: JARVIS_EMBEDDED_WORKER
+        value: "true"
+      - fromGroup: jarvis-shared
+
+  # Web UI (Caddy): serves the React app and proxies /api (incl. WebSockets) to jarvis-api.
+  - type: web
+    name: jarvis-web
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    envVars:
+      - key: JARVIS_SITE_ADDRESS
+        value: ":10000"          # Render terminates HTTPS and forwards to port 10000
+      - key: PORT
+        value: "10000"
+      - key: JARVIS_API_UPSTREAM
+        value: jarvis-api:8000   # private network hostname of the api service
+
+  - type: keyvalue
+    name: jarvis-redis
+    plan: starter
+    ipAllowList: []            # private network only
+    maxmemoryPolicy: noeviction
+
+envVarGroups:
+  - name: jarvis-shared
+    envVars:
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: JARVIS_STT_PROVIDER
+        value: deepgram
+      - key: JARVIS_TTS_PROVIDER
+        value: elevenlabs
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

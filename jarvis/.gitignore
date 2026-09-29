@@ -17,3 +17,9 @@ satellite/.env
 frontend/public/vad/
 infrastructure/monitoring/metrics_token
 .devdata/
+# desktop app build outputs
+desktop/app/_build.py
+desktop/build/version.txt
+desktop/build/work/
+desktop/dist/
+desktop/.venv-build/

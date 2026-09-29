@@ -17,8 +17,8 @@ from sqlalchemy import func, select
 
 import jarvis
 from jarvis.api.deps import COOKIE, _bearer, resolve_token
-from jarvis.api.routes import (account, admin, auth, automations, billing, capabilities, chat, commands, devices,
-                               integrations, memory, observability, public, system, tasks)
+from jarvis.api.routes import (account, admin, auth, automations, billing, capabilities, chat, client, commands,
+                               devices, integrations, memory, observability, public, system, tasks)
 from jarvis.billing.service import QuotaExceeded
 from jarvis.core.container import AppContext, build_app
 from jarvis.core.logging import configure_logging, log
@@ -128,7 +128,7 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
         return response
 
     for r in (auth, chat, tasks, memory, capabilities, integrations, automations, observability, system, devices,
-              commands, account, admin, billing, public):
+              commands, account, admin, billing, public, client):
         fapp.include_router(r.router)
 
     # Optional: serve a built frontend directly (single-container dev). In production Caddy serves it.

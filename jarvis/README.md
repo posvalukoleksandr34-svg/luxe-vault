@@ -52,6 +52,7 @@ docker compose logs api | grep SETUP    # одноразовый код, есл�
 | [desktop/README.md](desktop/README.md) | Управление компьютером: установка desktop-агента на ПК |
 | [docs/COMMANDS.md](docs/COMMANDS.md) | Свои команды («игровой режим» и т. п.) |
 | [docs/VOICE.md](docs/VOICE.md) | Голос, свой голос, режим без рук |
+| [docs/CLOUD.md](docs/CLOUD.md) | Облачный сервер (Hetzner / Render + Supabase) и установщик JARVIS.exe для Windows |
 | [docs/COMMERCIAL.md](docs/COMMERCIAL.md) | Аккаунты, тарифы и лимиты, оплата Stripe, админка, API v1 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Если что-то не работает |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура, стек, агентное ядро, память, разрешения, задачи, каналы |

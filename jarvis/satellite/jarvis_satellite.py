@@ -94,12 +94,19 @@ class Player:
 
 
 class Satellite:
-    def __init__(self) -> None:
+    """`url`/`token` default to JARVIS_URL / JARVIS_TOKEN; the desktop app passes them directly.
+    `on_event(kind, text)` reports wake / you / jarvis / error for a tray notification; `paused` mutes the
+    wake word (the microphone stream keeps running, frames are dropped)."""
+
+    def __init__(self, url: str | None = None, token: str | None = None, *, wake_word: str | None = None,
+                 on_event=None) -> None:  # noqa: ANN001 - optional callback
         from openwakeword.model import Model
 
-        self.url = os.environ["JARVIS_URL"].rstrip("/").replace("https://", "wss://").replace("http://", "ws://")
-        self.token = os.environ["JARVIS_TOKEN"]
-        self.wake_word = os.environ.get("WAKE_WORD", "hey_jarvis")
+        self.url = (url or os.environ["JARVIS_URL"]).rstrip("/").replace("https://", "wss://").replace("http://", "ws://")
+        self.token = token or os.environ["JARVIS_TOKEN"]
+        self.wake_word = wake_word or os.environ.get("WAKE_WORD", "hey_jarvis")
+        self.on_event = on_event or (lambda kind, text="": None)
+        self.paused = threading.Event()
         self.threshold = float(os.environ.get("WAKE_THRESHOLD", "0.5"))
         self.silence_ms = int(os.environ.get("SILENCE_MS", "800"))
         self.max_s = float(os.environ.get("MAX_UTTERANCE_S", "15"))
@@ -154,12 +161,15 @@ class Satellite:
                 self.pending_mp3 = []
             elif kind == "transcript":
                 print(f"  you: {data['text']}")
+                self.on_event("you", data["text"])
             elif kind == "done":
                 print(f"  jarvis: {data.get('text', '')[:200]}")
+                self.on_event("jarvis", data.get("text", ""))
             elif kind == "approval":
                 print(f"  ⚠ approval needed: {data.get('summary')} — say 'hey jarvis, да' or 'нет'")
             elif kind in ("error", "tts_unavailable"):
                 print(f"  ! {data.get('message')}")
+                self.on_event("error", data.get("message") or "")
 
     async def run(self) -> None:
         import websockets
@@ -192,12 +202,13 @@ class Satellite:
     async def listen_loop(self) -> None:
         while True:
             frame = await self.frames.get()
-            if self.wake_score(frame) < self.threshold:
+            if self.paused.is_set() or self.wake_score(frame) < self.threshold:
                 continue
             if self.player.playing.is_set():  # barge-in
                 self.player.stop()
                 await self.ws.send(json.dumps({"type": "interrupt"}))
             print("• wake word")
+            self.on_event("wake", "")
             self.model.reset()
             beep()
             pcm = await self.record_utterance()

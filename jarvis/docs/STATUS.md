@@ -152,6 +152,17 @@
 | Prometheus + Grafana | NEEDS MANUAL TEST |
 | Автозапуск Docker на Windows (скрытый) | NEEDS MANUAL TEST |
 
+## Облако и установщик (docs/CLOUD.md)
+
+| Функция | Статус | Примечание |
+|---|---|---|
+| Вход desktop-приложения (`/api/auth/device-login`), одноразовый вход в веб-интерфейс, выход, отзыв токена | WORKING | стенд, 13/13 |
+| Облачный образ `deploy/Dockerfile.cloud`, оверлей для Supabase | WORKING / NEEDS AUTH | образ собран; с настоящим Supabase не запускался |
+| `render.yaml` | NEEDS MANUAL TEST | на Render не деплоился |
+| JARVIS.exe: трей, окно входа, Credential Manager, «Hey Jarvis», автозапуск | NEEDS MANUAL TEST | код готов; на Windows не запускался |
+| Сборка PyInstaller + Inno Setup, GitHub Actions | NEEDS MANUAL TEST | скрипты проверены синтаксически |
+| Подпись кода (SmartScreen) | NEEDS AUTH | нужен сертификат подписи |
+
 ## Тесты
 
 * Юнит-тесты без БД: 47 на сервере, 5 в интерфейсе — проходят; проверка типов интерфейса — без ошибок.

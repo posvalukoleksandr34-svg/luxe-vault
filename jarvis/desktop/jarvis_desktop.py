@@ -735,12 +735,13 @@ ACTIONS: dict[str, tuple[str, Callable[..., dict]]] = {
 # ---------------------------------------------------------------------------------------------- agent loop
 
 class Agent:
-    def __init__(self, url: str, token: str, name: str):
+    def __init__(self, url: str, token: str, name: str, *, on_unauthorized: Callable[[], None] | None = None):
         self.ws_url = re.sub(r"^http", "ws", url.rstrip("/")) + "/api/ws/device"
         self.token = token
         self.name = name
         self.caps = detect_capabilities()
         self.lock = asyncio.Lock()  # one action at a time: keyboard/mouse must never interleave
+        self.on_unauthorized = on_unauthorized  # the desktop app signs the user out and shows the login window
 
     async def execute(self, call: dict) -> dict:
         action = call.get("action", "")
@@ -816,9 +817,14 @@ class Agent:
             try:
                 await self.session()
             except Exception as exc:  # noqa: BLE001
-                code = getattr(exc, "code", None) or getattr(getattr(exc, "rcvd", None), "code", None)
-                if code == 4401:
+                code = (getattr(exc, "code", None) or getattr(getattr(exc, "rcvd", None), "code", None)
+                        or getattr(getattr(exc, "response", None), "status_code", None))
+                # a revoked/unknown token is refused at the handshake (HTTP 403) or right after it (4401)
+                if code in (4401, 401, 403):
                     log.error("the server rejected the device token (needs the 'computer' scope) — fix the token")
+                    if self.on_unauthorized is not None:
+                        self.on_unauthorized()
+                        return
                     delay = 60.0
                 elif code == 4402:
                     log.error("the JARVIS plan of this account does not allow (more) computers — see Settings → Account")
