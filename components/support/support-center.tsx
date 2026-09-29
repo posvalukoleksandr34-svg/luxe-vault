@@ -362,7 +362,6 @@ function HomeView({
 }) {
   const [query, setQuery] = useState('')
   const results = useMemo(() => searchFaq(FAQ, locale, query, answer), [locale, query, answer])
-  const cell = layout === 'drawer' ? 'bg-popover' : 'bg-background'
   const [first, ...rest] = SUPPORT_TOPICS
 
   return (
@@ -409,17 +408,20 @@ function HomeView({
       ) : (
         <>
           <Section title={c.topicsTitle}>
-            {/* Hairline grid: the gaps are the rules. The first topic spans
-                the row, so six remain for three even rows of two. */}
-            <div className="grid grid-cols-1 gap-px rounded-xl border border-border/60 bg-border/60 sm:grid-cols-2">
+            {/* Two columns of link rows, no table: each topic carries only its
+                own hairline underneath, and the columns are separated by
+                space, not by a rule. (This was a hairline grid — a gap-px grid
+                over a border-coloured ground, framed — which drew a vertical
+                line down the middle and read as a spreadsheet.) The first
+                topic spans the row, so six remain for three even rows of two. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
               {[first, ...rest].map((topic, i) => (
                 <button
                   key={topic}
                   type="button"
                   onClick={() => onTopic(topic)}
                   className={cn(
-                    'group flex items-center justify-between gap-3 px-4 py-3.5 text-left text-[13px] font-light text-foreground/[0.85] transition hover:text-gold',
-                    cell,
+                    'group flex items-center justify-between gap-3 border-b border-border/60 px-1 py-3.5 text-left text-[13px] font-light text-foreground/[0.85] transition hover:text-gold',
                     i === 0 && 'sm:col-span-2',
                   )}
                 >
