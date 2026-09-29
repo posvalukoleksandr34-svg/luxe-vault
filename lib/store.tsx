@@ -93,6 +93,9 @@ export type SupportEntry = {
   token?: string
   category?: SupportCategory
   orderNumber?: string
+  /** Pre-fills the request's message — the chat concierge's summary when it
+   *  hands a conversation over, so the customer need not retell it. */
+  message?: string
 }
 
 /** What an add-to-cart did. `added` is less than asked for — or 0 — when the

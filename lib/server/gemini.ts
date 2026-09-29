@@ -11,6 +11,10 @@ import { GoogleGenAI } from '@google/genai'
 let client: { key: string; ai: GoogleGenAI } | null = null
 
 export function geminiClient(key: string): GoogleGenAI {
-  if (!client || client.key !== key) client = { key, ai: new GoogleGenAI({ apiKey: key }) }
+  if (!client || client.key !== key) {
+    // GEMINI_BASE_URL: optional, to route through an API gateway or proxy.
+    const baseUrl = process.env.GEMINI_BASE_URL?.trim()
+    client = { key, ai: new GoogleGenAI({ apiKey: key, ...(baseUrl ? { httpOptions: { baseUrl } } : {}) }) }
+  }
   return client.ai
 }

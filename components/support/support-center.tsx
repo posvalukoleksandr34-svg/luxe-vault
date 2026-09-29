@@ -59,7 +59,7 @@ import { cn } from '@/lib/utils'
 type View =
   | { view: 'home' }
   | { view: 'topic'; topic: SupportTopic }
-  | { view: 'new'; category?: SupportCategory; orderNumber?: string }
+  | { view: 'new'; category?: SupportCategory; orderNumber?: string; message?: string }
   | { view: 'created'; ticket: SupportTicket; email: string }
   | { view: 'tickets' }
   | { view: 'ticket'; number: string; token?: string }
@@ -67,7 +67,8 @@ type View =
 function fromEntry(entry?: SupportEntry): View {
   if (!entry) return { view: 'home' }
   if (entry.view === 'ticket' && entry.number) return { view: 'ticket', number: entry.number, token: entry.token }
-  if (entry.view === 'new') return { view: 'new', category: entry.category, orderNumber: entry.orderNumber }
+  if (entry.view === 'new')
+    return { view: 'new', category: entry.category, orderNumber: entry.orderNumber, message: entry.message }
   if (entry.view === 'tickets') return { view: 'tickets' }
   return { view: 'home' }
 }
@@ -252,6 +253,7 @@ export function SupportCenter({
             orders={orders ?? []}
             initialCategory={view.category}
             initialOrder={view.orderNumber}
+            initialMessage={view.message}
             replySpan={replySpan}
             onCreated={(ticket, email) => {
               void refreshMine()
@@ -812,6 +814,7 @@ function NewTicketForm({
   orders,
   initialCategory,
   initialOrder,
+  initialMessage,
   replySpan,
   onCreated,
 }: {
@@ -821,6 +824,7 @@ function NewTicketForm({
   orders: Order[]
   initialCategory?: SupportCategory
   initialOrder?: string
+  initialMessage?: string
   replySpan: string
   onCreated: (ticket: SupportTicket, email: string) => void
 }) {
@@ -828,7 +832,7 @@ function NewTicketForm({
   const [orderNumber, setOrderNumber] = useState(initialOrder ?? '')
 
   const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(initialMessage ?? '')
   const [files, setFiles] = useState<File[]>([])
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
