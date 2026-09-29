@@ -3,64 +3,116 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Ribbon glow — slow bands of light drifting behind the hero, like light
- * passing across silk.
+ * Ribbon glow — broad bands of champagne silk turning slowly behind the hero.
  *
- * Tuned for the light theme: the ribbons are champagne and soft gold at very
- * low opacity with pearl-white highlights along one edge, and a single faint
- * rose-gold band for warmth. No saturated colour, no neon — on the ivory
- * ground they read as a sheen, not as graphics.
+ * Each ribbon is modelled as a strip of fabric: an axis that waves (the waves
+ * travel along it, like cloth in a slow draught) and a width that TWISTS along
+ * its length. The twist is what makes it read as silk rather than as a
+ * gradient: where the strip turns edge-on it pinches to a line, where it faces
+ * the light it opens into a full sheet, and a satin highlight slides across it
+ * as it turns. The light comes from above and in front, so the fabric is
+ * bronze where it turns away, champagne where it faces you, and pearl where
+ * it catches — and a soft gold glow spills from every edge.
  *
- * COST. A 2D canvas, drawn at a fraction of the hero's size (RENDER_SCALE)
- * and stretched by CSS — the upscale is what makes the edges soft, so no blur
- * filter runs per frame. ~30 fps is plenty for motion this slow. The loop
- * stops when the hero is scrolled out of view or the tab is hidden, and
- * everything is torn down on unmount.
+ * PALETTE. Deep bronze → gold → champagne → ivory, nothing cool and nothing
+ * saturated. On the ivory ground the ribbons read by VALUE — bronze edges
+ * against pearl highlights — which is what keeps them clearly visible without
+ * turning them into colour.
  *
- * MOTION. One full drift takes about a minute. The pointer bends the ribbons
- * a little toward it, eased so it glides rather than tracks. Under
- * prefers-reduced-motion (or the site's own "reduce animations" switch) a
- * single still frame is drawn and nothing moves.
+ * COST. A 2D canvas at half the hero's size, stretched by CSS (a little of the
+ * softness is that stretch). Per ribbon and frame: one filled shape with a
+ * glow, one clip and a handful of strokes — a few dozen draw calls in all.
+ * 24 fps — film rate — is plenty for motion this slow. The loop stops when the hero is
+ * scrolled out of view or the tab is hidden, and everything is torn down on
+ * unmount.
+ *
+ * MOTION. A full cycle takes about a minute. The pointer — or a finger on a
+ * phone — draws the ribbons nearest to it gently toward it, eased so they
+ * glide rather than track, and lets them go a few seconds after it stops.
+ * Under prefers-reduced-motion (or the site's own "reduce animations" switch)
+ * a single still frame is drawn and nothing moves.
  *
  * The canvas is decoration only: aria-hidden, pointer-events none, below the
  * hero's content — it can never take a click, a tap or a scroll.
  */
 
 type Ribbon = {
-  /** Vertical centre, as a fraction of the height. */
-  y: number
-  /** Thickness at its widest, as a fraction of the height. */
+  /** Ends of the ribbon's axis, as fractions of the hero. Past the edges on
+   *  purpose: a ribbon that starts on screen looks cut. */
+  from: [number, number]
+  to: [number, number]
+  /** Full width of the fabric, as a fraction of the hero's size. */
   width: number
-  /** Wave amplitude, fraction of the height. */
+  /** How far the axis waves, as a fraction of the hero's size. */
   amp: number
-  /** Spatial frequency (waves across the width). */
-  freq: number
-  /** Drift speed, radians per second. */
+  /** Waves along the length. */
+  waves: number
+  /** How fast the waves travel, radians per second. */
   speed: number
+  /** Half-turns of twist along the length. */
+  twist: number
+  /** How fast the twist rolls along, radians per second. */
+  roll: number
   phase: number
-  /** rgb of the body. */
-  color: [number, number, number]
-  /** Peak opacity of the body. */
+  /** Shifts the shading: below 0 a deeper, bronze ribbon; above, paler. */
+  tone: number
+  /** Opacity of the fabric. */
   alpha: number
 }
 
+/** Back to front. */
 const RIBBONS: Ribbon[] = [
-  // Champagne — the main sweep.
-  { y: 0.36, width: 0.2, amp: 0.1, freq: 1.1, speed: 0.1, phase: 0, color: [214, 186, 120], alpha: 0.22 },
-  // Soft gold, lower and slower.
-  { y: 0.62, width: 0.16, amp: 0.08, freq: 0.8, speed: -0.07, phase: 1.9, color: [197, 160, 89], alpha: 0.16 },
-  // Rose-gold, faint — warmth, not colour.
-  { y: 0.5, width: 0.24, amp: 0.12, freq: 0.6, speed: 0.05, phase: 3.4, color: [222, 176, 150], alpha: 0.1 },
-  // A thin pale-gold thread near the top.
-  { y: 0.2, width: 0.08, amp: 0.06, freq: 1.4, speed: -0.09, phase: 4.6, color: [226, 200, 140], alpha: 0.16 },
-  // A thin one low down.
-  { y: 0.8, width: 0.09, amp: 0.05, freq: 1.2, speed: 0.08, phase: 2.7, color: [205, 172, 110], alpha: 0.13 },
+  // Bronze-gold, broad and far back: the depth behind the others.
+  { from: [-0.2, 0.86], to: [1.2, 0.16], width: 0.4, amp: 0.07, waves: 1.1, speed: 0.11, twist: 1.3, roll: 0.07, phase: 0.6, tone: -0.12, alpha: 0.5 },
+  // The main champagne sheet, sweeping down across the frame.
+  { from: [-0.2, 0.18], to: [1.2, 0.78], width: 0.44, amp: 0.09, waves: 0.9, speed: -0.09, twist: 1.1, roll: -0.06, phase: 2.1, tone: 0.06, alpha: 0.86 },
+  // Gold, narrower, crossing low.
+  { from: [-0.2, 0.64], to: [1.2, 1.0], width: 0.26, amp: 0.06, waves: 1.4, speed: 0.13, twist: 1.6, roll: 0.09, phase: 4.2, tone: -0.06, alpha: 0.8 },
+  // A pale ivory ribbon high up, catching the light.
+  { from: [-0.2, 0.06], to: [1.2, 0.36], width: 0.2, amp: 0.05, waves: 1.2, speed: -0.12, twist: 1.4, roll: 0.08, phase: 5.3, tone: 0.18, alpha: 0.84 },
 ]
 
-/** Canvas pixels per CSS pixel. Low on purpose: the stretch is the blur. */
-const RENDER_SCALE = 0.35
-const FRAME_MS = 1000 / 30
-const SEGMENTS = 48
+/** Shading ramp, dark to light: deep bronze, bronze, gold, champagne, ivory. */
+const RAMP: [number, [number, number, number]][] = [
+  [0, [134, 98, 50]],
+  [0.3, [166, 126, 66]],
+  [0.55, [204, 167, 96]],
+  [0.8, [233, 213, 166]],
+  [1, [251, 243, 224]],
+]
+
+/** Canvas pixels per CSS pixel. */
+const RENDER_SCALE = 0.5
+const FRAME_MS = 1000 / 24
+/** Samples along each ribbon, and gradient stops along it. */
+const SAMPLES = 64
+const STOPS = 16
+/** The light, as a tilt of the fabric's surface: above and in front. */
+const LIGHT = 0.55
+/** Where the satin highlight sits — halfway between the light and the eye. */
+const SPECULAR = LIGHT / 2
+/** How much the fabric bulges across its width (radians of tilt, edge to centre). */
+const BULGE = 0.9
+/** Glow around each ribbon, CSS px. */
+const GLOW = 34
+
+function ramp(b: number): [number, number, number] {
+  const v = Math.min(1, Math.max(0, b))
+  for (let i = 1; i < RAMP.length; i++) {
+    const [p1, c1] = RAMP[i]
+    if (v <= p1) {
+      const [p0, c0] = RAMP[i - 1]
+      const k = (v - p0) / (p1 - p0)
+      return [0, 1, 2].map((j) => Math.round(c0[j] + (c1[j] - c0[j]) * k)) as [number, number, number]
+    }
+  }
+  return RAMP[RAMP.length - 1][1]
+}
+
+/** Brightness of fabric whose surface is tilted by `tilt` toward the light. */
+function lit(tilt: number, tone: number): number {
+  return 0.18 + 0.82 * Math.max(0, Math.cos(tilt - LIGHT)) + tone
+}
 
 export function HeroRibbons() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -73,9 +125,6 @@ export function HeroRibbons() {
     const still =
       document.documentElement.dataset.motion === 'reduce' ||
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    // Phones get the three main ribbons: less to draw, and a narrow screen
-    // has no room for five.
-    const ribbons = window.matchMedia?.('(max-width: 640px)').matches ? RIBBONS.slice(0, 3) : RIBBONS
 
     let w = 0
     let h = 0
@@ -84,9 +133,11 @@ export function HeroRibbons() {
     let running = false
     let visible = true
     const start = performance.now()
-    // Pointer, in 0–1 of the hero; `eased` glides toward `target`.
-    const target = { x: 0.5, y: 0.5 }
-    const eased = { x: 0.5, y: 0.5 }
+    // Pointer, in 0–1 of the hero. `eased` glides toward it; `eased.pull`
+    // rises while the pointer moves and fades a few seconds after it stops.
+    const pointer = { x: 0.5, y: 0.5 }
+    const eased = { x: 0.5, y: 0.5, pull: 0 }
+    let lastMove = -Infinity
 
     function resize() {
       const rect = canvas!.getBoundingClientRect()
@@ -98,56 +149,129 @@ export function HeroRibbons() {
 
     function draw(time: number) {
       const t = (time - start) / 1000
-      eased.x += (target.x - eased.x) * 0.03
-      eased.y += (target.y - eased.y) * 0.03
-      ctx!.clearRect(0, 0, w, h)
+      eased.x += (pointer.x - eased.x) * 0.04
+      eased.y += (pointer.y - eased.y) * 0.04
+      eased.pull += ((time - lastMove < 3000 ? 1 : 0) - eased.pull) * 0.025
 
-      for (const r of ribbons) {
-        const top: [number, number][] = []
-        const bottom: [number, number][] = []
-        for (let i = 0; i <= SEGMENTS; i++) {
-          const u = i / SEGMENTS
-          const x = u * w
-          // Two waves at different rates: the ribbon twists, not just bobs.
-          const wave =
-            Math.sin(u * Math.PI * 2 * r.freq + t * r.speed + r.phase) * r.amp +
-            Math.sin(u * Math.PI * 2 * r.freq * 0.47 - t * r.speed * 0.6 + r.phase * 1.7) * r.amp * 0.5
-          // The pointer draws the ribbon gently toward it, strongest nearby.
-          const pull = (eased.y - r.y) * 0.18 * Math.exp(-Math.pow((u - eased.x) * 2.2, 2))
-          const cy = (r.y + wave + pull) * h
-          // Thickness breathes along the length — where silk folds, it narrows.
-          const thick = r.width * h * (0.35 + 0.65 * Math.abs(Math.sin(u * Math.PI * r.freq + t * r.speed * 0.8 + r.phase)))
-          top.push([x, cy - thick / 2])
-          bottom.push([x, cy + thick / 2])
+      ctx!.clearRect(0, 0, w, h)
+      ctx!.lineJoin = 'round'
+      ctx!.lineCap = 'round'
+      // The hero's size: one number for widths and waves, so a ribbon is as
+      // bold on a phone held upright as on a wide screen — capped by the
+      // height, or on a wide screen the ribbons would fill the frame.
+      const size = Math.min(Math.sqrt(w * h), h * 1.1)
+
+      for (const r of RIBBONS) {
+        const ax = r.from[0] * w
+        const ay = r.from[1] * h
+        const len = Math.hypot(r.to[0] * w - ax, r.to[1] * h - ay)
+        // Along the axis, and across it (pointing down the screen).
+        const dx = (r.to[0] * w - ax) / len
+        const dy = (r.to[1] * h - ay) / len
+        const nx = -dy
+        const ny = dx
+        const half = (r.width * size) / 2
+        // The pointer in this ribbon's frame: how far along, how far across.
+        const px = eased.x * w - ax
+        const py = eased.y * h - ay
+        const pAlong = (px * dx + py * dy) / len
+        const pAcross = px * nx + py * ny
+
+        const top: number[] = []
+        const bottom: number[] = []
+        const shine: number[] = []
+        for (let i = 0; i <= SAMPLES; i++) {
+          const u = i / SAMPLES
+          // Two travelling waves at different rates: the ribbon undulates
+          // rather than bobbing.
+          let across =
+            (Math.sin(u * Math.PI * 2 * r.waves - t * r.speed + r.phase) +
+              0.45 * Math.sin(u * Math.PI * 2 * r.waves * 0.53 + t * r.speed * 0.7 + r.phase * 1.9)) *
+            r.amp *
+            size
+          // The pointer draws the nearest stretch toward it — strongest right
+          // under it, nothing for a ribbon far away.
+          const gap = pAcross - across
+          across +=
+            gap *
+            0.4 *
+            eased.pull *
+            Math.exp(-Math.pow(((u - pAlong) * len) / (0.35 * size), 2)) *
+            Math.exp(-Math.pow(gap / (0.55 * size), 2))
+          const cx = ax + dx * u * len + nx * across
+          const cy = ay + dy * u * len + ny * across
+          // The twist: the visible width is the fabric's width × cos(turn).
+          const turn = u * Math.PI * r.twist + t * r.roll + r.phase * 0.7
+          const hw = half * Math.abs(Math.cos(turn))
+          top.push(cx - nx * hw, cy - ny * hw)
+          bottom.push(cx + nx * hw, cy + ny * hw)
+          // The satin highlight: across the bulge, the line where the surface
+          // faces halfway between light and eye. Clamped to the fabric; where
+          // it would fall off an edge, its gradient below makes it invisible.
+          const facing = Math.atan(Math.tan(turn))
+          const at = Math.max(-1, Math.min(1, (facing - SPECULAR) / BULGE))
+          shine.push(cx + nx * hw * at, cy + ny * hw * at)
         }
 
-        // Body: fades in and out along the length, strongest mid-screen.
-        const [cr, cg, cb] = r.color
-        const along = ctx!.createLinearGradient(0, 0, w, 0)
-        along.addColorStop(0, `rgba(${cr},${cg},${cb},0)`)
-        along.addColorStop(0.3, `rgba(${cr},${cg},${cb},${r.alpha})`)
-        along.addColorStop(0.7, `rgba(${cr},${cg},${cb},${r.alpha})`)
-        along.addColorStop(1, `rgba(${cr},${cg},${cb},0)`)
-        ctx!.beginPath()
-        ctx!.moveTo(top[0][0], top[0][1])
-        for (const [x, y] of top) ctx!.lineTo(x, y)
-        for (let i = bottom.length - 1; i >= 0; i--) ctx!.lineTo(bottom[i][0], bottom[i][1])
-        ctx!.closePath()
-        ctx!.fillStyle = along
-        ctx!.fill()
+        // Shading along the length, from the twist at each stop.
+        const body = ctx!.createLinearGradient(ax, ay, ax + dx * len, ay + dy * len)
+        const rimTop = ctx!.createLinearGradient(ax, ay, ax + dx * len, ay + dy * len)
+        const rimBottom = ctx!.createLinearGradient(ax, ay, ax + dx * len, ay + dy * len)
+        const gloss = ctx!.createLinearGradient(ax, ay, ax + dx * len, ay + dy * len)
+        for (let j = 0; j < STOPS; j++) {
+          const u = j / (STOPS - 1)
+          const turn = u * Math.PI * r.twist + t * r.roll + r.phase * 0.7
+          const facing = Math.atan(Math.tan(turn))
+          const [br, bg, bb] = ramp(lit(facing, r.tone))
+          body.addColorStop(u, `rgb(${br},${bg},${bb})`)
+          // Upper edge tilts up into the light; lower edge away from it.
+          const up = Math.min(1, lit(facing + BULGE * 0.85, r.tone))
+          const down = Math.max(0, 1 - lit(facing - BULGE * 0.85, r.tone))
+          rimTop.addColorStop(u, `rgba(255,250,236,${(0.25 + 0.55 * up).toFixed(3)})`)
+          rimBottom.addColorStop(u, `rgba(110,76,34,${(0.12 + 0.5 * down).toFixed(3)})`)
+          const off = Math.abs((facing - SPECULAR) / BULGE)
+          const spec = Math.max(0, Math.min(1, (1 - off) / 0.4)) * Math.pow(Math.abs(Math.cos(turn)), 0.5)
+          gloss.addColorStop(u, `rgba(255,252,242,${spec.toFixed(3)})`)
+        }
 
-        // Highlight: a pearl-white line riding the upper edge — the
-        // reflection that makes a band read as a material.
-        const sheen = ctx!.createLinearGradient(0, 0, w, 0)
-        sheen.addColorStop(0, 'rgba(255,255,255,0)')
-        sheen.addColorStop(0.5, `rgba(255,255,255,${Math.min(0.55, r.alpha * 3)})`)
-        sheen.addColorStop(1, 'rgba(255,255,255,0)')
-        ctx!.beginPath()
-        ctx!.moveTo(top[0][0], top[0][1] + 1)
-        for (const [x, y] of top) ctx!.lineTo(x, y + 1)
-        ctx!.strokeStyle = sheen
-        ctx!.lineWidth = Math.max(1, h * 0.012)
-        ctx!.stroke()
+        const shape = new Path2D()
+        shape.moveTo(top[0], top[1])
+        for (let i = 2; i < top.length; i += 2) shape.lineTo(top[i], top[i + 1])
+        for (let i = bottom.length - 2; i >= 0; i -= 2) shape.lineTo(bottom[i], bottom[i + 1])
+        shape.closePath()
+
+        // The fabric, with its glow spilling out around it.
+        ctx!.save()
+        ctx!.globalAlpha = r.alpha
+        ctx!.shadowColor = 'rgba(206,160,72,0.55)'
+        ctx!.shadowBlur = GLOW * RENDER_SCALE
+        ctx!.fillStyle = body
+        ctx!.fill(shape)
+        ctx!.restore()
+
+        // Light and shade inside it: clipped, so nothing spills past an edge.
+        ctx!.save()
+        ctx!.clip(shape)
+        ctx!.globalAlpha = r.alpha
+        const line = (points: number[], width: number, style: CanvasGradient) => {
+          ctx!.beginPath()
+          ctx!.moveTo(points[0], points[1])
+          for (let i = 2; i < points.length; i += 2) ctx!.lineTo(points[i], points[i + 1])
+          ctx!.lineWidth = width
+          ctx!.strokeStyle = style
+          ctx!.stroke()
+        }
+        // Shade along the lower edge — the fold turning away. Only its
+        // inner half shows, so it reads as volume, not an outline.
+        line(bottom, half * 0.9, rimBottom)
+        // Light along the upper edge: a fine bright line.
+        line(top, 3 * RENDER_SCALE, rimTop)
+        // The satin highlight: a broad soft sheen with a brighter core.
+        ctx!.globalAlpha = r.alpha * 0.45
+        line(shine, half * 0.55, gloss)
+        ctx!.globalAlpha = r.alpha * 0.9
+        line(shine, half * 0.12, gloss)
+        ctx!.restore()
       }
     }
 
@@ -176,10 +300,18 @@ export function HeroRibbons() {
       resize()
       draw(performance.now())
     }
-    const onPointer = (e: PointerEvent) => {
+    const aim = (clientX: number, clientY: number) => {
       const rect = canvas!.getBoundingClientRect()
-      target.x = (e.clientX - rect.left) / rect.width
-      target.y = (e.clientY - rect.top) / rect.height
+      pointer.x = (clientX - rect.left) / rect.width
+      pointer.y = (clientY - rect.top) / rect.height
+      lastMove = performance.now()
+    }
+    const onPointer = (e: PointerEvent) => aim(e.clientX, e.clientY)
+    // A finger that starts a scroll stops sending pointer events; touch
+    // events keep coming, so the ribbons follow a swipe too.
+    const onTouch = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      if (touch) aim(touch.clientX, touch.clientY)
     }
     const onVisibility = () => (document.hidden ? pause() : play())
 
@@ -192,7 +324,11 @@ export function HeroRibbons() {
     observer.observe(canvas)
 
     window.addEventListener('resize', onResize, { passive: true })
-    if (!still) window.addEventListener('pointermove', onPointer, { passive: true })
+    if (!still) {
+      window.addEventListener('pointermove', onPointer, { passive: true })
+      window.addEventListener('touchstart', onTouch, { passive: true })
+      window.addEventListener('touchmove', onTouch, { passive: true })
+    }
     document.addEventListener('visibilitychange', onVisibility)
     play()
 
@@ -201,6 +337,8 @@ export function HeroRibbons() {
       observer.disconnect()
       window.removeEventListener('resize', onResize)
       window.removeEventListener('pointermove', onPointer)
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('touchmove', onTouch)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
