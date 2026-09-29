@@ -89,7 +89,13 @@ export default function CheckoutPage() {
             so stacking them would push the total below the fold on every
             screen. The summary sticks so the amount stays visible while the
             customer works down the form. */}
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
+        {/* grid-cols-1 on a phone is load-bearing: without an explicit
+            column the grid's single implicit column is `auto`, which grows to
+            the widest min-content inside it — and a cart line's name is
+            `truncate` (nowrap), so one long product name widened the column,
+            and the form with it, past the screen. minmax(0,1fr) keeps the
+            column at the container's width; the name ellipsises instead. */}
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
           <div className="min-w-0">
             <CheckoutFlow onOrderCreated={() => setOrderPlaced(true)} />
           </div>
@@ -97,7 +103,7 @@ export default function CheckoutPage() {
           {/* Hidden once the order exists: the cart is empty by then, and an
               empty summary beside a live payment form is just confusing. */}
           {!orderPlaced && (
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
             <div className="card-gold p-5">
               <h2 className="mb-4 border-b border-border/50 pb-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {t('cart.title')} · {cartCount}
