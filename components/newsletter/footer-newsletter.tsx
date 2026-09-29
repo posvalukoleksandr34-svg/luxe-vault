@@ -2,7 +2,7 @@
 
 import { Check, Loader2 } from 'lucide-react'
 import { Link } from '@/components/locale-link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { isValidEmail } from '@/lib/validation'
@@ -18,17 +18,13 @@ type State = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; already: b
  * applies to (the request sends `consent: true` only from here).
  */
 export function FooterNewsletter() {
-  const { t, locale, currentUser, pushToast } = useStore()
+  const { t, locale, pushToast } = useStore()
   const [email, setEmail] = useState('')
   const [invalid, setInvalid] = useState(false)
+  // The field starts EMPTY on every visit. It used to be pre-filled with the
+  // signed-in account's address, so the same email sat in it on every page
+  // load — including after that address had subscribed — and read as stuck.
   const [state, setState] = useState<State>({ kind: 'idle' })
-  // Set once a subscription went through, so the account email below is not
-  // written back into the field the success just emptied.
-  const subscribed = useRef(false)
-
-  useEffect(() => {
-    if (currentUser?.email && !subscribed.current) setEmail((v) => v || currentUser.email)
-  }, [currentUser])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -52,7 +48,6 @@ export function FooterNewsletter() {
         // Success empties the field and says so: a toast, and the inline
         // confirmation that stands in the form's place for a few seconds
         // before the (now empty) form comes back.
-        subscribed.current = true
         setEmail('')
         setState({ kind: 'done', already })
         pushToast({ title: already ? t('footer.newsAlready') : t('footer.newsThanks'), variant: already ? 'default' : 'success' })
@@ -104,7 +99,9 @@ export function FooterNewsletter() {
               name="email"
               type="email"
               inputMode="email"
-              autoComplete="email"
+              // "off": a sign-up box is not a form the browser should fill
+              // from saved addresses on every visit.
+              autoComplete="off"
               spellCheck={false}
               value={email}
               onChange={(e) => {
