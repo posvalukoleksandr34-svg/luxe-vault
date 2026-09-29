@@ -18,12 +18,14 @@ import { cn } from '@/lib/utils'
  * style — a scroll must not re-render the dialog sixty times a second. React
  * only hears about a new value when the centred NUMBER changes.
  *
- * UNSET UNTIL TOUCHED. With `value` empty the strip rests on `restAt`, drawn
- * muted, and reports nothing: the finder asks the shopper for their own
- * numbers, so a resting position must never be mistaken for an answer. The
- * first swipe, tap or key press sets it (and turns the centre gold).
+ * STARTS AT 0. The first slot is a "0" that means "not chosen": an empty
+ * `value` rests the strip there, drawn muted, and scrolling back onto it
+ * clears the value again. The real range (min–max) follows it, so the first
+ * swipe to the right lands on `min`. Nothing is reported for the 0 slot — the
+ * finder asks the shopper for their own numbers.
  *
- * Accessible as a slider: focusable, arrow keys ±1, Page keys ±10,
+ * Slots are addressed by INDEX: 0 is the zero slot, 1 is `min`, `count` is
+ * `max`. Accessible as a slider: focusable, arrow keys ±1, Page keys ±10,
  * Home/End, and announced with its value and unit.
  */
 
@@ -33,8 +35,6 @@ type Props = {
   /** '' until the customer has chosen; otherwise the value as a string. */
   value: string
   onChange: (value: string) => void
-  /** Where an unset strip rests. */
-  restAt: number
   unit: string
   /** Accessible name. */
   label: string
@@ -50,31 +50,36 @@ const ITEM = 58
 const REACH = 3
 
 export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPicker(
-  { min, max, value, onChange, restAt, unit, label, id, invalid, describedBy },
+  { min, max, value, onChange, unit, label, id, invalid, describedBy },
   ref,
 ) {
   const scroller = useRef<HTMLDivElement>(null)
   useImperativeHandle(ref, () => scroller.current as HTMLDivElement)
 
+  /** Real values; index 0 is the zero slot before them. */
   const count = max - min + 1
-  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n)))
+  const clampIndex = (i: number) => Math.min(count, Math.max(0, Math.round(i)))
+  const valueAt = (i: number) => (i <= 0 ? 0 : min + i - 1)
+  const indexOf = (v: number) => (v < min ? 0 : Math.min(count, Math.round(v) - min + 1))
+
   const parsed = value.trim() ? Number(value.replace(',', '.')) : NaN
-  const isSet = Number.isFinite(parsed)
-  const shown = isSet ? clamp(parsed) : clamp(restAt)
+  const isSet = Number.isFinite(parsed) && parsed >= min
+  const shownIndex = isSet ? indexOf(parsed) : 0
+  const shown = valueAt(shownIndex)
 
   /** The customer has touched this strip: from now on, scrolling is choosing. */
   const engaged = useRef(false)
-  /** Last value reported upward — a prop equal to it needs no re-scroll. */
-  const lastEmitted = useRef<number | null>(isSet ? shown : null)
-  const lastIndex = useRef(shown - min)
+  /** Last index reported upward — a prop equal to it needs no re-scroll. */
+  const lastEmitted = useRef<number>(shownIndex)
+  const lastIndex = useRef(shownIndex)
   const frame = useRef(0)
+  /** Where a key press or tap is scrolling to — the base for the next press,
+   *  so five quick → presses make five steps even mid-animation. */
+  const target = useRef<number | null>(null)
   /** Items styled by the last paint — the ones to reset when the centre jumps. */
   const painted = useRef<Set<number>>(new Set())
   /** Set while a mouse drag moved the strip, so its closing click is ignored. */
   const dragMoved = useRef(false)
-  /** Where a key press or tap is scrolling to — the base for the next press,
-   *  so five quick → presses make five steps even mid-animation. */
-  const target = useRef<number | null>(null)
 
   /** Scale and fade every number by its distance from the centre. */
   const paint = useCallback(() => {
@@ -109,33 +114,30 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
     }
   }, [])
 
-  /** Puts `n` under the marker. */
-  const scrollToValue = useCallback(
-    (n: number, smooth: boolean) => {
+  /** Puts slot `i` under the marker. */
+  const scrollToIndex = useCallback(
+    (i: number, smooth: boolean) => {
       const el = scroller.current
       if (!el) return
-      const to = clamp(n)
+      const to = clampIndex(i)
       target.current = smooth ? to : null
-      el.scrollTo({ left: (to - min) * ITEM, behavior: smooth ? 'smooth' : 'auto' })
+      el.scrollTo({ left: to * ITEM, behavior: smooth ? 'smooth' : 'auto' })
       paint()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [min, max, paint],
+    [count, paint],
   )
 
   // Follow the value from outside (reset on open, "use my saved
   // measurements") — but not echoes of our own emits, which would fight the
   // finger mid-flick.
   useLayoutEffect(() => {
-    if (isSet && lastEmitted.current === shown) return
-    if (!isSet) {
-      engaged.current = false
-      lastEmitted.current = null
-    } else {
-      lastEmitted.current = shown
-    }
-    lastIndex.current = shown - min
-    scrollToValue(shown, false)
+    if (lastEmitted.current === shownIndex && scroller.current?.dataset.ready) return
+    if (!isSet) engaged.current = false
+    lastEmitted.current = shownIndex
+    lastIndex.current = shownIndex
+    scrollToIndex(shownIndex, false)
+    if (scroller.current) scroller.current.dataset.ready = 'true'
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
@@ -146,13 +148,13 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
       cancelAnimationFrame(frame.current)
       frame.current = requestAnimationFrame(() => {
         paint()
-        const index = Math.round(el.scrollLeft / ITEM)
-        if (target.current !== null && min + index === target.current) target.current = null
+        const index = clampIndex(el.scrollLeft / ITEM)
+        if (target.current !== null && index === target.current) target.current = null
         if (index === lastIndex.current || !engaged.current) return
         lastIndex.current = index
-        const next = clamp(min + index)
-        lastEmitted.current = next
-        onChange(String(next))
+        lastEmitted.current = index
+        // The zero slot reports "not chosen".
+        onChange(index === 0 ? '' : String(valueAt(index)))
         // A detent under the thumb, where the device can give one (Android
         // Chrome; iOS Safari has no web vibration and simply ignores it).
         try {
@@ -170,28 +172,21 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [min, max, onChange, paint])
 
-  /** First contact: the resting number becomes the chosen one. */
+  /** First contact: from here on, the centred slot is the customer's choice. */
   const engage = () => {
-    if (engaged.current) return
     engaged.current = true
-    if (!isSet) {
-      const current = clamp(min + Math.round((scroller.current?.scrollLeft ?? 0) / ITEM))
-      lastEmitted.current = current
-      lastIndex.current = current - min
-      onChange(String(current))
-    }
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 10, PageDown: -10 }[e.key]
     let next: number | null = null
-    if (step !== undefined) next = (target.current ?? shown) + step
-    else if (e.key === 'Home') next = min
-    else if (e.key === 'End') next = max
+    if (step !== undefined) next = (target.current ?? shownIndex) + step
+    else if (e.key === 'Home') next = 1
+    else if (e.key === 'End') next = count
     if (next === null) return
     e.preventDefault()
     engage()
-    scrollToValue(next, true)
+    scrollToIndex(next, true)
   }
 
   // Mouse drag on desktop: scroll-snap handles touch and wheel, but a mouse
@@ -217,7 +212,7 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
     drag.current = null
     const el = scroller.current
     el.style.scrollSnapType = ''
-    scrollToValue(min + Math.round(el.scrollLeft / ITEM), true)
+    scrollToIndex(el.scrollLeft / ITEM, true)
   }
 
   return (
@@ -260,17 +255,17 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
         )}
         // width 0 + min-width 100%: the strip is as wide as its container but
         // contributes NOTHING to the container's intrinsic width. Without it a
-        // grid parent (the dialog) sized itself to all 81 numbers in a row —
+        // grid parent (the dialog) sized itself to every number in a row —
         // 5,772px — and the marker no longer sat over the middle of the view.
         style={{ touchAction: 'pan-x', width: 0, minWidth: '100%' }}
       >
         {/* Spacers let the first and last numbers reach the centre. */}
         <span aria-hidden className="shrink-0" style={{ width: `calc(50% - ${ITEM / 2}px)` }} />
-        {Array.from({ length: count }, (_, i) => {
-          const n = min + i
+        {Array.from({ length: count + 1 }, (_, i) => {
+          const n = valueAt(i)
           return (
             <button
-              key={n}
+              key={i}
               type="button"
               tabIndex={-1}
               aria-hidden
@@ -282,17 +277,18 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
                   return
                 }
                 engage()
-                scrollToValue(n, true)
+                scrollToIndex(i, true)
               }}
               className="scroll-picker__item flex shrink-0 snap-center flex-col items-center justify-center rounded-none"
               style={{ width: ITEM }}
             >
               <span className="scroll-picker__num font-serif text-[15px] leading-none tabular-nums">{n}</span>
-              {/* A ruler under the numbers: long every 10, medium every 5. */}
+              {/* A ruler under the numbers: long every 10, medium every 5; the
+                  zero slot stands apart with a long mark of its own. */}
               <span
                 className={cn(
                   'mt-3 w-px rounded-full bg-muted-foreground/35',
-                  n % 10 === 0 ? 'h-3' : n % 5 === 0 ? 'h-2' : 'h-1.5',
+                  i === 0 || n % 10 === 0 ? 'h-3' : n % 5 === 0 ? 'h-2' : 'h-1.5',
                 )}
               />
             </button>
