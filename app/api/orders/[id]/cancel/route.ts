@@ -26,10 +26,8 @@ export const dynamic = 'force-dynamic'
  * where the shop believes the order is dead while its PaymentIntent is still
  * confirmable — and the customer gets charged for it.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('account.write', user.id)

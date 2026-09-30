@@ -39,17 +39,28 @@ export function isCrossSiteWrite(method: string, pathname: string, headers: Head
 
   const fetchSite = headers.get('sec-fetch-site')
   if (fetchSite === 'cross-site') return true
-  // 'same-origin', 'same-site' (a subdomain of ours) and 'none' (typed URL,
-  // bookmark) are all first-party.
+  // 'same-origin' and 'none' (typed URL, bookmark) are first-party.
+  // 'same-site' is ANOTHER host under the same registrable domain — any
+  // subdomain. Nothing on this site posts across hosts, and a subdomain that
+  // is ever taken over (a dangling DNS record) must not be able to write
+  // here, so it passes only when its Origin is this very host.
+  if (fetchSite === 'same-site') return !sameHost(headers)
   if (fetchSite) return false
 
   // Older browsers without Fetch Metadata: fall back to Origin.
   const origin = headers.get('origin')
   if (!origin || origin === 'null') return origin === 'null'
+  return !sameHost(headers)
+}
+
+/** True when the request's Origin names the host it was sent to. */
+function sameHost(headers: Headers): boolean {
+  const origin = headers.get('origin')
   const host = requestHost(headers)
+  if (!origin || origin === 'null' || !host) return false
   try {
-    return !host || new URL(origin).host !== host
+    return new URL(origin).host === host
   } catch {
-    return true
+    return false
   }
 }

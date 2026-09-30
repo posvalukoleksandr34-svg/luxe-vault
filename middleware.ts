@@ -61,8 +61,23 @@ const EDGE_LOCK_EXEMPT_PREFIXES = ['/api/cron/']
  * (docs/security/phase-1-perimeter.md). Off in development, so a local
  * .env with the secret in it does not lock out localhost.
  */
+let warnedUnlocked = false
+
 function isEdgeBypass(request: NextRequest): boolean {
-  if (process.env.NODE_ENV !== 'production' || !isEdgeLockConfigured()) return false
+  if (process.env.NODE_ENV !== 'production') return false
+  if (!isEdgeLockConfigured()) {
+    // Off by design until the Cloudflare rule exists — but a production
+    // deployment running without it is reachable around the WAF, and that
+    // must be visible in the logs rather than silent. Once per instance.
+    if (process.env.VERCEL_ENV === 'production' && !warnedUnlocked) {
+      warnedUnlocked = true
+      console.error(
+        '[security] EDGE_ORIGIN_SECRET is not set: the origin lock is OFF and this deployment ' +
+          'answers directly on *.vercel.app, bypassing Cloudflare (docs/security/phase-1-perimeter.md).',
+      )
+    }
+    return false
+  }
   const { pathname } = request.nextUrl
   if (EDGE_LOCK_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false
   return !cameThroughEdge(request.headers)

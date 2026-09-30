@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic'
  * Cached at the edge for an hour — purchase history does not move minute to
  * minute, and a product page should never wait on this.
  */
-export async function GET(_request: Request, { params }: { params: { slug: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const stat = await readSizeStat(params.slug)
   return NextResponse.json(
     { stat },

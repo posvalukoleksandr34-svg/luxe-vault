@@ -19,11 +19,12 @@ import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 
 export const metadata: Metadata = stylistMetadata(DEFAULT_LOCALE)
 
-export default function StylistPage({
-  searchParams,
-}: {
-  searchParams?: { product?: string }
-}) {
+export default async function StylistPage(
+  props: {
+    searchParams?: Promise<{ product?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   // `?product=` is the product page's "Style this piece" entry point: the look
   // is built around that piece instead of from scratch.
   const anchor = typeof searchParams?.product === 'string' ? searchParams.product : undefined

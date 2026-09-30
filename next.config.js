@@ -1,5 +1,21 @@
 const isDev = process.env.NODE_ENV !== 'production'
 
+/**
+ * The Supabase project's own host, from NEXT_PUBLIC_SUPABASE_URL (set at build
+ * time on Vercel). Anyone can create a *.supabase.co project, so the policies
+ * below name THIS project rather than the whole domain: a wildcard would let
+ * injected script send data to, or load images from, an attacker's project.
+ * Falls back to the wildcard only when the variable is absent (a local build
+ * without Supabase), where there is nothing to protect.
+ */
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').host || '*.supabase.co'
+  } catch {
+    return '*.supabase.co'
+  }
+})()
+
 // One UI dictionary per language (lib/ui-dict/*.json), resolved from
 // lib/ui-strings.ts before anything is compiled — here rather than in an npm
 // script so every way of running `next build` or `next dev` produces them.
@@ -17,7 +33,7 @@ require('./scripts/ui-dictionaries').generate()
  *   frames from js.stripe.com / hooks.stripe.com, card confirmation against
  *   api.stripe.com. This is the set Stripe documents for Elements.
  * - Supabase: auth and queries over HTTPS, realtime over WSS, product imagery
- *   from Storage. Wildcarded because the project host is per-environment.
+ *   from Storage — this project's host only (SUPABASE_HOST above).
  *   Supabase is kept OUT of script-src and style-src on purpose: anyone can
  *   create a *.supabase.co project and serve files from its public bucket, so
  *   allowing it there would let an attacker's own project supply code or CSS.
@@ -58,7 +74,7 @@ const CSP_DIRECTIVES = {
     "'self'",
     // The product placeholder SVG and the crypto-payment QR code.
     'data:',
-    'https://*.supabase.co',
+    `https://${SUPABASE_HOST}`,
     'https://*.stripe.com',
     'https://images.unsplash.com',
     // Measurement beacons sent as images by GA4 and the Meta Pixel.
@@ -71,8 +87,8 @@ const CSP_DIRECTIVES = {
   'font-src': ["'self'", 'data:'],
   'connect-src': [
     "'self'",
-    'https://*.supabase.co',
-    'wss://*.supabase.co',
+    `https://${SUPABASE_HOST}`,
+    `wss://${SUPABASE_HOST}`,
     'https://api.stripe.com',
     // GA4 collection endpoints and the Meta Pixel's.
     'https://www.google-analytics.com',
@@ -119,6 +135,8 @@ const contentSecurityPolicy = Object.entries(CSP_DIRECTIVES)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // No `X-Powered-By: Next.js` — it only tells a scanner which advisories to try.
+  poweredByHeader: false,
   // Lint runs in the build again. It was disabled, which meant nothing ever
   // failed on a lint error and the two warnings it had been hiding went
   // unnoticed for a long time — one of them a real stale-closure bug that
@@ -131,22 +149,19 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  experimental: {
-    // Server Actions (actions/*.ts). Stable from Next 14; behind this flag in
-    // 13.5. They POST to the page's own origin, so the CSP needs nothing new.
-    serverActions: true,
-    // Loaded by Node at runtime instead of bundled by webpack. @google/genai
-    // (the AI stylist's copy) pulls in `ws` for its Live API, and `ws` probes
-    // for two OPTIONAL native add-ons — bufferutil and utf-8-validate — inside
-    // a try/catch. Node handles that; webpack cannot, and printed a pair of
-    // "Module not found" warnings on every compile of /api/stylist. Harmless,
-    // but noise like that is how a real build warning gets scrolled past.
-    // pdfkit (the admin's PDF invoices) finds its own files at runtime
-    // relative to where it is installed; bundled by webpack, those paths point
-    // nowhere and the first invoice fails with ENOENT. Left external it runs
-    // from node_modules as published.
-    serverComponentsExternalPackages: ['@google/genai', 'pdfkit'],
-  },
+  // Server Actions (actions/*.ts) are stable from Next 14 and need no flag.
+  //
+  // Loaded by Node at runtime instead of bundled by webpack. @google/genai
+  // (the AI stylist's copy) pulls in `ws` for its Live API, and `ws` probes
+  // for two OPTIONAL native add-ons — bufferutil and utf-8-validate — inside
+  // a try/catch. Node handles that; webpack cannot, and printed a pair of
+  // "Module not found" warnings on every compile of /api/stylist. Harmless,
+  // but noise like that is how a real build warning gets scrolled past.
+  // pdfkit (the admin's PDF invoices) finds its own files at runtime
+  // relative to where it is installed; bundled by webpack, those paths point
+  // nowhere and the first invoice fails with ENOENT. Left external it runs
+  // from node_modules as published.
+  serverExternalPackages: ['@google/genai', 'pdfkit'],
   images: {
     // Product and collection imagery lives in Supabase Storage, so the
     // optimiser has to be allowed to fetch from the project's public bucket.
@@ -158,16 +173,24 @@ const nextConfig = {
         hostname: 'hifnrpgbxlzrpwxldjqc.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
-      // Seed catalogue images. Safe to drop once no product references them.
-      { protocol: 'https', hostname: 'images.unsplash.com' },
+      // The department tiles' photographs (components/sections-grid.tsx),
+      // and only Unsplash's photo paths — not anything else that host serves.
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/photo-*' },
     ],
+    // SVG is never optimised (it can carry script); this is the default,
+    // stated so that nobody turns it on to make a logo "work".
+    dangerouslyAllowSVG: false,
     // Widths actually used by the layout: the product grid is a 3-up at
     // 1180px, the detail gallery is a single column, and the cart/checkout
     // thumbnails are 56-96px. Trimming the default list means fewer cached
     // variants per image and fewer optimiser invocations.
     imageSizes: [64, 96, 128, 256, 384],
     deviceSizes: [640, 828, 1080, 1200, 1920],
-    formats: ['image/avif', 'image/webp'],
+    // WebP only. AVIF was the path of the optimiser's remote-code-execution
+    // advisory (GHSA-2xp9-vwfh-vxw4, fixed by the upgrade to 15.5.26); it is
+    // also several times slower to encode, and its saving over WebP on these
+    // photographs is small. Re-add 'image/avif' only with a measured reason.
+    formats: ['image/webp'],
     // A year. Object names carry a random id, so a replaced image is a new
     // URL and there is nothing to invalidate.
     minimumCacheTTL: 31536000,

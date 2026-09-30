@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic'
  * customer is emailed the reply with a link back to the conversation, and
  * sees the unread mark on the support button next time they visit.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const form = await readSupportForm(request)

@@ -12,10 +12,8 @@ const VALID_STATUSES: OrderStatus[] = ORDER_STATUSES
 
 // Auth is already enforced by middleware.ts for every /api/admin/* path.
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const body = await readJsonObject<{ status?: string; trackingNumber?: unknown; courierName?: unknown }>(request)
@@ -90,10 +88,8 @@ export async function PATCH(
   return NextResponse.json({ order: updated })
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const removed = await deleteOrder(params.id)

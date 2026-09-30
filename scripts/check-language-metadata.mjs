@@ -16,10 +16,15 @@
  *
  * Exits non-zero if any check fails, so it can gate a deploy.
  */
+import { randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 const PROBE_EMAIL = 'language-metadata-check@example.com'
-const PROBE_PASSWORD = 'CheckPassword123!'
+// Random per run: the probe account is created and deleted by this script,
+// and a fixed password in the source is one anyone could sign in with if a
+// run ever died before the delete. (The old fixed value is in git history —
+// treat it as burned.)
+const PROBE_PASSWORD = randomBytes(24).toString('base64url')
 
 let failures = 0
 const pass = (m) => console.log(`  PASS  ${m}`)

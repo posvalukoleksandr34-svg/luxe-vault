@@ -6,7 +6,8 @@ import { findCartByToken } from '@/lib/server/abandoned-carts'
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { robots: { index: false, follow: false } }
 
-export default async function RestoreCartPage({ params }: { params: { token: string } }) {
+export default async function RestoreCartPage(props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const cart = await findCartByToken(params.token)
   // An expired cart (idle for a week) still restores — the store drops
   // anything no longer sold. An ordered one does not: it was bought.

@@ -21,7 +21,8 @@ const payoutSchema = z.object({
  *
  * Idempotent: a second press answers "already", never a second deduction.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
 

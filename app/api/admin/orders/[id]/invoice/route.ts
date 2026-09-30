@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic'
  * says now. Never cached, by the browser or anything between, because it
  * carries a customer's name and address.
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
 

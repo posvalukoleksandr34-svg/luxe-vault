@@ -41,19 +41,21 @@ export async function generateStaticParams() {
   })
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { collection: string }
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ collection: string }>
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   return collectionMetadataFor(params.collection, DEFAULT_LOCALE)
 }
 
-export default async function CollectionPage({
-  params,
-}: {
-  params: { collection: string; locale?: string }
-}) {
+export default async function CollectionPage(
+  props: {
+    params: Promise<{ collection: string; locale?: string }>
+  }
+) {
+  const params = await props.params;
   const node = await findCollection(params.collection)
   if (!node) notFound()
 

@@ -16,6 +16,7 @@ import { reclaimOrderCoupon, releaseOrderCoupon } from '@/lib/server/promo-codes
 import { grantReferralReward, reverseReferralReward } from '@/lib/server/referrals'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { safeEqual } from '@/lib/server/secure-compare'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
 
 /**
@@ -472,7 +473,7 @@ export async function getOrdersByCredentials(
   const wanted = new Map(credentials.map((c) => [c.id, c.token]))
   return asRows(data)
     .map(rowToOrder)
-    .filter((o) => Boolean(o.lookupToken) && wanted.get(o.id) === o.lookupToken)
+    .filter((o) => safeEqual(o.lookupToken, wanted.get(o.id)))
 }
 
 /** Every order belonging to a signed-in customer. */

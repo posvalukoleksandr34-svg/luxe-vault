@@ -9,13 +9,14 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 }
 
-export default function Page({
-  params,
-  searchParams,
-}: {
-  params: { number: string }
-  searchParams: { t?: string | string[] }
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ number: string }>
+    searchParams: Promise<{ t?: string | string[] }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const token = typeof searchParams.t === 'string' ? searchParams.t : undefined
   return <SupportPage entry={{ view: 'ticket', number: decodeURIComponent(params.number), token }} />
 }

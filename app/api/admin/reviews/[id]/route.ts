@@ -10,10 +10,8 @@ const VALID_STATUSES: ReviewStatus[] = ['pending', 'approved', 'rejected']
 
 // Auth is already enforced by middleware.ts for every /api/admin/* path.
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const body = await readJsonObject<{ status?: string }>(request)
@@ -32,10 +30,8 @@ export async function PATCH(
   return NextResponse.json({ review: updated })
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const removed = await deleteReview(params.id)

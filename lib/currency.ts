@@ -136,19 +136,33 @@ export function chargeAmount(
   return roundMinor(convertFromChf(amountChf, currency, rates))
 }
 
+/**
+ * The de-CH thousands separator, one character everywhere.
+ *
+ * Node and the browsers ship different CLDR data: one groups "1'890" with an
+ * ASCII apostrophe, another "1’890" with U+2019. A price rendered on the
+ * server and hydrated in the browser then differed by that one character,
+ * which React 19 reports as a hydration failure and answers by re-rendering
+ * the whole page on the client. Normalised here, the text is identical on
+ * both sides.
+ */
+const GROUP = '’'
+
 function formatIn(value: number, currency: string, fractionDigits: number): string {
   const digits = { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }
   // Intl only knows ISO 4217 codes; USDT (and any coin ticker) is laid out the
   // same way by hand — code, space, de-CH grouped figure.
-  if (currency.length !== 3) {
-    return `${currency} ${new Intl.NumberFormat('de-CH', digits).format(value)}`
-  }
-  return new Intl.NumberFormat('de-CH', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'code',
-    ...digits,
-  }).format(value)
+  const text =
+    currency.length !== 3
+      ? `${currency} ${new Intl.NumberFormat('de-CH', digits).format(value)}`
+      : new Intl.NumberFormat('de-CH', {
+          style: 'currency',
+          currency,
+          currencyDisplay: 'code',
+          ...digits,
+        }).format(value)
+  // Also folds a narrow no-break space some ICU versions put after the code.
+  return text.replace(/['’]/g, GROUP).replace(/[\u00a0\u202f]/g, ' ')
 }
 
 /** Cents only when there are any: "EUR 117.59", but "CHF 200". */

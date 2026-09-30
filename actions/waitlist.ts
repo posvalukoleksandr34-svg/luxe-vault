@@ -56,7 +56,7 @@ export async function joinWaitlist(input: JoinWaitlistInput): Promise<JoinWaitli
   // Before the rate limit: a mistyped address costs the customer nothing.
   if (!isValidEmail(email)) return { ok: false, error: 'INVALID_EMAIL' }
 
-  const h = headers()
+  const h = await headers()
   const ip = clientIp(h) || 'unidentified'
   const limit = await checkLimit('stock.alert', ip)
   if (!limit.allowed) return { ok: false, error: 'RATE_LIMITED' }

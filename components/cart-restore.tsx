@@ -1,5 +1,6 @@
 'use client'
 
+import { Link } from '@/components/locale-link'
 import { Loader2, ShoppingBag } from 'lucide-react'
 import { useEffect } from 'react'
 import { readCart, writeCart } from '@/lib/cart-storage'
@@ -52,12 +53,12 @@ export function CartRestore({
         <span aria-hidden className="mt-6 h-px w-12 bg-gold" />
         <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground">{title}</h1>
         <p className="mt-4 text-sm font-light leading-relaxed text-foreground/80">{hint}</p>
-        <a
+        <Link
           href="/"
           className="tap-safe mt-10 rounded-xl border border-gold px-8 py-3 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors hover:bg-gold hover:text-gold-foreground"
         >
           {t('state.goToCatalog')}
-        </a>
+        </Link>
       </div>
     </main>
   )

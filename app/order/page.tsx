@@ -13,11 +13,12 @@ import { redirect } from 'next/navigation'
  * find the order in their history — better than a 404 for someone who has just
  * paid.
  */
-export default function OrderQueryPage({
-  searchParams,
-}: {
-  searchParams: { id?: string }
-}) {
+export default async function OrderQueryPage(
+  props: {
+    searchParams: Promise<{ id?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const id = searchParams.id?.trim()
 
   // Shape-check before redirecting: `LV-` plus six of the id alphabet. This

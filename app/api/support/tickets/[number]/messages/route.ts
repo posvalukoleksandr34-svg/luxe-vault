@@ -8,7 +8,8 @@ import { getCurrentUser } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 /** The customer's reply inside their ticket (multipart: message, t, files). */
-export async function POST(request: NextRequest, { params }: { params: { number: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ number: string }> }) {
+  const params = await props.params;
   const limited = await enforceLimit('support.reply', request)
   if (limited) return limited
 

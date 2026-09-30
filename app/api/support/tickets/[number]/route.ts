@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
  * unread mark. "Not found" covers a wrong token too, so numbers cannot be
  * probed.
  */
-export async function GET(request: NextRequest, { params }: { params: { number: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ number: string }> }) {
+  const params = await props.params;
   const limited = await enforceLimit('support.read', request)
   if (limited) return limited
 

@@ -2,10 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE_SECONDS,
-  createSessionToken,
+  createSession,
   isAdminConfigured,
   verifyAdminPassword,
 } from '@/lib/server/admin-auth'
+import { recordSession } from '@/lib/server/admin-sessions'
+import { clientIp } from '@/lib/server/client-ip'
 import { enforceLimit } from '@/lib/server/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -40,12 +42,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Неверный пароль' }, { status: 401 })
   }
 
-  const token = await createSessionToken()
+  const { token, nonce, expiresAt } = await createSession()
+  // Recorded server-side so signing out can revoke it (admin-sessions.ts).
+  try {
+    await recordSession({
+      nonce,
+      expiresAt,
+      ip: clientIp(request.headers),
+      userAgent: request.headers.get('user-agent') ?? undefined,
+    })
+  } catch (e) {
+    console.error('[admin/login]', (e as Error).message)
+    return NextResponse.json({ error: 'Вход временно недоступен' }, { status: 503 })
+  }
+
   const response = NextResponse.json({ ok: true })
   response.cookies.set(ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
+    // Lax, not Strict: a link to the console from a Telegram alert or an
+    // email must arrive signed in. Cross-site WRITES are refused by the CSRF
+    // guard in middleware.ts regardless.
     sameSite: 'lax',
+    // '/', not '/admin': the console's API lives under /api/admin, and a
+    // cookie has one path. (The __Host- prefix in production requires '/'.)
     path: '/',
     // Matches the expiry signed into the token itself. The cookie's lifetime
     // is a browser convenience; the token's is what the server enforces.

@@ -41,7 +41,8 @@ export const dynamic = 'force-dynamic'
  * refund larger than the charge's remainder at creation — so a concurrent
  * double refund is impossible, and a retry still works.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
 

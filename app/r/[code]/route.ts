@@ -17,7 +17,8 @@ export const dynamic = 'force-dynamic'
  * A repeat visit with the same code already in the cookie is not counted
  * again, so one friend opening the link five times is one click.
  */
-export async function GET(request: NextRequest, { params }: { params: { code: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ code: string }> }) {
+  const params = await props.params;
   const home = new URL('/', request.url)
   const response = NextResponse.redirect(home, 307)
   response.headers.set('X-Robots-Tag', 'noindex')

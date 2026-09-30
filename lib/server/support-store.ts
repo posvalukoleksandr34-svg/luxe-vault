@@ -9,6 +9,7 @@ import 'server-only'
 
 import { randomInt } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { safeEqual } from '@/lib/server/secure-compare'
 import type {
   SupportAttachment,
   SupportCategory,
@@ -235,7 +236,8 @@ export async function findCustomerTicket(
   const row = data as unknown as TicketRow | null
   if (!row) return null
   const mine = Boolean(access.userId && row.user_id === access.userId)
-  const tokenOk = Boolean(access.token && row.access_token === access.token)
+  // Constant-time, like every other bearer token here (secure-compare.ts).
+  const tokenOk = safeEqual(row.access_token, access.token)
   return mine || tokenOk ? row : null
 }
 

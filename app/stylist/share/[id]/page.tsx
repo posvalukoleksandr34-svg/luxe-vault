@@ -51,11 +51,12 @@ async function loadLook(id: string): Promise<SavedLookRow | null> {
   return (data as SavedLookRow | null) ?? null
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string }
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ id: string }>
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const look = await loadLook(params.id)
   return {
     title: 'Capsule',
@@ -67,7 +68,8 @@ export async function generateMetadata({
   }
 }
 
-export default async function SharedLookPage({ params }: { params: { id: string } }) {
+export default async function SharedLookPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const look = await loadLook(params.id)
   if (!look) notFound()
 
