@@ -26,7 +26,8 @@ export const metadata: Metadata = catalogMetadata(DEFAULT_LOCALE)
 // keeps a newly added piece visible here without a redeploy.
 export const revalidate = 600
 
-export default async function CatalogPage({ params }: { params?: { locale?: string } }) {
+export default async function CatalogPage(props: { params?: Promise<{ locale?: string }> }) {
+  const params = await props.params;
   // A failed read must not take the page down — without a listing the grid
   // fetches the catalogue for itself — so the listing schema is simply omitted
   // when the catalogue is unavailable rather than asserted as empty, which

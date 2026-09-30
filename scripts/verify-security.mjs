@@ -15,8 +15,28 @@
  * then clear their own rows so the run leaves nothing behind.
  */
 
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+
+/**
+ * The credentials that were once committed as fallbacks in admin-auth.ts
+ * (commit a3aae8f), as SHA-256 digests. They are burned and must never come
+ * back; the checks below look for them without this file repeating them —
+ * it used to carry both in plain text, which re-published them.
+ */
+const BURNED = {
+  adminPassword: '1f5df87ae46571cc31019912382ad5c6fa03dfa36d760d299bd33ae85957ba04',
+  sessionSecret: '88d4708a3ecdf708300363cfbcc05f6729e6fa0c8e34a4614ea9d7aadf1607a1',
+}
+
+/** True when any token-like run of characters in `text` hashes to `digest`. */
+function containsBurned(text, digest) {
+  for (const token of text.match(/[\w!@#$%^&*()+=.:-]{8,}/g) ?? []) {
+    if (crypto.createHash('sha256').update(token).digest('hex') === digest) return true
+  }
+  return false
+}
 
 const BASE = 'http://localhost:3000'
 const unquote = (v) => v.replace(/^["'](.*)["']$/, '$1')
@@ -58,15 +78,15 @@ try {
     src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
   const authCode = stripComments(fs.readFileSync('lib/server/admin-auth.ts', 'utf8'))
-  check('no literal admin password', /Zenith-Atelier/.test(authCode), false)
-  check('no literal session secret', /zenith-vault-admin-session-secret/.test(authCode), false)
+  check('no literal admin password', containsBurned(authCode, BURNED.adminPassword), false)
+  check('no literal session secret', containsBurned(authCode, BURNED.sessionSecret), false)
   check('no `||` fallback on either variable', /process\.env\.ADMIN_\w+\s*\|\|/.test(authCode), false)
   check(
     'the burned password is not left anywhere under lib/server',
     fs
       .readdirSync('lib/server', { withFileTypes: true })
       .filter((e) => e.isFile())
-      .filter((e) => /Zenith-Atelier/.test(fs.readFileSync(`lib/server/${e.name}`, 'utf8')))
+      .filter((e) => containsBurned(fs.readFileSync(`lib/server/${e.name}`, 'utf8'), BURNED.adminPassword))
       .map((e) => e.name),
     [],
   )
@@ -119,7 +139,7 @@ try {
     await fetch(`${BASE}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: 'Zenith-Atelier-2026!' }),
+      body: JSON.stringify({ password: `wrong-password-${Date.now()}` }),
     })
   ).status, 401)
 

@@ -263,15 +263,38 @@ export async function repriceItems(
     // Unknown product: refuse. Accepting it would let anyone invent a line.
     if (!product) return { ok: false, error: `Unknown product: ${item.productId}` }
 
+    // The size and colour must be ones this product is sold in. Stock-tracked
+    // products are also checked by place_order(), but one without variant
+    // rows would otherwise accept any string — an order for a size that does
+    // not exist, paid for and then unfulfillable.
+    const size = typeof item.size === 'string' ? item.size.trim() : ''
+    const color = typeof item.color === 'string' ? item.color.trim() : ''
+    if (product.sizes?.length && product.sizes.indexOf(size) === -1) {
+      return { ok: false, error: `Unknown size for ${item.productId}` }
+    }
+    if (product.colors?.length && !product.colors.some((c) => c.name === color)) {
+      return { ok: false, error: `Unknown colour for ${item.productId}` }
+    }
+
     basket.push(product)
     const qty = Math.max(1, Math.min(Math.trunc(item.qty), 20))
+    // Only the CHOICE comes from the browser — product, size, colour,
+    // quantity. Everything describing the product is the catalogue's.
     priced.push({
-      ...item,
+      key: `${product.id}-${size}-${color}`.slice(0, 300),
+      productId: product.id,
+      size,
+      color,
       qty,
       // The only source of truth for money.
       price: product.price,
       // Names are shown on receipts and in the admin; take the catalogue's.
-      name: typeof product.name === 'object' ? (product.name.ru ?? item.name) : item.name,
+      // Never the browser's text: without a Russian name the next language
+      // in the catalogue is used, so a receipt cannot carry invented wording.
+      name: catalogueName(product) || item.productId,
+      // And the image: a browser-supplied URL would otherwise be stored on
+      // the order and shown in its emails and in the admin.
+      image: product.image || product.images?.[0] || '',
     })
   }
 
@@ -365,6 +388,14 @@ export async function repriceItems(
       deliveryDays: basketDeliveryDays(basket, businessToCalendarDays(shipping.deliveryTimeframe)),
     },
   }
+}
+
+/** The product's name as the admin wrote it: Russian first, then any language. */
+function catalogueName(product: Product): string {
+  const name = product.name as unknown
+  if (typeof name === 'string') return name.slice(0, 300)
+  const byLang = (name ?? {}) as Record<string, string | undefined>
+  return (byLang.ru || byLang.en || byLang.it || byLang.fr || byLang.de || '').slice(0, 300)
 }
 
 /** Money is stored as numeric(12,2); float drift must not reach the column. */

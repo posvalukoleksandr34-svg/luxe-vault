@@ -18,7 +18,8 @@ const patchSchema = z.object({
 })
 
 /** Turns a code on or off, or changes its limit or expiry. */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
 
@@ -39,7 +40,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 /** Deletes a code no order has used; a used one can only be switched off. */
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
 

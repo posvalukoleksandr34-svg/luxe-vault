@@ -1425,7 +1425,7 @@ function maybeSendWelcome() {
     [pushToast, t, tf],
   )
 
-  const validateTimer = useRef<ReturnType<typeof setTimeout>>()
+  const validateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const validating = useRef(false)
   const validateAgain = useRef(false)
   const validateRef = useRef<() => Promise<void>>(async () => {})

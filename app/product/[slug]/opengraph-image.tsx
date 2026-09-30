@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/server'
+import { ImageResponse } from 'next/og'
 import { CATEGORY_LABELS } from '@/lib/i18n'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import { fetchWithTimeout, loadGoogleFont } from '@/lib/server/og-font'

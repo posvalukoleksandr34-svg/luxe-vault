@@ -17,10 +17,8 @@ export const dynamic = 'force-dynamic'
  * order containing this product reached `delivered`. That rule lives in the
  * database, not here.
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { slug: string } },
-) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const { reviews, stats } = await readProductReviews(params.slug)
 
   // Only asked for a signed-in visitor; for everyone else the answer is
@@ -35,10 +33,8 @@ export async function GET(
   })
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { slug: string } },
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const limited = await enforceLimit('review.create', request)
   if (limited) return limited
 

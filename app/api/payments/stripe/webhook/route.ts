@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type Stripe from 'stripe'
-import { fromMinorUnits, orderChargeRate, roundMinor } from '@/lib/currency'
+import { fromMinorUnits, orderCharge, orderChargeRate, roundMinor, toMinorUnits } from '@/lib/currency'
 import {
   adoptPaymentIntent,
   claimReceiptSend,
   ensurePaidOrderStock,
   findOrderByPaymentId,
+  getOrderById,
   recordRefund,
   releaseReceiptClaim,
   setPaymentStatus,
@@ -19,7 +20,7 @@ import {
 import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
-import type { PaymentStatus } from '@/lib/types'
+import type { Order, PaymentStatus } from '@/lib/types'
 import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict, reportCriticalError } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
@@ -176,6 +177,24 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
 
   // Keyed on the PaymentIntent id, which the intent route stored as the
   // order's payment_id. Writing the same status twice is a no-op.
+  // A payment marks an order paid only if it paid THAT order's amount, in its
+  // currency. The PaymentIntent is created server-side from the order total,
+  // so for our own intents this always holds; what it stops is a payment
+  // created elsewhere on the same Stripe account (another integration, a
+  // Dashboard charge) carrying an orderId in its metadata — the adoption path
+  // below would otherwise mark an expensive order paid with a cheap payment.
+  if (next === 'paid') {
+    const metadataOrderId = typeof intent.metadata?.orderId === 'string' ? intent.metadata.orderId.trim() : ''
+    const target =
+      (await findOrderByPaymentId(intent.id)) ?? (metadataOrderId ? await getOrderById(metadataOrderId) : null)
+    const problem = target ? chargeMismatch(target, intent) : null
+    if (target && problem) {
+      console.error(`[stripe] ${intent.id} NOT applied to ${target.id}: ${problem}`)
+      await reportCriticalError('Stripe payment does not match its order — not marked paid', `${target.id} · ${intent.id} · ${problem}`)
+      return NextResponse.json({ received: true, order: target.id, ignored: 'amount mismatch' })
+    }
+  }
+
   let order = await setPaymentStatus(intent.id, next)
 
   if (!order) {
@@ -303,6 +322,17 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
  * too, with the same total — that is detected and left alone, so nothing is
  * recorded, restocked or emailed twice.
  */
+/** Why this payment cannot settle this order, or null when it can. */
+function chargeMismatch(order: Order, intent: Stripe.PaymentIntent): string | null {
+  const expected = orderCharge(order)
+  const currency = (intent.currency ?? '').toUpperCase()
+  if (currency !== expected.currency) return `currency ${currency || '?'} instead of ${expected.currency}`
+  const received = intent.amount_received || 0
+  const due = toMinorUnits(expected.amount)
+  if (!(due > 0) || received < due) return `received ${received} minor units, order requires ${due}`
+  return null
+}
+
 async function syncRefund(
   charge: Stripe.Charge,
 ): Promise<{ matched: boolean; changed?: boolean }> {

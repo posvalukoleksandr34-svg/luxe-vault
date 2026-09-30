@@ -10,6 +10,7 @@ filtering are already in place and are not repeated here.
 | [../performance/README.md](../performance/README.md) | The performance half: measured audit, speed quick wins, structural plan |
 | [phase-1-perimeter.md](phase-1-perimeter.md) | Cloudflare WAF, rate limits, origin lock, admin behind Cloudflare Access |
 | [phase-1-backups.md](phase-1-backups.md) | Offsite encrypted backups, weekly restore test, restore runbook |
+| [hardening-2026-09-29.md](hardening-2026-09-29.md) | Next.js 15 upgrade (F1 fixed), admin sign-out revocation, RLS column gap, webhook amount check, operator checklist |
 
 ## The system as it stands
 
@@ -30,14 +31,14 @@ GitHub Actions ─▶ cron endpoints (bearer secret)
 - **Admin session:** expiring HMAC tokens bound to the password; admin checks in both middleware and each handler (`admin-guard.ts`).
 - **Rate limiting** on every abuse-prone endpoint, counted in Postgres (`lib/server/rate-limit.ts`, migration 0013).
 - **Webhooks:** Stripe and NOWPayments signatures are verified; neither success page counts as proof of payment.
-- **Secrets:** constant-time comparisons, no credentials in the tree or in git history (scanned), `server-only` guards on privileged clients.
+- **Secrets:** constant-time comparisons and `server-only` guards on privileged clients. No provider key was ever committed; the old admin password and session-secret fallbacks were (see hardening-2026-09-29.md — rotate them).
 - **RLS** on customer tables; crash alerting to Telegram.
 
 ## Findings, most severe first
 
 | # | Severity | Finding | Where it's fixed |
 |---|---|---|---|
-| F1 | **Critical** | `next@13.5.11` is end-of-life and `npm audit` matches it to ~30 advisories. They include an **unauthenticated RCE in the Image Optimization API with AVIF** (GHSA-2xp9-vwfh-vxw4; the config enables `image/avif`), several Server Components / Server Actions DoS issues, and an authorization bypass (GHSA-7gfc-8cq8-jh5f). Fixed versions: 15.5.24+ or 16.3.3+. | Phase 1c |
+| F1 | **Critical — fixed 2026-09-29 (15.5.26)** | `next@13.5.11` is end-of-life and `npm audit` matches it to ~30 advisories. They include an **unauthenticated RCE in the Image Optimization API with AVIF** (GHSA-2xp9-vwfh-vxw4; the config enables `image/avif`), several Server Components / Server Actions DoS issues, and an authorization bypass (GHSA-7gfc-8cq8-jh5f). Fixed versions: 15.5.24+ or 16.3.3+. | Phase 1c |
 | F2 | High | Rate limits count Cloudflare edge servers, not visitors: behind Cloudflare, Vercel's `X-Forwarded-For` is the edge address. | Phase 1a: **code in this change** |
 | F3 | High | The WAF can be bypassed via `luxe-vault-hlb1.vercel.app`. | Phase 1a: **code in this change** |
 | F4 | High | No backup outside the Supabase account, and no restore has ever been tested. | Phase 1b: **workflows in this change** |

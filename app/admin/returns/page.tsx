@@ -31,11 +31,12 @@ export const metadata: Metadata = {
  * public URL to hand the browser, and a signed one copied out of this page
  * stops working shortly after.
  */
-export default async function AdminReturnsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string }
-}) {
+export default async function AdminReturnsPage(
+  props: {
+    searchParams: Promise<{ status?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   // Second gate behind middleware.ts (lib/server/admin-guard.ts explains why).
   if (!(await isAdminRequest())) redirect('/')
 

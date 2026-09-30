@@ -14,18 +14,19 @@ import { requireSupabaseEnv } from './env'
  */
 export function createClient() {
   const { url, anonKey } = requireSupabaseEnv()
+  // cookies() is asynchronous from Next 15; @supabase/ssr accepts an async
+  // store, so the client itself stays synchronous for its many callers.
   const cookieStore = cookies()
 
   return createServerClient(url, anonKey, {
     cookies: {
-      getAll() {
-        return cookieStore.getAll()
+      async getAll() {
+        return (await cookieStore).getAll()
       },
-      setAll(cookiesToSet) {
+      async setAll(cookiesToSet) {
+        const store = await cookieStore
         try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          )
+          cookiesToSet.forEach(({ name, value, options }) => store.set(name, value, options))
         } catch {
           // Called from a Server Component — middleware owns the refresh.
         }

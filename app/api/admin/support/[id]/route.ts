@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic'
 // Auth is already enforced by middleware.ts for every /api/admin/* path.
 
 /** The conversation. Opening it marks the customer's messages as read. */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   try {
@@ -24,7 +25,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const body = await readJsonObject<{ status?: string }>(request)
@@ -43,7 +45,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return NextResponse.json({ ticket: staffView(updated) })
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
   const removed = await deleteTicket(params.id)

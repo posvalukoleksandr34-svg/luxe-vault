@@ -5,7 +5,16 @@
 // Runs on the Edge runtime (middleware.ts imports it), so everything here uses
 // Web Crypto rather than node:crypto.
 
-export const ADMIN_SESSION_COOKIE = 'zenith_admin_session'
+/**
+ * The session cookie. In production it carries the `__Host-` prefix, which the
+ * browser only accepts with Secure, Path=/ and no Domain: a cookie of this name
+ * can then never be planted or overwritten from a subdomain or over plain HTTP.
+ * Development keeps a plain name so http://localhost keeps working.
+ */
+export const ADMIN_SESSION_COOKIE =
+  process.env.NODE_ENV === 'production' ? '__Host-lv_admin_session' : 'lv_admin_session'
+/** The name before the prefix; still cleared at sign-out so it does not linger. */
+export const LEGACY_ADMIN_SESSION_COOKIE = 'zenith_admin_session'
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8 // 8 hours
 
 /**
@@ -166,7 +175,7 @@ async function passwordFingerprint(): Promise<string> {
  * browser does with the cookie, and the nonce makes two sessions issued in the
  * same second distinct.
  */
-export async function createSessionToken(): Promise<string> {
+export async function createSession(): Promise<{ token: string; nonce: string; expiresAt: number }> {
   const expiresAt = Math.floor(Date.now() / 1000) + ADMIN_SESSION_MAX_AGE_SECONDS
   const nonce = toHex(crypto.getRandomValues(new Uint8Array(12)).buffer)
   const payload = `${expiresAt}.${nonce}`
@@ -174,23 +183,34 @@ export async function createSessionToken(): Promise<string> {
     requireEnv('ADMIN_SESSION_SECRET'),
     `${payload}.${await passwordFingerprint()}`,
   )
-  return `${payload}.${signature}`
+  return { token: `${payload}.${signature}`, nonce, expiresAt }
 }
 
-export async function isValidSessionToken(
+/**
+ * The token's nonce and expiry when its signature and expiry check out;
+ * otherwise null.
+ *
+ * This is the STATELESS half of the check — all the Edge middleware can do.
+ * Whether the session was signed out since is answered by admin-sessions.ts,
+ * which the admin guard (admin-guard.ts) consults in every admin handler and
+ * page, before any data is read or written.
+ */
+export async function verifySessionToken(
   token: string | undefined | null,
-): Promise<boolean> {
-  if (!token) return false
+): Promise<{ nonce: string; expiresAt: number } | null> {
+  if (!token || token.length > 200) return null
 
   const parts = token.split('.')
-  if (parts.length !== 3) return false
+  if (parts.length !== 3) return null
 
   const [expiresRaw, nonce, signature] = parts
+  if (!/^\d{1,12}$/.test(expiresRaw) || !/^[0-9a-f]{24}$/.test(nonce) || !/^[0-9a-f]{64}$/.test(signature)) {
+    return null
+  }
 
   const expiresAt = Number(expiresRaw)
-  if (!Number.isFinite(expiresAt)) return false
   // Checked before the HMAC so an expired token costs nothing to reject.
-  if (expiresAt * 1000 <= Date.now()) return false
+  if (expiresAt * 1000 <= Date.now()) return null
 
   let expected: string
   try {
@@ -200,8 +220,12 @@ export async function isValidSessionToken(
     )
   } catch {
     // Not configured. Fail closed rather than throwing out of middleware.
-    return false
+    return null
   }
 
-  return timingSafeEqual(signature, expected)
+  return timingSafeEqual(signature, expected) ? { nonce, expiresAt } : null
+}
+
+export async function isValidSessionToken(token: string | undefined | null): Promise<boolean> {
+  return (await verifySessionToken(token)) !== null
 }

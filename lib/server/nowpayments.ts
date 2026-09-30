@@ -10,6 +10,8 @@
 // fabricating any of that here would risk sending a customer's real crypto
 // to an address nobody controls, or marking an unpaid order as paid.
 
+import 'server-only'
+
 import type { PaymentStatus } from '@/lib/types'
 
 const API_BASE = 'https://api.nowpayments.io/v1'

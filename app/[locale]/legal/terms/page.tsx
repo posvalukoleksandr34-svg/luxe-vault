@@ -9,11 +9,12 @@ import { legalMetadata, localeStaticParams } from '@/lib/page-seo'
  *  <LegalDocument> from the store's language; this names the tab to match. */
 export const generateStaticParams = localeStaticParams
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { locale: string }
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ locale: string }>
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const locale = localeParam(params.locale)
   if (!locale) notFound()
   return legalMetadata(TERMS, '/legal/terms', locale)

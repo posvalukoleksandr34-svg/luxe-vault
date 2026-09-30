@@ -22,11 +22,12 @@ export const dynamic = 'force-dynamic'
  * re-reads the order as the signed-in customer, and the order's real state is
  * set only by the signed webhook at /api/payments/stripe/webhook.
  */
-export default function SuccessPage({
-  searchParams,
-}: {
-  searchParams: { order?: string; redirect_status?: string }
-}) {
+export default async function SuccessPage(
+  props: {
+    searchParams: Promise<{ order?: string; redirect_status?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const orderId = searchParams.order
   const status = searchParams.redirect_status
 

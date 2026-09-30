@@ -23,13 +23,18 @@ import { localeParam } from '@/lib/locale-routing'
  * language a search engine reads comes from `hreflang` and the content itself
  * (lib/locale-routing.ts), both of which are correct in the source.
  */
-export default function LocaleLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode
-  params: { locale: string }
-}) {
+export default async function LocaleLayout(
+  props: {
+    children: React.ReactNode
+    params: Promise<{ locale: string }>
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   const locale = localeParam(params.locale)
   if (!locale) notFound()
 

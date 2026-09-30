@@ -1,5 +1,6 @@
 'use client'
 
+import { Link } from '@/components/locale-link'
 import { BellOff, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -46,9 +47,10 @@ export function CartReminderOptOut({ token }: { token: string }) {
             {state === 'error' ? t('pay.tryAgain') : t('cartReminder.unsubButton')}
           </button>
         )}
-        <a href="/" className="mt-6 text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground/80">
+        <Link
+ href="/" className="mt-6 text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground/80">
           {t('state.goToCatalog')}
-        </a>
+        </Link>
       </div>
     </main>
   )

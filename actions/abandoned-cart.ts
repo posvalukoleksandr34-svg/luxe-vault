@@ -26,7 +26,7 @@ export type LogAbandonedCheckoutInput = {
  * as a coarse status — it never says whether an address is already known.
  */
 export async function logAbandonedCheckout(input: LogAbandonedCheckoutInput): Promise<CaptureOutcome | 'rate_limited'> {
-  const h = headers()
+  const h = await headers()
   const ip = clientIp(h) || 'unidentified'
   const limit = await checkLimit('cart.capture', ip)
   if (!limit.allowed) return 'rate_limited'

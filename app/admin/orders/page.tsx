@@ -20,7 +20,8 @@ export const metadata: Metadata = {
  *
  * `?order=LV-XXXXXX` opens that order (the dashboard links here that way).
  */
-export default async function AdminOrdersPage({ searchParams }: { searchParams: { order?: string } }) {
+export default async function AdminOrdersPage(props: { searchParams: Promise<{ order?: string }> }) {
+  const searchParams = await props.searchParams;
   // Second gate behind middleware.ts (lib/server/admin-guard.ts explains why).
   if (!(await isAdminRequest())) redirect('/')
 

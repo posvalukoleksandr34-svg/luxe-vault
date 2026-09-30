@@ -51,19 +51,21 @@ async function resolve(collection: string, subcategory: string) {
   return { node, category }
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { collection: string; subcategory: string }
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ collection: string; subcategory: string }>
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   return subcategoryMetadataFor(params.collection, params.subcategory, DEFAULT_LOCALE)
 }
 
-export default async function SubcategoryPage({
-  params,
-}: {
-  params: { collection: string; subcategory: string; locale?: string }
-}) {
+export default async function SubcategoryPage(
+  props: {
+    params: Promise<{ collection: string; subcategory: string; locale?: string }>
+  }
+) {
+  const params = await props.params;
   const found = await resolve(params.collection, params.subcategory)
   if (!found) notFound()
 

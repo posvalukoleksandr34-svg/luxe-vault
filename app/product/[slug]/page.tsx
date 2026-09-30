@@ -80,14 +80,15 @@ const SITE_URL = SITE_ORIGIN
 function truncate(s: string, max = 155): string {
   const clean = s.replace(/\s+/g, ' ').trim()
   if (clean.length <= max) return clean
-  return `${clean.slice(0, max - 1).replace(/[\s,;:.!-]+\S*$/, '')}…`
+  return `${clean.slice(0, max - 1).replace(/[\s,;:.!-]+\S*$/, '')}…`;
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string }
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string }>
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   return productMetadataFor(params.slug, DEFAULT_LOCALE)
 }
 
@@ -162,7 +163,8 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
   }
 }
 
-export default async function ProductPage({ params }: { params: { slug: string; locale?: string } }) {
+export default async function ProductPage(props: { params: Promise<{ slug: string; locale?: string }> }) {
+  const params = await props.params;
   const product = await getProductBySlug(params.slug)
   if (!product) notFound()
   const shipping = await getShippingSettings()
