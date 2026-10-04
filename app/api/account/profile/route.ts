@@ -8,8 +8,11 @@ import { readJsonObject } from '@/lib/server/http'
 export const dynamic = 'force-dynamic'
 
 /**
- * Updates the customer's display name and, once migration 0035 is applied,
- * their optional date of birth.
+ * Updates the customer's display name.
+ *
+ * It also took an optional date of birth (migration 0035). Nothing in the
+ * shop ever used it, so it is no longer collected; migration 0050 deletes the
+ * stored values and the column.
  *
  * WHY THIS IS A ROUTE AND NOT A BROWSER WRITE
  *
@@ -36,57 +39,18 @@ export const dynamic = 'force-dynamic'
  * because it must send a confirmation link to the new address before switching,
  * password because the active session is the only thing that authorises it.
  */
-// Postgres "undefined column" and PostgREST "column not in the schema cache":
-// migration 0035 (birth_date) has not been applied yet.
-const MISSING_COLUMN = new Set(['42703', 'PGRST204'])
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
-/** A real calendar date, not in the future, not before 1900. */
-function validBirthDate(value: string): boolean {
-  if (!ISO_DATE.test(value)) return false
-  const d = new Date(`${value}T00:00:00Z`)
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value) return false
-  return value >= '1900-01-01' && d.getTime() <= Date.now()
-}
-
-/**
- * The profile fields the account edits that are not auth identity: today the
- * optional date of birth. `available: false` means the column does not exist
- * yet, and the account hides the field rather than offering one that cannot
- * save.
- */
-export async function GET() {
-  const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data, error } = await createClient()
-    .from('profiles')
-    .select('birth_date')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (error) {
-    if (MISSING_COLUMN.has(error.code)) return NextResponse.json({ available: false, birthDate: null })
-    console.error('[account/profile] read failed:', error.message)
-    return NextResponse.json({ error: 'Could not read the profile' }, { status: 500 })
-  }
-  return NextResponse.json({ available: true, birthDate: (data?.birth_date as string | null) ?? null })
-}
-
 export async function PATCH(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('account.write', user.id)
   if (limited) return limited
 
-  const body = await readJsonObject<{ name?: unknown; birthDate?: unknown }>(request)
+  const body = await readJsonObject<{ name?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  // Each field is optional; whichever are present are validated and written.
-  const update: { name?: string; birth_date?: string | null } = {}
+  const update: { name?: string } = {}
 
   if (body.name !== undefined) {
     const name = typeof body.name === 'string' ? body.name.trim() : ''
@@ -94,16 +58,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'INVALID_NAME' }, { status: 400 })
     }
     update.name = name
-  }
-
-  if (body.birthDate !== undefined) {
-    if (body.birthDate === null || body.birthDate === '') {
-      update.birth_date = null
-    } else if (typeof body.birthDate === 'string' && validBirthDate(body.birthDate)) {
-      update.birth_date = body.birthDate
-    } else {
-      return NextResponse.json({ error: 'INVALID_BIRTH_DATE' }, { status: 400 })
-    }
   }
 
   if (Object.keys(update).length === 0) {
@@ -119,9 +73,6 @@ export async function PATCH(request: NextRequest) {
     .select('id')
 
   if (error) {
-    if (MISSING_COLUMN.has(error.code)) {
-      return NextResponse.json({ error: 'BIRTH_DATE_UNAVAILABLE' }, { status: 503 })
-    }
     console.error('[account/profile] update failed:', error.message)
     return NextResponse.json({ error: 'Could not save the profile' }, { status: 500 })
   }
@@ -145,5 +96,5 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, name: update.name, birthDate: update.birth_date })
+  return NextResponse.json({ ok: true, name: update.name })
 }

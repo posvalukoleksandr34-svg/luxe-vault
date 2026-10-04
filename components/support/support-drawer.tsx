@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { SupportCenter } from '@/components/support/support-center'
 import { useStore } from '@/lib/store'
 
@@ -29,6 +30,14 @@ export function SupportDrawer() {
     }
   }, [open, setPanel])
 
+  const dialogRef = useRef<HTMLDivElement>(null)
+  // Keyboard: Tab stays inside while open; closing returns focus to the
+  // opener. Before the focusing effect, so the opener is still focused.
+  useFocusTrap(dialogRef, open)
+  useEffect(() => {
+    if (open) dialogRef.current?.focus({ preventScroll: true })
+  }, [open])
+
   if (!open) return null
 
   return (
@@ -39,7 +48,9 @@ export function SupportDrawer() {
         aria-hidden
       />
       <div
-        className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full flex-col border-l border-border bg-popover sm:max-w-xl lg:max-w-2xl"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full flex-col border-l border-border bg-popover outline-none sm:max-w-xl lg:max-w-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={t('support.title')}

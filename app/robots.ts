@@ -32,7 +32,20 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin', '/auth/', '/order/', '/cart/', '/success', '/checkout/success', '/api/'],
+        // Personal pages: every one is also noindex; these keep crawlers off
+        // links that carry a customer's key (lib/sensitive-url.ts).
+        disallow: [
+          '/admin',
+          '/auth/',
+          '/account',
+          '/order/',
+          '/cart/',
+          '/success',
+          '/checkout',
+          '/support/tickets/',
+          '/newsletter/',
+          '/api/',
+        ],
       },
     ],
     sitemap: `${SITE_ORIGIN}/sitemap.xml`,

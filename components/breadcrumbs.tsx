@@ -1,10 +1,13 @@
 import { Link } from '@/components/locale-link'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SITE_ORIGIN } from '@/lib/site-origin'
 
 export type Crumb = { name: string; url: string }
 
-const SITE_URL = 'https://luxe-vault.store'
+// The one production origin (lib/site-origin.ts) — breadcrumb JSON-LD must
+// name the same host as the canonical, not a hardcoded one.
+const SITE_URL = SITE_ORIGIN
 
 /**
  * The catalogue trail: Shop › Clothing › Hoodies › Product.

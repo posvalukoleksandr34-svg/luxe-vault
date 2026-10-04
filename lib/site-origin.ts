@@ -16,4 +16,11 @@
  * environment — a preview build that advertises its own hostname to a crawler
  * is asking to be indexed as a duplicate of the real shop.
  */
-export const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_ORIGIN ?? 'https://luxe-vault.store').replace(/\/$/, '')
+//
+// www, not the bare domain: luxe-vault.store answers with a 308 to
+// www.luxe-vault.store (docs/BRANDING.md §0), so canonicals, hreflang, the
+// sitemap and og:image URLs on the bare domain all pointed at a redirect. The
+// live check (scripts/security/check-live.sh) gets 200 from www directly.
+// If the primary domain in Vercel is ever switched to the bare domain, set
+// NEXT_PUBLIC_SITE_ORIGIN for the build instead of editing this.
+export const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_ORIGIN ?? 'https://www.luxe-vault.store').replace(/\/$/, '')

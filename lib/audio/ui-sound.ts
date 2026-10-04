@@ -140,8 +140,10 @@ export function scheduleTone(
 // ---------------------------------------------------------------- setting --
 
 /**
- * The on/off setting, persisted as `soundEnabled` in localStorage and ON by
- * default. A small external store rather than React state: every consumer
+ * The on/off setting, persisted as `soundEnabled` in localStorage and OFF by
+ * default: a shop that clicks and chimes at a first-time visitor reads as a
+ * gimmick, and sound nobody asked for is an accessibility problem. Visitors
+ * who want it turn it on in the footer. A small external store rather than React state: every consumer
  * reads the same value, a toggle anywhere takes effect everywhere at once,
  * and the play functions can check it without subscribing to anything.
  */
@@ -152,11 +154,11 @@ let syncingTabs = false
 
 export function isSoundEnabled(): boolean {
   if (enabled !== null) return enabled
-  if (typeof window === 'undefined') return true
+  if (typeof window === 'undefined') return false
   try {
-    enabled = window.localStorage.getItem(STORAGE_KEY) !== 'false'
+    enabled = window.localStorage.getItem(STORAGE_KEY) === 'true'
   } catch {
-    enabled = true // Storage blocked (private mode) — fall back to the default.
+    enabled = false // Storage blocked (private mode) — fall back to the default.
   }
   return enabled
 }
@@ -196,7 +198,7 @@ export function subscribeSound(listener: () => void): () => void {
     window.addEventListener('storage', (e) => {
       // A null key is localStorage.clear(), which resets to the default.
       if (e.key !== null && e.key !== STORAGE_KEY) return
-      apply(e.newValue !== 'false')
+      apply(e.newValue === 'true')
     })
   }
   return () => {

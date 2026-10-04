@@ -147,6 +147,8 @@ const LIMITS = {
    *  Keyed by user id, not IP. Generous for a person editing their account;
    *  what it stops is a stolen session being driven by a script. */
   'account.write': { max: 60, windowSeconds: 600 },
+  /** Account deletion: irreversible, so a handful of attempts per hour. */
+  'account.delete': { max: 5, windowSeconds: 3600 },
 
   /** Payment-status polling during a crypto payment: every 4 s while the
    *  checkout waits, so ~150 per 10 minutes for one real customer. */

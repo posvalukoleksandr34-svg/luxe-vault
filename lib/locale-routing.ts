@@ -79,6 +79,9 @@ export const LOCALIZED_PATHS = [
   '/stylist',
   '/wishlist',
   '/legal',
+  '/about',
+  '/shipping',
+  '/faq',
 ]
 
 /** True when this bare path is served in every language, not just the default. */

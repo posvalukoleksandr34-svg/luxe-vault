@@ -130,17 +130,16 @@ export function ProductCard({
             type against the bezel reads as clipped. Aligned with the grid's
             own gutter again from md up. */}
         <div className="mt-3 flex flex-col gap-0.5 px-2.5 md:px-0">
-          {/* Brand above the name when the product has one, category when it
-              does not. One line either way, so a catalogue where only some
-              products are branded does not render as a ragged grid — and no
-              empty row where a brand would have been. */}
-          {product.brand ? (
-            <p className="text-[10px] uppercase tracking-[0.2em] text-gold">{product.brand}</p>
-          ) : (
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">
-              {localize(categoryLabels[product.category] ?? {})}
-            </p>
-          )}
+          {/* Category and an honest "Replica" label above the name. The
+              admin's brand field used to sit here in gold, which made a
+              replica read like the brand's own product at a glance; the
+              design it references is named on the product page instead,
+              inside the authenticity note. */}
+          <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="truncate">{localize(categoryLabels[product.category] ?? {})}</span>
+            <span aria-hidden className="text-border">·</span>
+            <span className="shrink-0 text-foreground/70">{t('product.replicaTag')}</span>
+          </p>
           <h3 className="font-serif text-[15px] font-medium leading-snug text-foreground transition-colors duration-500 group-hover:text-gold">
             <span className="product-card-name">{localize(product.name)}</span>
           </h3>
@@ -155,7 +154,7 @@ export function ProductCard({
             )}
           </div>
           {hurryCount !== null && (
-            <p className="mt-1 flex items-center gap-2 text-[11px] font-medium text-orange-400">
+            <p className="mt-1 flex items-center gap-2 text-[11px] font-light text-muted-foreground">
               <HurryDot />
               {tf('stock.hurry', { n: hurryCount })}
             </p>

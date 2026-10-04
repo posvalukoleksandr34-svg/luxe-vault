@@ -27,9 +27,9 @@ const BASE = SITE_ORIGIN
  * listed below. They are the pages that can rank for a category query at all —
  * "#shop" never could, because Google treats `/#shop` and `/` as one URL.
  *
- * What remains anchors-only is the editorial content: #about and #reviews are
- * still sections of `/`, and /about, /reviews, /contacts, /new-arrivals and
- * /sale return 404. Anchors are deliberately NOT listed — submitting them
+ * What remains anchors-only is the editorial content: #reviews is still a
+ * section of `/`, and /reviews, /contacts, /new-arrivals and /sale are not
+ * pages. /about, /shipping and /faq are real routes and listed below. Anchors are deliberately NOT listed — submitting them
  * would submit the homepage several times over rather than gain entries.
  */
 const SECTIONS_ARE_ANCHORS = true
@@ -54,7 +54,7 @@ const SECTIONS_ARE_ANCHORS = true
  */
 
 /** The legal documents' stated effective date, which is their real lastModified. */
-const LEGAL_UPDATED = new Date('2026-09-06T00:00:00.000Z')
+const LEGAL_UPDATED = new Date('2026-10-04T00:00:00.000Z')
 
 /**
  * One entry per language for a storefront path, each declaring the others as
@@ -149,6 +149,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // The help centre: the FAQ is real, stable content and the one page that
     // can rank for "luxe vault returns" and the like.
     ...localized('/support', { lastModified: now, changeFrequency: 'monthly', priority: 0.5 }),
+    // Who runs the shop and how buying works: the pages a first-time customer
+    // looks for before trusting a store.
+    ...localized('/about', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
+    ...localized('/shipping', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
+    ...localized('/faq', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
     // NOT /stylist and NOT /wishlist. Both declare noindex — the stylist's
     // output differs per visitor, the wishlist lives in one browser — and
     // submitting a page that asks not to be indexed is a contradiction a
@@ -166,5 +171,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localized('/legal/terms', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
     ...localized('/legal/privacy', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
     ...localized('/legal/refunds', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
+    ...localized('/legal/cookies', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
+    ...localized('/legal/imprint', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
   ]
 }

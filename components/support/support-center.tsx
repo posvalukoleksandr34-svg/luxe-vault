@@ -43,6 +43,7 @@ import {
   type SupportTicketStatus,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 /**
  * The support center: help search and topics, "Contact Support", the
@@ -1023,6 +1024,7 @@ function NewTicketForm({
         {sending && <Loader2 className="size-3.5 animate-spin" />}
         {sending ? c.sending : c.submit}
       </button>
+      <PrivacyNotice purpose="privacy.support" className="mt-3 text-center" />
     </form>
   )
 }

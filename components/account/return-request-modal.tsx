@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Link } from '@/components/locale-link'
 import { RETURN_IMAGE_MAX } from '@/lib/returns/schema'
 import { useStore } from '@/lib/store'
 import { prepareAttachment } from '@/lib/support/client'
@@ -89,7 +90,6 @@ export function ReturnRequestModal({
 
   const [reason, setReason] = useState<ReturnReason>('wrong_size')
   const [comment, setComment] = useState('')
-  const [agreed, setAgreed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
@@ -179,7 +179,7 @@ export function ReturnRequestModal({
     event.preventDefault()
     // Never submit while a photo is still on its way: the request would go
     // without it, and the customer would believe it had been attached.
-    if (saving || !agreed || uploading) return
+    if (saving || uploading) return
     setSaving(true)
     setError(null)
 
@@ -190,7 +190,6 @@ export function ReturnRequestModal({
         body: JSON.stringify({
           reason,
           comment: comment.trim(),
-          agreed,
           // Only the ones that arrived. A photo that failed is shown as failed
           // in the form; it is not silently dropped from a request the
           // customer thinks contains it.
@@ -357,15 +356,12 @@ export function ReturnRequestModal({
             />
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 text-[13px] font-light leading-relaxed text-foreground/80">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-gold"
-            />
-            {t('rma.confirm')}
-          </label>
+          <p className="text-[12px] font-light leading-relaxed text-muted-foreground">
+            {t('rma.conditionNote')}{' '}
+            <Link href="/legal/refunds" target="_blank" className="text-gold underline underline-offset-2 hover:no-underline">
+              {t('rma.policyLink')}
+            </Link>
+          </p>
 
           {error && (
             <p className="flex items-start gap-2 text-[12px] font-light leading-snug text-destructive">
@@ -382,12 +378,9 @@ export function ReturnRequestModal({
             >
               {t('rma.cancel')}
             </button>
-            {/* Disabled until the box is ticked: the schema refuses it anyway,
-                but a customer should see the condition rather than be told
-                about it by a validation error after they press submit. */}
             <button
               type="submit"
-              disabled={saving || !agreed || uploading}
+              disabled={saving || uploading}
               title={uploading ? t('rma.photosUploading') : undefined}
               className="tap-safe no-juice inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-gold bg-gold-gradient px-8 text-[11px] uppercase tracking-[0.2em] text-gold-foreground transition-colors duration-300 enabled:hover:bg-transparent enabled:hover:text-gold disabled:cursor-not-allowed disabled:opacity-40 shadow-gold"
             >

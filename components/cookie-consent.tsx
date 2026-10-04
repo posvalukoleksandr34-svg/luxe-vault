@@ -88,7 +88,11 @@ export function CookieConsent() {
               <p className="text-[13px] font-medium text-foreground">{t('cookies.title')}</p>
               <p className="mt-1.5 max-w-3xl text-[12px] font-light leading-relaxed text-muted-foreground">
                 {t('cookies.body')}{' '}
-                <Link href="/legal/privacy" className="tap-safe text-gold underline-offset-2 hover:underline">
+                <Link href="/legal/cookies" className="tap-safe text-gold underline underline-offset-2 hover:no-underline">
+                  {t('footer.cookiePolicy')}
+                </Link>
+                {' · '}
+                <Link href="/legal/privacy" className="tap-safe text-gold underline underline-offset-2 hover:no-underline">
                   {t('cookies.privacyLink')}
                 </Link>
               </p>

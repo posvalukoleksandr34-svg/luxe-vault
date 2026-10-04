@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, Check, LogIn, Trash2, Wand2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { useLocaleRouter } from '@/components/locale-link'
+import { Link, useLocaleRouter } from '@/components/locale-link'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CountryCode } from 'libphonenumber-js'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
 import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
 import { trackAddPaymentInfo } from '@/lib/analytics'
-import { quoteShipping } from '@/lib/fulfilment'
+import { TAX_RATE, quoteShipping } from '@/lib/fulfilment'
 
 /**
  * The payment SDKs, loaded when the customer actually reaches the payment
@@ -54,7 +54,7 @@ import {
   validateAddress,
 } from '@/lib/validation'
 import type { Order } from '@/lib/types'
-import { logAbandonedCheckout } from '@/actions/abandoned-cart'
+import { logAbandonedCheckout, withdrawAbandonedCheckout } from '@/actions/abandoned-cart'
 
 type FieldKey = 'firstName' | 'lastName' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
@@ -133,26 +133,41 @@ export function CheckoutFlow({
   }, [cart.length])
 
   /**
-   * Abandoned-cart capture. Once the email field holds a valid address — typed
-   * or prefilled — and the cart has something in it, the server keeps a copy
-   * (server action actions/abandoned-cart.ts), so a checkout left unfinished can get its one
-   * reminder. Debounced, and re-sent only when the address, the cart or the
-   * language actually changed. Stops as soon as an order exists: the server
-   * marks the cart recovered then, and a late capture must not revive it.
-   * Disclosed under the field (checkout.cartReminderNote).
+   * Abandoned-cart capture — only for a customer who ticked "remind me"
+   * (checkout.cartReminderOptIn, unticked by default). Then, once the email
+   * field holds a valid address and the cart has something in it, the server
+   * keeps a copy (actions/abandoned-cart.ts) so a checkout left unfinished can
+   * get its one reminder. Debounced, and re-sent only when the address, the
+   * cart or the language actually changed. Stops as soon as an order exists:
+   * the server marks the cart recovered then, and a late capture must not
+   * revive it. Unticking withdraws the request and deletes the copy.
+   *
+   * Before, the address was captured as soon as it was typed, with a note
+   * under the field — a reminder nobody had asked for, and an address kept
+   * from a form that was never submitted.
    */
+  /** The one cart-reminder email: off until the customer asks for it. */
+  const [remindMe, setRemindMe] = useState(false)
   const lastCapture = useRef('')
   useEffect(() => {
     const email = form.email.trim()
+    if (!remindMe) {
+      if (lastCapture.current) {
+        const captured = lastCapture.current.split('|')[0]
+        lastCapture.current = ''
+        void withdrawAbandonedCheckout({ email: captured }).catch(() => {})
+      }
+      return
+    }
     if (cardOrder || cryptoOrder || cart.length === 0 || !isValidEmail(email)) return
     const signature = `${email.toLowerCase()}|${locale}|${cart.map((i) => `${i.key}:${i.qty}`).join(',')}`
     if (signature === lastCapture.current) return
     const timer = setTimeout(() => {
       lastCapture.current = signature
-      void logAbandonedCheckout({ email, items: cart, locale }).catch(() => {})
+      void logAbandonedCheckout({ email, items: cart, locale, consent: true }).catch(() => {})
     }, 1500)
     return () => clearTimeout(timer)
-  }, [form.email, cart, locale, cardOrder, cryptoOrder])
+  }, [form.email, cart, locale, cardOrder, cryptoOrder, remindMe])
   /**
    * What the card will actually be charged — returned by the server with the
    * client secret, never computed here, and shown on the payment step so the
@@ -807,10 +822,14 @@ export function CheckoutFlow({
                 error={errors.email}
                 autoComplete="email"
               />
-              {/* Says what the address is used for beyond this order. */}
-              <p className="text-[11px] font-light leading-relaxed text-muted-foreground/85">
-                {t('checkout.cartReminderNote')}
-              </p>
+              {/* The address is used for nothing beyond this order unless the
+                  customer asks for the reminder here. */}
+              <SaveToggle
+                checked={remindMe}
+                onChange={setRemindMe}
+                label={t('checkout.cartReminderOptIn')}
+                hint={t('checkout.cartReminderOptInHint')}
+              />
 
               {/* Live suggestions. Picking one fills the postcode and city
                   below; typing an address the geocoder has never heard of is
@@ -935,6 +954,19 @@ export function CheckoutFlow({
                   {shippingCost === 0 ? t('cart.free') : summaryPrice(shippingCost)}
                 </span>
               </div>
+              {/* Taxes, stated rather than left to guess: the shop adds none
+                  (TAX_RATE, lib/fulfilment.ts); the destination's import
+                  charges are the buyer's, outside CH/LI. */}
+              {TAX_RATE === 0 && (
+                <p className="mb-2 text-[11px] font-light leading-relaxed text-muted-foreground">
+                  {t('checkout.noVat')}
+                </p>
+              )}
+              {form.country !== 'CH' && form.country !== 'LI' && (
+                <p className="mb-2 text-[11px] font-light leading-relaxed text-muted-foreground">
+                  {t('checkout.importCharges')}
+                </p>
+              )}
               {/* Save toggles. Two separate switches on purpose: agreeing to
                   remember an address is not agreeing to store a payment
                   credential, and bundling them would make the second decision
@@ -996,6 +1028,26 @@ export function CheckoutFlow({
                   </p>
                 </div>
               )}
+              {/* What is being bought, said once more where the decision is
+                  made — the product pages say it too. */}
+              <p className="mb-3 border-l-2 border-gold/40 py-1 pl-3 text-[11px] font-light leading-relaxed text-foreground/75">
+                {t('checkout.authenticityNote')}
+              </p>
+              <p className="mb-3 text-[11px] font-light leading-relaxed text-muted-foreground">
+                {t('checkout.legalNotice')}{' '}
+                <Link href="/legal/terms" target="_blank" className="text-gold underline underline-offset-2 hover:no-underline">
+                  {t('footer.terms')}
+                </Link>
+                . {t('checkout.legalPrivacy')}{' '}
+                <Link href="/legal/privacy" target="_blank" className="text-gold underline underline-offset-2 hover:no-underline">
+                  {t('footer.privacy')}
+                </Link>
+                . {t('checkout.legalWithdrawal')}{' '}
+                <Link href="/legal/refunds" target="_blank" className="text-gold underline underline-offset-2 hover:no-underline">
+                  {t('footer.refunds')}
+                </Link>
+                .
+              </p>
               <button
                 type="submit"
                 disabled={cart.length === 0 || submitting}

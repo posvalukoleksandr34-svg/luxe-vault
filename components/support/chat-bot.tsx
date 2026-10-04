@@ -9,6 +9,7 @@ import { SUPPORT_COPY, SUPPORT_TOPICS, TOPIC_CATEGORY, fill, type SupportTopic }
 import { formatPrice, useStore } from '@/lib/store'
 import type { Locale, SupportCategory } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 /**
  * The concierge behind the floating button, bottom left.
@@ -445,6 +446,7 @@ export function ChatBot() {
           <Send className="size-4" />
         </button>
       </form>
+      <PrivacyNotice purpose="privacy.chat" className="shrink-0 px-4 pb-3 text-[10px]" />
     </div>
   )
 }

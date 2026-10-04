@@ -91,11 +91,13 @@ export default async function OpengraphImage() {
             color: GOLD,
           }}
         >
-          <span>Mirror Quality</span>
+          {/* Was "Mirror Quality": replica-trade slang for an indistinguishable
+              copy, and a quality claim nothing substantiates. */}
+          <span>Shipped from Switzerland</span>
           <span>·</span>
-          <span>Limited Editions</span>
+          <span>Tracked Swiss Post</span>
           <span>·</span>
-          <span>Eurasia Shipping</span>
+          <span>14-Day Returns</span>
         </div>
       </div>
     ),

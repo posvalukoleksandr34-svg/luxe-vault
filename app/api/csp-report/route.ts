@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { enforceLimit } from '@/lib/server/rate-limit'
+import { scrubSensitiveUrl } from '@/lib/sensitive-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,10 +41,12 @@ function clip(value: unknown, max = 300): string {
 
 function summarise(v: Violation) {
   return {
-    page: clip(v.documentURL ?? v['document-uri']),
+    // Addresses scrubbed: the page may be one whose link is a key — a ticket's
+    // ?t=, an unsubscribe token (lib/sensitive-url.ts) — and logs are kept.
+    page: clip(scrubSensitiveUrl(clip(v.documentURL ?? v['document-uri'], 2000))),
     directive: clip(v.effectiveDirective ?? v['effective-directive'] ?? v['violated-directive'], 80),
-    blocked: clip(v.blockedURL ?? v['blocked-uri']),
-    source: clip(v.sourceFile ?? v['source-file']),
+    blocked: clip(scrubSensitiveUrl(clip(v.blockedURL ?? v['blocked-uri'], 2000)) || clip(v.blockedURL ?? v['blocked-uri'], 40)),
+    source: clip(scrubSensitiveUrl(clip(v.sourceFile ?? v['source-file'], 2000))),
     line: Number(v.lineNumber ?? v['line-number']) || undefined,
   }
 }

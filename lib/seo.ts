@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
+import { BUSINESS, hasPostalAddress } from '@/config/business'
 import { DEFAULT_LOCALE, translate, type UIKey } from '@/lib/i18n'
 import { UI } from '@/lib/ui-strings'
 import {
@@ -40,13 +40,27 @@ export const BRAND_ID = `${SITE_ORIGIN}/#brand`
  *
  * What is deliberately absent: `aggregateRating` (site-wide review stars are a
  * structured-data violation unless they are about the Organization itself and
- * collected independently), a postal `address` beyond the country (this is a
- * private sale with no shopfront, and inventing a street address to win a
- * LocalBusiness panel is a misrepresentation), and `potentialAction` /
+ * collected independently), a street `address` until the owner has configured
+ * one (inventing an address to win a LocalBusiness panel is a
+ * misrepresentation; config/business.ts), and `potentialAction` /
  * SearchAction — the shop's search is a client-side overlay with no results
  * URL, so there is nothing for a sitelinks search box to submit to.
  */
 export function siteJsonLd(description: string) {
+  // Only what the owner has configured (config/business.ts) — an empty
+  // field is left out, never guessed. The street address appears only once
+  // all of it is set; until then the country, which is a fact.
+  const address = hasPostalAddress()
+    ? {
+        '@type': 'PostalAddress',
+        streetAddress: BUSINESS.street,
+        postalCode: BUSINESS.postcode,
+        addressLocality: BUSINESS.city,
+        addressCountry: BUSINESS.countryCode,
+      }
+    : { '@type': 'PostalAddress', addressCountry: BUSINESS.countryCode }
+  const sameAs = [BUSINESS.telegramUrl, BUSINESS.social.instagram, BUSINESS.social.tiktok].filter(Boolean)
+
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -55,6 +69,8 @@ export function siteJsonLd(description: string) {
         '@id': ORGANIZATION_ID,
         name: BRAND_NAME,
         alternateName: SITE_NAME,
+        ...(BUSINESS.legalName ? { legalName: BUSINESS.legalName } : {}),
+        ...(BUSINESS.uid ? { taxID: BUSINESS.uid } : {}),
         url: SITE_ORIGIN,
         description,
         logo: {
@@ -66,16 +82,16 @@ export function siteJsonLd(description: string) {
           caption: BRAND_NAME,
         },
         image: { '@id': `${SITE_ORIGIN}/#logo` },
-        email: SUPPORT_EMAIL,
-        // Switzerland, which is where the goods ship from and the only part of
-        // an address this seller actually has.
-        address: { '@type': 'PostalAddress', addressCountry: 'CH' },
+        email: BUSINESS.email,
+        ...(BUSINESS.phone ? { telephone: BUSINESS.phone } : {}),
+        address,
         areaServed: 'Worldwide',
-        sameAs: [`https://t.me/${TELEGRAM_ADMIN.replace('@', '')}`],
+        sameAs,
         contactPoint: {
           '@type': 'ContactPoint',
           contactType: 'customer service',
-          email: SUPPORT_EMAIL,
+          email: BUSINESS.email,
+          ...(BUSINESS.phone ? { telephone: BUSINESS.phone } : {}),
           // What the STOREFRONT answers in. It used to list Russian first,
           // which is now the admin console's language and no customer's.
           availableLanguage: ['English', 'Italian', 'German', 'French'],
@@ -176,7 +192,10 @@ export function pageMetadata(options: {
   const { canonical, languages } = alternatesFor(path, locale)
 
   return {
-    title,
+    // Only when there is one: an explicit `title: undefined` makes Next 15
+    // render NO <title> instead of inheriting the root layout's site title —
+    // which is how the homepage, in every language, lost its title.
+    ...(title ? { title } : {}),
     description,
     robots: options.noindex ? { index: false, follow: true } : undefined,
     alternates: options.noindex ? { canonical } : { canonical, languages },
@@ -184,7 +203,7 @@ export function pageMetadata(options: {
       type: 'website',
       url: `${SITE_ORIGIN}${localizedPath(path, locale)}`,
       siteName: SITE_NAME,
-      title: title ? `${title} \u2014 ${SITE_NAME}` : undefined,
+      ...(title ? { title: `${title} \u2014 ${SITE_NAME}` } : {}),
       description,
       locale: OG_LOCALE[locale],
       alternateLocale: INDEXED_LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l]),
@@ -194,7 +213,7 @@ export function pageMetadata(options: {
     // these rather than og:*.
     twitter: {
       card: 'summary_large_image',
-      title: title ? `${title} — ${SITE_NAME}` : undefined,
+      ...(title ? { title: `${title} — ${SITE_NAME}` } : {}),
       description,
     },
   }

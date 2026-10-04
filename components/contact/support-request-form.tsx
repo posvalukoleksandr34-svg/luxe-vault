@@ -1,6 +1,5 @@
 'use client'
 
-import * as Dialog from '@radix-ui/react-dialog'
 import { getCountries } from 'libphonenumber-js'
 import { Check, ChevronDown, Loader2, Paperclip, X } from 'lucide-react'
 import { Link } from '@/components/locale-link'
@@ -20,13 +19,15 @@ import { SUPPORT_COPY } from '@/lib/support/copy'
 import { SUPPORT_CATEGORIES, type SupportCategory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { isValidEmail } from '@/lib/validation'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 type FieldKey = 'name' | 'email' | 'handle' | 'message'
 
 const METHODS: ContactMethod[] = ['email', 'phone', 'telegram']
 
 /**
- * "Помощь и контакты": the request form, in a centred modal.
+ * The contact form, inline on /contact (it used to open in a modal, one click
+ * further away from the customer who came to write).
  *
  * It files an ordinary support ticket through /api/support/tickets — the same
  * endpoint, rate limit, attachment rules and confirmation emails as the
@@ -35,17 +36,7 @@ const METHODS: ContactMethod[] = ['email', 'phone', 'telegram']
  * (how to reach the customer, where they ship to) have no columns of their
  * own; they head the message, where the team reads them first.
  */
-export function SupportRequestModal({
-  open,
-  onOpenChange,
-  c,
-  replySpan,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  c: ContactCopy
-  replySpan: string
-}) {
+export function SupportRequestForm({ c, replySpan }: { c: ContactCopy; replySpan: string }) {
   const { locale, currentUser } = useStore()
   const categories = SUPPORT_COPY[locale].categories
 
@@ -57,6 +48,7 @@ export function SupportRequestModal({
   const [country, setCountry] = useState('')
   const [category, setCategory] = useState<SupportCategory>('other')
   const [subject, setSubject] = useState('')
+  const [orderNumber, setOrderNumber] = useState('')
   const [message, setMessage] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
@@ -74,12 +66,19 @@ export function SupportRequestModal({
 
   // A signed-in customer's details as a starting point.
   useEffect(() => {
-    if (!open || !currentUser) return
+    if (!currentUser) return
     setName((v) => v || currentUser.name || '')
     setEmail((v) => v || currentUser.email || '')
-  }, [open, currentUser])
+  }, [currentUser])
 
+  // Country names come from Intl.DisplayNames, whose data differs between
+  // the server's ICU and the browser's — rendered on the server they made the
+  // page fail hydration. The list is built in the browser only; until then
+  // the select holds just its empty option.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const countries = useMemo(() => {
+    if (!mounted) return []
     let names: Intl.DisplayNames | null = null
     try {
       names = new Intl.DisplayNames([locale], { type: 'region' })
@@ -89,7 +88,7 @@ export function SupportRequestModal({
     return getCountries()
       .map((code) => ({ code, name: names?.of(code) ?? code }))
       .sort((a, b) => a.name.localeCompare(b.name, locale))
-  }, [locale])
+  }, [locale, mounted])
 
   const emailValid = isValidEmail(email.trim())
   const showEmailState = emailTouched && email.trim().length > 0
@@ -103,19 +102,13 @@ export function SupportRequestModal({
     setCountry('')
     setCategory('other')
     setSubject('')
+    setOrderNumber('')
     setMessage('')
     setFiles([])
     setFileError(null)
     setErrors({})
     setServerError(null)
     setDone(null)
-  }
-
-  function handleOpenChange(next: boolean) {
-    if (!next && sending) return
-    onOpenChange(next)
-    // A sent request clears the form for the next one; an unsent draft stays.
-    if (!next && done) reset()
   }
 
   async function addFiles(list: FileList | null) {
@@ -161,7 +154,9 @@ export function SupportRequestModal({
     }
 
     const countryName = countries.find((x) => x.code === country)?.name
+    const order = orderNumber.trim().toUpperCase().slice(0, 40)
     const meta = [
+      order ? `${c.metaOrder}: ${order}` : '',
       `${c.metaMethod}: ${c.methods[method]}${method !== 'email' ? ` — ${handle.trim()}` : ''}`,
       countryName ? `${c.metaCountry}: ${countryName}` : '',
     ].filter(Boolean)
@@ -190,55 +185,40 @@ export function SupportRequestModal({
   const describedBy = (key: FieldKey) => (errors[key] ? `contact-${key}-error` : undefined)
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[120] overflow-y-auto bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0">
-          <div className="flex min-h-full items-stretch justify-center sm:items-center sm:p-6">
-            <Dialog.Content
-              className="relative w-full max-w-[560px] border-border bg-background px-5 pb-8 pt-14 outline-none sm:border sm:px-10 sm:pb-10 sm:pt-12"
-              onOpenAutoFocus={(e) => {
-                // Focus the first field rather than the close button.
-                e.preventDefault()
-                if (!done) refs.name.current?.focus()
-              }}
-            >
-              <Dialog.Close
-                aria-label={c.close}
-                className="absolute right-2 top-2 flex size-11 items-center justify-center text-foreground/60 transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/50 sm:right-3 sm:top-3"
-              >
-                <X className="size-5" strokeWidth={1.25} />
-              </Dialog.Close>
-
+    <div id="request" className="scroll-mt-24 rounded-xl border border-border bg-card/30 px-5 py-8 sm:px-8 sm:py-10">
               {done ? (
                 <div role="status" className="py-6">
                   <Check className="size-6 text-foreground" strokeWidth={1.25} aria-hidden />
-                  <Dialog.Title className="mt-6 font-serif text-[30px] font-normal leading-tight tracking-tight text-foreground">
+                  <h2 className="mt-6 font-serif text-[30px] font-normal leading-tight tracking-tight text-foreground">
                     {c.doneTitle}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-3 text-[14px] font-light leading-relaxed text-foreground/70">
+                  </h2>
+                  <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/70">
                     {fillCopy(c.doneBody, { number: done.number, email: done.email, span: replySpan })}
-                  </Dialog.Description>
+                  </p>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <Link
                       href={`/support/tickets/${encodeURIComponent(done.number)}`}
-                      onClick={() => handleOpenChange(false)}
                       className={PRIMARY_BUTTON}
                     >
                       {c.doneOpen}
                     </Link>
-                    <Dialog.Close className="t-cta inline-flex min-h-[48px] items-center justify-center rounded-xl border border-border px-8 text-foreground/[0.85] transition-colors hover:border-gold/60 hover:text-foreground">
-                      {c.close}
-                    </Dialog.Close>
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="t-cta inline-flex min-h-[48px] items-center justify-center rounded-xl border border-border px-8 text-foreground/[0.85] transition-colors hover:border-gold/60 hover:text-foreground"
+                    >
+                      {c.sendAnother}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <form onSubmit={submit} noValidate>
-                  <Dialog.Title className="font-serif text-[30px] font-normal leading-tight tracking-tight text-foreground">
+                <form onSubmit={submit} noValidate aria-labelledby="contact-form-title">
+                  <h2 id="contact-form-title" className="font-serif text-[28px] font-normal leading-tight tracking-tight text-foreground sm:text-[30px]">
                     {c.formTitle}
-                  </Dialog.Title>
-                  <Dialog.Description className="mt-2 text-[13px] font-light text-foreground/60">
+                  </h2>
+                  <p className="mt-2 text-[13px] font-light text-foreground/70">
                     {fillCopy(c.formIntro, { span: replySpan })}
-                  </Dialog.Description>
+                  </p>
 
                   <div className="mt-8 flex flex-col gap-5">
                     <div>
@@ -305,6 +285,24 @@ export function SupportRequestModal({
                           {c.emailInvalid}
                         </p>
                       )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="contact-order" className={LABEL}>
+                        {c.orderNumber}
+                      </label>
+                      <input
+                        id="contact-order"
+                        name="order"
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        maxLength={40}
+                        placeholder={c.orderNumberPh}
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        className={FIELD}
+                      />
                     </div>
 
                     <div>
@@ -493,13 +491,10 @@ export function SupportRequestModal({
                     {sending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
                     {sending ? c.sending : c.submit}
                   </button>
+                  <PrivacyNotice purpose="privacy.support" className="mt-3 text-center" />
                 </form>
               )}
-            </Dialog.Content>
-          </div>
-        </Dialog.Overlay>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </div>
   )
 }
 

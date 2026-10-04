@@ -39,8 +39,13 @@ export type LegalDoc = {
  */
 export type LegalDocSet = Partial<Record<Locale, LegalDoc>>
 
-/** Language the text was drafted and reviewed in; the others are translations. */
-export const AUTHORITATIVE_LOCALE: Locale = 'ru'
+/**
+ * The version that prevails if translations differ. English: the storefront's
+ * default language and the one every document exists in. It was Russian, a
+ * language no customer can select on the storefront — the notice then pointed
+ * buyers at a text they had no way to read.
+ */
+export const AUTHORITATIVE_LOCALE: Locale = 'en'
 
 /**
  * Picks the best available document for a locale.

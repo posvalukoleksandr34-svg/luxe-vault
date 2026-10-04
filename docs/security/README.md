@@ -10,6 +10,7 @@ filtering are already in place and are not repeated here.
 | [../performance/README.md](../performance/README.md) | The performance half: measured audit, speed quick wins, structural plan |
 | [phase-1-perimeter.md](phase-1-perimeter.md) | Cloudflare WAF, rate limits, origin lock, admin behind Cloudflare Access |
 | [phase-1-backups.md](phase-1-backups.md) | Offsite encrypted backups, weekly restore test, restore runbook |
+| [../compliance/audit-2026-10-04.md](../compliance/audit-2026-10-04.md) | Privacy, consumer law, accessibility and SEO audit: analytics URL leak, account deletion, double opt-in, retention, WCAG fixes, operator checklist |
 | [hardening-2026-09-29.md](hardening-2026-09-29.md) | Next.js 15 upgrade (F1 fixed), admin sign-out revocation, RLS column gap, webhook amount check, operator checklist; 2026-10-04 follow-up: admin TOTP, strict nonce CSP on checkout/admin, live-site and database checks |
 
 ## The system as it stands

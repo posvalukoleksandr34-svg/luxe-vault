@@ -182,7 +182,7 @@ export async function sendRestockEmail(alert: {
       text: `${subject}\n\n${body}\n\n${alert.productName} — ${alert.size}, ${alert.color}\n\n${href}\n\nLuxe Vault`,
     })
     if (!result.ok) {
-      console.warn(`[campaigns] restock for ${alert.email} not sent: ${result.message}`)
+      console.warn(`[campaigns] restock alert for ${alert.productId} (${alert.size}/${alert.color}) not sent: ${result.message}`)
       return false
     }
     return true

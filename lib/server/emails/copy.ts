@@ -97,7 +97,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     confirm: {
       subject: (id) => `Заказ ${id} оформлен — Luxe Vault`,
       heading: (name) => `Спасибо за заказ${withName(', ', name)}`,
-      intro: 'Мы получили ваш заказ. Напишем снова, когда оплата будет подтверждена и посылка отправится.',
+      intro: 'Мы получили ваш заказ. Напишем снова, когда оплата будет подтверждена и посылка отправится. Отказаться от покупки можно в течение 14 дней после получения — условия: luxe-vault.store/legal/refunds.',
     },
     receipt: {
       subject: (id) => `Оплата заказа ${id} получена — Luxe Vault`,
@@ -169,7 +169,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     confirm: {
       subject: (id) => `Order ${id} placed — Luxe Vault`,
       heading: (name) => `Thank you for your order${withName(', ', name)}`,
-      intro: 'We have received your order. We will write again when the payment is confirmed and when the parcel ships.',
+      intro: 'We have received your order. We will write again when the payment is confirmed and when the parcel ships. You can withdraw within 14 days of delivery — terms at luxe-vault.store/legal/refunds.',
     },
     receipt: {
       subject: (id) => `Payment received for ${id} — Luxe Vault`,
@@ -241,7 +241,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     confirm: {
       subject: (id) => `Ordine ${id} ricevuto — Luxe Vault`,
       heading: (name) => `Grazie per il tuo ordine${withName(', ', name)}`,
-      intro: 'Abbiamo ricevuto il tuo ordine. Ti scriveremo quando il pagamento sarà confermato e quando il pacco partirà.',
+      intro: 'Abbiamo ricevuto il tuo ordine. Ti scriveremo quando il pagamento sarà confermato e quando il pacco partirà. Puoi recedere entro 14 giorni dalla consegna — condizioni su luxe-vault.store/legal/refunds.',
     },
     receipt: {
       subject: (id) => `Pagamento ricevuto per ${id} — Luxe Vault`,
@@ -313,7 +313,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     confirm: {
       subject: (id) => `Commande ${id} enregistrée — Luxe Vault`,
       heading: (name) => `Merci pour votre commande${withName(', ', name)}`,
-      intro: 'Nous avons bien reçu votre commande. Nous vous écrirons lorsque le paiement sera confirmé et lorsque le colis partira.',
+      intro: 'Nous avons bien reçu votre commande. Nous vous écrirons lorsque le paiement sera confirmé et lorsque le colis partira. Vous pouvez vous rétracter dans les 14 jours suivant la livraison — conditions sur luxe-vault.store/legal/refunds.',
     },
     receipt: {
       subject: (id) => `Paiement reçu pour ${id} — Luxe Vault`,
@@ -385,7 +385,7 @@ export const EMAIL_COPY: Record<EmailLang, EmailCopy> = {
     confirm: {
       subject: (id) => `Bestellung ${id} eingegangen — Luxe Vault`,
       heading: (name) => `Danke für Ihre Bestellung${withName(', ', name)}`,
-      intro: 'Wir haben Ihre Bestellung erhalten. Wir melden uns, sobald die Zahlung bestätigt ist und das Paket versendet wird.',
+      intro: 'Wir haben Ihre Bestellung erhalten. Wir melden uns, sobald die Zahlung bestätigt ist und das Paket versendet wird. Sie können innerhalb von 14 Tagen nach Lieferung zurücktreten – Bedingungen unter luxe-vault.store/legal/refunds.',
     },
     receipt: {
       subject: (id) => `Zahlung für ${id} erhalten — Luxe Vault`,

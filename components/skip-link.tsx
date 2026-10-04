@@ -14,6 +14,15 @@ export function SkipLink() {
   return (
     <a
       href="#main"
+      // Following #main alone scrolls, but leaves focus on <body> in some
+      // browsers and screen readers: focus the landmark itself.
+      onClick={(e) => {
+        const main = document.getElementById('main')
+        if (!main) return
+        e.preventDefault()
+        if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
+        main.focus()
+      }}
       className="sr-only left-4 top-4 z-[200] rounded-xl border border-gold bg-background px-4 py-2 text-[12px] uppercase tracking-[0.12em] text-gold focus:not-sr-only focus:absolute"
     >
       {t('a11y.skipToContent')}

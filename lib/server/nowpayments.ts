@@ -132,6 +132,62 @@ export type NowPaymentsPayment = {
   expiration_estimate_date?: string
 }
 
+/**
+ * A payment as NOWPayments' API reports it NOW — the canonical record the
+ * webhook decides on. The IPN that announced a change is signed, but it is a
+ * message about a moment: it can be replayed, and it can arrive out of order.
+ */
+export type NowPaymentsPaymentState = {
+  payment_id: number | string
+  payment_status: string
+  order_id: string | null
+  price_amount: number
+  price_currency: string
+  pay_amount: number
+  pay_currency: string
+  actually_paid: number | null
+}
+
+export async function getPayment(paymentId: string) {
+  if (!/^\d{1,20}$/.test(paymentId)) {
+    return { ok: false as const, error: { message: 'Malformed NOWPayments payment id' } }
+  }
+  return request<NowPaymentsPaymentState>(`/payment/${paymentId}`)
+}
+
+/** How far below the quoted coin amount a "paid" payment may land (network
+ *  rounding); anything short of it is not treated as paid. */
+const UNDERPAY_TOLERANCE = 0.005
+
+/**
+ * Why this provider record must NOT settle this order, or null when it may.
+ * Every value compared comes from our database (written when the payment was
+ * created from the stored order total) or from NOWPayments' own API — never
+ * from the request.
+ */
+export function cryptoPaymentMismatch(
+  order: { id: string; total: number; paymentId?: string | null; paymentCurrency?: string | null },
+  payment: NowPaymentsPaymentState,
+): string | null {
+  if (String(payment.payment_id) !== String(order.paymentId ?? '')) return 'payment id is not the order\'s current payment'
+  if ((payment.order_id ?? '') !== order.id) return `payment is for order "${payment.order_id ?? ''}"`
+  if ((payment.price_currency ?? '').toLowerCase() !== PRICE_CURRENCY) return `priced in ${payment.price_currency}, not ${PRICE_CURRENCY}`
+  if (!(Math.abs(Number(payment.price_amount) - Number(order.total)) <= 0.01)) {
+    return `priced at ${payment.price_amount}, order total is ${order.total}`
+  }
+  if (order.paymentCurrency && (payment.pay_currency ?? '').toLowerCase() !== order.paymentCurrency.toLowerCase()) {
+    return `paid in ${payment.pay_currency}, order expects ${order.paymentCurrency}`
+  }
+  return null
+}
+
+/** Whether the coins that arrived cover the quoted amount. */
+export function cryptoFullyPaid(payment: NowPaymentsPaymentState): boolean {
+  const paid = Number(payment.actually_paid)
+  const due = Number(payment.pay_amount)
+  return Number.isFinite(paid) && Number.isFinite(due) && due > 0 && paid >= due * (1 - UNDERPAY_TOLERANCE)
+}
+
 export async function createPayment(params: CreatePaymentParams) {
   return request<NowPaymentsPayment>('/payment', {
     method: 'POST',
@@ -152,7 +208,10 @@ export async function createPayment(params: CreatePaymentParams) {
 function sortKeysDeep(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeysDeep)
   if (value && typeof value === 'object') {
-    const sorted: Record<string, unknown> = {}
+    // No prototype: a "__proto__" key in the payload is then an ordinary own
+    // property that survives into the canonical JSON — on a plain {} the
+    // assignment would set the object's prototype instead and drop the key.
+    const sorted: Record<string, unknown> = Object.create(null)
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
       sorted[key] = sortKeysDeep((value as Record<string, unknown>)[key])
     }
@@ -201,8 +260,11 @@ export function toPaymentStatus(nowPaymentsStatus: string): PaymentStatus {
     case 'expired':
       return 'expired'
     case 'failed':
-    case 'refunded':
       return 'failed'
+    // Money that came back — a refund, never "failed": the state machine lets
+    // a refund follow a payment, and refuses a failure after one.
+    case 'refunded':
+      return 'refunded'
     default:
       return 'pending_payment'
   }

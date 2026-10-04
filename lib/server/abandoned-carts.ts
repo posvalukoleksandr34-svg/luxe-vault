@@ -74,6 +74,21 @@ export async function markCartRecovered(email: string | undefined): Promise<void
   }
 }
 
+/** Deletes the not-yet-reminded cart for this address (its owner withdrew the
+ *  request). Never throws: it runs beside a checkout. */
+export async function deletePendingCart(email: string): Promise<void> {
+  try {
+    const { error } = await createAdminClient()
+      .from('abandoned_carts')
+      .delete()
+      .eq('email', email)
+      .eq('status', 'pending')
+    if (error) throw new Error(error.message)
+  } catch (e) {
+    console.warn('[abandoned-carts] withdraw skipped:', (e as Error).message)
+  }
+}
+
 /**
  * How long a cart must sit untouched before its reminder:
  * ABANDONED_CART_DELAY_MINUTES, default 120, clamped to 15 minutes – 7 days

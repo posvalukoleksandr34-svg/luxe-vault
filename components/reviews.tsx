@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/state-view'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Review } from '@/lib/types'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 export function Reviews() {
   const { t, locale } = useStore()
@@ -62,11 +63,17 @@ export function Reviews() {
             <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {t('reviews.title')}
             </h2>
+            {/* How these reviews are checked — required wherever reviews are
+                shown (EU Omnibus Directive). Anyone may write one; they are
+                moderated, not matched to orders. */}
+            <p className="mt-3 max-w-xl text-[12px] font-light leading-relaxed text-muted-foreground">
+              {t('reviews.verificationNote')}
+            </p>
           </div>
           <button
             type="button"
             onClick={() => setShowForm((v) => !v)}
-            className="tap-safe rounded-xl border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
+            className="btn-secondary-lv"
           >
             {t('reviews.writeReview')}
           </button>
@@ -246,6 +253,7 @@ function ReviewForm({ onSubmitted }: { onSubmitted: (review: Review) => void }) 
       >
         {t('reviews.submit')}
       </button>
+      <PrivacyNotice purpose="privacy.review" className="mt-3" />
     </form>
   )
 }

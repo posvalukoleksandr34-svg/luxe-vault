@@ -7,13 +7,13 @@ export const TERMS: LegalDocSet = {
   ru: {
     title: 'Условия использования',
     description: 'Условия использования магазина Luxe Vault.',
-    effective: 'Действует с 6 сентября 2026',
+    effective: 'Действует с 4 октября 2026 года',
     sections: [
       {
         h: '1. Общие положения',
         blocks: [
           { p: 'Настоящие Условия регулируют использование сайта luxe-vault.store и покупку товаров через него. Продавцом выступает частное лицо, проживающее в Цюрихе, Швейцария, действующее под именем Luxe Vault (далее — «Продавец», «я»). Это **частная продажа** (Privatverkauf), а не деятельность компании: продавец не является зарегистрированным предприятием, не имеет склада, магазина или наёмных сотрудников.' },
-          { p: `Полное имя и почтовый адрес продавца предоставляются по запросу на [${SUPPORT}](mailto:${SUPPORT}) — они необходимы для оформления возврата и для реализации ваших прав на доступ к персональным данным.` },
+          { p: 'Данные продавца и способы связи указаны в [Импрессуме](/legal/imprint).' },
           { p: 'Оформляя заказ, вы подтверждаете, что ознакомились с настоящими Условиями и принимаете их.' },
         ],
       },
@@ -34,7 +34,7 @@ export const TERMS: LegalDocSet = {
       {
         h: '4. Регистрация и учётная запись',
         blocks: [
-          { p: 'Оформление заказа требует создания учётной записи. Вы отвечаете за сохранность своих учётных данных. Сообщите немедленно при подозрении на несанкционированный доступ.' },
+          { p: 'Заказ можно оформить без учётной записи или с ней. Если вы её создали, вы отвечаете за сохранность своих учётных данных и должны сообщить нам немедленно при подозрении на несанкционированный доступ. Удалить учётную запись можно в любой момент в «Настройках» аккаунта.' },
           { p: 'Учётная запись может быть заблокирована при нарушении Условий, попытке мошенничества или злоупотреблении возвратами.' },
         ],
       },
@@ -42,7 +42,7 @@ export const TERMS: LegalDocSet = {
         h: '5. Заказы и цены',
         blocks: [
           { ul: [
-            'Размещение заказа является офертой. Договор заключается с момента подтверждения заказа продавцом.',
+            'Кнопка «Перейти к оплате» создаёт неоплаченный заказ, который можно отменить в аккаунте. Обязательство оплатить возникает, когда вы нажимаете «Оплатить» (карта) или отправляете криптовалютный платёж; это ваша оферта. Договор заключается, когда продавец её подтверждает — письмом о подтверждении заказа или его отправкой.',
             'Цены указаны в швейцарских франках (CHF). Стоимость доставки рассчитывается отдельно. Импортные пошлины и НДС страны получателя в цену не включены.',
             'В исполнении заказа может быть отказано при явной ошибке в цене, отсутствии товара или обоснованном подозрении в мошенничестве; уплаченные средства возвращаются полностью.',
           ] },
@@ -106,13 +106,13 @@ export const TERMS: LegalDocSet = {
   en: {
     title: 'Terms of Use',
     description: 'Terms of use for the Luxe Vault store.',
-    effective: 'In force since 6 September 2026',
+    effective: 'In force since 4 October 2026',
     sections: [
       {
         h: '1. General',
         blocks: [
           { p: 'These Terms govern use of luxe-vault.store and purchases made through it. The seller is a private individual resident in Zurich, Switzerland, trading under the name Luxe Vault ("the Seller", "I"). This is a **private sale** (Privatverkauf), not a business: the Seller is not a registered company and has no warehouse, shop or employees.' },
-          { p: `The Seller's full name and postal address are provided on request at [${SUPPORT}](mailto:${SUPPORT}) — they are needed to process a return and to exercise your data-access rights.` },
+          { p: 'The Seller\'s identity and contact details are given in the [Imprint](/legal/imprint).' },
           { p: 'By placing an order you confirm that you have read and accept these Terms.' },
         ],
       },
@@ -133,7 +133,7 @@ export const TERMS: LegalDocSet = {
       {
         h: '4. Registration and account',
         blocks: [
-          { p: 'Placing an order requires an account. You are responsible for keeping your credentials safe. Tell us immediately if you suspect unauthorised access.' },
+          { p: 'You can order with or without an account. If you create one, you are responsible for keeping your credentials safe and must tell us immediately if you suspect unauthorised access. You can delete your account at any time under Account → Settings.' },
           { p: 'An account may be suspended for breach of these Terms, attempted fraud, or abuse of the returns process.' },
         ],
       },
@@ -141,7 +141,7 @@ export const TERMS: LegalDocSet = {
         h: '5. Orders and prices',
         blocks: [
           { ul: [
-            'Placing an order is an offer. The contract is formed when the Seller confirms the order.',
+            '"Continue to payment" creates an unpaid order, which you can still cancel from your account. You become obliged to pay when you press "Pay now" (card) or send a crypto payment; that is your offer. The contract is formed when the Seller accepts it — by the order confirmation email or by dispatching the order.',
             'Prices are in Swiss francs (CHF). Shipping is calculated separately. Import duties and destination-country VAT are not included.',
             'An order may be refused where there is an obvious pricing or description error, the item is unavailable, or fraud is reasonably suspected; any sum paid is refunded in full.',
           ] },
@@ -205,13 +205,13 @@ export const TERMS: LegalDocSet = {
   it: {
     title: 'Condizioni d’uso',
     description: 'Condizioni d’uso del negozio Luxe Vault.',
-    effective: 'In vigore dal 6 settembre 2026',
+    effective: 'In vigore dal 4 ottobre 2026',
     sections: [
       {
         h: '1. Disposizioni generali',
         blocks: [
           { p: 'Le presenti Condizioni regolano l’uso del sito luxe-vault.store e gli acquisti effettuati tramite esso. Il venditore è una persona fisica residente a Zurigo, Svizzera, che opera con il nome Luxe Vault («il Venditore»). Si tratta di una **vendita tra privati** (Privatverkauf), non di un’attività d’impresa: il Venditore non è una società registrata e non dispone di magazzino, negozio o dipendenti.' },
-          { p: `Nome completo e indirizzo postale del Venditore sono forniti su richiesta scrivendo a [${SUPPORT}](mailto:${SUPPORT}) — sono necessari per gestire un reso e per esercitare i diritti di accesso ai dati.` },
+          { p: 'I dati del Venditore e i recapiti sono indicati nelle [Note legali](/legal/imprint).' },
           { p: 'Effettuando un ordine dichiari di aver letto e accettato le presenti Condizioni.' },
         ],
       },
@@ -232,7 +232,7 @@ export const TERMS: LegalDocSet = {
       {
         h: '4. Registrazione e account',
         blocks: [
-          { p: 'Per ordinare è necessario un account. Sei responsabile della custodia delle tue credenziali. Segnala immediatamente ogni sospetto di accesso non autorizzato.' },
+          { p: 'Puoi ordinare con o senza account. Se lo crei, sei responsabile della custodia delle tue credenziali e devi segnalarci immediatamente ogni sospetto di accesso non autorizzato. Puoi eliminare l’account in qualsiasi momento in Account → Impostazioni.' },
           { p: 'L’account può essere sospeso in caso di violazione delle Condizioni, tentata frode o abuso della procedura di reso.' },
         ],
       },
@@ -240,7 +240,7 @@ export const TERMS: LegalDocSet = {
         h: '5. Ordini e prezzi',
         blocks: [
           { ul: [
-            'L’invio di un ordine costituisce una proposta. Il contratto si perfeziona con la conferma da parte del Venditore.',
+            '«Procedi al pagamento» crea un ordine non pagato, che puoi ancora annullare dal tuo account. L’obbligo di pagare sorge quando premi «Paga ora» (carta) o invii un pagamento in criptovaluta: questa è la tua proposta. Il contratto si perfeziona quando il Venditore la accetta — con l’email di conferma dell’ordine o con la spedizione.',
             'I prezzi sono in franchi svizzeri (CHF). La spedizione è calcolata a parte. Dazi doganali e IVA del paese di destinazione non sono inclusi.',
             'Un ordine può essere rifiutato in caso di errore evidente di prezzo o descrizione, indisponibilità dell’articolo o ragionevole sospetto di frode; quanto pagato è rimborsato integralmente.',
           ] },

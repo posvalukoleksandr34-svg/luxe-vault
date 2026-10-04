@@ -47,7 +47,7 @@ const FONT_PRELOADS = ['/fonts/bodoni-moda-latin.woff2', '/fonts/inter-latin.wof
 // auth links that land on the wrong origin.
 const SITE_URL = SITE_ORIGIN;
 const SITE_NAME = 'LUXE VAULT';
-const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
+const SITE_TITLE = 'LUXE VAULT — Designer-Inspired Fashion from Switzerland';
 
 // The meta description is the single most public claim the site makes — it is
 // what appears verbatim in Google results and in every link preview.
@@ -56,18 +56,18 @@ const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
 // Both would assert that the goods are genuine branded product, which flatly
 // contradicts the Terms of Use ("Мы продаём премиальные реплики, а не
 // оригинальную продукцию брендов"), the replica badge on every product card,
-// and the disclosure in every product modal. A store whose search snippet
+// and the authenticity note on every product page. A store whose search snippet
 // promises authenticity while its own terms deny it is not merely inconsistent
 // — that gap is what a consumer-protection complaint or a payment-processor
 // review is built on.
 //
 // "Designer-inspired" is the honest phrasing that keeps the premium register.
 const SITE_DESCRIPTION =
-  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories. Meticulous craftsmanship, limited drops, shipped from Switzerland.';
+  'Replica and designer-inspired clothing, shoes and accessories, clearly labelled. Prices in CHF, tracked Swiss Post shipping from Switzerland, 14-day returns.';
 
 // Shorter variant for link previews, where Telegram/WhatsApp truncate hard.
 const SITE_DESCRIPTION_SHORT =
-  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
+  'Replica and designer-inspired clothing, shoes and accessories, shipped from Switzerland.';
 
 /**
  * Who publishes the site, as structured data: the seller, the brand and the
@@ -100,21 +100,13 @@ export const revalidate = 60
  */
 export const viewport: Viewport = {
   /**
-   * Zoom is disabled, for the app-like feel: no pinch, no double-tap scale.
-   *
-   * Two things to know about it:
-   *  - iOS Safari has deliberately IGNORED user-scalable/maximum-scale in the
-   *    browser since iOS 10, on accessibility grounds. It is honoured in a
-   *    home-screen (standalone) launch. The touch-action rule in globals.css
-   *    is what enforces the same policy in Chrome, Edge and Android.
-   *  - It stops anyone magnifying the page, so small type and the checkout's
-   *    figures cannot be enlarged. Removing `maximumScale` and `userScalable`
-   *    is all it takes to hand zoom back.
+   * Zoom is allowed. It used to be off (maximum-scale=1, user-scalable=0) for
+   * an app-like feel, which fails WCAG 1.4.4: small type and the checkout's
+   * figures could not be enlarged. Double-tap zoom stays off through
+   * `touch-action: manipulation` in globals.css, so taps remain immediate.
    */
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   // The browser chrome on mobile in the storefront's background colour.
   themeColor: '#FAF8F5',
 };
@@ -138,8 +130,7 @@ export const metadata: Metadata = {
     'premium replicas',
     'designer-inspired apparel',
     'replica sneakers',
-    'limited collections',
-    'luxury fashion online',
+    'shipped from Switzerland',
   ],
   applicationName: SITE_NAME,
   authors: [{ name: SITE_NAME }],

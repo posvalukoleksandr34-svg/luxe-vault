@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { translate } from '@/lib/i18n'
-import { captureAbandonedCart, claimDueCarts } from '@/lib/server/abandoned-carts'
+import { captureAbandonedCart, claimDueCarts, deletePendingCart } from '@/lib/server/abandoned-carts'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { sendAbandonedCartEmail } from '@/lib/server/emails/abandoned-cart'
 import { emailLang } from '@/lib/server/emails/copy'
@@ -27,7 +27,7 @@ import { isValidEmail } from '@/lib/validation'
 const MAX_ITEMS = 20
 const MAX_QTY = 20
 
-export type CaptureOutcome = 'captured' | 'ignored' | 'invalid_email'
+export type CaptureOutcome = 'captured' | 'ignored' | 'invalid_email' | 'no_consent'
 
 /**
  * Validates and stores a checkout's cart for a later reminder.
@@ -41,7 +41,11 @@ export async function captureCheckoutCart(input: {
   email?: unknown
   items?: unknown
   locale?: unknown
+  /** The customer ticked "remind me" (checkout.cartReminderOptIn). Without it
+   *  nothing is stored: the address is kept only for a reminder asked for. */
+  consent?: unknown
 }): Promise<CaptureOutcome> {
+  if (input.consent !== true) return 'no_consent'
   const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
   if (email.length > 254 || !isValidEmail(email)) return 'invalid_email'
 
@@ -123,4 +127,16 @@ export async function runAbandonedCartReminders(limit = 100): Promise<ReminderRu
     if (await sendAbandonedCartEmail(cart, items, lang)) sent++
   }
   return { claimed: claimed.length, sent, skipped }
+}
+
+/**
+ * The customer unticked "remind me": the pending cart for this address is
+ * deleted, so no reminder goes out and the copy is not kept. Anyone can call
+ * it with any address, and the worst it does is cancel one cart reminder —
+ * which is also what the email's own opt-out link does.
+ */
+export async function withdrawCheckoutCart(input: { email?: unknown }): Promise<void> {
+  const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+  if (email.length > 254 || !isValidEmail(email)) return
+  await deletePendingCart(email)
 }

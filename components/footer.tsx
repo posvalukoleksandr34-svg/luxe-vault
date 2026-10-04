@@ -1,19 +1,12 @@
 'use client'
 
-import { LifeBuoy, Mail, Send } from 'lucide-react'
+import { Instagram, LifeBuoy, Mail, Phone, Send } from 'lucide-react'
 import { Link } from '@/components/locale-link'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { openCookieSettings } from '@/lib/cookie-settings'
 import { SoundToggle } from '@/components/sound-toggle'
 import { MotionToggle } from '@/components/motion-toggle'
-import { SUPPORT_EMAIL, TELEGRAM_ADMIN } from '@/lib/data'
-import { describeBusinessDays } from '@/lib/fulfilment'
-import { formatPrice, useStore } from '@/lib/store'
+import { BUSINESS } from '@/config/business'
+import { useStore } from '@/lib/store'
 import { FooterNewsletter } from '@/components/newsletter/footer-newsletter'
 
 /** Opens the support center drawer: help, the request form, and the
@@ -21,187 +14,149 @@ import { FooterNewsletter } from '@/components/newsletter/footer-newsletter'
 function FooterSupportLink() {
   const { t, openSupport } = useStore()
   return (
-    <button
-      type="button"
-      onClick={() => openSupport()}
-      className="tap-safe flex items-center gap-2 text-left text-[12px] font-light text-gold transition hover:text-gold"
-    >
-      <LifeBuoy className="size-3.5 shrink-0" />
+    <button type="button" onClick={() => openSupport()} className={LINK}>
+      <LifeBuoy className="size-3.5 shrink-0 text-gold" aria-hidden />
       {t('support.footerLink')}
     </button>
   )
 }
 
-function scrollTo(id: string) {
-  const el = document.getElementById(id)
-  if (el) {
-    const top = el.getBoundingClientRect().top + window.scrollY - 72
-    window.scrollTo({ top, behavior: 'smooth' })
-  }
+const LINK =
+  'tap-safe inline-flex min-h-[32px] items-center gap-2 text-left text-[13px] font-light text-muted-foreground transition hover:text-foreground'
+const HEADING = 'mb-4 text-[10px] uppercase tracking-[0.2em] text-foreground'
+
+/** TikTok has no lucide icon; a plain, recognisable glyph at the same weight. */
+function TikTokIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" />
+      <path d="M14 3c.5 2.8 2.4 4.6 5 5" />
+    </svg>
+  )
 }
 
 /**
- * Each accordion item has a unique `value` ("delivery" / "returns" / "reviews").
- * Because the root Accordion below is `type="single" collapsible`, Radix
- * guarantees that clicking one trigger opens exactly that item's content and
- * closes any other open item — so "Доставка", "Возврат" and "Отзывы" never
- * appear open at the same time and clicking one never toggles another.
+ * The footer: what a first-time customer scans to decide whether the shop is
+ * real — who runs it, how to reach them, and every policy one click away.
+ *
+ * Only real destinations. The social column lists a profile only when its
+ * URL is configured (config/business.ts); Telegram is the staffed support
+ * channel and always present. The old "Shop" buttons scrolled to a #shop
+ * section the homepage no longer has, so they did nothing; they are links to
+ * the catalogue now.
  */
 export function Footer() {
-  const { t, tf, locale, shipping } = useStore()
+  const { t } = useStore()
 
   return (
     <footer className="border-t border-border bg-card/20">
-      <div className="mx-auto max-w-[1400px] px-4 py-20 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
         <FooterNewsletter />
 
-        <div className="grid gap-10 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <div className="flex items-baseline gap-0.5">
-              <span className="font-serif text-lg font-bold tracking-[0.22em] text-foreground">
-                LUXE
-              </span>
-              <span className="font-serif text-lg font-bold tracking-[0.22em] text-gold">
-                VAULT
-              </span>
-            </div>
-            <p className="mt-4 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/85">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:grid-cols-5">
+          <div className="col-span-2 md:col-span-4 lg:col-span-1">
+            <Link href="/" aria-label="LUXE VAULT — home" className="inline-flex items-baseline gap-0.5">
+              <span className="font-serif text-lg font-bold tracking-[0.22em] text-foreground">LUXE</span>
+              <span className="font-serif text-lg font-bold tracking-[0.22em] text-gold">VAULT</span>
+            </Link>
+            <p className="mt-4 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground">
               {t('footer.tagline')}
             </p>
+            <p className="mt-3 text-[11px] font-light text-muted-foreground">{t('footer.basedIn')}</p>
           </div>
 
-          <div>
-            <h3 className="mb-4 text-[10px] uppercase tracking-[0.2em] text-foreground">
-              {t('footer.shop')}
-            </h3>
-            <ul className="space-y-2.5">
+          <nav aria-labelledby="footer-shop">
+            <h2 id="footer-shop" className={HEADING}>{t('footer.shop')}</h2>
+            <ul className="space-y-1.5">
+              <li><Link href="/catalog" className={LINK}>{t('footer.allProducts')}</Link></li>
+              <li><Link href="/catalog?view=new" className={LINK}>{t('footer.new')}</Link></li>
+              <li><Link href="/catalog?view=sale" className={LINK}>{t('footer.sale')}</Link></li>
+              <li><Link href="/stylist" className={LINK}>{t('stylist.cta')}</Link></li>
+              <li><Link href="/wishlist" className={LINK}>{t('wishlist.title')}</Link></li>
+            </ul>
+          </nav>
+
+          <nav aria-labelledby="footer-care">
+            <h2 id="footer-care" className={HEADING}>{t('footer.customerCare')}</h2>
+            <ul className="space-y-1.5">
+              <li><Link href="/contact" className={LINK}>{t('nav.contact')}</Link></li>
+              <li><Link href="/shipping" className={LINK}>{t('footer.shipping')}</Link></li>
+              <li><Link href="/legal/refunds" className={LINK}>{t('footer.returnsRefunds')}</Link></li>
+              <li><Link href="/faq" className={LINK}>{t('footer.faq')}</Link></li>
+              <li><Link href="/about" className={LINK}>{t('nav.about')}</Link></li>
+              <li><FooterSupportLink /></li>
+            </ul>
+          </nav>
+
+          <nav aria-labelledby="footer-legal">
+            <h2 id="footer-legal" className={HEADING}>{t('footer.legalHeading')}</h2>
+            <ul className="space-y-1.5">
+              <li><Link href="/legal/terms" className={LINK}>{t('footer.termsShort')}</Link></li>
+              <li><Link href="/legal/privacy" className={LINK}>{t('footer.privacy')}</Link></li>
+              <li><Link href="/legal/cookies" className={LINK}>{t('footer.cookiePolicy')}</Link></li>
+              <li><Link href="/legal/imprint" className={LINK}>{t('footer.imprint')}</Link></li>
               <li>
-                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
-                  {t('footer.new')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => scrollTo('collections')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
-                  {t('nav.collections')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => scrollTo('shop')} className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground">
-                  {t('footer.sale')}
+                {/* Consent must be withdrawable as easily as it was given:
+                    a permanent entry point, not a one-off banner. */}
+                <button type="button" onClick={openCookieSettings} className={LINK}>
+                  {t('cookies.settings')}
                 </button>
               </li>
             </ul>
-          </div>
-
-          {/* Help / FAQ accordion — each item opens strictly its own content */}
-          <div>
-            <h3 className="mb-4 text-[10px] uppercase tracking-[0.2em] text-foreground">
-              {t('footer.help')}
-            </h3>
-            <Accordion type="single" collapsible className="-mt-1 w-full">
-              <AccordionItem value="delivery" className="border-border/40">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
-                  {t('footer.delivery')}
-                </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
-                  {tf('help.delivery.content', {
-                    // The admin's figures (store_settings, /admin/settings).
-                    span: describeBusinessDays(shipping.deliveryTimeframe, locale),
-                    price: formatPrice(shipping.shippingPrice, true),
-                    amount: formatPrice(shipping.freeShippingThreshold),
-                  })}
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="returns" className="border-border/40">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
-                  {t('footer.returns')}
-                </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
-                  {t('help.returns.content')}
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="reviews" className="border-border/40 last:border-0">
-                <AccordionTrigger className="tap-safe py-2.5 text-[12px] font-light text-muted-foreground/90 hover:text-foreground hover:no-underline">
-                  {t('footer.reviews')}
-                </AccordionTrigger>
-                <AccordionContent className="pb-3 text-[12px] font-light leading-relaxed text-muted-foreground/85">
-                  {t('help.reviews.content')}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
+          </nav>
 
           <div>
-            <h3 className="mb-4 text-[10px] uppercase tracking-[0.2em] text-foreground">
-              {t('footer.contact')}
-            </h3>
-            <ul className="space-y-2.5">
+            <h2 className={HEADING}>{t('footer.contact')}</h2>
+            <ul className="space-y-1.5">
               <li>
-                <a
-                  href={`https://t.me/${TELEGRAM_ADMIN.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/85 transition hover:text-gold"
-                >
-                  <Send className="size-3.5 shrink-0" />
-                  {TELEGRAM_ADMIN}
+                <a href={`mailto:${BUSINESS.email}`} className={LINK}>
+                  <Mail className="size-3.5 shrink-0 text-gold" aria-hidden />
+                  <span>{BUSINESS.email.split('@')[0]}@<wbr />{BUSINESS.email.split('@')[1]}</span>
                 </a>
               </li>
+              {BUSINESS.phone && (
+                <li>
+                  <a href={`tel:${BUSINESS.phone.replace(/[^\d+]/g, '')}`} className={LINK}>
+                    <Phone className="size-3.5 shrink-0 text-gold" aria-hidden />
+                    {BUSINESS.phone}
+                  </a>
+                </li>
+              )}
               <li>
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="tap-safe flex items-center gap-2 text-[12px] font-light text-muted-foreground/85 transition hover:text-gold"
-                >
-                  <Mail className="size-3.5 shrink-0" />
-                  {SUPPORT_EMAIL}
+                <a href={BUSINESS.telegramUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+                  <Send className="size-3.5 shrink-0 text-gold" aria-hidden />
+                  Telegram {BUSINESS.telegram}
                 </a>
               </li>
-              <li>
-                <FooterSupportLink />
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="tap-safe text-[12px] font-light text-muted-foreground/85 transition hover:text-foreground"
-                >
-                  {t('footer.contactPage')}
-                </Link>
-              </li>
+              {BUSINESS.social.instagram && (
+                <li>
+                  <a href={BUSINESS.social.instagram} target="_blank" rel="noopener noreferrer me" className={LINK}>
+                    <Instagram className="size-3.5 shrink-0 text-gold" aria-hidden />
+                    Instagram
+                  </a>
+                </li>
+              )}
+              {BUSINESS.social.tiktok && (
+                <li>
+                  <a href={BUSINESS.social.tiktok} target="_blank" rel="noopener noreferrer me" className={LINK}>
+                    <TikTokIcon />
+                    TikTok
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 space-y-4 border-t border-border/40 pt-6 text-center">
-          {/* Legal links belong in the footer of every page: payment providers
-              and app stores check for them, and GDPR requires the privacy
-              notice to be reachable from anywhere. */}
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <Link href="/legal/terms" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
-              {t('footer.terms')}
-            </Link>
-            <Link href="/legal/privacy" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
-              {t('footer.privacy')}
-            </Link>
-            <Link href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
-              {t('footer.refunds')}
-            </Link>
-            {/* Consent must be withdrawable as easily as it was given, which
-                means a permanent entry point rather than a one-off banner. */}
-            <button
-              type="button"
-              onClick={openCookieSettings}
-              className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold"
-            >
-              {t('cookies.settings')}
-            </button>
+        <div className="mt-12 flex flex-col items-center gap-4 border-t border-border/40 pt-6 sm:flex-row sm:justify-between">
+          <p className="text-[11px] font-light text-muted-foreground">
+            © {new Date().getFullYear()} {BUSINESS.tradingName}
+            {BUSINESS.legalName ? ` · ${BUSINESS.legalName}` : ''}
+          </p>
+          <div className="flex items-center gap-5">
             <SoundToggle />
             <MotionToggle />
-          </nav>
-          <p className="text-[11px] font-light text-muted-foreground/85">
-            {t('footer.rights')}
-          </p>
+          </div>
         </div>
       </div>
     </footer>

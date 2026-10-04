@@ -59,13 +59,12 @@ export const createReturnRequestSchema = z.object({
   comment: z.string().trim().max(COMMENT_MAX).default(''),
   images: z.array(returnImagePathSchema).max(RETURN_IMAGE_MAX).default([]),
   /**
-   * The customer's confirmation that the piece is unworn and still tagged.
-   *
-   * `literal(true)` rather than a boolean: an unticked box must fail
-   * validation, not arrive as `false` for the server to remember to check.
-   * It is the condition the return is granted on, so it is a schema rule.
+   * Formerly a required "the item is unworn and tagged" box. The right to
+   * withdraw — and to return a faulty item — cannot be made conditional on
+   * that; the refund policy only allows a reduction for loss of value. Still
+   * accepted from older pages, and ignored.
    */
-  agreed: z.literal(true),
+  agreed: z.boolean().optional(),
 })
 export type CreateReturnRequestInput = z.infer<typeof createReturnRequestSchema>
 

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const body = await readJsonObject<{ email?: unknown; items?: unknown; locale?: unknown }>(request)
+  const body = await readJsonObject<{ email?: unknown; items?: unknown; locale?: unknown; consent?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
   const outcome = await captureCheckoutCart(body)
   if (outcome === 'invalid_email') {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
+  }
+  if (outcome === 'no_consent') {
+    return NextResponse.json({ error: 'CONSENT_REQUIRED' }, { status: 400 })
   }
   return new NextResponse(null, { status: 204 })
 }

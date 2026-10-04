@@ -51,7 +51,7 @@ export function useSoundSetting() {
 }
 
 function serverSnapshot(): boolean {
-  return true
+  return false
 }
 
 /** The same controller outside React: read, set, or flip the setting. */

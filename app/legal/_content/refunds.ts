@@ -75,7 +75,7 @@ export const REFUNDS: LegalDocSet = {
       {
         h: '8. Обмен',
         blocks: [
-          { p: 'Прямого обмена нет: товары продаются поштучно из личной коллекции, и второго экземпляра нужного размера обычно просто не существует. Оформите возврат и, при наличии подходящей позиции, новый заказ.' },
+          { p: 'Прямого обмена нет: количество в каждом размере ограничено, и замена в другом размере может оказаться недоступной. Оформите возврат и, при наличии подходящей позиции, новый заказ.' },
         ],
       },
       {
@@ -158,7 +158,7 @@ export const REFUNDS: LegalDocSet = {
       {
         h: '8. Exchanges',
         blocks: [
-          { p: 'There are no direct exchanges: items are sold individually from a personal collection, and a second copy in another size usually does not exist. Request a refund and, if a suitable item is available, place a new order.' },
+          { p: 'There are no direct exchanges: stock in each size is limited, and a replacement in another size may not be available. Request a refund and, if a suitable item is available, place a new order.' },
         ],
       },
       {
@@ -241,7 +241,7 @@ export const REFUNDS: LegalDocSet = {
       {
         h: '8. Cambi',
         blocks: [
-          { p: 'Non sono previsti cambi diretti: gli articoli sono venduti singolarmente da una collezione personale e di norma non esiste un secondo esemplare in un’altra taglia. Richiedi un rimborso e, se disponibile un articolo adatto, effettua un nuovo ordine.' },
+          { p: 'Non sono previsti cambi diretti: le quantità per taglia sono limitate e una sostituzione in un’altra taglia potrebbe non essere disponibile. Richiedi un rimborso e, se disponibile un articolo adatto, effettua un nuovo ordine.' },
         ],
       },
       {

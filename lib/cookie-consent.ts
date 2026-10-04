@@ -68,6 +68,9 @@ function isConsentState(value: unknown): value is ConsentState {
  * some embedded webviews rather than returning null, and a storage preference
  * must not take the site down.
  */
+/** How long a cookie choice stands before the banner asks again. */
+const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000
+
 export function readConsent(): ConsentState | null {
   if (typeof window === 'undefined') return null
   try {
@@ -77,6 +80,9 @@ export function readConsent(): ConsentState | null {
     if (!isConsentState(parsed)) return null
     // Stale consent is treated as no consent, not as a partial yes.
     if (parsed.version !== CONSENT_VERSION) return null
+    // A choice is good for 12 months, then the visitor is asked again — as
+    // the Privacy Policy says (section "Cookies").
+    if (Date.now() - parsed.timestamp > CONSENT_MAX_AGE_MS) return null
     return parsed
   } catch {
     return null

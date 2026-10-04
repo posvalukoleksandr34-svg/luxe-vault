@@ -69,7 +69,7 @@ The check never looks at `Host`. A request that reaches Vercel any other way is 
 
 Scope it to Production. That protects the production `*.vercel.app` alias only; preview URLs are covered by Vercel Deployment Protection.
 
-**Fail-open by design.** Without `EDGE_ORIGIN_SECRET` the lock is off, so a misconfigured deploy cannot take the shop down. It is now logged loudly in production instead of being silent.
+**Fail-closed since 2026-10-04** (was fail-open). A production deployment without `EDGE_ORIGIN_SECRET` now answers 503 (except `/api/cron/*`); the explicit `EDGE_ORIGIN_LOCK=off` is the only way to run production unlocked. `/_next/image` is behind the lock too. See [the 2026-10-04 audit](security-audit-2026-10-04.md).
 
 ## 3. Credentials
 

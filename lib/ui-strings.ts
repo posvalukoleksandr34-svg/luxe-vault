@@ -14,14 +14,12 @@
  * generator reads it as data.
  */
 export const UI = {
+  'nav.menu': { ru: 'Меню', en: 'Menu', it: 'Menu', fr: 'Menu', de: 'Menü' },
   'nav.shop': { ru: 'Магазин', en: 'Shop', it: 'Negozio', fr: 'Boutique', de: 'Shop' },
   // The storefront's top level is the department now (lib/departments.ts).
   'nav.collections': { ru: 'Разделы', en: 'Departments', it: 'Reparti', fr: 'Rayons', de: 'Bereiche' },
   'nav.about': { ru: 'О нас', en: 'About', it: 'Chi siamo', fr: 'À propos', de: 'Über uns' },
   'nav.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },
-  'hero.title': { ru: 'LUXE VAULT', en: 'LUXE VAULT', it: 'LUXE VAULT', fr: 'LUXE VAULT', de: 'LUXE VAULT' },
-  'hero.subtitle': { ru: 'Премиальная одежда и аксессуары', en: 'Premium apparel & accessories', it: 'Abbigliamento e accessori premium', fr: 'Vêtements et accessoires premium', de: 'Premium-Bekleidung & Accessoires' },
-  'hero.eyebrow': { ru: 'Коллекция 2026', en: 'Collection 2026', it: 'Collezione 2026', fr: 'Collection 2026', de: 'Kollektion 2026' },
   'filter.all': { ru: 'Все', en: 'All', it: 'Tutti', fr: 'Tout', de: 'Alle' },
   'filter.sale': { ru: 'Распродажа', en: 'Sale', it: 'Saldi', fr: 'Solde', de: 'Sale' },
   'filter.new': { ru: 'Новинки', en: 'New', it: 'Novità', fr: 'Nouveau', de: 'Neu' },
@@ -38,7 +36,9 @@ export const UI = {
   'stock.low': { ru: 'Осталось {n} шт.', en: 'Only {n} items left', it: 'Solo {n} pezzi disponibili', fr: 'Plus que {n} pièces', de: 'Nur noch {n} Stück' },
   // The quantity limit, said calmly: what exists, not an error.
   // Scarcity, only when real: three or fewer of the exact variant.
-  'stock.hurry': { ru: 'Спешите! Осталось всего {n} шт.', en: 'Hurry! Only {n} left in stock', it: 'Affrettati! Ne restano solo {n} in magazzino', fr: 'Vite ! Plus que {n} en stock', de: 'Schnell! Nur noch {n} auf Lager' },
+  // The count is the real stock (product-card / product-detail), stated
+  // without urgency wording: the number is the information.
+  'stock.hurry': { ru: 'В наличии: {n} шт.', en: '{n} left in stock', it: 'Ne restano {n} in magazzino', fr: '{n} en stock', de: 'Noch {n} auf Lager' },
   'stock.onlyInSize': { ru: 'Доступно только {n} шт. в размере {size}', en: 'Only {n} pcs. available in size {size}', it: 'Disponibili solo {n} pz. nella taglia {size}', fr: 'Seulement {n} pièce(s) disponible(s) en taille {size}', de: 'Nur {n} Stück in Größe {size} verfügbar' },
   'stock.only': { ru: 'Доступно только {n} шт.', en: 'Only {n} pcs. available', it: 'Disponibili solo {n} pz.', fr: 'Seulement {n} pièce(s) disponible(s)', de: 'Nur {n} Stück verfügbar' },
   'stock.maxInCart': { ru: 'Весь доступный остаток уже в корзине', en: 'Maximum available already in cart', it: 'Quantità massima già nel carrello', fr: 'Quantité maximale déjà dans le panier', de: 'Maximale Menge bereits im Warenkorb' },
@@ -100,6 +100,7 @@ export const UI = {
   "checkout.signInOrRegister": { ru: "Войти / Зарегистрироваться", en: "Log in / Register", it: "Accedi / Registrati", fr: "Se connecter / S'inscrire", de: "Anmelden / Registrieren" },
   // Errors around the payment form. The page shows these — never the server's
   // own text, which is in one fixed language whatever the page's.
+  'checkout.errPaymentInProgress': { ru: 'Платёж за этот заказ уже подтверждается в сети. Дождитесь подтверждения — новый платёж не нужен.', en: 'A payment for this order is already being confirmed on the network. Please wait for it — no new payment is needed.', it: 'Un pagamento per questo ordine è già in conferma sulla rete. Attendi la conferma: non serve un nuovo pagamento.', fr: 'Un paiement pour cette commande est déjà en cours de confirmation sur le réseau. Patientez : aucun nouveau paiement n’est nécessaire.', de: 'Eine Zahlung für diese Bestellung wird bereits im Netzwerk bestätigt. Bitte warten — eine neue Zahlung ist nicht nötig.' },
   "checkout.errSessionExpired": { ru: "Сессия истекла. Войдите снова или оформите заказ без регистрации.", en: "Your session has expired. Sign in again or check out as a guest.", it: "La sessione è scaduta. Accedi di nuovo o completa l'ordine come ospite.", fr: "Votre session a expiré. Reconnectez-vous ou commandez en tant qu'invité.", de: "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an oder bestellen Sie als Gast." },
   "checkout.errSessionCheck": { ru: "Не удалось проверить вход. Попробуйте ещё раз.", en: "We could not verify your sign-in. Please try again.", it: "Non è stato possibile verificare l'accesso. Riprova.", fr: "Impossible de vérifier votre connexion. Veuillez réessayer.", de: "Ihre Anmeldung konnte nicht überprüft werden. Bitte versuchen Sie es erneut." },
   "checkout.errRateLimited": { ru: "Слишком много попыток. Подождите минуту и попробуйте снова.", en: "Too many attempts. Wait a minute and try again.", it: "Troppi tentativi. Attendi un minuto e riprova.", fr: "Trop de tentatives. Patientez une minute puis réessayez.", de: "Zu viele Versuche. Bitte warten Sie eine Minute und versuchen Sie es erneut." },
@@ -148,7 +149,10 @@ export const UI = {
 
   // Abandoned-cart recovery: the disclosure under the checkout email field,
   // the restore link's landing page and the reminder opt-out page.
-  "checkout.cartReminderNote": { ru: "Если заказ не будет оформлен, мы один раз напомним о корзине на этот адрес.", en: "If you don't finish your order, we'll send one reminder about your cart to this address.", it: "Se non completi l'ordine, ti invieremo un solo promemoria del carrello a questo indirizzo.", fr: "Si vous ne finalisez pas votre commande, nous vous enverrons un seul rappel de votre panier à cette adresse.", de: "Wenn Sie die Bestellung nicht abschließen, erinnern wir Sie einmal per E-Mail an Ihren Warenkorb." },
+  // Opt-in, unticked: the one cart reminder is sent only to someone who asked
+  // for it here (no capture of the address otherwise).
+  "checkout.cartReminderOptIn": { ru: "Напомнить мне один раз по email, если я не завершу заказ", en: "Email me one reminder if I don't finish this order", it: "Inviami un solo promemoria via email se non completo l'ordine", fr: "M'envoyer un seul rappel par e-mail si je ne finalise pas la commande", de: "Mir einmal per E-Mail eine Erinnerung schicken, falls ich die Bestellung nicht abschliesse" },
+  "checkout.cartReminderOptInHint": { ru: "Для этого мы сохраним адрес и состав корзины. Отменить можно, сняв галочку или по ссылке в письме.", en: "To do this we keep the address and the cart's contents. Untick it, or use the link in the email, to cancel.", it: "Per farlo conserviamo l'indirizzo e il contenuto del carrello. Togli la spunta, o usa il link nell'email, per annullare.", fr: "Pour cela, nous conservons l'adresse et le contenu du panier. Décochez, ou utilisez le lien de l'e-mail, pour annuler.", de: "Dafür speichern wir die Adresse und den Warenkorbinhalt. Zum Widerrufen das Häkchen entfernen oder den Link in der E-Mail nutzen." },
   "cartRestore.restoring": { ru: "Возвращаем вашу корзину…", en: "Restoring your cart…", it: "Stiamo ripristinando il carrello…", fr: "Restauration de votre panier…", de: "Ihr Warenkorb wird wiederhergestellt…" },
   "cartRestore.goneTitle": { ru: "Ссылка больше не действует", en: "This link is no longer valid", it: "Questo link non è più valido", fr: "Ce lien n'est plus valide", de: "Dieser Link ist nicht mehr gültig" },
   "cartRestore.goneHint": { ru: "Корзина по этой ссылке не найдена. Загляните в каталог — подборка могла обновиться.", en: "We couldn't find a cart for this link. Take a look at the catalogue instead.", it: "Non abbiamo trovato un carrello per questo link. Dai un'occhiata al catalogo.", fr: "Aucun panier ne correspond à ce lien. Découvrez plutôt le catalogue.", de: "Zu diesem Link wurde kein Warenkorb gefunden. Schauen Sie sich stattdessen den Katalog an." },
@@ -166,6 +170,13 @@ export const UI = {
   'checkout.promo': { ru: 'Промокод', en: 'Promo code', it: 'Codice promo', fr: 'Code promo', de: 'Promo-Code' },
   'checkout.applyPromo': { ru: 'Применить', en: 'Apply', it: 'Applica', fr: 'Appliquer', de: 'Anwenden' },
   'checkout.discount': { ru: 'Скидка', en: 'Discount', it: 'Sconto', fr: 'Remise', de: 'Rabatt' },
+  // Shown when delivery is outside CH/LI, before anything is paid: these
+  // charges are real and otherwise only appear at the door.
+  'checkout.importCharges': { ru: 'Доставка за пределы Швейцарии: ввозной НДС и таможенные сборы страны назначения не включены в итог — перевозчик взимает их при получении, обычно вместе с платой за оформление.', en: 'Delivery outside Switzerland: the destination country\'s import VAT and customs charges are not included in this total — the carrier collects them on delivery, usually with a handling fee.', it: 'Consegna fuori dalla Svizzera: IVA all\'importazione e dazi del paese di destinazione non sono inclusi nel totale — li riscuote il corriere alla consegna, di solito con una commissione di sdoganamento.', fr: 'Livraison hors de Suisse : la TVA à l\'importation et les droits de douane du pays de destination ne sont pas compris dans ce total — le transporteur les perçoit à la livraison, généralement avec des frais de dédouanement.', de: 'Lieferung ausserhalb der Schweiz: Einfuhrumsatzsteuer und Zollgebühren des Ziellandes sind in dieser Summe nicht enthalten — der Zusteller erhebt sie bei der Zustellung, meist zusammen mit einer Bearbeitungsgebühr.' },
+  // The documents the order is placed under, linked where it is placed.
+  'checkout.legalNotice': { ru: 'Оформляя заказ, вы принимаете', en: 'By ordering you accept the', it: 'Ordinando accetti le', fr: 'En commandant, vous acceptez les', de: 'Mit der Bestellung akzeptieren Sie die' },
+  'checkout.legalPrivacy': { ru: 'Как мы используем ваши данные:', en: 'How we use your data:', it: 'Come usiamo i tuoi dati:', fr: 'Utilisation de vos données :', de: 'Wie wir Ihre Daten nutzen:' },
+  'checkout.legalWithdrawal': { ru: 'Отказ и возврат:', en: 'Withdrawal and returns:', it: 'Recesso e resi:', fr: 'Rétractation et retours :', de: 'Widerruf und Rückgabe:' },
   'checkout.total': { ru: 'Итого', en: 'Total', it: 'Totale', fr: 'Total', de: 'Gesamt' },
   'checkout.fieldRequired': { ru: 'Обязательное поле', en: 'Required field', it: 'Campo obbligatorio', fr: 'Champ requis', de: 'Pflichtfeld' },
   'checkout.street': { ru: 'Улица и дом', en: 'Street and number', it: 'Via e numero civico', fr: 'Rue et numéro', de: 'Straße und Hausnummer' },
@@ -182,7 +193,6 @@ export const UI = {
   'filter.showMore': { ru: 'Показать ещё', en: 'Show more', it: 'Mostra altro', fr: 'Afficher plus', de: 'Mehr anzeigen' },
   'filter.noResults': { ru: 'Ничего не найдено', en: 'Nothing matches those filters', it: 'Nessun risultato con questi filtri', fr: 'Aucun résultat pour ces filtres', de: 'Keine Treffer für diese Filter' },
   'product.specs': { ru: 'Характеристики', en: 'Specifications', it: 'Specifiche', fr: 'Caractéristiques', de: 'Spezifikationen' },
-  'product.brand': { ru: 'Бренд', en: 'Brand', it: 'Marca', fr: 'Marque', de: 'Marke' },
   'product.zoom': { ru: 'Увеличить фото', en: 'Zoom image', it: "Ingrandisci l'immagine", fr: "Agrandir l'image", de: 'Bild vergrößern' },
   'product.closeZoom': { ru: 'Закрыть', en: 'Close', it: 'Chiudi', fr: 'Fermer', de: 'Schließen' },
   'product.related': { ru: 'Похожие товары', en: 'You may also like', it: 'Potrebbe piacerti', fr: 'Vous aimerez aussi', de: 'Das könnte Ihnen gefallen' },
@@ -219,7 +229,7 @@ export const UI = {
   'acct.goToAccount': { ru: 'В личный кабинет', en: 'Go to my account', it: 'Vai al mio account', fr: 'Accéder à mon compte', de: 'Zu meinem Konto' },
   'acct.greeting': { ru: 'Личный кабинет, {name}', en: 'My account, {name}', it: 'Il mio account, {name}', fr: 'Mon compte, {name}', de: 'Mein Konto, {name}' },
   'acct.ordersDesc': { ru: 'Отслеживание заказов и оформление возвратов', en: 'Track your orders and arrange returns', it: 'Traccia gli ordini e richiedi i resi', fr: 'Suivez vos commandes et organisez vos retours', de: 'Bestellungen verfolgen und Rücksendungen veranlassen' },
-  'acct.detailsDesc': { ru: 'Имя, дата рождения, контактная информация и пароль', en: 'Name, date of birth, contact details and password', it: 'Nome, data di nascita, contatti e password', fr: 'Nom, date de naissance, coordonnées et mot de passe', de: 'Name, Geburtsdatum, Kontaktdaten und Passwort' },
+  'acct.detailsDesc': { ru: 'Имя, контактная информация и пароль', en: 'Name, contact details and password', it: 'Nome, contatti e password', fr: 'Nom, coordonnées et mot de passe', de: 'Name, Kontaktdaten und Passwort' },
   'acct.addressesDesc': { ru: 'Сохраненные адреса доставки и оплаты', en: 'Saved delivery addresses and payment details', it: 'Indirizzi di consegna e metodi di pagamento salvati', fr: 'Adresses de livraison et moyens de paiement enregistrés', de: 'Gespeicherte Liefer- und Zahlungsdaten' },
   'acct.referralDesc': { ru: 'Скидка для вас и ваших друзей', en: 'A discount for you and your friends', it: 'Uno sconto per te e i tuoi amici', fr: 'Une remise pour vous et vos amis', de: 'Ein Rabatt für Sie und Ihre Freunde' },
   'acct.soon': { ru: 'Скоро', en: 'Coming soon', it: 'In arrivo', fr: 'Bientôt', de: 'Demnächst' },
@@ -247,8 +257,16 @@ export const UI = {
   'acct.experience': { ru: 'Звук и анимация', en: 'Sound & motion', it: 'Suoni e animazioni', fr: 'Son et animations', de: 'Ton & Animation' },
   'acct.privacy': { ru: 'Конфиденциальность', en: 'Privacy', it: 'Privacy', fr: 'Confidentialité', de: 'Datenschutz' },
   'acct.cookies': { ru: 'Настройки файлов cookie', en: 'Cookie settings', it: 'Impostazioni cookie', fr: 'Paramètres des cookies', de: 'Cookie-Einstellungen' },
-  'acct.birthDate': { ru: 'Дата рождения', en: 'Date of birth', it: 'Data di nascita', fr: 'Date de naissance', de: 'Geburtsdatum' },
-  'acct.birthDateInvalid': { ru: 'Проверьте дату рождения', en: 'Check the date of birth', it: 'Controlla la data di nascita', fr: 'Vérifiez la date de naissance', de: 'Prüfen Sie das Geburtsdatum' },
+  // Account deletion (components/account/delete-account.tsx). The explanation
+  // must match app/api/account/delete/route.ts and the privacy policy.
+  'acct.deleteTitle': { ru: 'Удаление аккаунта', en: 'Delete account', it: 'Elimina account', fr: 'Supprimer le compte', de: 'Konto löschen' },
+  'acct.deleteButton': { ru: 'Удалить мой аккаунт', en: 'Delete my account', it: 'Elimina il mio account', fr: 'Supprimer mon compte', de: 'Mein Konto löschen' },
+  'acct.deleteExplain': { ru: 'Будут безвозвратно удалены: аккаунт и профиль, адреса, сохранённые карты (у Stripe), избранное, образы, уведомления, отзывы, реферальный код и баланс, подписка на рассылку и уведомления о поступлении. Заказы, возвраты и обращения в поддержку сохраняются без привязки к аккаунту на сроки, указанные в Политике конфиденциальности. Действие нельзя отменить.', en: 'This permanently deletes: your account and profile, addresses, saved cards (held by Stripe), wishlist, saved looks, notifications, reviews, referral code and credit, newsletter subscription and stock alerts. Orders, returns and support requests are kept, no longer linked to an account, for the periods stated in the Privacy Policy. This cannot be undone.', it: 'Verranno eliminati definitivamente: account e profilo, indirizzi, carte salvate (presso Stripe), preferiti, look salvati, notifiche, recensioni, codice e credito referral, iscrizione alla newsletter e avvisi di disponibilità. Ordini, resi e richieste di assistenza vengono conservati, non più collegati a un account, per i periodi indicati nell’Informativa sulla privacy. L’operazione non può essere annullata.', fr: 'Seront supprimés définitivement : votre compte et profil, adresses, cartes enregistrées (chez Stripe), favoris, looks enregistrés, notifications, avis, code et crédit de parrainage, inscription à la newsletter et alertes de disponibilité. Les commandes, retours et demandes d’assistance sont conservés, sans lien avec un compte, pendant les durées indiquées dans la Politique de confidentialité. Cette action est irréversible.', de: 'Endgültig gelöscht werden: Ihr Konto und Profil, Adressen, gespeicherte Karten (bei Stripe), Wunschliste, gespeicherte Looks, Benachrichtigungen, Bewertungen, Empfehlungscode und Guthaben, Newsletter-Abo und Verfügbarkeitsalarme. Bestellungen, Rücksendungen und Supportanfragen bleiben ohne Kontobezug für die in der Datenschutzerklärung genannten Fristen gespeichert. Das kann nicht rückgängig gemacht werden.' },
+  'acct.deleteConfirmLabel': { ru: 'Для подтверждения введите email аккаунта', en: 'To confirm, type your account’s email address', it: 'Per confermare, digita l’email del tuo account', fr: 'Pour confirmer, saisissez l’e-mail de votre compte', de: 'Zur Bestätigung die E-Mail-Adresse Ihres Kontos eingeben' },
+  'acct.deleteConfirm': { ru: 'Удалить навсегда', en: 'Delete permanently', it: 'Elimina definitivamente', fr: 'Supprimer définitivement', de: 'Endgültig löschen' },
+  'acct.deleteCancel': { ru: 'Отмена', en: 'Cancel', it: 'Annulla', fr: 'Annuler', de: 'Abbrechen' },
+  'acct.deleteMismatch': { ru: 'Email не совпадает с адресом аккаунта.', en: 'That is not this account’s email address.', it: 'L’email non corrisponde a quella dell’account.', fr: 'Cet e-mail ne correspond pas à celui du compte.', de: 'Das ist nicht die E-Mail-Adresse dieses Kontos.' },
+  'acct.deleteFailed': { ru: 'Не удалось удалить аккаунт. Попробуйте позже или напишите в поддержку.', en: 'The account could not be deleted. Try again later, or write to support.', it: 'Non è stato possibile eliminare l’account. Riprova più tardi o scrivi all’assistenza.', fr: 'Le compte n’a pas pu être supprimé. Réessayez plus tard ou écrivez au service client.', de: 'Das Konto konnte nicht gelöscht werden. Bitte später erneut versuchen oder den Support kontaktieren.' },
   'acct.savedLooks': { ru: 'Сохранённые образы', en: 'Saved looks', it: 'Look salvati', fr: 'Looks enregistrés', de: 'Gespeicherte Looks' },
   'acct.sections': { ru: 'Разделы личного кабинета', en: 'Account sections', it: 'Sezioni dell\'account', fr: 'Sections du compte', de: 'Kontobereiche' },
   'ref.heroTitle': { ru: 'Дарите скидку {percent}% друзьям и получайте {reward} бонусами за их первый заказ', en: 'Give your friends {percent}% off and get {reward} in bonuses on their first order', it: 'Regala ai tuoi amici il {percent}% di sconto e ricevi {reward} in bonus sul loro primo ordine', fr: 'Offrez {percent} % de remise à vos amis et recevez {reward} de bonus sur leur première commande', de: 'Schenken Sie Freunden {percent} % Rabatt und erhalten Sie {reward} Bonus für ihre erste Bestellung' },
@@ -427,7 +445,11 @@ export const UI = {
   'orders.refresh': { ru: 'Обновить', en: 'Refresh', it: 'Aggiorna', fr: 'Actualiser', de: 'Aktualisieren' },
   'orders.awaitingPayment': { ru: 'Ожидает оплаты', en: 'Awaiting payment', it: 'In attesa di pagamento', fr: 'En attente de paiement', de: 'Zahlung ausstehend' },
   'checkout.fillRequired': { ru: 'Заполните обязательные поля, отмеченные выше', en: 'Please fill in the required fields marked above', it: 'Compila i campi obbligatori evidenziati sopra', fr: 'Veuillez remplir les champs obligatoires ci-dessus', de: 'Bitte füllen Sie die oben markierten Pflichtfelder aus' },
-  'checkout.placeOrder': { ru: 'Подтвердить заказ', en: 'Place order', it: 'Conferma ordine', fr: 'Confirmer', de: 'Bestellen' },
+  // This button creates an UNPAID order that can still be cancelled; nothing
+  // is owed until "Pay now" (checkout.payNow) or a crypto payment is sent.
+  // The label says so rather than suggesting a binding order (EU 2011/83,
+  // art. 8(2): the binding button must name the obligation to pay).
+  'checkout.placeOrder': { ru: 'Перейти к оплате', en: 'Continue to payment', it: 'Procedi al pagamento', fr: 'Continuer vers le paiement', de: 'Weiter zur Zahlung' },
   'checkout.back': { ru: 'Назад', en: 'Back', it: 'Indietro', fr: 'Retour', de: 'Zurück' },
   'user.title': { ru: 'Личный кабинет', en: 'My Account', it: 'Account', fr: 'Mon compte', de: 'Mein Konto' },
   'user.login': { ru: 'Войти', en: 'Sign In', it: 'Accedi', fr: 'Connexion', de: 'Anmelden' },
@@ -476,7 +498,11 @@ export const UI = {
   'rma.photoType': { ru: 'Нужно фото (JPEG, PNG, WebP, HEIC)', en: 'Must be a photo (JPEG, PNG, WebP, HEIC)', it: 'Deve essere una foto (JPEG, PNG, WebP, HEIC)', fr: 'Il faut une photo (JPEG, PNG, WebP, HEIC)', de: 'Muss ein Foto sein (JPEG, PNG, WebP, HEIC)' },
   'rma.photoFailed': { ru: 'Не загрузилось', en: 'Upload failed', it: 'Caricamento non riuscito', fr: 'Échec de l’envoi', de: 'Hochladen fehlgeschlagen' },
   'rma.photosUploading': { ru: 'Дождитесь загрузки фото', en: 'Waiting for photos to upload', it: 'Attendi il caricamento delle foto', fr: 'Attendez la fin de l’envoi des photos', de: 'Warten auf das Hochladen der Fotos' },
-  'rma.confirm': { ru: 'Подтверждаю, что вещь не носилась и сохранила оригинальные бирки', en: 'I confirm the item is unworn and still has its original tags', it: 'Confermo che il capo non è stato indossato e ha ancora i cartellini originali', fr: 'Je confirme que l’article n’a pas été porté et conserve ses étiquettes d’origine', de: 'Ich bestätige, dass der Artikel ungetragen ist und die Originaletiketten noch trägt' },
+  // Information, not a condition: the right to withdraw (and to return a faulty
+  // item) cannot depend on tags or packaging; at most the refund is reduced
+  // for loss of value — section 3 of the refund policy.
+  'rma.conditionNote': { ru: 'Вещи, которые носили или вернули без бирок, могут быть возмещены не полностью — с учётом потери стоимости (раздел 3 Политики возврата). На бракованные вещи это не распространяется.', en: 'Items that have been worn or come back without their tags may be refunded at a reduced amount, for the loss of value (section 3 of the Refund Policy). This does not apply to faulty items.', it: 'I capi indossati o restituiti senza cartellini possono essere rimborsati in misura ridotta, per la perdita di valore (sezione 3 della Politica di reso). Non vale per i capi difettosi.', fr: 'Un article porté ou renvoyé sans ses étiquettes peut être remboursé partiellement, à hauteur de sa perte de valeur (section 3 de la Politique de retour). Cela ne s’applique pas aux articles défectueux.', de: 'Getragene oder ohne Etiketten zurückgesandte Artikel können wegen des Wertverlusts nur teilweise erstattet werden (Abschnitt 3 der Rückgaberichtlinie). Für fehlerhafte Artikel gilt das nicht.' },
+  'rma.policyLink': { ru: 'Политика возврата', en: 'Refund Policy', it: 'Politica di reso', fr: 'Politique de retour', de: 'Rückgaberichtlinie' },
   'rma.submit': { ru: 'Отправить заявку', en: 'Submit return request', it: 'Invia la richiesta', fr: 'Envoyer la demande', de: 'Anfrage senden' },
   'rma.cancel': { ru: 'Отмена', en: 'Cancel', it: 'Annulla', fr: 'Annuler', de: 'Abbrechen' },
   'rma.submitted': { ru: 'Заявка на возврат отправлена. Мы рассмотрим её в течение 24–48 часов.', en: 'Your return request has been submitted. Our team will review it within 24–48 hours.', it: 'La tua richiesta di reso è stata inviata. La esamineremo entro 24–48 ore.', fr: 'Votre demande de retour a été envoyée. Nous l’examinerons sous 24 à 48 heures.', de: 'Ihre Rückgabeanfrage wurde gesendet. Wir prüfen sie innerhalb von 24–48 Stunden.' },
@@ -519,8 +545,6 @@ export const UI = {
   "card.limited": { ru: "Лимит", en: "Limited", it: "Limitato", fr: "Limité", de: "Limitiert" },
   "product.returnsWithin": { ru: "Возврат в течение {n} дней", en: "Returns within {n} days", it: "Reso entro {n} giorni", fr: "Retour sous {n} jours", de: "Rückgabe innerhalb von {n} Tagen" },
   "product.returnsPolicy": { ru: "Правила возврата", en: "Returns policy", it: "Politica di reso", fr: "Politique de retour", de: "Rückgaberichtlinie" },
-  "product.securePurchase": { ru: "Безопасная покупка", en: "Secure purchase", it: "Acquisto sicuro", fr: "Achat sécurisé", de: "Sicherer Kauf" },
-  "product.securePurchaseBody": { ru: "Защищённая оплата и персональная поддержка", en: "Protected payment and dedicated support", it: "Pagamento protetto e assistenza dedicata", fr: "Paiement protégé et assistance dédiée", de: "Geschützte Zahlung und persönlicher Support" },
   "product.article": { ru: "Артикул", en: "Article", it: "Articolo", fr: "Article", de: "Artikel" },
   "product.share": { ru: "Поделиться", en: "Share", it: "Condividi", fr: "Partager", de: "Teilen" },
   'toast.welcomeBack': { ru: 'С возвращением', en: 'Welcome back', it: 'Bentornato', fr: 'Bon retour', de: 'Willkommen zurück' },
@@ -572,14 +596,6 @@ export const UI = {
   'collections.shoes': { ru: 'Обувь', en: 'Footwear', it: 'Calzature', fr: 'Chaussures', de: 'Schuhwerk' },
   'collections.accessories': { ru: 'Аксессуары', en: 'Accessories', it: 'Accessori', fr: 'Accessoires', de: 'Accessoires' },
   'collections.shopNow': { ru: 'Смотреть', en: 'Shop Now', it: 'Acquista', fr: 'Acheter', de: 'Jetzt entdecken' },
-  'about.title': { ru: 'О нас', en: 'Our Philosophy', it: 'La Nostra Filosofia', fr: 'Notre Philosophie', de: 'Unsere Philosophie' },
-  'about.subtitle': { ru: 'LUXE VAULT — это больше, чем магазин', en: 'LUXE VAULT is more than a store', it: 'LUXE VAULT è più di un negozio', fr: 'LUXE VAULT est plus qu\'une boutique', de: 'LUXE VAULT ist mehr als ein Geschäft' },
-  'about.p1': { ru: 'Мы создаём пространство, где премиальное качество встречается с безупречным вкусом. Каждый предмет проходит строгий отбор — от материалов до фурнитуры.', en: 'We curate a space where premium quality meets impeccable taste. Every piece undergoes rigorous selection — from materials to hardware.', it: 'Curiamo uno spazio in cui la qualità premium incontra il gusto impeccabile. Ogni pezzo è sottoposto a una selezione rigorosa — dai materiali agli accessori.', fr: 'Nous créons un espace où la qualité premium rencontre le goût impeccable. Chaque pièce subit une sélection rigoureuse — des matériaux à la quincaillerie.', de: 'Wir kuratieren einen Raum, in dem Premium-Qualität auf makellosen Geschmack trifft. Jedes Stück durchläuft eine strenge Auswahl — von Materialien bis zu Beschlägen.' },
-  'about.p2': { ru: 'Будем честны: мы продаём премиальные реплики, а не оригиналы брендов. Мы не связаны с домами моды и не выдаём наши изделия за их продукцию. Мы работаем с ателье, которые разделяют нашу одержимость деталями, — и считаем, что честность о происхождении вещи и есть часть настоящего люкса.', en: 'Let us be direct: we sell premium replicas, not authentic branded goods. We are not affiliated with any fashion house and we never present our pieces as theirs. We work with ateliers that share our obsession with detail — and we believe being honest about what a piece is forms part of real luxury.', it: 'Siamo diretti: vendiamo repliche premium, non originali di marca. Non siamo affiliati ad alcuna maison e non presentiamo mai i nostri pezzi come tali. Lavoriamo con atelier che condividono la nostra ossessione per i dettagli — e crediamo che essere onesti su cosa sia un capo faccia parte del vero lusso.', fr: 'Soyons directs : nous vendons des répliques premium, pas des articles de marque authentiques. Nous ne sommes affiliés à aucune maison de couture et ne présentons jamais nos pièces comme telles. Nous collaborons avec des ateliers qui partagent notre obsession du détail — et nous pensons que la franchise sur la nature d\'une pièce fait partie du vrai luxe.', de: 'Ganz offen: Wir verkaufen Premium-Repliken, keine Originalware. Wir sind mit keinem Modehaus verbunden und geben unsere Stücke niemals als deren Produkte aus. Wir arbeiten mit Ateliers, die unsere Detailversessenheit teilen — und halten Ehrlichkeit über die Herkunft eines Stücks für einen Teil echten Luxus.' },
-  'about.stat1': { ru: 'Премиум качество', en: 'Premium Quality', it: 'Qualità Premium', fr: 'Qualité Premium', de: 'Premium-Qualität' },
-  'about.stat2': { ru: 'Честная реплика', en: 'Honest Replica', it: 'Replica Dichiarata', fr: 'Réplique Assumée', de: 'Deklarierte Replika' },
-  'about.stat3': { ru: 'Лимитированные серии', en: 'Limited Editions', it: 'Edizioni Limitate', fr: 'Éditions Limitées', de: 'Limitierte Auflagen' },
-  'about.stat4': { ru: 'Доставка по Швейцарии', en: 'Shipping within Switzerland', it: 'Spedizione in Svizzera', fr: 'Livraison en Suisse', de: 'Versand in die Schweiz' },
   'cookies.title': { ru: 'Мы используем файлы cookie', en: 'We use cookies', it: 'Utilizziamo i cookie', fr: 'Nous utilisons des cookies', de: 'Wir verwenden Cookies' },
   'cookies.body': { ru: 'Строго необходимые файлы cookie обеспечивают работу корзины и входа. Аналитические и маркетинговые используются только с вашего согласия и не устанавливаются до него.', en: 'Strictly necessary cookies keep the cart and sign-in working. Analytics and marketing cookies are used only with your consent and are not set before it.', it: 'I cookie strettamente necessari fanno funzionare carrello e accesso. Quelli analitici e di marketing sono usati solo con il tuo consenso e non vengono impostati prima.', fr: 'Les cookies strictement nécessaires font fonctionner le panier et la connexion. Les cookies analytiques et marketing ne sont utilisés qu’avec votre consentement et ne sont pas déposés avant.', de: 'Unbedingt erforderliche Cookies halten Warenkorb und Anmeldung funktionsfähig. Analyse- und Marketing-Cookies werden nur mit Ihrer Einwilligung und nicht vorher gesetzt.' },
   'cookies.privacyLink': { ru: 'Политика конфиденциальности', en: 'Privacy Policy', it: 'Informativa sulla privacy', fr: 'Politique de confidentialité', de: 'Datenschutzerklärung' },
@@ -602,14 +618,31 @@ export const UI = {
   "motion.label": { ru: "Меньше анимации", en: "Reduce animations", it: "Riduci animazioni", fr: "Réduire les animations", de: "Animationen reduzieren" },
   "motion.systemHint": { ru: "Анимации уже уменьшены в настройках вашего устройства", en: "Animations are already reduced by your device settings", it: "Le animazioni sono già ridotte dalle impostazioni del dispositivo", fr: "Les animations sont déjà réduites par les réglages de votre appareil", de: "Animationen sind bereits durch Ihre Geräteeinstellungen reduziert" },
   'footer.legal': { ru: 'Правовая информация', en: 'Legal', it: 'Informazioni legali', fr: 'Mentions légales', de: 'Rechtliches' },
+  // Point-of-collection notices (components/privacy-notice.tsx). Each says
+  // what that form's data is used for — and must stay true to the code.
+  'privacy.termsPrefix': { ru: 'Создавая аккаунт, вы принимаете', en: 'By creating an account you accept the', it: 'Creando un account accetti i', fr: 'En créant un compte, vous acceptez les', de: 'Mit dem Konto akzeptieren Sie die' },
+  'privacy.signup': { ru: 'Имя и email нужны для аккаунта, заказов и писем о них.', en: 'Your name and email are used for your account, your orders and emails about them.', it: 'Nome ed email servono per l’account, gli ordini e le email che li riguardano.', fr: 'Votre nom et votre e-mail servent à votre compte, à vos commandes et aux e-mails qui s’y rapportent.', de: 'Name und E-Mail dienen Ihrem Konto, Ihren Bestellungen und den E-Mails dazu.' },
+  'privacy.support': { ru: 'Эти данные используются только для ответа на ваш запрос и хранятся 24 месяца после его закрытия.', en: 'These details are used only to answer your request, and kept for 24 months after it is closed.', it: 'Questi dati servono solo a rispondere alla tua richiesta e sono conservati per 24 mesi dopo la chiusura.', fr: 'Ces informations servent uniquement à répondre à votre demande et sont conservées 24 mois après sa clôture.', de: 'Diese Angaben dienen nur der Beantwortung Ihrer Anfrage und werden 24 Monate nach Abschluss aufbewahrt.' },
+  'privacy.review': { ru: 'Имя и текст отзыва будут опубликованы на сайте после проверки.', en: 'Your name and review will be published on this site after moderation.', it: 'Nome e testo della recensione saranno pubblicati sul sito dopo la moderazione.', fr: 'Votre nom et votre avis seront publiés sur ce site après modération.', de: 'Name und Bewertung werden nach Prüfung auf dieser Website veröffentlicht.' },
+  'privacy.alert': { ru: 'Адрес используется только для этого уведомления.', en: 'The address is used only for this notification.', it: 'L’indirizzo viene usato solo per questo avviso.', fr: 'L’adresse sert uniquement à cette notification.', de: 'Die Adresse wird nur für diese Benachrichtigung verwendet.' },
+  'privacy.chat': { ru: 'Ответы формирует ИИ Google Gemini: сообщения передаются Google и не сохраняются у нас. Не указывайте платёжные данные.', en: 'Answers are written by Google’s Gemini AI: your messages are sent to Google and are not stored by us. Do not enter payment details.', it: 'Le risposte sono scritte dall’IA Gemini di Google: i messaggi vengono inviati a Google e non li conserviamo. Non inserire dati di pagamento.', fr: 'Les réponses sont rédigées par l’IA Gemini de Google : vos messages lui sont transmis et nous ne les conservons pas. N’indiquez pas de données de paiement.', de: 'Antworten schreibt Googles KI Gemini: Ihre Nachrichten gehen an Google und werden bei uns nicht gespeichert. Bitte keine Zahlungsdaten eingeben.' },
   'footer.terms': { ru: 'Условия использования', en: 'Terms of Service', it: 'Termini di servizio', fr: 'Conditions d’utilisation', de: 'Nutzungsbedingungen' },
   'footer.privacy': { ru: 'Политика конфиденциальности', en: 'Privacy Policy', it: 'Informativa sulla privacy', fr: 'Politique de confidentialité', de: 'Datenschutzerklärung' },
   'footer.refunds': { ru: 'Возврат и обмен', en: 'Refund & Returns', it: 'Rimborsi e resi', fr: 'Remboursements et retours', de: 'Rückgabe & Erstattung' },
+  'footer.cookiePolicy': { ru: 'Политика cookie', en: 'Cookie Policy', it: 'Cookie Policy', fr: 'Politique relative aux cookies', de: 'Cookie-Richtlinie' },
   'footer.tagline': { ru: 'Премиальные реплики одежды и аксессуаров. Не оригинальная брендовая продукция. Мы не связаны с правообладателями.', en: 'Premium replica apparel & accessories. Not authentic branded goods. We are not affiliated with any rights holder.', it: 'Repliche premium di abbigliamento e accessori. Non articoli di marca originali. Non siamo affiliati ad alcun titolare di diritti.', fr: 'Répliques premium de vêtements et accessoires. Articles de marque non authentiques. Nous ne sommes affiliés à aucun ayant droit.', de: 'Premium-Repliken von Bekleidung und Accessoires. Keine Original-Markenware. Wir sind mit keinem Rechteinhaber verbunden.' },
   'footer.newsTitle': { ru: 'Ничего не пропустите', en: 'Don\'t miss a thing', it: 'Non perderti nulla', fr: 'Ne manquez rien', de: 'Nichts verpassen' },
   'footer.newsBody': { ru: 'Новинки, лимитированные серии и специальные предложения — первыми.', en: 'New arrivals, limited editions and special offers — first.', it: 'Nuovi arrivi, edizioni limitate e offerte speciali, in anteprima.', fr: 'Nouveautés, éditions limitées et offres spéciales — en avant-première.', de: 'Neuheiten, limitierte Auflagen und besondere Angebote – als Erste.' },
   'footer.newsPlaceholder': { ru: 'Ваш e-mail', en: 'Your email', it: 'La tua email', fr: 'Votre e-mail', de: 'Ihre E-Mail' },
   'footer.newsCta': { ru: 'Подписаться', en: 'Subscribe', it: 'Iscriviti', fr: 'S\'abonner', de: 'Abonnieren' },
+  'footer.newsCheckInbox': { ru: 'Проверьте почту: подписка начнёт действовать после подтверждения по ссылке из письма.', en: 'Check your inbox: the subscription starts once you confirm it with the link we sent.', it: 'Controlla la posta: l’iscrizione parte quando la confermi con il link che ti abbiamo inviato.', fr: 'Consultez votre boîte mail : l’inscription prend effet dès que vous la confirmez avec le lien envoyé.', de: 'Bitte prüfen Sie Ihr Postfach: Das Abo beginnt, sobald Sie es über den zugesandten Link bestätigen.' },
+  // /newsletter/confirm (components/newsletter/confirm-view.tsx).
+  'newsConfirm.title': { ru: 'Подтвердите подписку', en: 'Confirm your subscription', it: 'Conferma l’iscrizione', fr: 'Confirmez votre inscription', de: 'Abo bestätigen' },
+  'newsConfirm.body': { ru: 'Нажмите кнопку, чтобы получать рассылку Luxe Vault на этот адрес. Отписаться можно в любой момент по ссылке в каждом письме.', en: 'Press the button to receive the Luxe Vault newsletter at this address. You can unsubscribe at any time from the link in every email.', it: 'Premi il pulsante per ricevere la newsletter di Luxe Vault a questo indirizzo. Puoi annullare l’iscrizione in qualsiasi momento dal link in ogni email.', fr: 'Appuyez sur le bouton pour recevoir la newsletter Luxe Vault à cette adresse. Vous pouvez vous désinscrire à tout moment via le lien présent dans chaque e-mail.', de: 'Drücken Sie die Schaltfläche, um den Newsletter von Luxe Vault an diese Adresse zu erhalten. Abmelden können Sie sich jederzeit über den Link in jeder E-Mail.' },
+  'newsConfirm.button': { ru: 'Подтвердить подписку', en: 'Confirm subscription', it: 'Conferma iscrizione', fr: 'Confirmer l’inscription', de: 'Abo bestätigen' },
+  'newsConfirm.doneTitle': { ru: 'Подписка подтверждена', en: 'Subscription confirmed', it: 'Iscrizione confermata', fr: 'Inscription confirmée', de: 'Abo bestätigt' },
+  'newsConfirm.doneBody': { ru: 'Спасибо! Отписаться можно в любой момент по ссылке в каждом письме.', en: 'Thank you. You can unsubscribe at any time from the link in every email.', it: 'Grazie! Puoi annullare l’iscrizione in qualsiasi momento dal link in ogni email.', fr: 'Merci ! Vous pouvez vous désinscrire à tout moment via le lien de chaque e-mail.', de: 'Danke! Abmelden können Sie sich jederzeit über den Link in jeder E-Mail.' },
+  'newsConfirm.invalidBody': { ru: 'Ссылка устарела или уже не действует. Подпишитесь заново внизу любой страницы.', en: 'This link has expired or is no longer valid. You can sign up again at the bottom of any page.', it: 'Il link è scaduto o non è più valido. Puoi iscriverti di nuovo in fondo a qualsiasi pagina.', fr: 'Ce lien a expiré ou n’est plus valable. Vous pouvez vous réinscrire en bas de n’importe quelle page.', de: 'Dieser Link ist abgelaufen oder ungültig. Sie können sich unten auf jeder Seite erneut anmelden.' },
   'footer.newsThanks': { ru: 'Спасибо за подписку!', en: 'Thank you for subscribing!', it: 'Grazie per esserti iscritto!', fr: 'Merci pour votre inscription !', de: 'Danke für Ihre Anmeldung!' },
   'footer.newsAlready': { ru: 'Этот адрес уже подписан.', en: 'This address is already subscribed.', it: 'Questo indirizzo è già iscritto.', fr: 'Cette adresse est déjà abonnée.', de: 'Diese Adresse ist bereits angemeldet.' },
   'footer.newsInvalid': { ru: 'Проверьте адрес электронной почты', en: 'Check the email address', it: 'Controlla l\'indirizzo email', fr: 'Vérifiez l\'adresse e-mail', de: 'Prüfen Sie die E-Mail-Adresse' },
@@ -629,12 +662,8 @@ export const UI = {
   'unsub.error': { ru: 'Не получилось. Попробуйте ещё раз.', en: 'That didn\'t work. Please try again.', it: 'Non è andata. Riprova.', fr: 'Cela n\'a pas fonctionné. Réessayez.', de: 'Das hat nicht geklappt. Bitte erneut versuchen.' },
   'unsub.home': { ru: 'Вернуться в магазин', en: 'Back to the shop', it: 'Torna al negozio', fr: 'Retour à la boutique', de: 'Zurück zum Shop' },
   'footer.shop': { ru: 'Магазин', en: 'Shop', it: 'Negozio', fr: 'Boutique', de: 'Shop' },
-  'footer.help': { ru: 'Помощь', en: 'Support', it: 'Supporto', fr: 'Assistance', de: 'Support' },
-  'footer.contactPage': { ru: 'Помощь и контакты', en: 'Help & contact', it: 'Assistenza e contatti', fr: 'Aide et contact', de: 'Hilfe & Kontakt' },
   'footer.contact': { ru: 'Контакты', en: 'Contact', it: 'Contatti', fr: 'Contact', de: 'Kontakt' },
   'footer.delivery': { ru: 'Доставка', en: 'Shipping', it: 'Spedizione', fr: 'Livraison', de: 'Versand' },
-  'footer.returns': { ru: 'Возврат', en: 'Returns', it: 'Resi', fr: 'Retours', de: 'Rücksendungen' },
-  'footer.reviews': { ru: 'Отзывы', en: 'Reviews', it: 'Recensioni', fr: 'Avis', de: 'Bewertungen' },
   'footer.new': { ru: 'Новинки', en: 'New Arrivals', it: 'Novità', fr: 'Nouveautés', de: 'Neuheiten' },
   'footer.sale': { ru: 'Распродажа', en: 'Sale', it: 'Saldi', fr: 'Solde', de: 'Sale' },
   // ---------------------------------------------------------- AI Stylist --
@@ -819,32 +848,36 @@ export const UI = {
   "stockAlert.pickSize": { ru: "Какой размер вы ждёте?", en: "Which size are you waiting for?", it: "Quale taglia aspetti?", fr: "Quelle taille attendez-vous ?", de: "Auf welche Größe warten Sie?" },
   "stockAlert.accountEmail": { ru: "Письмо придёт на адрес вашего аккаунта", en: "We will email the address on your account", it: "Scriveremo all'indirizzo del tuo account", fr: "Nous écrirons à l'adresse de votre compte", de: "Wir schreiben an die E-Mail Ihres Kontos" },
   "stockAlert.forSize": { ru: "Размер {size} · {color}", en: "Size {size} · {color}", it: "Taglia {size} · {color}", fr: "Taille {size} · {color}", de: "Größe {size} · {color}" },
-  'footer.rights': { ru: '© 2026 LUXE VAULT. Все права защищены.', en: '© 2026 LUXE VAULT. All rights reserved.', it: '© 2026 LUXE VAULT. Tutti i diritti riservati.', fr: '© 2026 LUXE VAULT. Tous droits réservés.', de: '© 2026 LUXE VAULT. Alle Rechte vorbehalten.' },
 
   // Help / FAQ accordion (footer)
   'help.title': { ru: 'Помощь', en: 'Help', it: 'Assistenza', fr: 'Aide', de: 'Hilfe' },
   'help.delivery.content': {
     // {span} "10–14 business days", {price} the fee, {amount} the free-shipping
     // threshold — all the admin's (store_settings), worded per language.
-    ru: 'Доставка осуществляется по всей Евразии. Ориентировочный срок доставки — {span} в зависимости от региона. Стандартная доставка — {price}, бесплатно для заказов от {amount}. После оформления заказа мы отправим трек-номер для отслеживания посылки в личном кабинете.',
-    en: 'We deliver across all of Eurasia. The estimated delivery time is {span}, depending on the region. Standard shipping is {price}, free on orders from {amount}. Once your order is placed, you will receive a tracking number in your account.',
-    it: 'Consegniamo in tutta l\'Eurasia. Il tempo di consegna stimato è di {span} a seconda della regione. Spedizione standard {price}, gratuita per ordini da {amount}. Dopo l\'ordine riceverai un numero di tracciamento nel tuo account.',
-    fr: 'Nous livrons dans toute l\'Eurasie. Le délai de livraison estimé est de {span} selon la région. Livraison standard {price}, offerte dès {amount}. Après votre commande, un numéro de suivi sera disponible dans votre compte.',
-    de: 'Wir liefern in ganz Eurasien. Die geschätzte Lieferzeit beträgt je nach Region {span}. Standardversand {price}, kostenlos ab {amount}. Nach der Bestellung erhalten Sie eine Sendungsverfolgungsnummer in Ihrem Konto.',
+    ru: 'Мы отправляем заказы из Швейцарии Швейцарской почтой в страны, доступные при оформлении заказа. Ориентировочный срок доставки — {span} в зависимости от страны. Стандартная доставка — {price}, бесплатно для заказов от {amount}. Когда посылка отправлена, мы присылаем трек-номер по email; он также появится в личном кабинете. Для доставки за пределы Швейцарии и Лихтенштейна ввозной НДС и таможенные сборы страны назначения в цену не входят — их взимает перевозчик при получении.',
+    en: 'We ship from Switzerland with Swiss Post to the countries you can select at checkout. The estimated delivery time is {span}, depending on the destination. Standard shipping is {price}, free on orders from {amount}. When your parcel is dispatched, we email you its tracking number; it also appears in your account. For delivery outside Switzerland and Liechtenstein, the destination country\'s import VAT and customs charges are not included in the price — the carrier collects them on delivery.',
+    it: 'Spediamo dalla Svizzera con la Posta Svizzera verso i paesi selezionabili al checkout. Il tempo di consegna stimato è di {span} a seconda della destinazione. Spedizione standard {price}, gratuita per ordini da {amount}. Quando il pacco parte ti inviamo via email il numero di tracciamento, visibile anche nel tuo account. Per le consegne fuori da Svizzera e Liechtenstein, l\'IVA all\'importazione e i dazi del paese di destinazione non sono inclusi nel prezzo: li riscuote il corriere alla consegna.',
+    fr: 'Nous expédions depuis la Suisse avec La Poste suisse vers les pays proposés lors du paiement. Le délai de livraison estimé est de {span} selon la destination. Livraison standard {price}, offerte dès {amount}. Dès l\'expédition, nous vous envoyons le numéro de suivi par e-mail ; il apparaît aussi dans votre compte. Pour une livraison hors de Suisse et du Liechtenstein, la TVA à l\'importation et les droits de douane du pays de destination ne sont pas compris dans le prix : le transporteur les perçoit à la livraison.',
+    de: 'Wir versenden aus der Schweiz mit der Schweizerischen Post in die Länder, die an der Kasse wählbar sind. Die geschätzte Lieferzeit beträgt je nach Ziel {span}. Standardversand {price}, kostenlos ab {amount}. Sobald Ihr Paket unterwegs ist, senden wir Ihnen die Sendungsnummer per E-Mail; sie erscheint auch in Ihrem Konto. Bei Lieferung ausserhalb der Schweiz und Liechtensteins sind Einfuhrumsatzsteuer und Zollgebühren des Ziellandes nicht im Preis enthalten — der Zusteller erhebt sie bei der Zustellung.',
   },
+  // Must agree with app/legal/_content/refunds.ts: 14 days to withdraw, a
+  // refund REDUCED (not refused) for wear, refunds by hand after inspection.
   'help.returns.content': {
-    ru: 'Вы можете оформить возврат в течение 14 дней с момента получения заказа. Товар должен быть в неношеном состоянии, с сохранёнными фабричными бирками и оригинальной упаковкой. Возврат средств производится на исходный способ оплаты в течение 5 рабочих дней после проверки товара на складе.',
-    en: 'You can request a return within 14 days of receiving your order. The item must be unworn, with all original tags and packaging intact. Refunds are issued to the original payment method within 5 business days after the item is inspected at our warehouse.',
-    it: 'Puoi richiedere un reso entro 14 giorni dal ricevimento dell\'ordine. L\'articolo deve essere non indossato, con le etichette e l\'imballaggio originali intatti. Il rimborso viene effettuato sul metodo di pagamento originale entro 5 giorni lavorativi dal controllo in magazzino.',
-    fr: 'Vous pouvez demander un retour dans les 14 jours suivant la réception de votre commande. L\'article doit être non porté, avec les étiquettes et l\'emballage d\'origine intacts. Le remboursement est effectué sur le moyen de paiement initial sous 5 jours ouvrés après vérification en entrepôt.',
-    de: 'Sie können Ihre Bestellung innerhalb von 14 Tagen nach Erhalt zurücksenden. Der Artikel muss ungetragen sein und die Original-Etiketten sowie die Verpackung müssen vollständig erhalten sein. Die Rückerstattung erfolgt innerhalb von 5 Werktagen nach Prüfung im Lager auf die ursprüngliche Zahlungsmethode.',
+    ru: 'Вы можете отказаться от покупки в течение 14 дней с момента получения заказа — в личном кабинете кнопкой «Запросить возврат» или письмом в поддержку. Вещь, которую носили или вернули без бирок, может быть возмещена не полностью — с учётом потери стоимости. Деньги возвращаются тем же способом оплаты, обычно в течение 1–2 рабочих дней после проверки вещи. Подробности — в Политике возврата.',
+    en: 'You can withdraw from your purchase within 14 days of receiving it — with "Request a refund" in your account, or by writing to support. An item that has been worn or comes back without its tags may be refunded at a reduced amount, for the loss of value. Money goes back by the method you paid with, usually within 1–2 working days of the item being inspected. The full terms are in the Refund Policy.',
+    it: 'Puoi recedere dall\'acquisto entro 14 giorni dal ricevimento — con «Richiedi un rimborso» nel tuo account o scrivendo all\'assistenza. Un capo indossato o restituito senza cartellini può essere rimborsato in misura ridotta, per la perdita di valore. Il denaro torna con lo stesso metodo di pagamento, di solito entro 1–2 giorni lavorativi dal controllo del capo. Le condizioni complete sono nella Politica di reso.',
+    fr: 'Vous pouvez vous rétracter dans les 14 jours suivant la réception — avec « Demander un remboursement » dans votre compte, ou en écrivant au service client. Un article porté ou renvoyé sans ses étiquettes peut être remboursé partiellement, à hauteur de sa perte de valeur. Le remboursement se fait par le moyen de paiement utilisé, en général sous 1 à 2 jours ouvrés après vérification de l\'article. Les conditions complètes figurent dans la Politique de retour.',
+    de: 'Sie können innerhalb von 14 Tagen nach Erhalt vom Kauf zurücktreten — mit „Rückerstattung anfordern“ in Ihrem Konto oder per Nachricht an den Support. Für getragene oder ohne Etiketten zurückgesandte Artikel kann die Erstattung wegen des Wertverlusts gekürzt werden. Das Geld geht auf dem Zahlungsweg zurück, meist innerhalb von 1–2 Werktagen nach Prüfung des Artikels. Die vollständigen Bedingungen stehen in der Rückgaberichtlinie.',
   },
+  // No figures here: an average rating written into copy is a claim nothing
+  // computes. Product reviews come only from delivered orders
+  // (lib/server/product-reviews.ts); store reviews are moderated, not verified.
   'help.reviews.content': {
-    ru: 'Каждое изделие получает отзывы от наших клиентов после подтверждённой покупки. Средняя оценка коллекции — 4.9 из 5. Оставить отзыв можно из личного кабинета после получения заказа — это помогает нам поддерживать безупречный уровень качества.',
-    en: 'Every piece receives reviews from our clients after a verified purchase. The collection holds an average rating of 4.9 out of 5. You can leave a review from your account once your order has been delivered — it helps us maintain an impeccable standard of quality.',
-    it: 'Ogni pezzo riceve recensioni dai nostri clienti dopo un acquisto verificato. La collezione ha una valutazione media di 4.9 su 5. Puoi lasciare una recensione dal tuo account dopo la consegna dell\'ordine — questo ci aiuta a mantenere uno standard di qualità impeccabile.',
-    fr: 'Chaque pièce reçoit des avis de nos clients après un achat vérifié. La collection affiche une note moyenne de 4,9 sur 5. Vous pouvez laisser un avis depuis votre compte une fois la commande livrée — cela nous aide à maintenir un niveau de qualité irréprochable.',
-    de: 'Jedes Stück erhält Bewertungen von unseren Kunden nach einem verifizierten Kauf. Die Kollektion hat eine durchschnittliche Bewertung von 4,9 von 5. Sie können nach Erhalt Ihrer Bestellung in Ihrem Konto eine Bewertung hinterlassen — das hilft uns, unseren makellosen Qualitätsstandard zu wahren.',
+    ru: 'Отзыв о товаре может оставить только покупатель, которому этот товар был доставлен, — из личного кабинета. Отзывы о магазине на главной странице может оставить любой посетитель; мы проверяем их перед публикацией, но не проверяем, совершал ли автор покупку.',
+    en: 'A product review can only be left by a customer whose order containing that item has been delivered — from their account. Reviews of the shop on the home page can be left by any visitor; they are moderated before publication, but we do not check whether the author has bought anything.',
+    it: 'Una recensione di prodotto può essere lasciata solo da chi ha ricevuto un ordine con quel capo, dal proprio account. Le recensioni sul negozio nella home page possono essere lasciate da qualsiasi visitatore: le moderiamo prima della pubblicazione, ma non verifichiamo se l\'autore ha effettuato un acquisto.',
+    fr: 'Un avis sur un produit ne peut être laissé que par un client dont la commande contenant cet article a été livrée — depuis son compte. Les avis sur la boutique en page d\'accueil peuvent être laissés par tout visiteur ; ils sont modérés avant publication, mais nous ne vérifions pas si l\'auteur a effectué un achat.',
+    de: 'Eine Produktbewertung kann nur abgeben, wer eine Bestellung mit diesem Artikel erhalten hat — in seinem Konto. Bewertungen des Shops auf der Startseite kann jeder Besucher abgeben; sie werden vor der Veröffentlichung geprüft, es wird aber nicht kontrolliert, ob der Verfasser etwas gekauft hat.',
   },
 
   // Catalog filter panel
@@ -880,7 +913,9 @@ export const UI = {
   'crypto.thankYou': { ru: 'Платёж подтверждён. Спасибо за заказ.', en: 'Payment confirmed. Thank you for your order.', it: 'Pagamento confermato. Grazie per il tuo ordine.', fr: 'Paiement confirmé. Merci pour votre commande.', de: 'Zahlung bestätigt. Vielen Dank für Ihre Bestellung.' },
 
   // Reviews
-  'reviews.subtitle': { ru: 'Голоса наших клиентов', en: 'Voices of our clients', it: 'Le voci dei nostri clienti', fr: 'La voix de nos clients', de: 'Stimmen unserer Kunden' },
+  'reviews.verificationNote': { ru: 'Отзывы о магазине может оставить любой посетитель. Мы проверяем их перед публикацией, но не проверяем, совершал ли автор покупку.', en: 'Anyone can review the shop. Reviews are moderated before publication; we do not check whether the author has made a purchase.', it: 'Chiunque può recensire il negozio. Le recensioni sono moderate prima della pubblicazione; non verifichiamo se l’autore ha fatto un acquisto.', fr: 'Tout le monde peut donner son avis sur la boutique. Les avis sont modérés avant publication ; nous ne vérifions pas si l’auteur a effectué un achat.', de: 'Jeder kann den Shop bewerten. Bewertungen werden vor der Veröffentlichung geprüft; ob der Verfasser etwas gekauft hat, wird nicht kontrolliert.' },
+  // Not "our clients": anyone may post here (reviews.verificationNote).
+  'reviews.subtitle': { ru: 'Что о нас говорят', en: 'What people say', it: 'Cosa dicono di noi', fr: 'Ce que l’on dit de nous', de: 'Was man über uns sagt' },
   'reviews.title': { ru: 'Отзывы', en: 'Reviews', it: 'Recensioni', fr: 'Avis', de: 'Bewertungen' },
   'reviews.empty': { ru: 'Пока нет отзывов — станьте первым', en: 'No reviews yet — be the first', it: 'Nessuna recensione ancora — sii il primo', fr: 'Aucun avis pour le moment — soyez le premier', de: 'Noch keine Bewertungen — seien Sie der Erste' },
   'reviews.writeReview': { ru: 'Оставить отзыв', en: 'Write a review', it: 'Scrivi una recensione', fr: 'Laisser un avis', de: 'Bewertung schreiben' },
@@ -903,9 +938,6 @@ export const UI = {
   'support.footerLink': { ru: 'Связаться с поддержкой', en: 'Contact support', it: 'Contatta il supporto', fr: 'Contacter le support', de: 'Support kontaktieren' },
 
   // Trust badges (cart / checkout)
-  'trust.swissQuality': { ru: 'Швейцарское качество', en: 'Swiss Quality', it: 'Qualità svizzera', fr: 'Qualité suisse', de: 'Schweizer Qualität' },
-  'trust.securePayments': { ru: 'Безопасная оплата CHF', en: 'Secure CHF Payments', it: 'Pagamenti CHF sicuri', fr: 'Paiements CHF sécurisés', de: 'Sichere CHF-Zahlung' },
-  'trust.priorityDelivery': { ru: 'Приоритетная доставка', en: 'Priority Delivery', it: 'Consegna prioritaria', fr: 'Livraison prioritaire', de: 'Priority-Versand' },
 
   // ---------------------------------------------------------------------
   // OTP password recovery. Every string the flow can display lives here —
@@ -924,11 +956,11 @@ export const UI = {
   // <meta name="description"> a search result shows, so they are written for
   // that column of text rather than lifted from the headings on the page.
   'seo.home.description': {
-    ru: 'LUXE VAULT — премиальная одежда, обувь и аксессуары. Ограниченные дропы, доставка из Швейцарии.',
-    en: 'Designer-inspired apparel, footwear and accessories. Limited drops, meticulous craftsmanship, shipped from Switzerland.',
-    it: 'Abbigliamento, calzature e accessori di ispirazione designer. Drop limitati, cura artigianale, spedizione dalla Svizzera.',
-    fr: 'Vêtements, chaussures et accessoires d’inspiration créateur. Séries limitées, finitions soignées, expédiés de Suisse.',
-    de: 'Designer-inspirierte Kleidung, Schuhe und Accessoires. Limitierte Drops, sorgfältige Verarbeitung, Versand aus der Schweiz.',
+    ru: 'Реплики и вещи, вдохновлённые дизайнерскими моделями: одежда, обувь и аксессуары. Цены в CHF, доставка Швейцарской почтой, 14 дней на возврат.',
+    en: 'Replica and designer-inspired clothing, shoes and accessories, clearly labelled. Prices in CHF, tracked Swiss Post shipping, 14-day returns.',
+    it: 'Repliche e capi ispirati a modelli di designer: abbigliamento, scarpe e accessori, dichiarati come tali. Prezzi in CHF, Posta Svizzera tracciata, reso entro 14 giorni.',
+    fr: 'Répliques et pièces inspirées de créateurs : vêtements, chaussures et accessoires, clairement présentés. Prix en CHF, La Poste suisse avec suivi, retours sous 14 jours.',
+    de: 'Replikate und Designer-inspirierte Kleidung, Schuhe und Accessoires, klar gekennzeichnet. Preise in CHF, Schweizerische Post mit Sendungsverfolgung, 14 Tage Rückgabe.',
   },
   'seo.catalog.title': { ru: 'Каталог', en: 'Catalogue', it: 'Catalogo', fr: 'Catalogue', de: 'Katalog' },
   'seo.catalog.description': {
@@ -938,13 +970,13 @@ export const UI = {
     fr: 'Le catalogue complet LUXE VAULT : vêtements, chaussures et accessoires, filtrables par rayon et catégorie.',
     de: 'Der vollständige LUXE-VAULT-Katalog: Kleidung, Schuhe und Accessoires, nach Abteilung und Kategorie gefiltert.',
   },
-  'seo.contact.title': { ru: 'Помощь и контакты', en: 'Help & contact', it: 'Aiuto e contatti', fr: 'Aide et contact', de: 'Hilfe & Kontakt' },
+  'seo.contact.title': { ru: 'Связаться с нами', en: 'Contact us', it: 'Contattaci', fr: 'Nous contacter', de: 'Kontakt' },
   'seo.contact.description': {
-    ru: 'Связаться с командой Luxe Vault по email, через форму или Telegram, и подписаться на новинки.',
-    en: 'Contact the Luxe Vault team by email, form or Telegram, and sign up for new arrivals and limited editions.',
-    it: 'Contatta il team Luxe Vault via email, modulo o Telegram, e iscriviti per novità ed edizioni limitate.',
-    fr: 'Contactez l’équipe Luxe Vault par e-mail, formulaire ou Telegram, et inscrivez-vous aux nouveautés et éditions limitées.',
-    de: 'Kontaktieren Sie das Luxe-Vault-Team per E-Mail, Formular oder Telegram — und abonnieren Sie Neuheiten und limitierte Editionen.',
+    ru: 'Связаться с Luxe Vault по email, через форму или в Telegram. Обычно отвечаем в течение 1–2 рабочих дней.',
+    en: 'Contact Luxe Vault by email, contact form or Telegram. A person replies, usually within 1–2 business days.',
+    it: 'Contatta Luxe Vault via email, modulo o Telegram. Risponde una persona, di solito entro 1–2 giorni lavorativi.',
+    fr: 'Contactez Luxe Vault par e-mail, formulaire ou Telegram. Une personne vous répond, en général sous 1 à 2 jours ouvrés.',
+    de: 'Kontaktieren Sie Luxe Vault per E-Mail, Formular oder Telegram. Ein Mensch antwortet, meist innerhalb von 1–2 Werktagen.',
   },
   'seo.support.title': { ru: 'Поддержка', en: 'Support', it: 'Assistenza', fr: 'Assistance', de: 'Support' },
   'seo.support.description': {
@@ -1096,4 +1128,45 @@ export const UI = {
   'track.paymentMethod': { ru: 'Способ оплаты', en: 'Payment method', it: 'Metodo di pagamento', fr: 'Moyen de paiement', de: 'Zahlungsart' },
   'track.currentStep': { ru: 'Текущий этап', en: 'Current step', it: 'Fase attuale', fr: 'Étape actuelle', de: 'Aktueller Schritt' },
   'track.shippingTo': { ru: 'Адрес доставки', en: 'Shipping to', it: 'Spedizione a', fr: 'Livraison à', de: 'Lieferung an' },
+  // ---------------------------------------------------------------- trust & clarity (2026-10)
+  'footer.customerCare': { ru: 'Покупателям', en: 'Customer care', it: 'Assistenza clienti', fr: 'Service client', de: 'Kundenservice' },
+  'footer.faq': { ru: 'Вопросы и ответы', en: 'FAQ', it: 'Domande frequenti', fr: 'FAQ', de: 'FAQ' },
+  'footer.imprint': { ru: 'Импрессум', en: 'Imprint', it: 'Note legali', fr: 'Mentions légales', de: 'Impressum' },
+  'footer.allProducts': { ru: 'Все товары', en: 'All products', it: 'Tutti i prodotti', fr: 'Tous les produits', de: 'Alle Produkte' },
+  'footer.social': { ru: 'Соцсети', en: 'Social', it: 'Social', fr: 'Réseaux sociaux', de: 'Social Media' },
+  'footer.basedIn': { ru: 'Работаем из Швейцарии · цены в CHF', en: 'Operated from Switzerland · Prices in CHF', it: 'Gestito dalla Svizzera · Prezzi in CHF', fr: 'Géré depuis la Suisse · Prix en CHF', de: 'Betrieben aus der Schweiz · Preise in CHF' },
+  'footer.shipping': { ru: 'Доставка', en: 'Shipping', it: 'Spedizione', fr: 'Livraison', de: 'Versand' },
+  'footer.returnsRefunds': { ru: 'Возврат и возмещение', en: 'Returns & refunds', it: 'Resi e rimborsi', fr: 'Retours et remboursements', de: 'Rückgabe & Erstattung' },
+  'footer.legalHeading': { ru: 'Правовая информация', en: 'Legal', it: 'Note legali', fr: 'Informations légales', de: 'Rechtliches' },
+  'footer.termsShort': { ru: 'Условия', en: 'Terms & Conditions', it: 'Condizioni generali', fr: 'Conditions générales', de: 'AGB' },
+  'nav.returns': { ru: 'Возврат', en: 'Returns', it: 'Resi', fr: 'Retours', de: 'Rückgabe' },
+  'nav.contact': { ru: 'Контакты', en: 'Contact', it: 'Contatti', fr: 'Contact', de: 'Kontakt' },
+  'nav.newIn': { ru: 'Новинки', en: 'New in', it: 'Novità', fr: 'Nouveautés', de: 'Neu' },
+  'product.authTitle': { ru: 'Подлинность товара', en: 'Product authenticity', it: 'Autenticità del prodotto', fr: 'Authenticité du produit', de: 'Echtheit des Produkts' },
+  'product.authBody': { ru: 'Это реплика / вещь, вдохновлённая дизайнерской моделью. Это не оригинальный товар, произведённый или проданный брендом, и Luxe Vault не связан ни с одним правообладателем.', en: 'This item is a replica / designer-inspired piece. It is not an authentic product made or sold by the original brand, and Luxe Vault is not affiliated with any brand owner.', it: 'Questo articolo è una replica / un capo ispirato a un modello di designer. Non è un prodotto originale fabbricato o venduto dal marchio originale, e Luxe Vault non è affiliato ad alcun titolare di marchio.', fr: 'Cet article est une réplique / une pièce inspirée d’un créateur. Ce n’est pas un produit authentique fabriqué ou vendu par la marque d’origine, et Luxe Vault n’est affilié à aucun titulaire de marque.', de: 'Dieser Artikel ist ein Replikat bzw. ein von Designern inspiriertes Stück. Er ist kein echtes Produkt der Originalmarke, wird von ihr weder hergestellt noch verkauft, und Luxe Vault ist mit keinem Markeninhaber verbunden.' },
+  'product.authReference': { ru: 'Дизайн-референс: {brand}. Изделие не произведено, не продаётся и не одобрено {brand}.', en: 'Design reference: {brand}. This item is not made, sold or authorised by {brand}.', it: 'Riferimento di design: {brand}. Questo articolo non è prodotto, venduto né autorizzato da {brand}.', fr: 'Référence de style : {brand}. Cet article n’est ni fabriqué, ni vendu, ni autorisé par {brand}.', de: 'Design-Bezug: {brand}. Dieser Artikel wird von {brand} weder hergestellt noch verkauft oder autorisiert.' },
+  'product.authMore': { ru: 'Подробнее', en: 'More about our products', it: 'Di più sui nostri prodotti', fr: 'En savoir plus sur nos produits', de: 'Mehr zu unseren Produkten' },
+  'product.replicaTag': { ru: 'Реплика', en: 'Replica', it: 'Replica', fr: 'Réplique', de: 'Replikat' },
+  'product.condition': { ru: 'Состояние', en: 'Condition', it: 'Condizione', fr: 'État', de: 'Zustand' },
+  'product.conditionNew': { ru: 'Новое', en: 'New', it: 'Nuovo', fr: 'Neuf', de: 'Neu' },
+  'product.priceIn': { ru: 'Цена в {currency}', en: 'Price in {currency}', it: 'Prezzo in {currency}', fr: 'Prix en {currency}', de: 'Preis in {currency}' },
+  'product.trustSecureTitle': { ru: 'Безопасная оплата', en: 'Secure checkout', it: 'Pagamento sicuro', fr: 'Paiement sécurisé', de: 'Sichere Bezahlung' },
+  'product.trustSecureBody': { ru: 'Карты обрабатывает Stripe — данные карты к нам не попадают.', en: 'Cards are processed by Stripe; your card details never reach us.', it: 'Le carte sono elaborate da Stripe: i dati della carta non arrivano a noi.', fr: 'Les cartes sont traitées par Stripe : vos données de carte ne nous parviennent pas.', de: 'Karten verarbeitet Stripe – Ihre Kartendaten erreichen uns nicht.' },
+  'product.trustTrackedTitle': { ru: 'Доставка с отслеживанием', en: 'Tracked shipping', it: 'Spedizione tracciata', fr: 'Livraison suivie', de: 'Versand mit Sendungsverfolgung' },
+  'product.trustTrackedBody': { ru: 'Швейцарской почтой из Швейцарии; трек-номер — по email после отправки.', en: 'Swiss Post from Switzerland; tracking number by email after dispatch.', it: 'Con la Posta Svizzera dalla Svizzera; tracciamento via email dopo la spedizione.', fr: 'La Poste suisse depuis la Suisse ; numéro de suivi par e-mail après l’envoi.', de: 'Mit der Schweizerischen Post aus der Schweiz; Sendungsnummer per E-Mail nach dem Versand.' },
+  'product.trustSupportTitle': { ru: 'Поддержка', en: 'Customer support', it: 'Assistenza', fr: 'Service client', de: 'Kundenservice' },
+  'product.trustSupportBody': { ru: 'Напишите нам до или после покупки — отвечает человек.', en: 'Contact us before or after you buy; a person replies.', it: 'Scrivici prima o dopo l’acquisto: risponde una persona.', fr: 'Écrivez-nous avant ou après l’achat : une personne vous répond.', de: 'Schreiben Sie uns vor oder nach dem Kauf – ein Mensch antwortet.' },
+  'trust.secureStripe': { ru: 'Оплата через Stripe', en: 'Secure payment via Stripe', it: 'Pagamento sicuro con Stripe', fr: 'Paiement sécurisé via Stripe', de: 'Sichere Zahlung über Stripe' },
+  'trust.trackedSwissPost': { ru: 'Швейцарская почта с отслеживанием', en: 'Tracked Swiss Post delivery', it: 'Posta Svizzera tracciata', fr: 'La Poste suisse, avec suivi', de: 'Schweizerische Post mit Sendungsverfolgung' },
+  'trust.returnsDays': { ru: '{n} дней на возврат', en: '{n}-day returns', it: 'Reso entro {n} giorni', fr: 'Retours sous {n} jours', de: '{n} Tage Rückgabe' },
+  'checkout.authenticityNote': { ru: 'Товары Luxe Vault — реплики и вещи, вдохновлённые дизайнерскими моделями, а не оригинальная брендовая продукция.', en: 'Items sold by Luxe Vault are replicas or designer-inspired pieces, not authentic branded goods.', it: 'Gli articoli venduti da Luxe Vault sono repliche o capi ispirati a modelli di designer, non prodotti di marca originali.', fr: 'Les articles vendus par Luxe Vault sont des répliques ou des pièces inspirées de créateurs, pas des articles de marque authentiques.', de: 'Bei Luxe Vault verkaufte Artikel sind Replikate oder von Designern inspirierte Stücke, keine echten Markenartikel.' },
+  'success.progressTitle': { ru: 'Этапы заказа', en: 'Order progress', it: 'Avanzamento dell’ordine', fr: 'Suivi de la commande', de: 'Bestellfortschritt' },
+  'success.stepReceived': { ru: 'Заказ получен', en: 'Order received', it: 'Ordine ricevuto', fr: 'Commande reçue', de: 'Bestellung eingegangen' },
+  'success.stepProcessing': { ru: 'В обработке', en: 'Processing', it: 'In preparazione', fr: 'En préparation', de: 'In Bearbeitung' },
+  'success.stepDispatched': { ru: 'Отправлен', en: 'Dispatched', it: 'Spedito', fr: 'Expédiée', de: 'Versandt' },
+  'success.stepTracking': { ru: 'Отслеживание доступно', en: 'Tracking available', it: 'Tracciamento disponibile', fr: 'Suivi disponible', de: 'Sendungsverfolgung verfügbar' },
+  'success.helpTitle': { ru: 'Вопрос по заказу?', en: 'Questions about this order?', it: 'Domande su questo ordine?', fr: 'Une question sur cette commande ?', de: 'Fragen zu dieser Bestellung?' },
+  'success.helpBody': { ru: 'Напишите на {email}, указав номер заказа {id}. Обычно отвечаем в течение {span}.', en: 'Write to {email} and quote order {id}. We usually reply within {span}.', it: 'Scrivi a {email} indicando l’ordine {id}. Di solito rispondiamo entro {span}.', fr: 'Écrivez à {email} en indiquant la commande {id}. Nous répondons en général sous {span}.', de: 'Schreiben Sie an {email} mit der Bestellnummer {id}. Wir antworten meist innerhalb von {span}.' },
+  'success.returnsLine': { ru: 'Отказаться от покупки можно в течение {n} дней после получения.', en: 'You can withdraw from the purchase within {n} days of delivery.', it: 'Puoi recedere dall’acquisto entro {n} giorni dalla consegna.', fr: 'Vous pouvez vous rétracter dans les {n} jours suivant la livraison.', de: 'Sie können innerhalb von {n} Tagen nach Lieferung vom Kauf zurücktreten.' },
+  'checkout.noVat': { ru: 'Luxe Vault не начисляет НДС.', en: 'No VAT is added by Luxe Vault.', it: 'Luxe Vault non aggiunge IVA.', fr: 'Luxe Vault n’ajoute pas de TVA.', de: 'Luxe Vault berechnet keine Mehrwertsteuer.' },
 } as const

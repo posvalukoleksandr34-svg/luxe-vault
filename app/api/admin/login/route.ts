@@ -5,8 +5,9 @@ import {
   createSession,
   isAdminConfigured,
   verifyAdminPassword,
+  verifySessionToken,
 } from '@/lib/server/admin-auth'
-import { recordSession } from '@/lib/server/admin-sessions'
+import { recordSession, revokeSession } from '@/lib/server/admin-sessions'
 import { checkTotp, isTotpConfigured } from '@/lib/server/admin-totp'
 import { clientIp } from '@/lib/server/client-ip'
 import { enforceLimit } from '@/lib/server/rate-limit'
@@ -66,6 +67,11 @@ export async function POST(request: NextRequest) {
   if (second === 'unconfigured' && process.env.VERCEL_ENV === 'production') {
     console.warn('[admin/login] signed in with the password alone — set ADMIN_TOTP_SECRET (scripts/admin-totp-setup.mjs).')
   }
+
+  // A session this browser already held is revoked, not just overwritten: a
+  // copy of the old cookie must not outlive the sign-in that replaced it.
+  const previous = await verifySessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
+  if (previous) await revokeSession(previous.nonce).catch(() => {})
 
   const { token, nonce, expiresAt } = await createSession()
   // Recorded server-side so signing out can revoke it (admin-sessions.ts).

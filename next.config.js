@@ -14,6 +14,15 @@ require('./scripts/ui-dictionaries').generate()
  */
 const contentSecurityPolicy = siteCsp()
 
+/**
+ * Pages reached by a link whose address carries a secret: a support ticket's
+ * `?t=`, the unsubscribe token, the cart-reminder links, Stripe's 3-D Secure
+ * return to /success. See lib/sensitive-url.ts.
+ */
+const SECRET_PATHS = 'support/tickets/|newsletter/unsubscribe|cart/restore/|cart/unsubscribe/|success(?:/|$)'
+const SECRET_IN_URL_PAGES = `(?=${SECRET_PATHS})`
+const NO_SECRET_IN_URL_PAGES = `(?!${SECRET_PATHS})`
+
 /** The pages that get the strict nonce policy from middleware.ts instead. */
 const NOT_STRICT_CSP_PAGES = '(?!checkout(?:/|$)|admin(?:/|$))'
 
@@ -91,7 +100,11 @@ const nextConfig = {
     return [
       { source: '/new-arrivals', destination: '/catalog?view=new', permanent: false },
       { source: '/sale', destination: '/catalog?view=sale', permanent: false },
-      { source: '/about', destination: '/#about', permanent: false },
+      // /about is a real page now (app/about). /#about anchors from old links
+      // land on the homepage, which links to it.
+      { source: '/imprint', destination: '/legal/imprint', permanent: false },
+      { source: '/impressum', destination: '/legal/imprint', permanent: false },
+      { source: '/returns', destination: '/legal/refunds', permanent: false },
     ]
   },
 
@@ -136,9 +149,7 @@ const nextConfig = {
           // Stops a browser second-guessing a Content-Type, which is how a
           // user-uploaded file gets executed as script.
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          // Send the full URL within the site, only the origin off-site — so
-          // an order page's path never leaks to a third party in a referrer.
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+
           // This shop asks for none of these. Denying them means a compromised
           // script cannot silently start.
           {
@@ -153,6 +164,19 @@ const nextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
         ],
+      },
+      {
+        // Send the full URL within the site, only the origin off-site — so
+        // an order page's path never leaks to a third party in a referrer.
+        source: `/:path(${NO_SECRET_IN_URL_PAGES}.*)`,
+        headers: [{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }],
+      },
+      {
+        // Pages whose address is itself a key (lib/sensitive-url.ts): not even
+        // the site's own next page — nor an analytics tag on it, which reads
+        // document.referrer — gets more than the origin.
+        source: `/:path(${SECRET_IN_URL_PAGES}.*)`,
+        headers: [{ key: 'Referrer-Policy', value: 'strict-origin' }],
       },
     ]
   },

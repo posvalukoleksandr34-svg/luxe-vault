@@ -14,6 +14,7 @@ import { freeShippingGap, quoteShipping } from '@/lib/fulfilment'
 import { productImage } from '@/lib/product-image'
 import { formatPrice, useProductsById, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 
 /** How long the slide-out takes; the drawer unmounts once it has finished. */
 const EXIT_MS = 320
@@ -108,6 +109,10 @@ export function CartPanel() {
 
   // Focus moves into the drawer, so a keyboard or screen-reader user lands in
   // the cart they just opened rather than on the page behind it.
+  // Tab stays inside while it is open; closing hands focus back to the button
+  // that opened it. Before the effect below: the trap records the opener, so
+  // it must run while focus is still on it.
+  useFocusTrap(dialogRef, shown)
   useEffect(() => {
     if (shown) dialogRef.current?.focus({ preventScroll: true })
   }, [shown])

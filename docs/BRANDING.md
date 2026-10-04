@@ -6,24 +6,14 @@ with a missing icon or a random preview image.
 
 ---
 
-## 0. First: one canonical host
+## 0. First: one canonical host — resolved 2026-10-04
 
-`luxe-vault.store` currently answers with a **308 redirect to
-`www.luxe-vault.store`**, while the code (canonical links, sitemap, `metadataBase`,
-so every absolute `og:image` URL) uses the bare domain. Facebook and Telegram
-follow the redirect; WhatsApp and some crawlers sometimes drop a redirected
-preview image, and search engines see canonicals that point at a redirect.
-
-Pick one — the recommended option needs no code:
-
-- **Recommended:** Vercel → Project → Settings → Domains → make `luxe-vault.store`
-  the primary domain (`www` then redirects to it). Afterwards, set the GitHub
-  repository **variable** `SITE_URL=https://luxe-vault.store` for the cron workflow
-  and use the bare domain in the BIMI record below.
-- Or keep `www` primary and switch `SITE_URL` in `app/layout.tsx`, `app/sitemap.ts`,
-  `app/robots.ts` and `app/product/[slug]/page.tsx` to `https://www.luxe-vault.store`.
-
----
+`luxe-vault.store` answers with a **308 redirect to `www.luxe-vault.store`**, so
+`www` is the canonical host. `lib/site-origin.ts` now defaults to it, and with it
+canonical links, hreflang, the sitemap, `metadataBase` (every absolute
+`og:image`) and breadcrumb JSON-LD. If Vercel's primary domain is ever switched
+to the bare domain, set `NEXT_PUBLIC_SITE_ORIGIN` for the build — no code
+change — and use the same host in the BIMI record below.
 
 ## 1. Folder structure
 
