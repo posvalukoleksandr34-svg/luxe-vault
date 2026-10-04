@@ -290,18 +290,12 @@
 html {
   scroll-behavior: smooth;
 
-  /* Zoom off, for the app-like feel — the enforcement half of the viewport
-     policy in app/layout.tsx.
-
-     `pan-x pan-y` allows exactly the two gestures a page needs (vertical and
-     horizontal panning) and nothing else, which removes pinch-to-zoom in
-     Chromium and double-tap-to-zoom everywhere, including iOS Safari — where
-     the viewport meta's user-scalable is ignored on purpose. Scrolling,
-     flicking, swiping a drawer and dragging a slider are all unaffected.
-
-     A descendant that needs pinch back (a future map or image inspector) sets
-     `touch-action: auto` on itself; this is the page default, not a lock. */
-  touch-action: pan-x pan-y;
+  /* Pinch-to-zoom stays available (WCAG 1.4.4 Resize Text: people with low
+     vision enlarge the page, and nothing on it — prices, sizes, the checkout
+     figures — should be impossible to read). `manipulation` keeps panning and
+     pinch-zoom but drops double-tap-to-zoom, so taps still feel immediate,
+     which was the app-like behaviour the old `pan-x pan-y` lock was for. */
+  touch-action: manipulation;
 
   /* iOS otherwise inflates body text when a phone is turned to landscape,
      which re-flows the whole layout mid-scroll. */
@@ -768,6 +762,13 @@ body::before {
   .nav-link[aria-current='page']::before {
     transform: scaleX(1);
     transform-origin: left center;
+  }
+  /* Keyboard focus gets a heavier, darker line than hover: the 1px gold
+     hairline is ~2.6:1 on the ivory ground, under the 3:1 a focus indicator
+     needs (WCAG 1.4.11). Hover keeps the gold. */
+  .nav-link:focus-visible::before {
+    height: 2px;
+    background: hsl(var(--foreground));
   }
 
   /* Surfaces: flat and quiet.
@@ -2069,4 +2070,23 @@ html[data-keyboard='open'] .hide-with-keyboard {
   box-shadow:
     inset 0 0 0 4px hsl(42 60% 98.5%),
     0 6px 18px -10px hsl(var(--gold-dark) / 0.55);
+}
+
+/* iOS Safari zooms the page into any form field whose text is smaller than
+   16px. While zoom was locked off that could not happen; with zoom allowed
+   (WCAG 1.4.4, see the viewport in app/layout.tsx) fields on iOS get 16px
+   text so a tap focuses them without the page jumping. iOS-only:
+   -webkit-touch-callout exists nowhere else. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* The skip link focuses <main> (components/skip-link.tsx). A landmark that
+   took focus only to start the reading order needs no ring of its own. */
+main[tabindex='-1']:focus {
+  outline: none;
 }

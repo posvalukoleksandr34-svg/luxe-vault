@@ -37,6 +37,18 @@ export function Header() {
   const pathname = usePathname()
 
   const [mobileOpen, setMobileOpen] = useState(false)
+  // Escape closes the phone menu (a disclosure, not a dialog), and focus goes
+  // back to its button.
+  useEffect(() => {
+    if (!mobileOpen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setMobileOpen(false)
+      document.querySelector<HTMLButtonElement>('[aria-controls="mobile-menu"]')?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileOpen])
 
   /**
    * Has the page scrolled off the top?
@@ -117,7 +129,9 @@ export function Header() {
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
           className="tap-safe relative lg:hidden text-muted-foreground transition hover:text-foreground"
-          aria-label="Menu"
+          aria-label={t('nav.menu')}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           {!mobileOpen && supportUnread > 0 && (
@@ -269,7 +283,7 @@ export function Header() {
       )}
 
       {mobileOpen && (
-        <div className="animate-fade-in border-t border-border lg:hidden">
+        <div id="mobile-menu" className="animate-fade-in border-t border-border lg:hidden">
           <nav className="flex flex-col divide-y divide-border/40 px-4 py-2">
             <Link
               href="/stylist"

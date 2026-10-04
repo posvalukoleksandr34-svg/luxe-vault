@@ -1,6 +1,7 @@
 'use client'
 
 import { hasConsent } from '@/lib/cookie-consent'
+import { isSensitiveUrl, scrubSensitiveUrl } from '@/lib/sensitive-url'
 
 /**
  * Google Analytics 4 and the Meta Pixel — loaded only with consent, and only
@@ -54,6 +55,22 @@ function injectScript(id: string, src: string): void {
   document.head.appendChild(script)
 }
 
+/**
+ * Whether vendors may run on this page at all.
+ *
+ * Some links work as a key on their own — a support ticket's `?t=`, the
+ * newsletter's unsubscribe token, Stripe's 3-D Secure return (lib/
+ * sensitive-url.ts). GA4 and the Pixel record the page address and the
+ * referrer, so on such a page neither is loaded nor sent anything. Nor for the
+ * rest of a document that STARTED on one: after a client-side navigation the
+ * vendors would report the previous, secret address as the referrer.
+ */
+function trackingAllowedHere(): boolean {
+  if (isSensitiveUrl(window.location.href)) return false
+  const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined
+  return !isSensitiveUrl(entry?.name)
+}
+
 /** Expires first-party cookies by name prefix, on this host and its parent domain. */
 function expireCookies(prefixes: string[]): void {
   const host = window.location.hostname
@@ -73,7 +90,7 @@ let gaStarted = false
 
 /** gtag's queue and config, then gtag.js itself. True when GA4 is live. */
 function loadGa(): boolean {
-  if (!GA_MEASUREMENT_ID || !hasConsent('analytics')) return false
+  if (!GA_MEASUREMENT_ID || !hasConsent('analytics') || !trackingAllowedHere()) return false
   if (!gaStarted) {
     gaStarted = true
     window.dataLayer = window.dataLayer ?? []
@@ -83,10 +100,26 @@ function loadGa(): boolean {
       window.dataLayer!.push(arguments as unknown as Payload)
     }
     window.gtag('js', new Date())
+    // Consent Mode: "analytics" consent covers visit statistics only. Google's
+    // advertising uses of the data (signals, personalisation, user data for
+    // ads) follow the separate "marketing" choice.
+    const ads = hasConsent('marketing') ? 'granted' : 'denied'
+    window.gtag('consent', 'default', {
+      analytics_storage: 'granted',
+      ad_storage: ads,
+      ad_user_data: ads,
+      ad_personalization: ads,
+    })
     // The first page_view is sent by config; later client-side navigations
     // are counted by GA4's enhanced measurement (browser history events, on
-    // by default for a web data stream).
-    window.gtag('config', GA_MEASUREMENT_ID)
+    // by default for a web data stream). The address and referrer are sent
+    // scrubbed (lib/sensitive-url.ts), never as typed.
+    window.gtag('config', GA_MEASUREMENT_ID, {
+      page_location: scrubSensitiveUrl(window.location.href),
+      page_referrer: scrubSensitiveUrl(document.referrer),
+      allow_google_signals: ads === 'granted',
+      allow_ad_personalization_signals: ads === 'granted',
+    })
     injectScript('lv-gtag', `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`)
   }
   ;(window as unknown as Payload)[`ga-disable-${GA_MEASUREMENT_ID}`] = false
@@ -99,7 +132,7 @@ let metaStarted = false
 
 /** Meta's queue stub (the official snippet), init and first PageView, then fbevents.js. */
 function loadMeta(): boolean {
-  if (!FACEBOOK_PIXEL_ID || !hasConsent('marketing')) return false
+  if (!FACEBOOK_PIXEL_ID || !hasConsent('marketing') || !trackingAllowedHere()) return false
   if (!metaStarted) {
     metaStarted = true
     if (!window.fbq) {
@@ -116,6 +149,10 @@ function loadMeta(): boolean {
       if (!window._fbq) window._fbq = fbq
       window.fbq = fbq
     }
+    // The Pixel would otherwise send its own PageView on every history change,
+    // on top of trackMetaPageView's — counting each navigation twice, and on
+    // pages trackingAllowedHere() keeps it off.
+    ;(window.fbq as Fbq & { disablePushState?: boolean }).disablePushState = true
     window.fbq('init', FACEBOOK_PIXEL_ID)
     window.fbq('track', 'PageView')
     injectScript('lv-fbevents', 'https://connect.facebook.net/en_US/fbevents.js')
@@ -160,6 +197,7 @@ function toMeta(event: string, params: Payload): Payload {
  * transaction id so a purchase is counted once.
  */
 export function dispatch(event: string, params: Payload): void {
+  if (!trackingAllowedHere()) return
   if (hasConsent('analytics')) {
     if (loadGa()) {
       window.gtag!('event', event, params)
@@ -187,16 +225,22 @@ export function applyConsent(): void {
   if (GA_MEASUREMENT_ID && !loadGa()) {
     // Google's documented opt-out switch: gtag.js sends nothing while it is set.
     ;(window as unknown as Payload)[`ga-disable-${GA_MEASUREMENT_ID}`] = true
-    expireCookies(['_ga', '_gid'])
+    // Only a withdrawn consent clears the cookies — not a page that merely
+    // keeps the vendors off (trackingAllowedHere).
+    if (!hasConsent('analytics')) expireCookies(['_ga', '_gid'])
+  } else if (gaStarted) {
+    // The marketing choice may have changed since GA4 started.
+    const ads = hasConsent('marketing') ? 'granted' : 'denied'
+    window.gtag?.('consent', 'update', { ad_storage: ads, ad_user_data: ads, ad_personalization: ads })
   }
 
   if (FACEBOOK_PIXEL_ID && !loadMeta()) {
     if (metaStarted) window.fbq?.('consent', 'revoke')
-    expireCookies(['_fbp', '_fbc'])
+    if (!hasConsent('marketing')) expireCookies(['_fbp', '_fbc'])
   }
 }
 
 /** A client-side navigation, for the Meta Pixel (GA4 counts these itself). */
 export function trackMetaPageView(): void {
-  if (metaStarted && hasConsent('marketing')) window.fbq?.('track', 'PageView')
+  if (metaStarted && hasConsent('marketing') && trackingAllowedHere()) window.fbq?.('track', 'PageView')
 }

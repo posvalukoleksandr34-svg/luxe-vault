@@ -1,7 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
-import { captureCheckoutCart, type CaptureOutcome } from '@/lib/server/abandoned-cart-flow'
+import { captureCheckoutCart, withdrawCheckoutCart, type CaptureOutcome } from '@/lib/server/abandoned-cart-flow'
 import { checkLimit } from '@/lib/server/rate-limit'
 import { clientIp } from '@/lib/server/client-ip'
 
@@ -10,6 +10,8 @@ export type LogAbandonedCheckoutInput = {
   /** The cart lines as the storefront holds them; re-validated server-side. */
   items: unknown[]
   locale: string
+  /** The "remind me" box was ticked; nothing is stored otherwise. */
+  consent: boolean
 }
 
 /**
@@ -35,7 +37,18 @@ export async function logAbandonedCheckout(input: LogAbandonedCheckoutInput): Pr
     email: input?.email,
     items: input?.items,
     locale: input?.locale,
+    consent: input?.consent,
   })
+  if (outcome === 'no_consent') return 'no_consent'
   // Whether it was stored is not the caller's business.
   return outcome === 'invalid_email' ? 'invalid_email' : 'captured'
+}
+
+/** "Remind me" was unticked: forget the cart kept for this address. */
+export async function withdrawAbandonedCheckout(input: { email: string }): Promise<void> {
+  const h = await headers()
+  const ip = clientIp(h) || 'unidentified'
+  const limit = await checkLimit('cart.capture', ip)
+  if (!limit.allowed) return
+  await withdrawCheckoutCart({ email: input?.email })
 }

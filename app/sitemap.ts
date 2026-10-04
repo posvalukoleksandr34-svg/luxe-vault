@@ -54,7 +54,7 @@ const SECTIONS_ARE_ANCHORS = true
  */
 
 /** The legal documents' stated effective date, which is their real lastModified. */
-const LEGAL_UPDATED = new Date('2026-09-06T00:00:00.000Z')
+const LEGAL_UPDATED = new Date('2026-10-04T00:00:00.000Z')
 
 /**
  * One entry per language for a storefront path, each declaring the others as
@@ -166,5 +166,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localized('/legal/terms', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
     ...localized('/legal/privacy', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
     ...localized('/legal/refunds', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
+    ...localized('/legal/cookies', { lastModified: LEGAL_UPDATED, changeFrequency: 'monthly', priority: 0.3 }),
   ]
 }

@@ -100,21 +100,13 @@ export const revalidate = 60
  */
 export const viewport: Viewport = {
   /**
-   * Zoom is disabled, for the app-like feel: no pinch, no double-tap scale.
-   *
-   * Two things to know about it:
-   *  - iOS Safari has deliberately IGNORED user-scalable/maximum-scale in the
-   *    browser since iOS 10, on accessibility grounds. It is honoured in a
-   *    home-screen (standalone) launch. The touch-action rule in globals.css
-   *    is what enforces the same policy in Chrome, Edge and Android.
-   *  - It stops anyone magnifying the page, so small type and the checkout's
-   *    figures cannot be enlarged. Removing `maximumScale` and `userScalable`
-   *    is all it takes to hand zoom back.
+   * Zoom is allowed. It used to be off (maximum-scale=1, user-scalable=0) for
+   * an app-like feel, which fails WCAG 1.4.4: small type and the checkout's
+   * figures could not be enlarged. Double-tap zoom stays off through
+   * `touch-action: manipulation` in globals.css, so taps remain immediate.
    */
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   // The browser chrome on mobile in the storefront's background colour.
   themeColor: '#FAF8F5',
 };

@@ -700,6 +700,15 @@ export function ProductForm({
               onChange={(v) => setForm({ ...form, oldPrice: v })}
             />
           </div>
+          {/* A struck-through price is a claim to the customer. The rules the
+              shop sells under allow only a price actually charged before. */}
+          <p className="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Зачёркнутая цена — это заявление покупателю. Указывайте только цену, по которой товар
+            действительно продавался до снижения: для покупателей из ЕС — самую низкую цену за
+            последние 30 дней (Директива 98/6/ЕС, ст. 6a), в Швейцарии — цену, действовавшую
+            заметное время непосредственно до снижения (PBV, ст. 16). Выдуманная «старая цена» —
+            недобросовестная реклама.
+          </p>
 
           <Input
             label="Размеры (через запятую)"

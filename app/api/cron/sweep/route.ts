@@ -9,6 +9,7 @@ import { reportCriticalError } from '@/lib/telegram'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 import { releaseStaleCouponHolds } from '@/lib/server/promo-codes'
 import { sweepOrphanedReturnPhotos } from '@/lib/server/returns-cleanup'
+import { enforceRetention } from '@/lib/server/retention'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,7 @@ async function runSweep(request: NextRequest) {
     orphanedReturnPhotos: 0,
     promoUsesReleased: 0,
     stripeEventsPruned: 0,
+    retention: null as Awaited<ReturnType<typeof enforceRetention>> | null,
     errors: [] as string[],
   }
 
@@ -144,6 +146,16 @@ async function runSweep(request: NextRequest) {
     result.stripeEventsPruned = data?.length ?? 0
   } catch (e) {
     result.errors.push(`stripe-events: ${(e as Error).message}`)
+  }
+
+  // ------------------------------------------------------ retention --
+  // The periods the Privacy Policy states (lib/server/retention.ts). Before
+  // the photo sweep, so return photos of a deleted order go in the same run.
+  try {
+    result.retention = await enforceRetention()
+    result.errors.push(...result.retention.errors)
+  } catch (e) {
+    result.errors.push(`retention: ${(e as Error).message}`)
   }
 
   // -------------------------------------------- orphaned return photos --

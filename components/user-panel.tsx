@@ -25,6 +25,8 @@ import { loadMyOrders } from '@/lib/order-registry'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
+import { PrivacyNotice } from '@/components/privacy-notice'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 
 /**
  * The sign-in and registration fields.
@@ -144,6 +146,14 @@ export function UserPanel() {
     return () => window.removeEventListener('keydown', onKey)
   }, [panel, setPanel])
 
+  const dialogRef = useRef<HTMLDivElement>(null)
+  // Keyboard: Tab stays inside while open; closing returns focus to the
+  // opener. Before the focusing effect, so the opener is still focused.
+  useFocusTrap(dialogRef, panel === 'user')
+  useEffect(() => {
+    if (panel === 'user') dialogRef.current?.focus({ preventScroll: true })
+  }, [panel])
+
   if (panel !== 'user') return null
 
   const unpaidCount = myOrders.filter(isUnpaid).length
@@ -258,7 +268,9 @@ export function UserPanel() {
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl"
+      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl outline-none"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('nav.profile')}>
@@ -438,7 +450,7 @@ export function UserPanel() {
                       }}
                       className="text-[11px] font-medium text-gold underline-offset-4 transition hover:underline"
                     >
-                      Войти
+                      {t('user.login')}
                     </button>
                     <button
                       type="button"
@@ -473,6 +485,7 @@ export function UserPanel() {
                   {t('turnstile.wait')}
                 </p>
               )}
+              {mode === 'register' && <PrivacyNotice purpose="privacy.signup" withTerms className="text-center" />}
 
               {mode === 'login' && (
                 <button

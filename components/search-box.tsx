@@ -299,7 +299,8 @@ export function SearchBox({
         type="search"
         name="q"
         enterKeyHint="search"
-        aria-controls="search-suggestions"
+        // Only while the panel exists: pointing at a missing id is invalid ARIA.
+        aria-controls={open ? 'search-suggestions' : undefined}
         aria-label={t('filter.search')}
         autoComplete="off"
         value={query}

@@ -47,6 +47,14 @@ checks as (
   select 'migration 0049: admin_totp_steps exists (admin two-factor replay guard)',
          case when to_regclass('public.admin_totp_steps') is not null then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0049_admin_totp.sql'
+  union all
+  select 'migration 0050: profiles.birth_date removed (data minimisation)',
+         case when not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'birth_date') then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0050_drop_birth_date.sql'
+  union all
+  select 'migration 0051: newsletter double opt-in (pending status, confirmed_at)',
+         case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'newsletter_subscribers' and column_name = 'confirmed_at') then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0051_newsletter_double_opt_in.sql — sign-ups are refused until it is'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to

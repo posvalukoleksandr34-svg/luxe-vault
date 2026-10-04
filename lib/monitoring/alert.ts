@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { reportCriticalError } from '@/lib/telegram'
+import { scrubSensitiveUrl } from '@/lib/sensitive-url'
 
 /**
  * Where a crash report actually goes. SERVER ONLY.
@@ -57,6 +58,9 @@ const STACK_CHARS = 1200
  */
 export function scrubUrl(raw: string | undefined): string | undefined {
   if (!raw) return undefined
+  // Secret path segments (/cart/restore/<token>) first; the values of every
+  // query parameter are then dropped below.
+  raw = scrubSensitiveUrl(raw)
   try {
     const url = new URL(raw)
     const kept: string[] = []

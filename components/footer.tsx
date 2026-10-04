@@ -187,6 +187,9 @@ export function Footer() {
             <Link href="/legal/refunds" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
               {t('footer.refunds')}
             </Link>
+            <Link href="/legal/cookies" className="tap-safe text-[11px] font-light text-muted-foreground/85 transition hover:text-gold">
+              {t('footer.cookiePolicy')}
+            </Link>
             {/* Consent must be withdrawable as easily as it was given, which
                 means a permanent entry point rather than a one-off banner. */}
             <button

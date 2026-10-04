@@ -176,7 +176,10 @@ export function pageMetadata(options: {
   const { canonical, languages } = alternatesFor(path, locale)
 
   return {
-    title,
+    // Only when there is one: an explicit `title: undefined` makes Next 15
+    // render NO <title> instead of inheriting the root layout's site title —
+    // which is how the homepage, in every language, lost its title.
+    ...(title ? { title } : {}),
     description,
     robots: options.noindex ? { index: false, follow: true } : undefined,
     alternates: options.noindex ? { canonical } : { canonical, languages },
@@ -184,7 +187,7 @@ export function pageMetadata(options: {
       type: 'website',
       url: `${SITE_ORIGIN}${localizedPath(path, locale)}`,
       siteName: SITE_NAME,
-      title: title ? `${title} \u2014 ${SITE_NAME}` : undefined,
+      ...(title ? { title: `${title} \u2014 ${SITE_NAME}` } : {}),
       description,
       locale: OG_LOCALE[locale],
       alternateLocale: INDEXED_LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l]),
@@ -194,7 +197,7 @@ export function pageMetadata(options: {
     // these rather than og:*.
     twitter: {
       card: 'summary_large_image',
-      title: title ? `${title} — ${SITE_NAME}` : undefined,
+      ...(title ? { title: `${title} — ${SITE_NAME}` } : {}),
       description,
     },
   }

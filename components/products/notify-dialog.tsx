@@ -14,6 +14,7 @@ import { joinWaitlist } from '@/actions/waitlist'
 import { waitlistErrorMessage } from '@/components/products/waitlist-form'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 /**
  * "Notify when available" — the back-in-stock sign-up, as a dialog.
@@ -218,6 +219,7 @@ export function NotifyWhenAvailable({
               {submitting && <Loader2 className="size-3.5 animate-spin" />}
               {t('stockAlert.notify')}
             </button>
+            <PrivacyNotice purpose="privacy.alert" className="text-center" />
           </form>
         )}
       </DialogContent>

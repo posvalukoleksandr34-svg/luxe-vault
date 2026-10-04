@@ -6,6 +6,7 @@ import { joinWaitlist, type JoinWaitlistResult } from '@/actions/waitlist'
 import type { UIKey } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 type Failure = Extract<JoinWaitlistResult, { ok: false }>['error']
 
@@ -143,6 +144,7 @@ export function WaitlistForm({
       {signedIn && !done && (
         <p className="mt-1.5 text-[11px] font-light text-muted-foreground/85">{t('stockAlert.accountEmail')}</p>
       )}
+      {!done && <PrivacyNotice purpose="privacy.alert" className="mt-1.5" />}
       {error && (
         <p role="alert" className="mt-2 text-[12px] text-destructive">
           {error}

@@ -17,7 +17,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-type SubscriberStatus = 'active' | 'unsubscribed'
+type SubscriberStatus = 'pending' | 'active' | 'unsubscribed'
 type Subscriber = {
   id: string
   email: string
@@ -510,6 +510,7 @@ export function NewsletterManager() {
                 {([
                   ['all', 'Все'],
                   ['active', 'Активные'],
+                  ['pending', 'Ждут подтверждения'],
                   ['unsubscribed', 'Отписались'],
                 ] as const).map(([key, label]) => (
                   <button
@@ -583,11 +584,12 @@ export function NewsletterManager() {
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2.5">
                             <span className={cn('text-xs', r.status === 'active' ? 'text-gold' : 'text-muted-foreground')}>
-                              {r.status === 'active' ? 'Активна' : 'Отписан'}
+                              {r.status === 'active' ? 'Активна' : r.status === 'pending' ? 'Не подтвердил' : 'Отписан'}
                             </span>
                             <Switch
                               checked={r.status === 'active'}
-                              disabled={pending.has(r.id) || loadState !== 'ready'}
+                              // A pending address is confirmed only by its owner's link.
+                              disabled={pending.has(r.id) || loadState !== 'ready' || r.status === 'pending'}
                               onCheckedChange={(on) => void toggleSubscriber(r, on ? 'active' : 'unsubscribed')}
                               aria-label={`Подписка ${r.email}`}
                               className="data-[state=checked]:bg-gold data-[state=unchecked]:bg-muted"

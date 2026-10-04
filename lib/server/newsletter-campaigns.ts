@@ -6,7 +6,9 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CampaignContent } from '@/lib/newsletter/campaign'
 
-export type SubscriberStatus = 'active' | 'unsubscribed'
+/** 'pending': signed up, confirmation link not yet used (double opt-in,
+ *  migration 0051) — receives no campaigns. */
+export type SubscriberStatus = 'pending' | 'active' | 'unsubscribed'
 
 export type SubscriberRow = {
   id: string
@@ -91,11 +93,12 @@ export async function listSubscribers(limit = 2000): Promise<
 }
 
 export async function setSubscriberStatus(id: string, status: SubscriberStatus): Promise<boolean> {
-  const { data, error } = await createAdminClient()
-    .from('newsletter_subscribers')
-    .update({ status })
-    .eq('id', id)
-    .select('id')
+  let query = createAdminClient().from('newsletter_subscribers').update({ status }).eq('id', id)
+  // Only the owner of the address can turn a pending sign-up into a
+  // subscription — by the link in the confirmation email. An admin switch
+  // would be consent nobody gave.
+  if (status === 'active') query = query.neq('status', 'pending')
+  const { data, error } = await query.select('id')
   if (error) {
     console.error('[newsletter/admin] status change failed:', error.message)
     return false

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
 import { CuratedVaults } from '@/components/account/curated-vaults'
+import { DeleteAccount } from '@/components/account/delete-account'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
 import { AppCodeSection } from '@/components/account/app-code-section'
@@ -384,6 +385,10 @@ function SettingsSection() {
         >
           {t('acct.cookies')}
         </button>
+      </SettingRow>
+
+      <SettingRow label={t('acct.deleteTitle')}>
+        <DeleteAccount />
       </SettingRow>
     </div>
   )

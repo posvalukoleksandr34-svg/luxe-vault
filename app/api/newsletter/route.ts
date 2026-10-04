@@ -38,9 +38,10 @@ export async function POST(request: NextRequest) {
     source: typeof body.source === 'string' ? body.source : undefined,
     userId,
   })
-  if (result.ok) {
-    return NextResponse.json({ ok: true, already: result.already }, { status: result.already ? 200 : 201 })
-  }
+  // The same answer whether the address was new, pending or already on the
+  // list: the confirmation email (double opt-in) is the only next step, and
+  // the response must not tell a stranger who is subscribed.
+  if (result.ok) return NextResponse.json({ ok: true, confirm: true }, { status: 202 })
   const status = { INVALID_EMAIL: 400, UNAVAILABLE: 503, FAILED: 500 }[result.error]
   return NextResponse.json({ error: result.error }, { status })
 }

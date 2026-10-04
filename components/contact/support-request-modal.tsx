@@ -20,6 +20,7 @@ import { SUPPORT_COPY } from '@/lib/support/copy'
 import { SUPPORT_CATEGORIES, type SupportCategory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { isValidEmail } from '@/lib/validation'
+import { PrivacyNotice } from '@/components/privacy-notice'
 
 type FieldKey = 'name' | 'email' | 'handle' | 'message'
 
@@ -493,6 +494,7 @@ export function SupportRequestModal({
                     {sending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
                     {sending ? c.sending : c.submit}
                   </button>
+                  <PrivacyNotice purpose="privacy.support" className="mt-3 text-center" />
                 </form>
               )}
             </Dialog.Content>

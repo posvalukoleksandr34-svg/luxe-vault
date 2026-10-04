@@ -7,7 +7,7 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { isValidEmail } from '@/lib/validation'
 
-type State = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; already: boolean } | { kind: 'error'; message: string }
+type State = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done' } | { kind: 'error'; message: string }
 
 /**
  * The footer's newsletter sign-up: on every page with a footer.
@@ -44,13 +44,12 @@ export function FooterNewsletter() {
       })
       const data = await res.json().catch(() => null)
       if (res.ok) {
-        const already = Boolean(data?.already)
-        // Success empties the field and says so: a toast, and the inline
-        // confirmation that stands in the form's place for a few seconds
-        // before the (now empty) form comes back.
+        // Double opt-in: the subscription starts only when the link in the
+        // confirmation email is used. The server answers the same for every
+        // address, so this says the same: check your inbox.
         setEmail('')
-        setState({ kind: 'done', already })
-        pushToast({ title: already ? t('footer.newsAlready') : t('footer.newsThanks'), variant: already ? 'default' : 'success' })
+        setState({ kind: 'done' })
+        pushToast({ title: t('footer.newsCheckInbox'), variant: 'success' })
         return
       }
       if (data?.error === 'INVALID_EMAIL') {
@@ -87,7 +86,7 @@ export function FooterNewsletter() {
         {state.kind === 'done' ? (
           <p role="status" className="flex min-h-[46px] items-center gap-3 rounded-xl border border-border/60 px-4 text-[13px] font-light text-foreground">
             <Check className="size-4 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
-            {state.already ? t('footer.newsAlready') : t('footer.newsThanks')}
+            {t('footer.newsCheckInbox')}
           </p>
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-0">

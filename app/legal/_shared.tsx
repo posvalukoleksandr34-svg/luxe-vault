@@ -15,11 +15,11 @@ import type { Locale } from '@/lib/types'
  */
 
 export const LAST_UPDATED: Record<Locale, string> = {
-  ru: '6 сентября 2026',
-  en: '6 September 2026',
-  it: '6 settembre 2026',
-  fr: '6 septembre 2026',
-  de: '6. September 2026',
+  ru: '4 октября 2026',
+  en: '4 October 2026',
+  it: '4 ottobre 2026',
+  fr: '4 octobre 2026',
+  de: '4. Oktober 2026',
 }
 
 export const OPERATOR = {
