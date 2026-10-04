@@ -7,8 +7,14 @@ import {
   verifyAdminPassword,
 } from '@/lib/server/admin-auth'
 import { recordSession } from '@/lib/server/admin-sessions'
+import { checkTotp, isTotpConfigured } from '@/lib/server/admin-totp'
 import { clientIp } from '@/lib/server/client-ip'
 import { enforceLimit } from '@/lib/server/rate-limit'
+
+/** Whether the sign-in form must ask for the 6-digit code (lib/server/admin-totp.ts). */
+export function GET() {
+  return NextResponse.json({ mfa: isTotpConfigured() }, { headers: { 'Cache-Control': 'no-store' } })
+}
 
 export async function POST(request: NextRequest) {
   // Shared across instances now — see lib/server/rate-limit.ts. The previous
@@ -31,15 +37,34 @@ export async function POST(request: NextRequest) {
   }
 
   let password = ''
+  let code: unknown
   try {
     const body = await request.json()
     password = typeof body?.password === 'string' ? body.password : ''
+    code = body?.code
   } catch {
     return NextResponse.json({ error: 'Некорректный запрос' }, { status: 400 })
   }
 
-  if (!(await verifyAdminPassword(password))) {
-    return NextResponse.json({ error: 'Неверный пароль' }, { status: 401 })
+  // With the second factor on, a refusal never says WHICH of the two was
+  // wrong — otherwise the password could be guessed on its own.
+  const mfa = isTotpConfigured()
+  const refused = NextResponse.json({ error: mfa ? 'Неверный пароль или код' : 'Неверный пароль' }, { status: 401 })
+
+  if (!(await verifyAdminPassword(password))) return refused
+
+  // The code is checked (and spent) only after the password, so someone
+  // without it cannot burn the admin's current code.
+  let second: Awaited<ReturnType<typeof checkTotp>>
+  try {
+    second = await checkTotp(code)
+  } catch (e) {
+    console.error('[admin/login]', (e as Error).message)
+    return NextResponse.json({ error: 'Вход временно недоступен' }, { status: 503 })
+  }
+  if (second === 'invalid') return refused
+  if (second === 'unconfigured' && process.env.VERCEL_ENV === 'production') {
+    console.warn('[admin/login] signed in with the password alone — set ADMIN_TOTP_SECRET (scripts/admin-totp-setup.mjs).')
   }
 
   const { token, nonce, expiresAt } = await createSession()

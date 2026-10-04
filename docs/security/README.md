@@ -10,7 +10,7 @@ filtering are already in place and are not repeated here.
 | [../performance/README.md](../performance/README.md) | The performance half: measured audit, speed quick wins, structural plan |
 | [phase-1-perimeter.md](phase-1-perimeter.md) | Cloudflare WAF, rate limits, origin lock, admin behind Cloudflare Access |
 | [phase-1-backups.md](phase-1-backups.md) | Offsite encrypted backups, weekly restore test, restore runbook |
-| [hardening-2026-09-29.md](hardening-2026-09-29.md) | Next.js 15 upgrade (F1 fixed), admin sign-out revocation, RLS column gap, webhook amount check, operator checklist |
+| [hardening-2026-09-29.md](hardening-2026-09-29.md) | Next.js 15 upgrade (F1 fixed), admin sign-out revocation, RLS column gap, webhook amount check, operator checklist; 2026-10-04 follow-up: admin TOTP, strict nonce CSP on checkout/admin, live-site and database checks |
 
 ## The system as it stands
 
@@ -42,12 +42,12 @@ GitHub Actions ─▶ cron endpoints (bearer secret)
 | F2 | High | Rate limits count Cloudflare edge servers, not visitors: behind Cloudflare, Vercel's `X-Forwarded-For` is the edge address. | Phase 1a: **code in this change** |
 | F3 | High | The WAF can be bypassed via `luxe-vault-hlb1.vercel.app`. | Phase 1a: **code in this change** |
 | F4 | High | No backup outside the Supabase account, and no restore has ever been tested. | Phase 1b: **workflows in this change** |
-| F5 | High | The admin console is one shared password: no MFA, no per-person identity, no audit trail of who did what. | Phase 1a (Access), Phase 2 |
+| F5 | High — **partly fixed 2026-10-04** (TOTP second factor, once `ADMIN_TOTP_SECRET` is set) | The admin console is one shared password: no MFA, no per-person identity, no audit trail of who did what. | Phase 1a (Access), Phase 2 |
 | F6 | Medium | CI runs no build, typecheck, dependency or code scanning; third-party actions are referenced by tag, not SHA. | Phase 3 |
 | F7 | Medium | Logs are the platform's short-retention runtime logs only. Nothing alerts on login-failure spikes, 429 storms or 5xx bursts. | Phase 3 |
 | F8 | Medium | Production appears to run on Vercel **Hobby** (`vercel.json`: daily crons only). Hobby is for non-commercial use under Vercel's terms, and it also rules out log drains and firewall rate limiting. | Phase 1c |
 | F9 | Medium | Customer sign-in goes straight to Supabase, so Cloudflare can't see credential stuffing against it. Protection depends on Supabase dashboard settings. | Phase 1a, step 6 |
-| F10 | Low | Analytics pixels (GA4, Meta) load on the checkout page that hosts the Stripe iframe (PCI SAQ A script-integrity eligibility), and CSP `script-src` still allows `'unsafe-inline'`. | Phase 2 |
+| F10 | Low — **partly fixed 2026-10-04** (`/checkout` and `/admin` get a nonce CSP without `'unsafe-inline'`) | Analytics pixels (GA4, Meta) load on the checkout page that hosts the Stripe iframe (PCI SAQ A script-integrity eligibility), and CSP `script-src` still allows `'unsafe-inline'`. | Phase 2 |
 | F11 | Low | `netlify.toml` and `@netlify/plugin-nextjs` suggest a second deployment may exist. If it is live with production secrets, it is an origin nobody is watching. | Phase 1c |
 
 ## Phase 1 — Perimeter & backups (this week)
