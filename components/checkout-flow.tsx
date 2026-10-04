@@ -12,7 +12,7 @@ import { DEFAULT_COUNTRY, PhoneInput } from '@/components/phone-input'
 import { TrustBadges } from '@/components/trust-badges'
 import { CARD_PAYMENT_METHOD, CRYPTO_PAYMENT_METHOD } from '@/lib/data'
 import { trackAddPaymentInfo } from '@/lib/analytics'
-import { quoteShipping } from '@/lib/fulfilment'
+import { TAX_RATE, quoteShipping } from '@/lib/fulfilment'
 
 /**
  * The payment SDKs, loaded when the customer actually reaches the payment
@@ -954,6 +954,14 @@ export function CheckoutFlow({
                   {shippingCost === 0 ? t('cart.free') : summaryPrice(shippingCost)}
                 </span>
               </div>
+              {/* Taxes, stated rather than left to guess: the shop adds none
+                  (TAX_RATE, lib/fulfilment.ts); the destination's import
+                  charges are the buyer's, outside CH/LI. */}
+              {TAX_RATE === 0 && (
+                <p className="mb-2 text-[11px] font-light leading-relaxed text-muted-foreground">
+                  {t('checkout.noVat')}
+                </p>
+              )}
               {form.country !== 'CH' && form.country !== 'LI' && (
                 <p className="mb-2 text-[11px] font-light leading-relaxed text-muted-foreground">
                   {t('checkout.importCharges')}
@@ -1020,6 +1028,11 @@ export function CheckoutFlow({
                   </p>
                 </div>
               )}
+              {/* What is being bought, said once more where the decision is
+                  made — the product pages say it too. */}
+              <p className="mb-3 border-l-2 border-gold/40 py-1 pl-3 text-[11px] font-light leading-relaxed text-foreground/75">
+                {t('checkout.authenticityNote')}
+              </p>
               <p className="mb-3 text-[11px] font-light leading-relaxed text-muted-foreground">
                 {t('checkout.legalNotice')}{' '}
                 <Link href="/legal/terms" target="_blank" className="text-gold underline underline-offset-2 hover:no-underline">

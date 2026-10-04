@@ -13,7 +13,7 @@ export const TERMS: LegalDocSet = {
         h: '1. Общие положения',
         blocks: [
           { p: 'Настоящие Условия регулируют использование сайта luxe-vault.store и покупку товаров через него. Продавцом выступает частное лицо, проживающее в Цюрихе, Швейцария, действующее под именем Luxe Vault (далее — «Продавец», «я»). Это **частная продажа** (Privatverkauf), а не деятельность компании: продавец не является зарегистрированным предприятием, не имеет склада, магазина или наёмных сотрудников.' },
-          { p: `Полное имя и почтовый адрес продавца предоставляются по запросу на [${SUPPORT}](mailto:${SUPPORT}) — они необходимы для оформления возврата и для реализации ваших прав на доступ к персональным данным.` },
+          { p: 'Данные продавца и способы связи указаны в [Импрессуме](/legal/imprint).' },
           { p: 'Оформляя заказ, вы подтверждаете, что ознакомились с настоящими Условиями и принимаете их.' },
         ],
       },
@@ -112,7 +112,7 @@ export const TERMS: LegalDocSet = {
         h: '1. General',
         blocks: [
           { p: 'These Terms govern use of luxe-vault.store and purchases made through it. The seller is a private individual resident in Zurich, Switzerland, trading under the name Luxe Vault ("the Seller", "I"). This is a **private sale** (Privatverkauf), not a business: the Seller is not a registered company and has no warehouse, shop or employees.' },
-          { p: `The Seller's full name and postal address are provided on request at [${SUPPORT}](mailto:${SUPPORT}) — they are needed to process a return and to exercise your data-access rights.` },
+          { p: 'The Seller\'s identity and contact details are given in the [Imprint](/legal/imprint).' },
           { p: 'By placing an order you confirm that you have read and accept these Terms.' },
         ],
       },
@@ -211,7 +211,7 @@ export const TERMS: LegalDocSet = {
         h: '1. Disposizioni generali',
         blocks: [
           { p: 'Le presenti Condizioni regolano l’uso del sito luxe-vault.store e gli acquisti effettuati tramite esso. Il venditore è una persona fisica residente a Zurigo, Svizzera, che opera con il nome Luxe Vault («il Venditore»). Si tratta di una **vendita tra privati** (Privatverkauf), non di un’attività d’impresa: il Venditore non è una società registrata e non dispone di magazzino, negozio o dipendenti.' },
-          { p: `Nome completo e indirizzo postale del Venditore sono forniti su richiesta scrivendo a [${SUPPORT}](mailto:${SUPPORT}) — sono necessari per gestire un reso e per esercitare i diritti di accesso ai dati.` },
+          { p: 'I dati del Venditore e i recapiti sono indicati nelle [Note legali](/legal/imprint).' },
           { p: 'Effettuando un ordine dichiari di aver letto e accettato le presenti Condizioni.' },
         ],
       },

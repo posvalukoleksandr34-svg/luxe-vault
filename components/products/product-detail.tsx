@@ -11,7 +11,10 @@ import {
   RotateCcw,
   Ruler,
   Share2,
-  ShieldCheck,
+  CreditCard,
+  Info,
+  MessageCircle,
+  Truck,
   X,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -260,6 +263,10 @@ export function ProductDetail({ product }: { product: Product }) {
   // show every product the same invented numbers.
   const sizeChart = p.sizeChart ?? []
   const productName = localize(p.name)
+  // The design a replica references, when the admin named one — never our
+  // own label, which needs no "not made by" line.
+  const referencedBrand =
+    p.brand && !/^\s*luxe\s*vault\s*$/i.test(p.brand) ? p.brand.trim() : ''
 
   // One view_item per product, not per render. The dependency is the id
   // rather than the object so a catalogue refresh does not re-fire it.
@@ -483,6 +490,13 @@ export function ProductDetail({ product }: { product: Product }) {
               </button>
             </>
           )}
+          {/* Where you are in the gallery — the arrows hide on a phone
+              between swipes, the count does not. */}
+          {allImages.length > 1 && (
+            <span className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-background/75 px-2.5 py-1 text-[11px] tabular-nums text-foreground/80 backdrop-blur-sm">
+              {selectedIndex + 1} / {allImages.length}
+            </span>
+          )}
         </div>
 
         {allImages.length > 1 && (
@@ -492,6 +506,8 @@ export function ProductDetail({ product }: { product: Product }) {
                 key={i}
                 type="button"
                 onClick={() => goToIndex(i)}
+                aria-label={`${productName} — ${i + 1} / ${allImages.length}`}
+                aria-current={i === selectedIndex ? 'true' : undefined}
                 className={cn(
                   'no-juice relative size-16 shrink-0 overflow-hidden rounded-xl border transition-all duration-300',
                   i === selectedIndex
@@ -547,11 +563,38 @@ export function ProductDetail({ product }: { product: Product }) {
         {/* The brand, when the admin set one — omitted rather than rendered
             as a label with nothing after it. The SKU moved to the foot of the
             panel, beside Share, as the article number. */}
-        {p.brand && (
-          <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground/85">
-            {t('product.brand')}: <span className="text-foreground/80">{p.brand}</span>
+        {/* Authenticity, stated where the price is — not in the terms. Every
+            piece the shop sells is a replica or designer-inspired item (the
+            Terms, the About page); the admin's brand field, when set, is the
+            design it references, and is named here only to say it is NOT
+            that brand's product. Our own label needs no such line. */}
+        <section
+          aria-labelledby="product-authenticity"
+          className="mt-5 rounded-xl border border-gold/35 bg-gold/[0.05] px-4 py-3.5"
+        >
+          <h2 id="product-authenticity" className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em] text-foreground">
+            <Info className="size-3.5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
+            {t('product.authTitle')}
+          </h2>
+          <p className="mt-1.5 text-[13px] font-light leading-relaxed text-foreground/80">
+            {t('product.authBody')}
           </p>
-        )}
+          {referencedBrand && (
+            <p className="mt-1.5 text-[13px] font-light leading-relaxed text-foreground/80">
+              {tf('product.authReference', { brand: referencedBrand })}
+            </p>
+          )}
+          <Link href="/faq#product" className="mt-1.5 inline-block text-[12px] text-foreground/80 underline decoration-gold/50 underline-offset-4 hover:decoration-gold">
+            {t('product.authMore')}
+          </Link>
+        </section>
+
+        <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-[12px]">
+          <div className="flex gap-1.5">
+            <dt className="text-muted-foreground">{t('product.condition')}:</dt>
+            <dd className="text-foreground/85">{t('product.conditionNew')}</dd>
+          </div>
+        </dl>
 
         <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5">
           {outOfStock && (
@@ -564,7 +607,7 @@ export function ProductDetail({ product }: { product: Product }) {
             .filter((s) => s !== 'out_of_stock' && !(s === 'in_stock' && outOfStock))
             .map((s) => (
               <span key={s} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/85">
-                <ShieldCheck className="size-3 text-gold" />
+                <span className="size-1 rounded-full bg-gold" aria-hidden />
                 {/* "In stock", said of the chosen size once there is one. */}
                 {s === 'in_stock' && sizeStatus ? sizeStatus : localize(STATUS_LABELS[s])}
               </span>
@@ -706,7 +749,7 @@ export function ProductDetail({ product }: { product: Product }) {
               )
             })}
           </div>
-          {!size && <p className="mt-2 text-[11px] text-destructive">{t('product.selectSize')}</p>}
+          {!size && <p className="mt-2 text-[11px] text-muted-foreground">{t('product.selectSize')}</p>}
           {/* Only when tracked AND actually low — a permanent counter on a
               well-stocked item is noise and manufactured urgency. */}
           {lowStockText && hurryCount === null && <p className="mt-2 text-[11px] text-gold">{lowStockText}</p>}
@@ -755,7 +798,7 @@ export function ProductDetail({ product }: { product: Product }) {
         )}
 
         {hurryCount !== null && (
-          <p role="status" className="mt-7 flex items-center gap-2.5 text-[12px] font-medium tracking-wide text-orange-400">
+          <p role="status" className="mt-7 flex items-center gap-2.5 text-[12px] font-light tracking-wide text-foreground/80">
             <HurryDot />
             {tf('stock.hurry', { n: hurryCount })}
           </p>
@@ -906,17 +949,32 @@ export function ProductDetail({ product }: { product: Product }) {
         </Accordion>
 
         {/* Trust, in one quiet line — no payment logos. */}
-        <div className="mt-5 flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} />
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.15em] text-foreground/85">
-              {t('product.securePurchase')}
-            </p>
-            <p className="mt-0.5 text-[12px] font-light text-muted-foreground">
-              {t('product.securePurchaseBody')}
-            </p>
-          </div>
-        </div>
+        {/* What happens around the purchase, in three facts. Each is true of
+            every order: Stripe takes card payments, Swiss Post carries every
+            parcel with tracking, and a person answers support. */}
+        <ul className="mt-5 grid gap-3 rounded-xl border border-border/60 p-4 sm:grid-cols-3 sm:gap-4">
+          {[
+            { icon: CreditCard, title: t('product.trustSecureTitle'), body: t('product.trustSecureBody') },
+            { icon: Truck, title: t('product.trustTrackedTitle'), body: t('product.trustTrackedBody') },
+            { icon: MessageCircle, title: t('product.trustSupportTitle'), body: t('product.trustSupportBody'), href: '/contact' },
+          ].map(({ icon: Icon, title, body, href }) => (
+            <li key={title} className="flex items-start gap-2.5 sm:flex-col sm:gap-2">
+              <Icon className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-foreground">
+                  {href ? (
+                    <Link href={href} className="underline decoration-gold/40 underline-offset-4 hover:decoration-gold">
+                      {title}
+                    </Link>
+                  ) : (
+                    title
+                  )}
+                </p>
+                <p className="mt-1 text-[12px] font-light leading-relaxed text-muted-foreground">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
 
         {/* The article number of the exact variant chosen (a support query
             quoting it is far easier to answer), and Share. */}

@@ -5,6 +5,10 @@ import { UI } from '@/lib/ui-strings'
 import { INDEXED_LOCALES } from '@/lib/locale-routing'
 import { resolveDoc, type LegalDocSet } from '@/app/legal/_content/types'
 import { pageMetadata } from '@/lib/seo'
+import { ABOUT } from '@/lib/content/about'
+import { FAQ_PAGE } from '@/lib/content/faq-page'
+import { IMPRINT } from '@/lib/content/imprint'
+import { SHIPPING } from '@/lib/content/shipping'
 import { getProductBySlug } from '@/lib/server/catalog-store'
 import { findCollection } from '@/lib/server/taxonomy'
 import type { StorefrontLocale } from '@/lib/types'
@@ -50,6 +54,28 @@ export function catalogMetadata(locale: StorefrontLocale): Metadata {
     titleKey: 'seo.catalog.title',
     descriptionKey: 'seo.catalog.description',
   })
+}
+
+// ------------------------------------------------------------ customer care
+
+export function aboutMetadata(locale: StorefrontLocale): Metadata {
+  const c = ABOUT[locale]
+  return pageMetadata({ path: '/about', locale, title: c.title, description: c.description })
+}
+
+export function shippingMetadata(locale: StorefrontLocale): Metadata {
+  const c = SHIPPING[locale]
+  return pageMetadata({ path: '/shipping', locale, title: c.title, description: c.description })
+}
+
+export function faqMetadata(locale: StorefrontLocale): Metadata {
+  const c = FAQ_PAGE[locale]
+  return pageMetadata({ path: '/faq', locale, title: c.title, description: c.description })
+}
+
+export function imprintMetadata(locale: StorefrontLocale): Metadata {
+  const c = IMPRINT[locale]
+  return pageMetadata({ path: '/legal/imprint', locale, title: c.title, description: c.description })
 }
 
 export function contactMetadata(locale: StorefrontLocale): Metadata {

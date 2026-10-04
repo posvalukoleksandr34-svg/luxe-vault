@@ -88,11 +88,11 @@ const FALLBACK_NOTICE: Record<string, string> = {
 }
 
 const AUTHORITATIVE_NOTICE: Record<string, string> = {
-  ru: 'Русская версия является основной. Переводы предоставлены для удобства.',
-  en: 'The Russian version is authoritative. Translations are provided for convenience.',
-  it: 'La versione russa fa fede. Le traduzioni sono fornite per comodità.',
-  fr: 'La version russe fait foi. Les traductions sont fournies à titre indicatif.',
-  de: 'Massgeblich ist die russische Fassung. Übersetzungen dienen der Bequemlichkeit.',
+  ru: 'В случае расхождений основной является английская версия.',
+  en: 'If translations differ, the English version prevails.',
+  it: 'In caso di differenze tra le traduzioni prevale la versione inglese.',
+  fr: 'En cas de divergence entre les traductions, la version anglaise fait foi.',
+  de: 'Bei Abweichungen zwischen den Übersetzungen ist die englische Fassung massgeblich.',
 }
 
 export function LegalDocument({ set }: { set: LegalDocSet }) {

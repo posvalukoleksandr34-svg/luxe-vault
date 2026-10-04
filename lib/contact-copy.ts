@@ -57,11 +57,18 @@ export type ContactCopy = {
   doneTitle: string
   doneBody: string
   doneOpen: string
+  orderNumber: string
+  orderNumberPh: string
+  metaOrder: string
+  sendAnother: string
+  responseLabel: string
+  responseBody: string
+  detailsTitle: string
 }
 
 export const CONTACT_COPY: Record<Locale, ContactCopy> = {
   ru: {
-    pageTitle: 'Помощь и контакты',
+    pageTitle: 'Связаться с Luxe Vault',
     pageIntro: 'Вопрос о заказе, оплате, доставке или размере — напишите нам, и ответ придёт от человека, а не от бота.',
     helpCenter: 'Центр поддержки и мои запросы',
     contactTitle: 'Свяжитесь с нами',
@@ -72,7 +79,7 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Позвоните нам в рабочие часы',
     telegramLabel: 'Telegram',
     telegramBody: 'Напишите нам напрямую — отвечаем в течение {span}',
-    formTitle: 'Помощь и контакты',
+    formTitle: 'Напишите нам',
     formIntro: 'Ответим на указанную почту в течение {span}.',
     close: 'Закрыть',
     required: 'обязательно',
@@ -109,9 +116,16 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     doneTitle: 'Запрос отправлен',
     doneBody: 'Номер запроса — {number}. Ответим на {email} в течение {span}.',
     doneOpen: 'Открыть запрос',
+    orderNumber: 'Номер заказа (если есть)',
+    orderNumberPh: 'например, LV-7K2M9Q',
+    metaOrder: 'Заказ',
+    sendAnother: 'Написать ещё',
+    responseLabel: 'Время ответа',
+    responseBody: 'Обычно в течение {span}. Отвечает человек, не бот.',
+    detailsTitle: 'Как с нами связаться',
   },
   en: {
-    pageTitle: 'Help & contact',
+    pageTitle: 'Contact Luxe Vault',
     pageIntro: 'A question about an order, payment, delivery or sizing — write to us and a person, not a bot, will reply.',
     helpCenter: 'Support center and my requests',
     contactTitle: 'Contact us',
@@ -122,7 +136,7 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Call us during opening hours',
     telegramLabel: 'Telegram',
     telegramBody: 'Message us directly — we reply within {span}',
-    formTitle: 'Help & contact',
+    formTitle: 'Send us a message',
     formIntro: "We'll reply to the address you give within {span}.",
     close: 'Close',
     required: 'required',
@@ -159,9 +173,16 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     doneTitle: 'Request sent',
     doneBody: 'Your request number is {number}. We\'ll reply to {email} within {span}.',
     doneOpen: 'Open request',
+    orderNumber: 'Order number (optional)',
+    orderNumberPh: 'e.g. LV-7K2M9Q',
+    metaOrder: 'Order',
+    sendAnother: 'Send another message',
+    responseLabel: 'Response time',
+    responseBody: 'Usually within {span}. A person replies, not a bot.',
+    detailsTitle: 'How to reach us',
   },
   it: {
-    pageTitle: 'Assistenza e contatti',
+    pageTitle: 'Contatta Luxe Vault',
     pageIntro: "Una domanda su ordine, pagamento, spedizione o taglie: scrivici e ti risponderà una persona, non un bot.",
     helpCenter: 'Centro assistenza e le mie richieste',
     contactTitle: 'Contattaci',
@@ -172,7 +193,7 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Chiamaci negli orari di apertura',
     telegramLabel: 'Telegram',
     telegramBody: 'Scrivici direttamente: rispondiamo entro {span}',
-    formTitle: 'Assistenza e contatti',
+    formTitle: 'Scrivici un messaggio',
     formIntro: "Risponderemo all'indirizzo indicato entro {span}.",
     close: 'Chiudi',
     required: 'obbligatorio',
@@ -209,9 +230,16 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     doneTitle: 'Richiesta inviata',
     doneBody: 'Il numero della richiesta è {number}. Risponderemo a {email} entro {span}.',
     doneOpen: 'Apri richiesta',
+    orderNumber: 'Numero d’ordine (facoltativo)',
+    orderNumberPh: 'es. LV-7K2M9Q',
+    metaOrder: 'Ordine',
+    sendAnother: 'Invia un altro messaggio',
+    responseLabel: 'Tempi di risposta',
+    responseBody: 'Di solito entro {span}. Risponde una persona, non un bot.',
+    detailsTitle: 'Come raggiungerci',
   },
   fr: {
-    pageTitle: 'Aide et contact',
+    pageTitle: 'Contacter Luxe Vault',
     pageIntro: 'Une question sur une commande, un paiement, la livraison ou une taille : écrivez-nous, une personne vous répondra, pas un robot.',
     helpCenter: 'Centre d’aide et mes demandes',
     contactTitle: 'Nous contacter',
@@ -222,7 +250,7 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Appelez-nous aux heures d’ouverture',
     telegramLabel: 'Telegram',
     telegramBody: 'Écrivez-nous directement : réponse sous {span}',
-    formTitle: 'Aide et contact',
+    formTitle: 'Envoyez-nous un message',
     formIntro: 'Nous répondrons à l’adresse indiquée sous {span}.',
     close: 'Fermer',
     required: 'obligatoire',
@@ -259,9 +287,16 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     doneTitle: 'Demande envoyée',
     doneBody: 'Numéro de demande : {number}. Nous répondrons à {email} sous {span}.',
     doneOpen: 'Ouvrir la demande',
+    orderNumber: 'Numéro de commande (facultatif)',
+    orderNumberPh: 'ex. LV-7K2M9Q',
+    metaOrder: 'Commande',
+    sendAnother: 'Envoyer un autre message',
+    responseLabel: 'Délai de réponse',
+    responseBody: 'En général sous {span}. Une personne vous répond, pas un robot.',
+    detailsTitle: 'Comment nous joindre',
   },
   de: {
-    pageTitle: 'Hilfe & Kontakt',
+    pageTitle: 'Luxe Vault kontaktieren',
     pageIntro: 'Eine Frage zu Bestellung, Zahlung, Versand oder Größe – schreiben Sie uns, und ein Mensch antwortet, kein Bot.',
     helpCenter: 'Hilfe-Center und meine Anfragen',
     contactTitle: 'Kontaktieren Sie uns',
@@ -272,7 +307,7 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     phoneBody: 'Rufen Sie uns während der Geschäftszeiten an',
     telegramLabel: 'Telegram',
     telegramBody: 'Schreiben Sie uns direkt – Antwort innerhalb von {span}',
-    formTitle: 'Hilfe & Kontakt',
+    formTitle: 'Schreiben Sie uns',
     formIntro: 'Wir antworten an die angegebene Adresse innerhalb von {span}.',
     close: 'Schließen',
     required: 'Pflichtfeld',
@@ -309,6 +344,13 @@ export const CONTACT_COPY: Record<Locale, ContactCopy> = {
     doneTitle: 'Anfrage gesendet',
     doneBody: 'Ihre Anfragenummer ist {number}. Wir antworten an {email} innerhalb von {span}.',
     doneOpen: 'Anfrage öffnen',
+    orderNumber: 'Bestellnummer (optional)',
+    orderNumberPh: 'z. B. LV-7K2M9Q',
+    metaOrder: 'Bestellung',
+    sendAnother: 'Weitere Nachricht senden',
+    responseLabel: 'Antwortzeit',
+    responseBody: 'In der Regel innerhalb von {span}. Es antwortet ein Mensch, kein Bot.',
+    detailsTitle: 'So erreichen Sie uns',
   },
 }
 

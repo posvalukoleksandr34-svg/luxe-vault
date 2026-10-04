@@ -7,11 +7,9 @@ const SUPPORT = 'support@luxe-vault.store'
  * processor, data category and period below is traced to the code in
  * docs/compliance/audit-2026-10-04.md. Change the code, change this.
  *
- * Items in [SQUARE BRACKETS, CAPITALS] are information only the operator has
- * (identity, address, regions of some providers). They are left visible on
- * purpose: a privacy notice that invents them is worse than one that shows
- * the gap. The page's "legal review required" banner stays until they are
- * filled in and a lawyer has read the text.
+ * The seller's identity is not repeated here: section 1 points to the
+ * Imprint, which renders it from config/business.ts. Nothing in this text is
+ * a placeholder; facts only the operator can supply are configured there.
  */
 export const PRIVACY: LegalDocSet = {
   ru: {
@@ -22,9 +20,9 @@ export const PRIVACY: LegalDocSet = {
       {
         h: '1. Кто отвечает за ваши данные',
         blocks: [
-          { p: 'Ответственное лицо (контролёр) — частное лицо, проживающее в Цюрихе (Швейцария) и продающее вещи под названием Luxe Vault: **[ВЛАДЕЛЕЦ ДОЛЖЕН УКАЗАТЬ: полное имя и почтовый адрес]**.' },
+          { p: 'Ответственное лицо (контролёр) — частное лицо, проживающее в Цюрихе (Швейцария) и продающее вещи под названием Luxe Vault. Имя и контактные данные указаны в [Импрессуме](/legal/imprint).' },
           { p: `Контакт по вопросам данных: [${SUPPORT}](mailto:${SUPPORT}).` },
-          { p: 'Применяется швейцарский Федеральный закон о защите данных (nFADP). Поскольку товары предлагаются покупателям в ЕС/ЕЭЗ, к их данным дополнительно применяется GDPR. Представитель в ЕС по ст. 27 GDPR: **[ВЛАДЕЛЕЦ ДОЛЖЕН УКАЗАТЬ или подтвердить с юристом, что он не требуется]**.' },
+          { p: 'Применяется швейцарский Федеральный закон о защите данных (nFADP). Поскольку товары предлагаются покупателям в ЕС/ЕЭЗ, к их данным дополнительно применяется GDPR. Представитель в ЕС по ст. 27 GDPR не назначен: по любым вопросам о данных обращайтесь напрямую к продавцу.' },
         ],
       },
       {
@@ -69,7 +67,7 @@ export const PRIVACY: LegalDocSet = {
           { ul: [
             '**Vercel Inc.** (США) — хостинг сайта; серверы приложения в Дублине (ЕС). Все запросы, IP-адрес, журналы.',
             '**Cloudflare Inc.** (США) — доставка контента, защита от атак, CAPTCHA Turnstile в формах. Все запросы и IP-адрес.',
-            '**Supabase Inc.** (США) — база данных, вход в аккаунт, хранение файлов. Регион хранения: **[ВЛАДЕЛЕЦ ДОЛЖЕН УКАЗАТЬ]**.',
+            '**Supabase Inc.** (США) — база данных, вход в аккаунт, хранение файлов.',
             '**Stripe** (Stripe Payments Europe Ltd., Ирландия) — оплата картой и хранение сохранённых карт: сумма, email для чека, при сохранении карты — имя и email.',
             '**NOWPayments** — оплата криптовалютой: номер заказа и сумма.',
             '**Resend Inc.** (США) — отправка писем: адрес и содержание письма.',
@@ -78,7 +76,7 @@ export const PRIVACY: LegalDocSet = {
             '**Meta Platforms Ireland Ltd.** — пиксель Meta, только с согласием на маркетинговые cookie.',
             '**Telegram** — служебные уведомления продавцу: при оплаченном заказе — имя, email, телефон, адрес и состав заказа; при смене статуса — номер заказа и имя; о возврате — номер заказа, причина и комментарий.',
             '**Швейцарская почта и почтовая служба страны назначения** — имя и адрес получателя для доставки.',
-            '**Хранилище резервных копий** **[ВЛАДЕЛЕЦ ДОЛЖЕН УКАЗАТЬ провайдера]** — копии базы данных, зашифрованные до отправки.',
+            '**Облачное хранилище резервных копий** (S3-совместимое) — копии базы данных, зашифрованные до отправки, так что провайдер не может их прочитать.',
           ] },
           { p: 'Передача в США и другие страны без решения об адекватности основана на рамке EU–US / Swiss–US Data Privacy Framework (если провайдер сертифицирован), а иначе — на стандартных договорных условиях Европейской комиссии.' },
         ],
@@ -95,7 +93,7 @@ export const PRIVACY: LegalDocSet = {
             'Записи ограничения запросов (IP-адреса) — до 1 суток. Платёжные события Stripe — 90 дней.',
             'Выбор по cookie — 12 месяцев, затем мы спрашиваем снова.',
             'Резервные копии — до 90 дней; удалённые данные исчезают из них по истечении этого срока.',
-            'Сообщения в служебном Telegram-чате хранятся, пока продавец их не удалит: **[ВЛАДЕЛЕЦ ДОЛЖЕН УКАЗАТЬ срок]**.',
+            'Сообщения в служебном Telegram-чате хранятся, пока продавец их не удалит; автоматически они не удаляются.',
           ] },
         ],
       },
@@ -147,9 +145,9 @@ export const PRIVACY: LegalDocSet = {
       {
         h: '1. Who is responsible for your data',
         blocks: [
-          { p: 'The controller is a private individual resident in Zurich, Switzerland, selling under the name Luxe Vault: **[OPERATOR TO COMPLETE: full name and postal address]**.' },
+          { p: 'The controller is a private individual resident in Zurich, Switzerland, selling under the name Luxe Vault. Their name and contact details are given in the [Imprint](/legal/imprint).' },
           { p: `Contact for data questions: [${SUPPORT}](mailto:${SUPPORT}).` },
-          { p: 'The Swiss Federal Act on Data Protection (nFADP) applies. Because goods are offered to buyers in the EU/EEA, the GDPR also applies to their data. EU representative under Art. 27 GDPR: **[OPERATOR TO COMPLETE, or confirm with a lawyer that none is required]**.' },
+          { p: 'The Swiss Federal Act on Data Protection (nFADP) applies. Because goods are offered to buyers in the EU/EEA, the GDPR also applies to their data. No EU representative under Art. 27 GDPR has been appointed: please contact the seller directly about anything concerning your data.' },
         ],
       },
       {
@@ -194,7 +192,7 @@ export const PRIVACY: LegalDocSet = {
           { ul: [
             '**Vercel Inc.** (USA) — hosting; application servers in Dublin (EU). All requests, IP address, logs.',
             '**Cloudflare Inc.** (USA) — content delivery, attack protection, the Turnstile CAPTCHA on forms. All requests and IP address.',
-            '**Supabase Inc.** (USA) — database, sign-in, file storage. Storage region: **[OPERATOR TO COMPLETE]**.',
+            '**Supabase Inc.** (USA) — database, sign-in, file storage.',
             '**Stripe** (Stripe Payments Europe Ltd., Ireland) — card payments and saved cards: amount, email for the receipt, and name and email when a card is saved.',
             '**NOWPayments** — crypto payments: order number and amount.',
             '**Resend Inc.** (USA) — sending email: the address and the message.',
@@ -203,7 +201,7 @@ export const PRIVACY: LegalDocSet = {
             '**Meta Platforms Ireland Ltd.** — the Meta Pixel, only with consent to marketing cookies.',
             '**Telegram** — internal notifications to the seller: for a paid order, name, email, phone, address and items; for a status change, the order number and first name; for a return, the order number, reason and comment.',
             '**Swiss Post and the destination country\'s postal service** — recipient name and address, for delivery.',
-            '**Backup storage** **[OPERATOR TO COMPLETE: provider]** — copies of the database, encrypted before upload.',
+            '**Cloud backup storage** (S3-compatible) — copies of the database, encrypted before upload so the provider cannot read them.',
           ] },
           { p: 'Transfers to the USA and other countries without an adequacy decision rely on the EU–US / Swiss–US Data Privacy Framework where the provider is certified, and otherwise on the European Commission\'s standard contractual clauses.' },
         ],
@@ -220,7 +218,7 @@ export const PRIVACY: LegalDocSet = {
             'Rate-limit records (IP addresses) — up to 1 day. Stripe payment events — 90 days.',
             'Your cookie choice — 12 months, then we ask again.',
             'Backups — up to 90 days; deleted data leaves them when that period ends.',
-            'Messages in the seller\'s internal Telegram chat stay until the seller deletes them: **[OPERATOR TO COMPLETE: period]**.',
+            'Messages in the seller\'s internal Telegram chat stay until the seller deletes them; they are not deleted automatically.',
           ] },
         ],
       },
@@ -272,9 +270,9 @@ export const PRIVACY: LegalDocSet = {
       {
         h: '1. Chi è responsabile dei tuoi dati',
         blocks: [
-          { p: 'Il titolare del trattamento è una persona privata residente a Zurigo (Svizzera) che vende con il nome Luxe Vault: **[DA COMPLETARE A CURA DEL TITOLARE: nome completo e indirizzo postale]**.' },
+          { p: 'Il titolare del trattamento è una persona privata residente a Zurigo (Svizzera) che vende con il nome Luxe Vault. Nome e recapiti sono indicati nelle [Note legali](/legal/imprint).' },
           { p: `Contatto per le questioni sui dati: [${SUPPORT}](mailto:${SUPPORT}).` },
-          { p: 'Si applica la Legge federale svizzera sulla protezione dei dati (nLPD). Poiché i prodotti sono offerti ad acquirenti nell\'UE/SEE, ai loro dati si applica anche il GDPR. Rappresentante nell\'UE ai sensi dell\'art. 27 GDPR: **[DA COMPLETARE, o da confermare con un avvocato che non è necessario]**.' },
+          { p: 'Si applica la Legge federale svizzera sulla protezione dei dati (nLPD). Poiché i prodotti sono offerti ad acquirenti nell\'UE/SEE, ai loro dati si applica anche il GDPR. Non è stato nominato un rappresentante nell\'UE ai sensi dell\'art. 27 GDPR: per qualsiasi questione sui tuoi dati contatta direttamente il venditore.' },
         ],
       },
       {
@@ -319,7 +317,7 @@ export const PRIVACY: LegalDocSet = {
           { ul: [
             '**Vercel Inc.** (USA) — hosting; server applicativi a Dublino (UE). Tutte le richieste, indirizzo IP, log.',
             '**Cloudflare Inc.** (USA) — distribuzione dei contenuti, protezione dagli attacchi, CAPTCHA Turnstile nei moduli. Tutte le richieste e indirizzo IP.',
-            '**Supabase Inc.** (USA) — database, accesso, archiviazione dei file. Regione di archiviazione: **[DA COMPLETARE]**.',
+            '**Supabase Inc.** (USA) — database, accesso, archiviazione dei file.',
             '**Stripe** (Stripe Payments Europe Ltd., Irlanda) — pagamenti con carta e carte salvate: importo, email per la ricevuta e, se salvi una carta, nome ed email.',
             '**NOWPayments** — pagamenti in criptovaluta: numero d\'ordine e importo.',
             '**Resend Inc.** (USA) — invio delle email: indirizzo e messaggio.',
@@ -328,7 +326,7 @@ export const PRIVACY: LegalDocSet = {
             '**Meta Platforms Ireland Ltd.** — il pixel di Meta, solo con consenso ai cookie di marketing.',
             '**Telegram** — notifiche interne al venditore: per un ordine pagato, nome, email, telefono, indirizzo e articoli; per un cambio di stato, numero d\'ordine e nome; per un reso, numero d\'ordine, motivo e commento.',
             '**La Posta Svizzera e il servizio postale del paese di destinazione** — nome e indirizzo del destinatario, per la consegna.',
-            '**Archiviazione dei backup** **[DA COMPLETARE: fornitore]** — copie del database, cifrate prima dell\'invio.',
+            '**Archiviazione cloud dei backup** (compatibile S3) — copie del database, cifrate prima dell\'invio, così che il fornitore non possa leggerle.',
           ] },
           { p: 'I trasferimenti verso gli USA e altri paesi senza decisione di adeguatezza si basano sull\'EU–US / Swiss–US Data Privacy Framework se il fornitore è certificato, altrimenti sulle clausole contrattuali tipo della Commissione europea.' },
         ],
@@ -345,7 +343,7 @@ export const PRIVACY: LegalDocSet = {
             'Record dei limiti di richieste (indirizzi IP) — fino a 1 giorno. Eventi di pagamento Stripe — 90 giorni.',
             'La tua scelta sui cookie — 12 mesi, poi te la chiediamo di nuovo.',
             'Backup — fino a 90 giorni; i dati cancellati ne escono alla scadenza.',
-            'I messaggi nella chat Telegram interna del venditore restano finché il venditore non li cancella: **[DA COMPLETARE: periodo]**.',
+            'I messaggi nella chat Telegram interna del venditore restano finché il venditore non li cancella; non vengono cancellati automaticamente.',
           ] },
         ],
       },

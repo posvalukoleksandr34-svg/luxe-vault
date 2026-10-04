@@ -9,7 +9,7 @@ import { ProductReviews } from '@/components/products/product-reviews'
 import { ProductTrail } from '@/components/products/product-trail'
 import { StyleThisPiece } from '@/components/products/style-this-piece'
 import type { ShippingSettings } from '@/config/shipping'
-import { businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
+import { FULFILMENT, businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
 import { getProductBySlug, listProductSlugs, readCatalog } from '@/lib/server/catalog-store'
 import { pageLocale, relatedProducts } from '@/lib/server/catalog-listing'
@@ -134,6 +134,17 @@ function productJsonLd(product: Product, shipping: ShippingSettings) {
         : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
       seller: { '@id': ORGANIZATION_ID },
+      // The Refund Policy, machine-readable: 14 days from delivery, returned
+      // by post, return postage paid by the buyer unless the item is faulty
+      // (app/legal/_content/refunds.ts §2, §6).
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'CH',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays: FULFILMENT.returnWindowDays,
+        returnMethod: 'https://schema.org/ReturnByMail',
+        returnFees: 'https://schema.org/ReturnFeesCustomerResponsibility',
+      },
       // Google flags an offer with no validity window as incomplete. A year
       // out is honest for a catalogue that is restocked rather than retired.
       priceValidUntil: new Date(Date.now() + 365 * 86400_000).toISOString().slice(0, 10),

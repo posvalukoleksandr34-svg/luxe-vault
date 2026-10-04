@@ -1,8 +1,9 @@
 'use client'
 
-import { ArrowDown } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { useEffect, useRef } from 'react'
+import { HOME } from '@/lib/content/home'
 import { useStore } from '@/lib/store'
 
 /**
@@ -26,7 +27,8 @@ import { useStore } from '@/lib/store'
  *   rather than as a shimmer effect.
  */
 export function Hero() {
-  const { t } = useStore()
+  const { locale } = useStore()
+  const c = HOME[locale] ?? HOME.en
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Parallax. Transform and opacity only — no layout, no paint — and the
@@ -72,7 +74,7 @@ export function Hero() {
   }, [])
 
   return (
-    <section className="hero relative flex min-h-[92vh] items-center justify-center overflow-hidden">
+    <section className="hero relative flex min-h-[80vh] items-center justify-center overflow-hidden py-16 sm:min-h-[86vh]">
       {/* 1. Cool floor wash — the ground the warm light falls onto. Without a
              cool tone underneath, gold on charcoal reads as a colour cast
              rather than as lighting. */}
@@ -98,7 +100,7 @@ export function Hero() {
       >
         <div className="animate-reveal-up mb-7 flex items-center gap-4">
           <span className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
-          <span className="t-eyebrow text-muted-foreground">{t('hero.eyebrow')}</span>
+          <span className="t-eyebrow text-muted-foreground">{c.heroEyebrow}</span>
           <span className="h-px w-10 bg-gradient-to-l from-transparent to-gold/40" />
         </div>
 
@@ -109,29 +111,20 @@ export function Hero() {
           <span className="hero__word hero__word--2 hero__sheen block sm:inline">VAULT</span>
         </h1>
 
-        <p className="animate-reveal-up mt-9 max-w-sm text-[13px] font-light leading-relaxed tracking-[0.02em] text-muted-foreground sm:text-[15px]">
-          {t('hero.subtitle')}
+        {/* What the shop sells, in one plain sentence — including that the
+            pieces are replicas. The wordmark above is the brand; this line is
+            the answer to "what is this place?". */}
+        <p className="animate-reveal-up mt-9 max-w-md text-[15px] font-light leading-relaxed tracking-[0.01em] text-foreground/75 sm:text-[17px]">
+          {c.heroLine}
         </p>
 
-        <div className="animate-reveal-up mt-14 flex flex-col items-center gap-4 sm:flex-row">
-          {/* Down to the departments block, the same place the header's
-              "Departments" item goes. A real link rather than a scripted
-              scroll: the section's scroll-margin clears the sticky header, the
-              page's smooth scrolling (off under reduced motion) animates it,
-              and the address can be copied. The hero only renders on the
-              homepage, where #collections always exists. */}
-          <a
-            href="#collections"
-            className="hero__cta t-cta group inline-flex items-center gap-3 rounded-xl border border-foreground/20 px-9 py-4 text-foreground/90"
-          >
-            {t('nav.collections')}
-            <ArrowDown className="size-3.5 transition-transform duration-500 group-hover:translate-y-1" />
-          </a>
-
-          {/* Secondary, not competing with the primary CTA: someone who knows
-              what they want browses; someone who does not asks the stylist. */}
-          <Link href="/stylist" className="nav-link t-label tap-safe">
-            {t('stylist.cta')}
+        <div className="animate-reveal-up mt-12 flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+          <Link href="/catalog" className="btn-primary-lv group px-9">
+            {c.heroPrimary}
+            <ArrowRight className="size-3.5 transition-transform duration-500 group-hover:translate-x-1" aria-hidden />
+          </Link>
+          <Link href="/about" className="btn-secondary-lv px-9">
+            {c.heroSecondary}
           </Link>
         </div>
       </div>

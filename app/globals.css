@@ -688,7 +688,7 @@ body::before {
   }
 }
 
-:where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .nav-link, .hero__cta, [class*='hover:'])):hover {
+:where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .nav-link, .hero__cta, .btn-primary-lv, .btn-secondary-lv, [class*='hover:'])):hover {
   opacity: 0.72;
 }
 
@@ -728,6 +728,44 @@ body::before {
     line-height: 1;
     letter-spacing: 0.24em;
     text-transform: uppercase;
+  }
+
+  /* Buttons for the content pages and homepage sections — one primary (the
+     gold fill the checkout already uses) and one quiet outline, so a page
+     never has to choose between eight hand-tuned variants. 48px tall: an
+     easy thumb target. */
+  .btn-primary-lv,
+  .btn-secondary-lv {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border-radius: 0.75rem;
+    padding: 0 1.75rem;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    transition: filter 300ms ease, border-color 300ms ease, color 300ms ease;
+  }
+  .btn-primary-lv {
+    border: 1px solid transparent;
+    background-image: linear-gradient(135deg, hsl(var(--gold-light)) 0%, hsl(var(--gold)) 52%, hsl(var(--gold-dark)) 100%);
+    background-color: hsl(var(--gold));
+    color: hsl(var(--gold-foreground));
+    box-shadow: 0 6px 20px -10px hsl(var(--gold) / 0.55);
+  }
+  .btn-primary-lv:hover {
+    filter: brightness(1.05);
+  }
+  .btn-secondary-lv {
+    border: 1px solid hsl(var(--foreground) / 0.22);
+    color: hsl(var(--foreground) / 0.9);
+  }
+  .btn-secondary-lv:hover {
+    border-color: hsl(var(--gold) / 0.7);
+    color: hsl(var(--foreground));
   }
 
   /* Navigation. Neutral at rest; on hover the ink steps up and a gold hairline

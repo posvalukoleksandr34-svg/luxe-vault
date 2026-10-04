@@ -100,7 +100,11 @@ const nextConfig = {
     return [
       { source: '/new-arrivals', destination: '/catalog?view=new', permanent: false },
       { source: '/sale', destination: '/catalog?view=sale', permanent: false },
-      { source: '/about', destination: '/#about', permanent: false },
+      // /about is a real page now (app/about). /#about anchors from old links
+      // land on the homepage, which links to it.
+      { source: '/imprint', destination: '/legal/imprint', permanent: false },
+      { source: '/impressum', destination: '/legal/imprint', permanent: false },
+      { source: '/returns', destination: '/legal/refunds', permanent: false },
     ]
   },
 

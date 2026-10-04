@@ -73,7 +73,7 @@ export function Reviews() {
           <button
             type="button"
             onClick={() => setShowForm((v) => !v)}
-            className="tap-safe rounded-xl border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] uppercase tracking-[0.15em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
+            className="btn-secondary-lv"
           >
             {t('reviews.writeReview')}
           </button>

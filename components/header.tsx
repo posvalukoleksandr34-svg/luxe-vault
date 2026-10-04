@@ -11,13 +11,16 @@ import { LocaleCurrencyMenu } from '@/components/locale-currency-menu'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-function scrollToId(id: string): boolean {
-  const el = document.getElementById(id)
-  if (!el) return false
-  const top = el.getBoundingClientRect().top + window.scrollY - 72
-  window.scrollTo({ top, behavior: 'smooth' })
-  return true
-}
+const PRIMARY_NAV = [
+  { href: '/catalog', label: 'nav.shop' },
+  { href: '/about', label: 'nav.about' },
+  { href: '/shipping', label: 'footer.shipping' },
+  { href: '/legal/refunds', label: 'nav.returns' },
+  { href: '/contact', label: 'nav.contact' },
+] as const
+
+const MOBILE_ITEM =
+  'flex min-h-[48px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/85 transition-colors hover:text-foreground aria-[current=page]:text-gold'
 
 export function Header() {
   const {
@@ -74,22 +77,10 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
 
 
-  /**
-   * These target sections of the homepage. Now that the catalogue has its own
-   * routes, the header is often rendered somewhere those sections do not
-   * exist — on /category/shoes, `scrollToId('about')` found nothing and the
-   * link did nothing at all. Falling back to a real navigation makes every
-   * header link work from every page.
-   */
-  function goSection(id: string) {
-    setMobileOpen(false)
-    if (pathname === '/' && scrollToId(id)) return
-    router.push(`/#${id}`)
-  }
-
-  const goCollections = () => goSection('collections')
-  const goAbout = () => goSection('about')
-  const goReviews = () => goSection('reviews')
+  /** The current page, for aria-current: the bare path, language prefix
+   *  stripped (/it/shipping is the Shipping page). */
+  const barePath = pathname.replace(/^\/(it|fr|de)(?=\/|$)/, '') || '/'
+  const isCurrent = (href: string) => barePath === href || barePath.startsWith(`${href}/`)
 
   /**
    * New and Sale are views of the CATALOGUE now that the homepage carries no
@@ -165,23 +156,20 @@ export function Header() {
 
         {/* Quiet links, generous spacing: the space between them does the
             separating, not ornament. */}
-        <nav className="ml-12 hidden items-center gap-8 lg:flex">
-          {/* The stylist sits first in the nav: it is the entry point to the
-              catalogue for someone who does not yet know what they want. A
-              real Link, not a scroll handler, because it is its own route. */}
-          <Link
-            href="/stylist"
-            className="nav-link t-label"
-          >
-            {t('stylist.cta')}
-          </Link>
-          <NavLink onClick={goCollections}>{t('nav.collections')}</NavLink>
-          <NavLink onClick={goAbout}>{t('nav.about')}</NavLink>
-          <NavLink onClick={goNew}>{t('filter.new')}</NavLink>
-          <NavLink onClick={goReviews}>{t('reviews.title')}</NavLink>
-          <NavLink onClick={goSale} accent>
-            {t('filter.sale')}
-          </NavLink>
+        {/* The five things a first-time customer looks for, as real links:
+            the shop, who runs it, how delivery and returns work, and how to
+            reach a person. */}
+        <nav aria-label="Main" className="ml-10 hidden items-center gap-7 xl:ml-12 xl:gap-8 lg:flex">
+          {PRIMARY_NAV.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isCurrent(item.href) ? 'page' : undefined}
+              className="nav-link t-label"
+            >
+              {t(item.label)}
+            </Link>
+          ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
@@ -284,35 +272,36 @@ export function Header() {
 
       {mobileOpen && (
         <div id="mobile-menu" className="animate-fade-in border-t border-border lg:hidden">
-          <nav className="flex flex-col divide-y divide-border/40 px-4 py-2">
-            <Link
-              href="/stylist"
-              onClick={() => setMobileOpen(false)}
-              className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground"
-            >
-              {t('stylist.cta')}
-            </Link>
-            <button onClick={goCollections} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
-              {t('nav.collections')}
+          <nav aria-label="Main" className="flex flex-col divide-y divide-border/40 px-4 py-2">
+            {PRIMARY_NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                aria-current={isCurrent(item.href) ? 'page' : undefined}
+                className={MOBILE_ITEM}
+              >
+                {t(item.label)}
+              </Link>
+            ))}
+            <button onClick={goNew} className={MOBILE_ITEM}>
+              {t('nav.newIn')}
             </button>
-            <button onClick={goAbout} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
-              {t('nav.about')}
-            </button>
-            <button onClick={goNew} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
-              {t('filter.new')}
-            </button>
-            <button onClick={goReviews} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground">
-              {t('reviews.title')}
-            </button>
-            <button onClick={goSale} className="flex min-h-[44px] items-center px-3 text-left text-[15px] font-light tracking-wide text-gold transition-colors hover:text-gold">
+            <button onClick={goSale} className={MOBILE_ITEM}>
               {t('filter.sale')}
             </button>
+            <Link href="/stylist" onClick={() => setMobileOpen(false)} className={MOBILE_ITEM}>
+              {t('stylist.cta')}
+            </Link>
+            <Link href="/faq" onClick={() => setMobileOpen(false)} className={MOBILE_ITEM}>
+              {t('footer.faq')}
+            </Link>
             <button
               onClick={() => {
                 setMobileOpen(false)
                 openSupport()
               }}
-              className="flex min-h-[44px] items-center justify-between px-3 text-left text-[15px] font-light tracking-wide text-foreground/80 transition-colors hover:text-foreground sm:hidden"
+              className={cn(MOBILE_ITEM, 'justify-between sm:hidden')}
             >
               {t('support.title')}
               {supportUnread > 0 && (
@@ -325,38 +314,5 @@ export function Header() {
         </div>
       )}
     </header>
-  )
-}
-
-/**
- * Desktop nav item.
- *
- * The treatment lives in the `.nav-link` component class (app/globals.css):
- * neutral at rest, a gold hairline drawn in on hover, so the six items here
- * cannot drift apart. `accent` gives Распродажа the nav's one touch of gold —
- * the item that should pull the eye.
- */
-function NavLink({
-  onClick,
-  children,
-  accent,
-}: {
-  onClick: () => void
-  children: React.ReactNode
-  accent?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'nav-link t-label',
-        // Sale is the one nav item allowed its gold: warmer at rest, so it
-        // reads as the priority without a different size or a badge.
-        accent && 'text-gold hover:text-gold',
-      )}
-    >
-      {children}
-    </button>
   )
 }

@@ -3,7 +3,7 @@ import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { legalMetadata } from '@/lib/page-seo'
 import { LegalDocument } from '../_content/LegalDocument'
 import { COOKIES } from '../_content/cookies'
-import { DraftNotice, Footer } from '../_shared'
+import { Footer } from '../_shared'
 
 // The unprefixed route, so the default language. Its localised twins live at
 // app/[locale]/legal/* and name the tab in their own language; both call the
@@ -14,7 +14,6 @@ export const metadata: Metadata = legalMetadata(COOKIES, '/legal/cookies', DEFAU
 export default function Page() {
   return (
     <>
-      <DraftNotice />
       <LegalDocument set={COOKIES} />
       <Footer />
     </>

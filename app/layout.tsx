@@ -47,7 +47,7 @@ const FONT_PRELOADS = ['/fonts/bodoni-moda-latin.woff2', '/fonts/inter-latin.wof
 // auth links that land on the wrong origin.
 const SITE_URL = SITE_ORIGIN;
 const SITE_NAME = 'LUXE VAULT';
-const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
+const SITE_TITLE = 'LUXE VAULT — Designer-Inspired Fashion from Switzerland';
 
 // The meta description is the single most public claim the site makes — it is
 // what appears verbatim in Google results and in every link preview.
@@ -56,18 +56,18 @@ const SITE_TITLE = 'LUXE VAULT — Premium Apparel & Luxury Fashion';
 // Both would assert that the goods are genuine branded product, which flatly
 // contradicts the Terms of Use ("Мы продаём премиальные реплики, а не
 // оригинальную продукцию брендов"), the replica badge on every product card,
-// and the disclosure in every product modal. A store whose search snippet
+// and the authenticity note on every product page. A store whose search snippet
 // promises authenticity while its own terms deny it is not merely inconsistent
 // — that gap is what a consumer-protection complaint or a payment-processor
 // review is built on.
 //
 // "Designer-inspired" is the honest phrasing that keeps the premium register.
 const SITE_DESCRIPTION =
-  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories. Meticulous craftsmanship, limited drops, shipped from Switzerland.';
+  'Replica and designer-inspired clothing, shoes and accessories, clearly labelled. Prices in CHF, tracked Swiss Post shipping from Switzerland, 14-day returns.';
 
 // Shorter variant for link previews, where Telegram/WhatsApp truncate hard.
 const SITE_DESCRIPTION_SHORT =
-  'Discover exclusive premium replicas — designer-inspired apparel, footwear and accessories from Luxe Vault.';
+  'Replica and designer-inspired clothing, shoes and accessories, shipped from Switzerland.';
 
 /**
  * Who publishes the site, as structured data: the seller, the brand and the
@@ -130,8 +130,7 @@ export const metadata: Metadata = {
     'premium replicas',
     'designer-inspired apparel',
     'replica sneakers',
-    'limited collections',
-    'luxury fashion online',
+    'shipped from Switzerland',
   ],
   applicationName: SITE_NAME,
   authors: [{ name: SITE_NAME }],

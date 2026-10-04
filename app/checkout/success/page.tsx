@@ -1,13 +1,14 @@
 'use client'
 
-import { ArrowRight, CheckCircle2, Loader2, MapPin, Package, SearchX, Truck } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Mail, MapPin, Package, RotateCcw, SearchX, Truck } from 'lucide-react'
 import Image from 'next/image'
 import { Link } from '@/components/locale-link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { trackPurchase } from '@/lib/analytics'
-import { estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
+import { BUSINESS } from '@/config/business'
+import { FULFILMENT, describeBusinessDays, estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
 import { fetchMyOrders } from '@/lib/order-registry'
 import { formatCharged, orderCharge } from '@/lib/currency'
 import { productImage } from '@/lib/product-image'
@@ -149,6 +150,35 @@ function SuccessContent() {
           </div>
         </div>
 
+        {/* Where the order is now, and what comes next — the same four
+            stages the order page tracks, so nothing here is a surprise. */}
+        <section aria-labelledby="order-progress" className="mt-10">
+          <h2 id="order-progress" className="sr-only">
+            {t('success.progressTitle')}
+          </h2>
+          <ol className="grid grid-cols-4 gap-2">
+            {(['success.stepReceived', 'success.stepProcessing', 'success.stepDispatched', 'success.stepTracking'] as const).map(
+              (key, i) => (
+                <li key={key} aria-current={i === 0 ? 'step' : undefined} className="flex flex-col items-center text-center">
+                  <span
+                    className={
+                      i === 0
+                        ? 'flex size-7 items-center justify-center rounded-full bg-gold text-[12px] font-medium text-gold-foreground'
+                        : 'flex size-7 items-center justify-center rounded-full border border-border text-[12px] text-muted-foreground'
+                    }
+                    aria-hidden
+                  >
+                    {i + 1}
+                  </span>
+                  <span className={i === 0 ? 'mt-2 text-[11px] leading-snug text-foreground' : 'mt-2 text-[11px] leading-snug text-muted-foreground'}>
+                    {t(key)}
+                  </span>
+                </li>
+              ),
+            )}
+          </ol>
+        </section>
+
         {/* Delivery window, stamped at purchase */}
         {eta && (
           <section className="card-gold mt-8 flex items-start gap-3 p-5">
@@ -252,6 +282,36 @@ function SuccessContent() {
             <span className="block">{order.customer.address}</span>
             {order.customer.phone && <span className="mt-1 block tabular-nums">{order.customer.phone}</span>}
           </address>
+        </section>
+
+        {/* Who to talk to and what the buyer's rights are, before they need
+            either. */}
+        <section className="card-gold mt-4 space-y-4 p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <Mail className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+            <div>
+              <h2 className="text-[11px] uppercase tracking-[0.15em] text-foreground">{t('success.helpTitle')}</h2>
+              <p className="mt-1.5 text-[13px] font-light leading-relaxed text-muted-foreground">
+                {tf('success.helpBody', {
+                  email: BUSINESS.email,
+                  id: order.id,
+                  span: describeBusinessDays(FULFILMENT.supportReply, locale, { genitive: true }),
+                })}
+              </p>
+              <Link href="/contact" className="mt-1.5 inline-block text-[12px] text-foreground underline decoration-gold/50 underline-offset-4 hover:decoration-gold">
+                {t('nav.contact')} →
+              </Link>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 border-t border-border/50 pt-4">
+            <RotateCcw className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+            <p className="text-[13px] font-light leading-relaxed text-muted-foreground">
+              {tf('success.returnsLine', { n: FULFILMENT.returnWindowDays })}{' '}
+              <Link href="/legal/refunds" className="text-foreground underline decoration-gold/50 underline-offset-4 hover:decoration-gold">
+                {t('footer.returnsRefunds')}
+              </Link>
+            </p>
+          </div>
         </section>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
