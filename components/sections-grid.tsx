@@ -79,7 +79,7 @@ export function SectionsGrid() {
   const [failed, setFailed] = useState<Record<string, boolean>>({})
 
   return (
-    <section id="collections" className="scroll-mt-20 border-t border-border py-20">
+    <section id="collections" className="section-y scroll-mt-20 border-t border-border">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         <Reveal className="mb-10 text-center">
           <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-gold/60" />

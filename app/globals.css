@@ -730,6 +730,38 @@ body::before {
     text-transform: uppercase;
   }
 
+  /* The vertical rhythm of the homepage: every section carries the same
+     space above and below it — 64px on a phone, 96px from md up — so the
+     page breathes evenly instead of jumping between 80, 96 and 112. */
+  .section-y {
+    padding-block: 4rem;
+  }
+  @media (min-width: 768px) {
+    .section-y {
+      padding-block: 6rem;
+    }
+  }
+
+  /* The homepage's four-column grid. "What to expect" and "How ordering
+     works" share it exactly — same columns, same gaps — so their column
+     starts line up to the pixel. */
+  .grid-4 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 2rem;
+    row-gap: 2.5rem;
+  }
+  @media (min-width: 640px) {
+    .grid-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1024px) {
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
   /* Buttons for the content pages and homepage sections — one primary (the
      gold fill the checkout already uses) and one quiet outline, so a page
      never has to choose between eight hand-tuned variants. 48px tall: an
@@ -1565,21 +1597,36 @@ iframe[src*="elements-inner-easel"] {
 --------------------------------------------------------------------------- */
 
 .site-header {
-  border-color: transparent;
-  background-color: transparent;
+  /* A frosted ivory band from the first paint, edge to edge of the viewport.
+     It used to be transparent at rest, so over the hero only the row of
+     controls — the 1400px container — read as "the header", sitting off to
+     one side of a pale page; dark content scrolling beneath then showed
+     through. Now the whole bar is one surface at every scroll position. */
+  width: 100%;
+  border-color: hsl(var(--border) / 0.45);
+  background-color: hsl(var(--background) / 0.86);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   transition:
     background-color 600ms cubic-bezier(0.2, 0, 0, 1),
-    border-color 600ms cubic-bezier(0.2, 0, 0, 1);
+    border-color 600ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 600ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Once the page moves under it, the bar becomes a frosted ivory band with a
-   soft shadow instead of a line — present, never ornamental. */
+/* Once the page moves under it, the band firms up and lifts with a soft
+   shadow — present, never ornamental. */
 .site-header[data-scrolled='true'] {
-  background-color: hsl(var(--background) / 0.9);
+  background-color: hsl(var(--background) / 0.94);
   border-color: hsl(var(--border) / 0.6);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+}
+
+/* No backdrop-filter support: an opaque band rather than a see-through one. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header,
+  .site-header[data-scrolled='true'] {
+    background-color: hsl(var(--background));
+  }
 }
 
 /* The gold gradient hairline that used to fade in here is retired: the bar's

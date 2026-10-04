@@ -15,7 +15,7 @@ import * as FONTS from './fonts.generated'
  * WHITE PAPER, DARK TYPE, GOLD RULES — not the site's black page. This is a
  * document that gets printed, and a full-bleed black A4 empties a toner
  * cartridge and smears; the brand survives as the Bodoni wordmark, the
- * monogram and the gold hairlines. The gold is a deeper one than the site's
+ * keyhole mark and the gold hairlines. The gold is a deeper one than the site's
  * #D4AF37, which is legible on black and nearly invisible printed on white.
  *
  * WHAT IT DELIBERATELY DOES NOT CLAIM. The shop trades as a non-VAT-registered
@@ -141,7 +141,7 @@ const PAYMENT_LABEL: Record<PaymentStatus, string> = {
 // ---------------------------------------------------------------- blocks ---
 
 function header(doc: Doc, order: Order, kind: PdfKind) {
-  // The monogram: a 512-unit path, drawn at 38 points.
+  // The mark (a keyhole): a 512-unit path, drawn at 38 points.
   const size = 38
   doc.save()
   doc.translate(M - 4, M - 6).scale(size / 512)

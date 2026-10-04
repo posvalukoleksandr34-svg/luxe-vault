@@ -308,7 +308,7 @@ export function ChatBot() {
       // Not .hide-with-keyboard: that hides bottom-fixed bars while a field
       // has focus on a phone, and this panel HOLDS the field — it hid itself
       // the moment the customer tapped into it, so nothing could be typed.
-      className="animate-slide-in-left fixed bottom-0 left-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-r border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:left-5 sm:h-[560px] sm:w-[380px] sm:border"
+      className="animate-slide-in-right fixed bottom-0 right-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-l border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:right-5 sm:h-[560px] sm:w-[380px] sm:border"
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">

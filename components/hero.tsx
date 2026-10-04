@@ -74,7 +74,13 @@ export function Hero() {
   }, [])
 
   return (
-    <section className="hero relative flex min-h-[80vh] items-center justify-center overflow-hidden py-16 sm:min-h-[86vh]">
+    <section
+      // ~10% shorter than it was (80/86vh), so the trust bar sits closer
+      // below; and 64px more padding below than above, which lifts the
+      // centred text block ~32px — onto the optical centre, which sits a
+      // little above the geometric one.
+      className="hero relative flex min-h-[72vh] items-center justify-center overflow-hidden pb-28 pt-12 sm:min-h-[77vh]"
+    >
       {/* 1. Cool floor wash — the ground the warm light falls onto. Without a
              cool tone underneath, gold on charcoal reads as a colour cast
              rather than as lighting. */}

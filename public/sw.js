@@ -14,7 +14,7 @@
  *
  * Bump VERSION to drop every cache on the next visit.
  */
-const VERSION = 'v1'
+const VERSION = 'v2' // v2: new app icons (keyhole mark replaced the LV monogram)
 const STATIC_CACHE = `lv-static-${VERSION}`
 const OFFLINE_URL = '/offline.html'
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/icons/icon-512.png']

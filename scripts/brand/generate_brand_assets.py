@@ -2,9 +2,13 @@
 """
 Luxe Vault brand assets — every icon, avatar and logo file, from one geometry.
 
-The LV monogram is defined once below (Didone contrast: heavy stems, hairline
-serifs, in #D4AF37 gold on #000000), and this script writes everything derived
-from it, so no file can drift from another:
+The mark is defined once below — a solid gold keyhole on black, #D4AF37 on
+#000000 — and this script writes everything derived from it, so no file can
+drift from another.
+
+It replaced an "LV" letter monogram (2026-10): for a shop that sells replicas
+of designer goods, two serif capitals L and V in gold read as a reference to a
+fashion house's trade mark. A keyhole says "vault" and nothing else.
 
   app/favicon.ico                  16/32/48 px, heavy strokes, rounded tile
   app/icon.svg                     scalable tab icon (modern browsers)
@@ -12,8 +16,8 @@ from it, so no file can drift from another:
   public/icons/icon-192.png        web manifest, purpose "any"
   public/icons/icon-512.png        web manifest, purpose "any"
   public/icons/icon-maskable-512.png  web manifest, purpose "maskable"
-  public/brand/lv-monogram.svg     transparent master, for dark backgrounds
-  public/brand/lv-monogram-black.svg  on a black square (social profiles)
+  public/brand/luxe-vault-mark.svg       transparent master, for dark backgrounds
+  public/brand/luxe-vault-mark-black.svg on a black square (social profiles)
   public/email/avatar-512.png      sender avatar (Gravatar, Google account)
   public/email/avatar-1024.png     the same, for services that want 1024
   public/bimi/luxe-vault.svg       BIMI logo, SVG Tiny Portable/Secure
@@ -24,6 +28,7 @@ Requires Pillow:     pip install pillow
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import List, Tuple
 
@@ -51,41 +56,38 @@ def _rect(x0: float, y0: float, x1: float, y1: float) -> Shape:
     return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
 
-def monogram(stem: float, hair: float) -> List[Shape]:
-    """The LV monogram on the 512 grid, centred.
+def _circle(cx: float, cy: float, r: float, steps: int = 96) -> Shape:
+    """A circle as a clockwise polygon (y grows downwards on screen)."""
+    return [
+        (cx + r * math.cos(2 * math.pi * i / steps), cy + r * math.sin(2 * math.pi * i / steps))
+        for i in range(steps)
+    ]
 
-    `stem` is the heavy stroke, `hair` the hairline — the Didone contrast of
-    the site's Bodoni headlines. A heavier pair is used for favicons, where a
-    true hairline would be thinner than a pixel and vanish.
+
+def keyhole(radius: float, neck: float, foot: float, height: float) -> List[Shape]:
+    """The mark: a keyhole on the 512 grid, centred.
+
+    A round head and a stem that widens towards its foot — the classic
+    escutcheon outline, drawn as two solid shapes so the fill needs no holes.
+    `neck` and `foot` are the stem's widths where it leaves the head and at
+    the bottom; a heavier set is used for favicons, where 16 px must still
+    read as a keyhole.
     """
-    top, base = 146.0, 366.0
-    lx = 118.0
-    foot_end = lx + stem + 76
+    cy = 0.0
+    top = cy + radius * 0.55          # the stem starts inside the head
+    base = cy + radius + height
     shapes: List[Shape] = [
-        _rect(lx, top, lx + stem, base),                    # L stem
-        _rect(lx - 16, top, lx + stem + 16, top + hair),    # L head serif
-        _rect(lx - 16, base - hair, foot_end, base),        # L foot
-        _rect(foot_end - hair, base - 50, foot_end, base),  # L foot terminal
+        _circle(0.0, cy, radius),
+        [(-neck / 2, top), (neck / 2, top), (foot / 2, base), (-foot / 2, base)],
     ]
-    x0 = foot_end + 20           # V's heavy arm, top-left
-    thick = stem + 2
-    ax = x0 + thick + 50         # the V's point
-    x1 = x0 + 150                # V's hairline arm, top-left
-    shapes += [
-        [(x0, top + hair), (x0 + thick, top + hair), (ax, base), (ax - thick * 0.6, base)],
-        [(x1, top + hair), (x1 + hair, top + hair), (ax, base), (ax - hair * 1.2, base)],
-        _rect(x0 - 18, top, x0 + thick + 18, top + hair),   # V left serif
-        _rect(x1 - 16, top, x1 + hair + 16, top + hair),    # V right serif
-    ]
-    xs = [x for s in shapes for x, _ in s]
     ys = [y for s in shapes for _, y in s]
-    dx = CANVAS / 2 - (min(xs) + max(xs)) / 2
+    dx = CANVAS / 2
     dy = CANVAS / 2 - (min(ys) + max(ys)) / 2
     return [[(x + dx, y + dy) for x, y in s] for s in shapes]
 
 
-REGULAR = monogram(stem=42, hair=8)
-BOLD = monogram(stem=60, hair=22)
+REGULAR = keyhole(radius=66, neck=40, foot=104, height=150)
+BOLD = keyhole(radius=86, neck=62, foot=150, height=150)
 
 
 def place(shapes: List[Shape], scale: float, size: float) -> List[Shape]:
@@ -98,7 +100,7 @@ def place(shapes: List[Shape], scale: float, size: float) -> List[Shape]:
 # ----------------------------------------------------------------- output --
 
 def raster(size: int, shapes: List[Shape], scale: float, tile: str, radius: float = 0.0) -> Image.Image:
-    """The monogram as a `size`-pixel image. tile: 'square' (opaque, full
+    """The mark as a `size`-pixel image. tile: 'square' (opaque, full
     bleed) or 'rounded' (rounded black tile, transparent corners)."""
     big = size * SUPERSAMPLE
     img = Image.new('RGBA', (big, big), (0, 0, 0, 0))
@@ -162,13 +164,13 @@ def main() -> None:
     written.append(write('public/email/avatar-512.png', raster(512, REGULAR, 0.72, 'square').convert('RGB')))
     written.append(write('public/email/avatar-1024.png', raster(1024, REGULAR, 0.72, 'square').convert('RGB')))
 
-    written.append(write('public/brand/lv-monogram.svg', (
+    written.append(write('public/brand/luxe-vault-mark.svg', (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
         '<title>Luxe Vault</title>'
         f'<path fill="{GOLD_HEX}" d="{path_d(REGULAR)}"/>'
         '</svg>\n'
     )))
-    written.append(write('public/brand/lv-monogram-black.svg', (
+    written.append(write('public/brand/luxe-vault-mark-black.svg', (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
         '<title>Luxe Vault</title>'
         f'<rect width="512" height="512" fill="{BLACK_HEX}"/>'
@@ -191,11 +193,11 @@ def main() -> None:
     ts = (
         '// GENERATED by scripts/brand/generate_brand_assets.py — do not edit by hand.\n'
         '// Change the geometry there and re-run it; every icon is rewritten with it.\n\n'
-        "/** The LV monogram, centred in a 512x512 box. Didone contrast, for large sizes. */\n"
+        "/** The Luxe Vault mark (a keyhole), centred in a 512x512 box. */\n"
         "export const MONOGRAM_PATH = '__REGULAR__'\n\n"
-        "/** Heavier strokes for small sizes, where a hairline would vanish. */\n"
+        "/** A heavier cut for small sizes (favicons). */\n"
         "export const MONOGRAM_BOLD_PATH = '__BOLD__'\n\n"
-        "/** A standalone SVG of the monogram: gold by default, optionally on a background. */\n"
+        "/** A standalone SVG of the mark: gold by default, optionally on a background. */\n"
         "export function monogramSvg(opts: { fill?: string; background?: string } = {}): string {\n"
         "  const fill = opts.fill ?? '__GOLD__'\n"
         "  const ground = opts.background ? `<rect width=\"512\" height=\"512\" fill=\"${opts.background}\"/>` : ''\n"

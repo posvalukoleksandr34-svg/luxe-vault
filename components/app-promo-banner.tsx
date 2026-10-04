@@ -126,9 +126,12 @@ export function AppPromoBanner() {
   if (installed) return null
 
   return (
-    <section id="app" aria-labelledby="app-promo-title" className="scroll-mt-20 border-t border-border px-4 py-14 sm:px-6 lg:px-10">
-      <Reveal>
-        <div className="app-promo relative mx-auto flex max-w-[1400px] flex-col items-start gap-8 overflow-hidden rounded-xl px-6 py-10 sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
+    <section id="app" aria-labelledby="app-promo-title" className="section-y scroll-mt-20 border-t border-border">
+      {/* The page's own container, so the panel's edges line up with every
+          other section's content edge (it used to sit 40px wider on large
+          screens). */}
+      <Reveal className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+        <div className="app-promo relative flex flex-col items-start gap-8 overflow-hidden rounded-xl px-6 py-10 sm:px-10 sm:py-12 md:flex-row md:items-center md:justify-between md:gap-12">
           {/* A gold hairline along the top edge, as on the storefront's other panels. */}
           <span
             aria-hidden

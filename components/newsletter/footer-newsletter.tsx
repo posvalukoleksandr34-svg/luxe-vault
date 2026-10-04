@@ -73,7 +73,7 @@ export function FooterNewsletter() {
   return (
     <section
       aria-labelledby="footer-newsletter-title"
-      className="mb-14 grid gap-6 border-b border-border/40 pb-12 md:grid-cols-2 md:items-end md:gap-12"
+      className="mb-14 grid gap-6 border-b border-border/40 pb-12 md:grid-cols-2 md:items-center md:gap-12"
     >
       <div>
         <h2 id="footer-newsletter-title" className="font-serif text-2xl font-normal tracking-tight text-foreground sm:text-3xl">

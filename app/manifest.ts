@@ -9,7 +9,7 @@ import { DEFAULT_LOCALE } from '@/lib/i18n'
  * the icon, the splash colour, and which icon to use for which mask.
  *
  * The icons come from scripts/brand/generate_brand_assets.py. "any" icons are
- * full-bleed; the "maskable" one keeps the monogram inside the central 80%
+ * full-bleed; the "maskable" one keeps the mark inside the central 80%
  * safe zone, so Android's circle/squircle masks never clip it.
  */
 export default function manifest(): MetadataRoute.Manifest {

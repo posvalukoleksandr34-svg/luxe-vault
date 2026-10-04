@@ -52,31 +52,32 @@ export function Reviews() {
     void review
   }
 
+  const empty = !loading && !failed && reviews.length === 0
+
   return (
-    <section id="reviews" className="scroll-mt-20 border-t border-border py-20">
+    <section id="reviews" className="section-y scroll-mt-20 border-t border-border">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
-        <Reveal className="mb-12 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.4em] text-gold">
-              {t('reviews.subtitle')}
-            </p>
-            <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              {t('reviews.title')}
-            </h2>
-            {/* How these reviews are checked — required wherever reviews are
-                shown (EU Omnibus Directive). Anyone may write one; they are
-                moderated, not matched to orders. */}
-            <p className="mt-3 max-w-xl text-[12px] font-light leading-relaxed text-muted-foreground">
-              {t('reviews.verificationNote')}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="btn-secondary-lv"
-          >
-            {t('reviews.writeReview')}
-          </button>
+        {/* An editorial section: heading centred over the page (the rule in
+            components/home/home-sections.tsx). Always centred, so nothing
+            jumps when the reviews arrive. ONE "write a review" button in
+            every state: under the heading once there are reviews, inside
+            the empty state when there are none, and none while loading. */}
+        <Reveal className={empty ? 'mx-auto max-w-xl text-center' : 'mx-auto mb-10 max-w-xl text-center'}>
+          <p className="mb-3 t-eyebrow text-gold">{t('reviews.subtitle')}</p>
+          <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            {t('reviews.title')}
+          </h2>
+          {/* How these reviews are checked — required wherever reviews are
+              shown (EU Omnibus Directive). Anyone may write one; they are
+              moderated, not matched to orders. */}
+          <p className="mt-3 text-[12px] font-light leading-relaxed text-muted-foreground">
+            {t('reviews.verificationNote')}
+          </p>
+          {reviews.length > 0 && (
+            <button type="button" onClick={() => setShowForm((v) => !v)} className="btn-secondary-lv mt-6">
+              {t('reviews.writeReview')}
+            </button>
+          )}
         </Reveal>
 
         {showForm && (
@@ -91,11 +92,13 @@ export function Reviews() {
           <LoadError title={t('state.reviewsFailed')} onRetry={() => setAttempt((n) => n + 1)} />
         )}
 
-        {!loading && !failed && reviews.length === 0 && (
+        {empty && (
           <EmptyState
             icon={MessageSquare}
             title={t('reviews.empty')}
             hint={t('state.reviewsHint')}
+            compact
+            className="pb-0 pt-6"
             action={
               showForm ? undefined : { label: t('reviews.writeReview'), onClick: () => setShowForm(true) }
             }

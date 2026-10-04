@@ -50,7 +50,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-border bg-card/20">
-      <div className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+      <div className="section-y mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         <FooterNewsletter />
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:grid-cols-5">
@@ -84,7 +84,6 @@ export function Footer() {
               <li><Link href="/legal/refunds" className={LINK}>{t('footer.returnsRefunds')}</Link></li>
               <li><Link href="/faq" className={LINK}>{t('footer.faq')}</Link></li>
               <li><Link href="/about" className={LINK}>{t('nav.about')}</Link></li>
-              <li><FooterSupportLink /></li>
             </ul>
           </nav>
 
@@ -108,6 +107,10 @@ export function Footer() {
           <div>
             <h2 className={HEADING}>{t('footer.contact')}</h2>
             <ul className="space-y-1.5">
+              {/* The support centre first: it is the channel that tracks a
+                  request and its replies. It used to sit under Customer care,
+                  which left this column short. */}
+              <li><FooterSupportLink /></li>
               <li>
                 <a href={`mailto:${BUSINESS.email}`} className={LINK}>
                   <Mail className="size-3.5 shrink-0 text-gold" aria-hidden />
