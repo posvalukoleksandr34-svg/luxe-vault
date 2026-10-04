@@ -2,6 +2,12 @@ import { z } from 'zod'
 
 import { RETURN_REASONS, RETURN_REQUEST_STATUSES } from '@/lib/types'
 
+// No compiled validators. Zod 4 otherwise probes for them with `Function("")`,
+// which the Content-Security-Policy (no 'unsafe-eval') blocks — harmlessly,
+// but as a violation report from every page this module loads on. These
+// schemas are small; the interpreted path is plenty fast.
+z.config({ jitless: true })
+
 /**
  * What a return request may contain, as one definition both sides share.
  *

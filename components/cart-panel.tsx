@@ -148,11 +148,14 @@ export function CartPanel() {
       setPendingCheckout(false)
       trackBeginCheckout(cart, cartSubtotal)
       setPanel(null)
-      router.push('/checkout')
+      // A full page load, not router.push: /checkout is served with its own
+      // strict Content-Security-Policy (middleware.ts), and a policy belongs to
+      // the DOCUMENT — a client-side navigation would keep this page's.
+      window.location.assign('/checkout')
       return
     }
     if (panel === null) setPendingCheckout(false)
-  }, [pendingCheckout, currentUser, panel, cart, cartSubtotal, router, setPanel])
+  }, [pendingCheckout, currentUser, panel, cart, cartSubtotal, setPanel])
 
   // Escape closes the drawer. The backdrop already did, but a keyboard user
   // could not reach the backdrop — so without this the only way out was to
@@ -179,7 +182,9 @@ export function CartPanel() {
   function goToCheckout(asGuest: boolean) {
     trackBeginCheckout(cart, cartSubtotal)
     setPanel(null)
-    router.push(asGuest ? '/checkout?guest=1' : '/checkout')
+    // Full page load, for the same reason as above: the payment page's strict
+    // CSP only applies to a document it was served with.
+    window.location.assign(asGuest ? '/checkout?guest=1' : '/checkout')
   }
 
   // "Add CHF 120 more for Free Shipping", with the amount set in gold.

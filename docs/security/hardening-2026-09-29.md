@@ -5,17 +5,21 @@ Part of the [security roadmap](README.md). This round closes roadmap item **F1**
 Everything below was verified against a production build (`next build` +
 `next start`) with scripted checks. The one exception is the live deployment
 itself, which the audit environment could not reach (see "Not verified").
+A follow-up round on 2026-10-04 (section 12) closed most of what was left
+open and added tooling to check the live site and the production database.
 
 ## Operator checklist (do these; the code cannot)
 
 | # | What | Where |
 |---|---|---|
-| 1 | **Apply migrations 0047 and 0048** (order doesn't matter, safe to re-run). | Supabase → SQL editor |
+| 1 | **Apply migrations 0047, 0048 and 0049** (order doesn't matter, safe to re-run). Then run `scripts/security/verify-production.sql` and expect no `PROBLEM` rows. | Supabase → SQL editor |
 | 2 | **Rotate `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`.** Their old fallback values were committed (commit `a3aae8f`, 2026-09-04) and must be treated as public. A value merely *resembling* them must not be reused. Rotating either one invalidates every admin session. | Vercel → Environment Variables (mark Sensitive) |
 | 3 | **Confirm `EDGE_ORIGIN_SECRET` is set in Production** and that the Cloudflare Transform Rule adds `x-edge-auth`. Production now logs `[security] EDGE_ORIGIN_SECRET is not set` when it is missing. | Vercel env + Cloudflare |
 | 4 | **Add a Vercel Firewall rule for the static and image paths** (see "Direct origin" below). | Vercel → Firewall |
 | 5 | Delete any Supabase auth user with the email `language-metadata-check@example.com` if it exists. The probe script used a fixed password, now random per run. | Supabase → Authentication |
 | 6 | Set `NEXT_PUBLIC_SUPABASE_URL` for **builds** as well as runtime. The CSP is now pinned to that host at build time. | Vercel env (all environments) |
+| 7 | **Turn on the admin's second factor.** On your own computer: `node scripts/admin-totp-setup.mjs`, scan the QR code with an authenticator app, then set `ADMIN_TOTP_SECRET` (Production, Sensitive) and redeploy. Never paste the secret into a chat or ticket. Until it is set, production logs a warning on every admin sign-in. | your computer, then Vercel env |
+| 8 | **After each deploy**, run the "Security check (live)" workflow (Actions tab → Run workflow), or `scripts/security/check-live.sh` locally. It also runs every Monday. | GitHub Actions |
 
 ## 1. Next.js and dependencies
 
@@ -26,7 +30,7 @@ itself, which the audit environment could not reach (see "Not verified").
 | eslint-config-next | 13.5.11 | 15.5.26 |
 | postcss | 8.4.30 (+ next's 8.4.31) | 8.5.28 everywhere (`overrides`) |
 | @radix-ui/* | 1.1–1.2 (react-remove-scroll without React 19 support) | latest 1.x |
-| `npm audit` | 5 (1 critical, 4 high) | **0** |
+| `npm audit` | 5 (1 critical, 4 high) | **0** at the time; 9 high since 2026-10 (`braces`, see section 12) |
 
 **Why 15.5.26 and not 16.3.7.** Both are fixed. 16 renames `middleware` to `proxy` and changes more defaults, which is a larger migration than this round needed. 15.5.x is the maintained backport line.
 
@@ -236,11 +240,94 @@ The client address is `CF-Connecting-IP` only on requests proven to come through
 
 It fails open on a database error by design (documented in `rate-limit.ts`), so Cloudflare's rules are the outer layer.
 
+## 12. Follow-up round — 2026-10-04
+
+Everything here was verified against a production build, behind a local
+stand-in for Cloudflare (a proxy that sets `x-edge-auth`), with the origin
+lock, a TOTP secret and every webhook secret configured.
+
+### Checking production from outside
+
+- **`scripts/security/check-live.sh [SITE_URL] [ORIGIN_URL]`** checks the live shop with no secrets: security headers, the strict CSP on `/checkout`, that the Vercel origin refuses requests that did not come through Cloudflare (including a forged `Host` and a guessed secret), that admin, webhook, CSRF and order-lookup endpoints refuse forged requests, and the image allow-list. Exit code = number of failures.
+  - Verified both ways locally: 0 failures through the proxy; 3 failures when the "origin" is reachable around the lock.
+  - **`.github/workflows/security-check.yml`** runs it every Monday and on demand. If Cloudflare's bot rules challenge GitHub's runners, the homepage check fails with 403; allow the runner or run the script from your own machine.
+- **`scripts/security/verify-production.sql`** is a read-only report for the Supabase SQL editor. One row per check, `OK` or `PROBLEM` with the fix:
+  - RLS on every table in `public`;
+  - migrations 0047–0049 applied (0048 checked by its effect, not its name);
+  - write policies that apply to anon, `OK` only when scoped to `auth.uid()`;
+  - `SECURITY DEFINER` functions anon can call, `OK` only for trigger functions and the three that were read (`search_products`, `can_review`, `set_default_address`);
+  - no policies at all on the server-only tables.
+  - Verified: all 49 migrations apply cleanly to Postgres 16 with Supabase's roles and default grants, and the report shows no `PROBLEM`. A policy `using (true)` on orders, RLS switched off on a table, and an unguarded definer function were each planted and reported, then removed.
+
+**RLS, attempted for real** (Postgres 16, roles and JWT claims as PostgREST sets them):
+
+| Attempt | Result |
+|---|---|
+| customer updates the `total` of their own order | 0 rows changed |
+| customer B reads customer A's order | 0 rows |
+| anonymous reads orders | 0 rows |
+| customer changes a notification's `title` | permission denied (column grant) |
+| customer marks their own notification read | allowed, 1 row; another customer's: 0 rows |
+| customer inserts a support ticket directly | refused by RLS |
+| customer sets their own `welcome_sent_at` | refused by trigger |
+| customer reads `admin_sessions` | permission denied |
+| anonymous adds to someone's wishlist | refused by RLS |
+
+### Admin
+
+- **A revoked session is refused at the edge.** `middleware.ts` now also asks the database whether the token's session is still live (`lib/server/admin-session-edge.ts`, a 3-second PostgREST call with the service key).
+  - **Before:** a replayed cookie after sign-out reached the admin page, which answered 200 with a client-side redirect and no data.
+  - **Now:** 307 to `/` before any page code runs, and 401 on the API.
+  - If the lookup fails, the session is refused (fail closed); before migration 0047 it falls back to the token check alone.
+- **Second factor (TOTP, RFC 6238)** — `lib/server/admin-totp.ts`, migration 0049, checklist 7. With `ADMIN_TOTP_SECRET` set, signing in needs the password and the 6-digit code from an authenticator app.
+  - The password is checked first, so a wrong password does not spend a code.
+  - One wording for every refusal, so it does not reveal which factor was wrong.
+  - A code is accepted once: its time step is recorded in `admin_totp_steps`, and a replay inside its 90-second window is refused.
+  - Comparisons are constant-time. The implementation matches the RFC 6238 test vectors.
+  - Off until the variable is set, so deploying it locks nobody out.
+  - **Verified (14 checks):**
+    - password alone → 401;
+    - wrong code → 401;
+    - wrong password with a valid code → 401;
+    - a code 5 steps old → 401;
+    - password with a valid code → 200;
+    - the same code again → 401;
+    - after sign-out, the replayed cookie → 307 on the page, 401 on the API.
+- Still one shared identity: per-person accounts remain roadmap Phase 2.
+
+### Strict CSP on payment and admin pages
+
+- `/checkout` and `/admin` now get their own policy from `middleware.ts`: a fresh nonce per response, the SHA-256 hash of the one fixed inline script (`lib/motion-boot.ts`), and **no `'unsafe-inline'` in `script-src`**. The directives live in `config/csp.js`, shared with `next.config.js`, which no longer sends the site-wide policy on these paths (exactly one CSP header).
+- Both pages are rendered per request (`dynamic = 'force-dynamic'`). The cart opens checkout with a full page load, because a CSP belongs to a document.
+- **Verified:**
+  - Next's inline scripts all carry the nonce;
+  - an injected `<script>` does not run;
+  - the nonce changes per response;
+  - no violations, and the page hydrates;
+  - cart → "continue as guest" → checkout renders its form;
+  - other pages keep the site-wide policy.
+- **Not covered:**
+  - The storefront's other pages keep `'unsafe-inline'`: they are prerendered, and a nonce would make every page dynamic.
+  - "Pay later" in the account panel (`components/account-orders.tsx`) mounts the Stripe form on whatever page is open, so it runs under the site-wide policy.
+- Zod 4 probed for `eval` on every page, harmless but a violation report each time; now off (`z.config({ jitless: true })` in `lib/returns/schema.ts`). Pages now load with zero violations.
+
+### Fixed along the way
+
+- **Viewport and theme colour.** Since the Next 15 upgrade, `viewport` and `themeColor` inside `metadata` were ignored, so pages shipped Next's default viewport. Moved to `export const viewport` in `app/layout.tsx`; the zoom policy and `theme-color` are back.
+- **Localised 404.** `/it/<missing>`, `/fr/…`, `/de/…` now render the 404 in the URL's language on the server too (`app/[locale]/[...missing]`), with `noindex`.
+
+### `npm audit`: braces (GHSA-vfj7-8cjw-p6xm)
+
+A high-severity advisory published after the upgrade covers every version of `braces`. It is a stack overflow on deeply nested glob patterns, and `braces` reaches the tree through Tailwind and ESLint.
+
+Accepted for now: those run at build time on patterns from our own config, and no visitor input reaches them. `npm audit fix --force` would downgrade `eslint-config-next` to 14 and fixes nothing. Re-check when a patched `braces` is published.
+
 ## Not verified here, and what remains
 
-- **The live deployment.** The audit environment's network policy blocked `luxe-vault.store` and `*.vercel.app`. Run the `curl` checks in [phase-1-perimeter.md](phase-1-perimeter.md) step 4 after deploying, and confirm `x-powered-by` is gone and the CSP names the project host.
-- **Production database state.** Whether 0047/0048 are applied, and whether production policies match the migrations (dashboard edits would not show here). Run `select tablename, policyname, cmd, roles from pg_policies where schemaname = 'public' order by 1;` and compare.
-- **`script-src 'unsafe-inline'`.** Next's inline RSC payload needs a per-request nonce. That makes every page dynamic (no static prerender), so it is a performance decision for a separate round.
-- **Admin pages with a revoked token.** They return 200 with a client redirect and no data, rather than a 307: Next 15 streams before the page's `redirect()`. The data check is what matters and it holds.
-- **Admin identity.** Still one shared password. Per-person accounts with MFA remain roadmap Phase 2; Cloudflare Access in front of `/admin` is the interim step.
-- **Unknown language segments** (`/it/<missing>`) still render the 404 page in English on the server and Italian in the browser. This is cosmetic, not security.
+- **The live deployment and the production database.** This environment still cannot reach `luxe-vault.store`, `*.vercel.app` or Supabase. The tools are ready: run `check-live.sh` (or the workflow) and `verify-production.sql` (checklist 1 and 8).
+- **`scripts/verify-security.mjs`** needs the real Supabase project (`.env.local`), so it was not run here. Its source-tree check is covered by the digest scan.
+- **Every 404 answers HTTP 200, and `redirect()` in a page becomes a client-side redirect.**
+  - Cause: the root layout wraps every page in `<Suspense>` (added 2026-09-27 so a page in a not-yet-loaded language can hydrate). Next cannot change the status once streaming has started inside it.
+  - What is still correct: 404 pages carry `noindex`, so search engines drop them; admin pages are now refused at the edge with a real 307.
+  - The fix is structural: deliver the page's dictionary with the HTML so nothing suspends during hydration, then remove the boundary. A separate task.
+- **Admin identity.** TOTP is in; per-person accounts are still roadmap Phase 2.

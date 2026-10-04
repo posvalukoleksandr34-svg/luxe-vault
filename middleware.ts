@@ -1,5 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { ADMIN_SESSION_COOKIE, isValidSessionToken } from '@/lib/server/admin-auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { strictCsp } from '@/config/csp'
+import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot'
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/server/admin-auth'
+import { edgeSessionState } from '@/lib/server/admin-session-edge'
 import { cameThroughEdge, isEdgeLockConfigured } from '@/lib/server/client-ip'
 import { isCrossSiteWrite } from '@/lib/server/csrf'
 import { hasSessionCookie, updateSession, withAuthCookies } from '@/lib/supabase/middleware'
@@ -83,6 +86,35 @@ function isEdgeBypass(request: NextRequest): boolean {
   return !cameThroughEdge(request.headers)
 }
 
+/**
+ * Pages served with the STRICT Content-Security-Policy (config/csp.js): the
+ * checkout, which hosts Stripe's payment frame, and the admin console. Every
+ * other page keeps the static site-wide policy from next.config.js, which
+ * excludes exactly these paths.
+ */
+function isStrictCspPage(pathname: string): boolean {
+  return (
+    pathname === '/checkout' ||
+    pathname.startsWith('/checkout/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/')
+  )
+}
+
+/** The root layout's one fixed inline script, allowed by hash. Computed once. */
+let motionBootHash: Promise<string> | null = null
+function inlineScriptHashes(): Promise<string[]> {
+  motionBootHash ??= crypto.subtle
+    .digest('SHA-256', new TextEncoder().encode(MOTION_BOOT_SCRIPT))
+    .then((digest) => `sha256-${btoa(String.fromCharCode(...Array.from(new Uint8Array(digest))))}`)
+  return motionBootHash.then((hash) => [hash])
+}
+
+/** A fresh nonce for this response: 16 random bytes, base64. */
+function newNonce(): string {
+  return btoa(String.fromCharCode(...Array.from(crypto.getRandomValues(new Uint8Array(16)))))
+}
+
 function isAdminPath(pathname: string) {
   return (
     pathname === '/admin' ||
@@ -104,12 +136,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Cross-site request refused' }, { status: 403 })
   }
 
+  // The strict policy for the checkout and the admin console. Next reads the
+  // nonce from the REQUEST's Content-Security-Policy header while rendering
+  // and puts it on every script it emits; the same policy goes out on the
+  // response. Those pages render per request (their layouts are dynamic), so
+  // each document gets its own nonce.
+  let forwarded = request
+  let csp: string | null = null
+  if (isStrictCspPage(pathname)) {
+    csp = strictCsp(newNonce(), await inlineScriptHashes())
+    const headers = new Headers(request.headers)
+    headers.set('content-security-policy', csp)
+    forwarded = new NextRequest(request, { headers })
+  }
+
   // Refresh first when there is a session to refresh: the rotated auth
   // cookies have to ride along on whatever response we end up returning,
   // including redirects.
-  const { response } = needsSessionRefresh(request)
-    ? await updateSession(request)
-    : { response: NextResponse.next() }
+  const { response } = needsSessionRefresh(forwarded)
+    ? await updateSession(forwarded)
+    : { response: csp ? NextResponse.next({ request: { headers: forwarded.headers } }) : NextResponse.next() }
+  if (csp) response.headers.set('Content-Security-Policy', csp)
 
   // The admin console is a separate, self-contained auth system (password +
   // signed session cookie). It is intentionally NOT a Supabase user, so the
@@ -118,8 +165,9 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
-  if (await isValidSessionToken(token)) {
+  // Signed, unexpired — and not signed out since (admin-session-edge.ts).
+  const session = await verifySessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
+  if (session && (await edgeSessionState(session.nonce)) !== 'refused') {
     return response
   }
 

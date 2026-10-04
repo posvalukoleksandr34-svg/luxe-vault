@@ -1,20 +1,4 @@
-const isDev = process.env.NODE_ENV !== 'production'
-
-/**
- * The Supabase project's own host, from NEXT_PUBLIC_SUPABASE_URL (set at build
- * time on Vercel). Anyone can create a *.supabase.co project, so the policies
- * below name THIS project rather than the whole domain: a wildcard would let
- * injected script send data to, or load images from, an attacker's project.
- * Falls back to the wildcard only when the variable is absent (a local build
- * without Supabase), where there is nothing to protect.
- */
-const SUPABASE_HOST = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').host || '*.supabase.co'
-  } catch {
-    return '*.supabase.co'
-  }
-})()
+const { siteCsp } = require('./config/csp')
 
 // One UI dictionary per language (lib/ui-dict/*.json), resolved from
 // lib/ui-strings.ts before anything is compiled — here rather than in an npm
@@ -23,115 +7,15 @@ const SUPABASE_HOST = (() => {
 require('./scripts/ui-dictionaries').generate()
 
 /**
- * Content-Security-Policy, one directive per key.
- *
- * Every origin here is one the BROWSER talks to. Geocoding (Photon, Google
- * Places), NOWPayments and Resend are called from our own API routes, so they
- * are deliberately absent — listing them would widen the policy for nothing.
- *
- * - Stripe: Stripe.js from js.stripe.com, the PaymentElement and 3-D Secure
- *   frames from js.stripe.com / hooks.stripe.com, card confirmation against
- *   api.stripe.com. This is the set Stripe documents for Elements.
- * - Supabase: auth and queries over HTTPS, realtime over WSS, product imagery
- *   from Storage — this project's host only (SUPABASE_HOST above).
- *   Supabase is kept OUT of script-src and style-src on purpose: anyone can
- *   create a *.supabase.co project and serve files from its public bucket, so
- *   allowing it there would let an attacker's own project supply code or CSS.
- * - images.unsplash.com: seed catalogue images, loaded directly (not through
- *   the optimiser) by the full-resolution zoom view. Drop with remotePatterns.
- *
- * KNOWN GAP: script-src carries 'unsafe-inline'. Next 13 emits inline
- * bootstrap scripts (the RSC payload), and the layout's motion boot script is
- * inline too. The only way to drop 'unsafe-inline' is a per-request nonce,
- * which a static header cannot carry — it has to be generated in middleware
- * and threaded into the document. Everything else is locked to named
- * origins, which is what stops injected markup loading an attacker's script,
- * frame or stylesheet, or sending data anywhere but Stripe and Supabase.
- *
- * style-src needs 'unsafe-inline' for React `style` attributes and the inline
- * styles Stripe.js puts on its own frames. In development only, 'unsafe-eval'
- * (React Refresh / eval source maps) and ws: (the HMR socket) are added.
- *
- * @type {Record<string, string[]>}
+ * Content-Security-Policy: the site-wide, static policy (config/csp.js, which
+ * explains every origin in it). /checkout and /admin are excluded from it —
+ * middleware.ts serves them a STRICT, per-request nonce policy instead,
+ * without 'unsafe-inline' for scripts.
  */
-const CSP_DIRECTIVES = {
-  'default-src': ["'self'"],
-  'script-src': [
-    "'self'",
-    "'unsafe-inline'",
-    ...(isDev ? ["'unsafe-eval'"] : []),
-    'https://js.stripe.com',
-    'https://*.js.stripe.com',
-    // GA4 and the Meta Pixel, injected only after consent
-    // (lib/analytics-vendors.ts).
-    'https://www.googletagmanager.com',
-    'https://connect.facebook.net',
-    // Cloudflare Turnstile's loader (components/turnstile-field.tsx).
-    'https://challenges.cloudflare.com',
-  ],
-  'style-src': ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
-  'img-src': [
-    "'self'",
-    // The product placeholder SVG and the crypto-payment QR code.
-    'data:',
-    `https://${SUPABASE_HOST}`,
-    'https://*.stripe.com',
-    'https://images.unsplash.com',
-    // Measurement beacons sent as images by GA4 and the Meta Pixel.
-    'https://www.google-analytics.com',
-    'https://*.google-analytics.com',
-    'https://www.googletagmanager.com',
-    'https://www.facebook.com',
-  ],
-  // Both font families are self-hosted under /fonts (see app/globals.css).
-  'font-src': ["'self'", 'data:'],
-  'connect-src': [
-    "'self'",
-    `https://${SUPABASE_HOST}`,
-    `wss://${SUPABASE_HOST}`,
-    'https://api.stripe.com',
-    // GA4 collection endpoints and the Meta Pixel's.
-    'https://www.google-analytics.com',
-    'https://*.google-analytics.com',
-    'https://*.analytics.google.com',
-    'https://www.googletagmanager.com',
-    'https://www.facebook.com',
-    'https://connect.facebook.net',
-    // The widget posts its challenge results back to Cloudflare.
-    'https://challenges.cloudflare.com',
-    ...(isDev ? ['ws:'] : []),
-  ],
-  // Turnstile renders its challenge in an iframe of its own.
-  'frame-src': [
-    'https://js.stripe.com',
-    'https://*.js.stripe.com',
-    'https://hooks.stripe.com',
-    'https://challenges.cloudflare.com',
-  ],
-  'object-src': ["'none'"],
-  // Stops injected <base href> re-pointing every relative URL on the page.
-  'base-uri': ["'self'"],
-  // No form on the site posts off-origin; Stripe and Supabase redirects are
-  // navigations, which this does not restrict.
-  'form-action': ["'self'"],
-  // Clickjacking. 'none' rather than 'self': nothing on this site is meant to
-  // be framed, including by itself. Supersedes X-Frame-Options.
-  'frame-ancestors': ["'none'"],
-  'manifest-src': ["'self'"],
-  'worker-src': ["'self'", 'blob:'],
-  // Any http:// subresource left in content (an old product image URL) is
-  // fetched over HTTPS instead of being blocked as mixed content.
-  ...(isDev ? {} : { 'upgrade-insecure-requests': [] }),
-  // Violations are posted to app/api/csp-report and logged. `report-uri` for
-  // Firefox and Safari; `report-to` (with the Reporting-Endpoints header
-  // below) for Chromium, which prefers it when both are present.
-  'report-uri': ['/api/csp-report'],
-  'report-to': ['csp-endpoint'],
-}
+const contentSecurityPolicy = siteCsp()
 
-const contentSecurityPolicy = Object.entries(CSP_DIRECTIVES)
-  .map(([directive, sources]) => [directive, ...sources].join(' '))
-  .join('; ')
+/** The pages that get the strict nonce policy from middleware.ts instead. */
+const NOT_STRICT_CSP_PAGES = '(?!checkout(?:/|$)|admin(?:/|$))'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -197,11 +81,6 @@ const nextConfig = {
   },
 
   /**
-   * Security headers, applied to every response. The CSP is built above;
-   * the rest are safe to apply blindly to a whole site and are enforced by
-   * the browser on the customer's behalf.
-   */
-  /**
    * Short, stable addresses for links the shop hands out — newsletter buttons
    * above all (lib/newsletter/cta-links.ts). An email cannot be edited once it
    * is sent, so these point at wherever that content lives today, and can be
@@ -216,6 +95,11 @@ const nextConfig = {
     ]
   },
 
+  /**
+   * Security headers, applied to every response. The rest are safe to apply
+   * blindly to a whole site and are enforced by the browser on the customer's
+   * behalf.
+   */
   async headers() {
     return [
       {
@@ -235,9 +119,13 @@ const nextConfig = {
         ],
       },
       {
+        // Every page except the strict-policy ones (NOT_STRICT_CSP_PAGES).
+        source: `/:path(${NOT_STRICT_CSP_PAGES}.*)`,
+        headers: [{ key: 'Content-Security-Policy', value: contentSecurityPolicy }],
+      },
+      {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
           { key: 'Reporting-Endpoints', value: 'csp-endpoint="/api/csp-report"' },
           // Legacy twin of frame-ancestors 'none', for browsers that predate it.
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -268,6 +156,6 @@ const nextConfig = {
       },
     ]
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

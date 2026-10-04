@@ -1,0 +1,38 @@
+# Checks the LIVE shop from outside, weekly and on demand: that the Vercel
+# origin cannot be reached around Cloudflare, that the security headers are
+# served, and that admin, payment and lookup endpoints refuse unauthenticated
+# or forged requests. See scripts/security/check-live.sh and
+# docs/security/hardening-2026-09-29.md.
+#
+# Needs no secrets. Optional repository variables (Settings → Secrets and
+# variables → Actions → Variables):
+#   SITE_URL    the public shop            (default https://www.luxe-vault.store)
+#   ORIGIN_URL  the Vercel production URL  (default https://luxe-vault-hlb1.vercel.app)
+#
+# Run it from the Actions tab ("Run workflow") after every production deploy
+# that touches middleware, headers or next.config.js.
+
+name: Security check (live)
+
+on:
+  schedule:
+    # Mondays 06:23 UTC — off the hour, when GitHub's scheduler is least busy.
+    - cron: '23 6 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/security
+      - name: Check the live deployment
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+          ORIGIN_URL: ${{ vars.ORIGIN_URL || 'https://luxe-vault-hlb1.vercel.app' }}
+        run: bash scripts/security/check-live.sh
