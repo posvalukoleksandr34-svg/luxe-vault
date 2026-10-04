@@ -58,11 +58,17 @@ export async function POST(request: NextRequest) {
     // can't be used to probe which order ids exist.
     return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })
   }
-  if (order.paymentStatus === 'paid') {
+  // Paid, or paid and (partly) refunded: money arrived for this order once.
+  if (order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded' || order.paymentStatus === 'refunded') {
     return NextResponse.json({ error: 'This order is already paid', code: 'ALREADY_PAID' }, { status: 409 })
   }
   if (order.status === 'cancelled') {
     return NextResponse.json({ error: 'This order was cancelled', code: 'CANCELLED' }, { status: 409 })
+  }
+  // Coins for the current payment are already on their way: a new payment
+  // would replace its id, and the webhook could no longer match them.
+  if (order.paymentStatus === 'confirming') {
+    return NextResponse.json({ error: 'A payment for this order is already being confirmed', code: 'IN_PROGRESS' }, { status: 409 })
   }
 
   const tickers = await fetchAvailableTickers()
@@ -109,7 +115,10 @@ export async function POST(request: NextRequest) {
   })
 
   if (!updated) {
-    return NextResponse.json({ error: 'Order not found', code: 'NOT_FOUND' }, { status: 404 })
+    // Refused by the session guard (orders-store): the order was paid, or a
+    // payment started confirming, after the checks above. Nothing changed;
+    // the unused NOWPayments invoice simply expires.
+    return NextResponse.json({ error: 'This order can no longer take a new payment', code: 'ALREADY_PAID' }, { status: 409 })
   }
 
   return NextResponse.json({

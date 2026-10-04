@@ -18,6 +18,9 @@ import { reportServerError } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { safeEqual } from '@/lib/server/secure-compare'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
+import { transitionFilter } from '@/lib/payment-state'
+// The payment state machine lives in lib/payment-state.ts (pure, unit-tested).
+export { isPaymentTransitionAllowed } from '@/lib/payment-state'
 
 /**
  * Columns added by 0014/0015. Requested only once the database actually has
@@ -518,6 +521,12 @@ export async function setOrderPaymentSession(
       payment_amount: session.paymentAmount ?? null,
     })
     .eq('order_number', id)
+    // A new payment session only for an order that has not been paid and has
+    // no payment on its way ('confirming'): replacing payment_id there would
+    // orphan money already sent — the webhook could no longer find its order.
+    // Atomic, so a webhook landing between the caller's read and this write
+    // cannot be undone by it. Null back = refused (or no such order).
+    .or('payment_status.is.null,payment_status.in.(pending_payment,failed,expired)')
     .select(await resolveOrderSelect())
     .maybeSingle()
 
@@ -542,17 +551,6 @@ export async function findOrderByPaymentId(paymentId: string): Promise<Order | n
   return data ? rowToOrder(asRow(data)) : null
 }
 
-/**
- * Money that has arrived. None of these may be walked back by an event that
- * only says the payment is on its way.
- */
-const SETTLED_PAYMENT_STATUSES: PaymentStatus[] = ['paid', 'refunded', 'partially_refunded']
-
-/**
- * Statuses that describe a payment still in flight. Writing one over a settled
- * order is always an out-of-order delivery, never news.
- */
-const IN_FLIGHT_PAYMENT_STATUSES: PaymentStatus[] = ['pending_payment', 'confirming']
 
 /**
  * Advances an order's payment lifecycle. Only ever called from a
@@ -572,30 +570,24 @@ const IN_FLIGHT_PAYMENT_STATUSES: PaymentStatus[] = ['pending_payment', 'confirm
  * by a write, because two deliveries can be in flight at once and a
  * read-then-write would let the loser overwrite the winner.
  *
- * Deliberately NOT guarded: `failed` and `expired`. For crypto they are a real
- * late transition — NOWPayments maps a reversed payment to `failed` — so
- * refusing them would strand a reversed order at `paid`. The Stripe webhook,
- * where a late `failed` IS an ordering artefact, skips the call itself.
+ * `failed` and `expired` are guarded the same way. They used to be let
+ * through on the theory that NOWPayments reports a reversal as `failed` — it
+ * does not (money that goes back is `refunded`, which the state machine allows
+ * after `paid`), and an unguarded `failed` let a replayed, validly signed IPN
+ * from before the payment un-pay a paid order. The full table is in
+ * lib/payment-state.ts.
  */
 export async function setPaymentStatus(
   paymentId: string,
   paymentStatus: PaymentStatus,
 ): Promise<Order | null> {
-  const guarded = IN_FLIGHT_PAYMENT_STATUSES.indexOf(paymentStatus) !== -1
-
-  let update = createAdminClient()
+  // Every write goes through the state machine (allowedPriorStatuses): the
+  // filter is part of the UPDATE, so it holds under concurrent deliveries.
+  const update = createAdminClient()
     .from('orders')
     .update({ payment_status: paymentStatus })
     .eq('payment_id', paymentId)
-
-  if (guarded) {
-    // `not.in` alone would also reject a row whose payment_status is NULL —
-    // SQL's NOT IN is unknown against NULL, and an order that has not reached
-    // a status yet is exactly the one this write is for.
-    update = update.or(
-      `payment_status.is.null,payment_status.not.in.(${SETTLED_PAYMENT_STATUSES.join(',')})`,
-    )
-  }
+    .or(transitionFilter(paymentStatus))
 
   const { data, error } = await update.select(await resolveOrderSelect()).maybeSingle()
 
@@ -608,15 +600,13 @@ export async function setPaymentStatus(
   }
   if (!data) {
     // Nothing was written. Either no order carries this payment id, or the
-    // guard refused a late in-flight event — worth saying which, because the
+    // state machine refused the transition — worth saying which, because the
     // second is a real delivery that the caller must NOT treat as progress.
-    if (guarded) {
-      const current = await findOrderByPaymentId(paymentId)
-      if (current) {
-        console.warn(
-          `[orders] ignored late '${paymentStatus}' for ${current.id}: already ${current.paymentStatus}`,
-        )
-      }
+    const current = await findOrderByPaymentId(paymentId)
+    if (current) {
+      console.warn(
+        `[orders] refused '${paymentStatus}' for ${current.id}: already ${current.paymentStatus}`,
+      )
     }
     return null
   }
@@ -658,10 +648,20 @@ export async function adoptPaymentIntent(
   paymentId: string,
   paymentStatus: PaymentStatus,
 ): Promise<Order | null> {
+  // Interpolated into a PostgREST filter below: only an id of the shape every
+  // provider uses (Stripe pi_…, NOWPayments digits) may get that far.
+  if (!/^[A-Za-z0-9_-]{1,255}$/.test(paymentId)) throw new Error('Refusing to adopt a malformed payment id')
+  // Two guards, both inside the UPDATE: the same state machine as
+  // setPaymentStatus, and the order must not already belong to ANOTHER
+  // payment (payment_id null — the write that never landed — or this one).
+  // Without the second, any intent naming this order in its metadata could
+  // re-point an order that is bound to a different payment.
   const { data, error } = await createAdminClient()
     .from('orders')
     .update({ payment_status: paymentStatus, payment_provider: 'stripe', payment_id: paymentId })
     .eq('order_number', orderId)
+    .or(transitionFilter(paymentStatus))
+    .or(`payment_id.is.null,payment_id.eq.${paymentId}`)
     .select(await resolveOrderSelect())
     .maybeSingle()
 
@@ -878,6 +878,10 @@ export async function recordRefund(
       stripe_refund_id: params.refundId ?? null,
     })
     .eq('order_number', id)
+    // A refund only follows money that arrived (the state machine above):
+    // recording one against an unpaid order would mark it refunded and put
+    // its units back on sale.
+    .or(transitionFilter(params.fully ? 'refunded' : 'partially_refunded'))
     .select(await resolveOrderSelect())
     .maybeSingle()
 

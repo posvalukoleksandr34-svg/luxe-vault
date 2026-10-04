@@ -164,9 +164,9 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
   // customer that their payment did not go through, and leave the piece
   // unfulfilled with their money taken.
   //
-  // Read-then-skip rather than a guard inside setPaymentStatus: for the crypto
-  // webhook a late `failed` is a REAL reversal (see that function), so the
-  // asymmetry belongs here, on the provider that has attempts.
+  // setPaymentStatus refuses this transition in the database too (the payment
+  // state machine); answering here first keeps the response and the log
+  // explicit about why nothing changed.
   if (next === 'failed' || next === 'expired') {
     const current = await findOrderByPaymentId(intent.id)
     if (current && SETTLED.indexOf(current.paymentStatus ?? 'pending_payment') !== -1) {

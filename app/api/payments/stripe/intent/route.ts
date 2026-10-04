@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
   if (!order || !safeEqual(order.lookupToken, token)) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
-  if (order.paymentStatus === 'paid') {
+  // Paid, or paid and (partly) refunded: money arrived for this order once.
+  if (order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded' || order.paymentStatus === 'refunded') {
     return NextResponse.json({ error: 'This order is already paid' }, { status: 409 })
   }
   // A cancelled or refunded order has given its units back to stock; taking
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
     // Store the PaymentIntent id against the order BEFORE the browser can
     // confirm it. The webhook finds the order by payment_id, so a fast
     // confirmation must not arrive before the order knows its own intent id.
-    await setOrderPaymentSession(order.id, {
+    const attached = await setOrderPaymentSession(order.id, {
       payment: order.payment,
       paymentStatus: 'pending_payment',
       paymentProvider: 'stripe',
@@ -128,6 +129,12 @@ export async function POST(request: NextRequest) {
       paymentAmount: prepared.amount,
       paymentAddress: undefined,
     })
+    // Refused by the session guard: the order was paid, or a payment for it
+    // is already processing. Handing out this client secret would invite a
+    // second charge for the same order.
+    if (!attached) {
+      return NextResponse.json({ error: 'This order is already paid or being paid' }, { status: 409 })
+    }
 
     return NextResponse.json({
       clientSecret: intent.client_secret,

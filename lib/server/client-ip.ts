@@ -34,6 +34,31 @@ export function isEdgeLockConfigured(): boolean {
   return edgeOriginSecret().length > 0
 }
 
+/** Shortest secret accepted without complaint (`openssl rand -hex 32` gives 64). */
+export const EDGE_SECRET_MIN_LENGTH = 32
+
+/**
+ * What the origin lock does on this deployment (middleware.ts):
+ *
+ *   'enforced'       a request without the edge header is refused;
+ *   'off'            no lock — local development, `next start` on a laptop,
+ *                    preview deployments, or production with the explicit
+ *                    EDGE_ORIGIN_LOCK=off break-glass switch;
+ *   'misconfigured'  PRODUCTION on Vercel with no secret: FAIL CLOSED. The
+ *                    deployment refuses everything except /api/cron rather
+ *                    than silently answering on *.vercel.app around every
+ *                    Cloudflare WAF and rate-limit rule.
+ *
+ * Production is Vercel's own VERCEL_ENV=production — set by the platform,
+ * not by anyone who can send a request.
+ */
+export function edgeLockState(): 'enforced' | 'off' | 'misconfigured' {
+  if (process.env.NODE_ENV !== 'production') return 'off'
+  if (isEdgeLockConfigured()) return 'enforced'
+  if (process.env.VERCEL_ENV !== 'production') return 'off'
+  return process.env.EDGE_ORIGIN_LOCK?.trim().toLowerCase() === 'off' ? 'off' : 'misconfigured'
+}
+
 /**
  * Constant-time string comparison that runs on the Edge runtime.
  *

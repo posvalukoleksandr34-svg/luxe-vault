@@ -125,7 +125,12 @@ What the code does (`lib/server/client-ip.ts`, `middleware.ts`):
 - On a request that carries the secret, rate limits count `CF-Connecting-IP`,
   the real visitor. Without the secret, that header is never believed, because
   anyone can send it to `*.vercel.app`.
-- With the variable unset, behaviour is exactly as before.
+- **Fail-closed in production.** On a Vercel production deployment
+  (`VERCEL_ENV=production`) without the variable, every request except
+  `/api/cron/*` gets a **503**: a missing secret takes the site down loudly
+  instead of quietly reopening `*.vercel.app` around Cloudflare. Local
+  development and preview deployments are unaffected. `/_next/image` is now
+  behind the lock as well.
 
 **Roll it out in this order.** In the other order the live site refuses all
 traffic until the rule exists.
@@ -165,13 +170,18 @@ traffic until the rule exists.
 6. A day later, re-run the `rate_limits` query above. Subjects should now be
    varied visitor addresses, not Cloudflare ranges.
 
-**Rollback:** delete `EDGE_ORIGIN_SECRET` in Vercel and redeploy, or use
-Vercel's Instant Rollback. The Transform Rule is harmless without it.
+**Rollback:** use Vercel's Instant Rollback. Deleting `EDGE_ORIGIN_SECRET` no
+longer unlocks the site — production then answers 503. To serve traffic
+without the lock in an emergency (a Cloudflare outage, a broken Transform
+Rule), delete the secret AND set `EDGE_ORIGIN_LOCK=off` for Production, then
+redeploy. That state is logged as an error on every cold start; undo it as
+soon as the edge is healthy, and rotate the secret if it may have leaked.
+The Transform Rule is harmless without the secret.
 
-**Known gap:** the middleware does not run for static files or `/_next/image`,
-so those remain reachable directly on `*.vercel.app`. They serve only public
-content. The real fix for the image optimizer's advisories is the Next.js
-upgrade (roadmap, Phase 1b).
+**Known gap:** the middleware does not run for `/_next/static/*` and public
+files, so those remain reachable directly on `*.vercel.app`. They serve only
+public, immutable content. `/_next/image` is covered by the lock since
+2026-10-04.
 
 ## Step 5 — Cloudflare Access in front of the admin console (30 minutes)
 

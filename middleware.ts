@@ -3,7 +3,7 @@ import { strictCsp } from '@/config/csp'
 import { MOTION_BOOT_SCRIPT } from '@/lib/motion-boot'
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/server/admin-auth'
 import { edgeSessionState } from '@/lib/server/admin-session-edge'
-import { cameThroughEdge, isEdgeLockConfigured } from '@/lib/server/client-ip'
+import { cameThroughEdge, EDGE_SECRET_MIN_LENGTH, edgeLockState } from '@/lib/server/client-ip'
 import { isCrossSiteWrite } from '@/lib/server/csrf'
 import { hasSessionCookie, updateSession, withAuthCookies } from '@/lib/supabase/middleware'
 
@@ -58,32 +58,48 @@ function needsSessionRefresh(request: NextRequest): boolean {
 const EDGE_LOCK_EXEMPT_PREFIXES = ['/api/cron/']
 
 /**
- * Origin lock: with EDGE_ORIGIN_SECRET set, a production request that did not
- * come through Cloudflare is refused. Without it, the *.vercel.app address
- * is a way around every WAF and rate-limiting rule configured at the edge
- * (docs/security/phase-1-perimeter.md). Off in development, so a local
- * .env with the secret in it does not lock out localhost.
+ * Origin lock. In production a request that did not come through Cloudflare
+ * — no `x-edge-auth` header matching EDGE_ORIGIN_SECRET — is refused, so the
+ * *.vercel.app address is not a way around the WAF and the edge rate limits
+ * (docs/security/phase-1-perimeter.md).
+ *
+ * FAIL CLOSED: a production deployment WITHOUT the secret refuses everything
+ * (503) instead of serving openly. The only way to run production unlocked is
+ * the explicit, logged break-glass switch EDGE_ORIGIN_LOCK=off. Off in
+ * development and for `next start` outside Vercel, so local work needs no
+ * secret (lib/server/client-ip.ts, edgeLockState).
  */
-let warnedUnlocked = false
+let warnedLockState = false
 
-function isEdgeBypass(request: NextRequest): boolean {
-  if (process.env.NODE_ENV !== 'production') return false
-  if (!isEdgeLockConfigured()) {
-    // Off by design until the Cloudflare rule exists — but a production
-    // deployment running without it is reachable around the WAF, and that
-    // must be visible in the logs rather than silent. Once per instance.
-    if (process.env.VERCEL_ENV === 'production' && !warnedUnlocked) {
-      warnedUnlocked = true
+function originLockRefusal(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (EDGE_LOCK_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null
+  const state = edgeLockState()
+  if (state === 'off') {
+    if (process.env.VERCEL_ENV === 'production' && !warnedLockState) {
+      warnedLockState = true
       console.error(
-        '[security] EDGE_ORIGIN_SECRET is not set: the origin lock is OFF and this deployment ' +
-          'answers directly on *.vercel.app, bypassing Cloudflare (docs/security/phase-1-perimeter.md).',
+        '[security] EDGE_ORIGIN_LOCK=off: the origin lock is DISABLED and this deployment answers ' +
+          'directly on *.vercel.app, bypassing Cloudflare. Remove the switch once EDGE_ORIGIN_SECRET is set.',
       )
     }
-    return false
+    return null
   }
-  const { pathname } = request.nextUrl
-  if (EDGE_LOCK_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false
-  return !cameThroughEdge(request.headers)
+  if (state === 'misconfigured') {
+    if (!warnedLockState) {
+      warnedLockState = true
+      console.error(
+        '[security] EDGE_ORIGIN_SECRET is not set in production: refusing all requests (fail closed). ' +
+          'Set it (and the Cloudflare Transform Rule) — docs/security/phase-1-perimeter.md.',
+      )
+    }
+    return new NextResponse('Service unavailable', { status: 503 })
+  }
+  if (!warnedLockState && (process.env.EDGE_ORIGIN_SECRET?.trim().length ?? 0) < EDGE_SECRET_MIN_LENGTH && process.env.VERCEL_ENV === 'production') {
+    warnedLockState = true
+    console.error(`[security] EDGE_ORIGIN_SECRET is shorter than ${EDGE_SECRET_MIN_LENGTH} characters: replace it with \`openssl rand -hex 32\`.`)
+  }
+  return cameThroughEdge(request.headers) ? null : new NextResponse('Forbidden', { status: 403 })
 }
 
 /**
@@ -126,9 +142,12 @@ function isAdminPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (isEdgeBypass(request)) {
-    return new NextResponse('Forbidden', { status: 403 })
-  }
+  const refused = originLockRefusal(request)
+  if (refused) return refused
+  // The image optimiser is matched only so the origin lock covers it (it
+  // fetches remote images server-side — a cost and abuse vector around the
+  // edge). Nothing else here applies to it.
+  if (pathname.startsWith('/_next/image')) return NextResponse.next()
 
   // CSRF: a state-changing request a browser marks as cross-site is refused
   // before any handler, cookie refresh or session check runs (lib/server/csrf.ts).
@@ -193,5 +212,7 @@ export const config = {
      * latency.
      */
     '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|webmanifest)$).*)',
+    // The image optimiser, for the origin lock only (see middleware()).
+    '/_next/image',
   ],
 }

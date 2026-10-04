@@ -99,6 +99,8 @@ export function CryptoPayment({
           t(
             data?.code === 'ALREADY_PAID'
               ? 'checkout.errAlreadyPaid'
+              : data?.code === 'IN_PROGRESS'
+                ? 'checkout.errPaymentInProgress'
               : data?.code === 'CANCELLED'
                 ? 'checkout.errOrderCancelled'
                 : data?.code === 'CRYPTO_UNAVAILABLE'

@@ -5,7 +5,7 @@ import { decideReturnRequestSchema, firstIssue } from '@/lib/returns/schema'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { readJsonObject } from '@/lib/server/http'
 import { notifyReturnDecision } from '@/lib/server/notifications'
-import { getOrderById, recordRefund } from '@/lib/server/orders-store'
+import { getOrderById, recordRefund, isPaymentTransitionAllowed } from '@/lib/server/orders-store'
 import { refundOrder } from '@/lib/server/refund-order'
 import { getReturnRequest, moveReturnRequest, setOrderReturnStatus } from '@/lib/server/returns-store'
 
@@ -92,6 +92,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         { error: 'Оплата картой возвращается кнопкой «Одобрить и вернуть»' },
         { status: 409 },
       )
+    }
+    // Only money that arrived can be refunded (the payment state machine,
+    // orders-store): checked before the request is closed, so a refusal does
+    // not leave a "completed" return on an order nobody paid for.
+    if (!isPaymentTransitionAllowed(order.paymentStatus, 'refunded')) {
+      return NextResponse.json({ error: 'Заказ не оплачен — возвращать нечего' }, { status: 409 })
     }
     const moved = await moveReturnRequest(params.id, 'approved', 'completed', decision.adminNotes)
     if (!moved) {
