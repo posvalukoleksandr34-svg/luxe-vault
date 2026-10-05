@@ -1,23 +1,15 @@
 import type { Metadata } from 'next'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { homeMetadata } from '@/lib/page-seo'
-import { AppPromoBanner } from '@/components/app-promo-banner'
 import { Footer } from '@/components/footer'
 import { HashScroll } from '@/components/hash-scroll'
 import { Header } from '@/components/header'
 import { Hero } from '@/components/hero'
-import { Reviews } from '@/components/reviews'
 import { SectionsGrid } from '@/components/sections-grid'
 import { SupportWidgetLazy } from '@/components/support-widget-lazy'
-import {
-  FeaturedProducts,
-  FinalCta,
-  HomeFaq,
-  HowOrdering,
-  TrustBar,
-  WhyLuxeVault,
-} from '@/components/home/home-sections'
+import { FeaturedProducts, TrustBar } from '@/components/home/home-sections'
 import { readCatalog } from '@/lib/server/catalog-store'
+import { unitsSoldByProduct } from '@/lib/server/popular-products'
 import type { Product } from '@/lib/types'
 
 // The homepage's own canonical, description and hreflang. The canonical used
@@ -27,26 +19,44 @@ import type { Product } from '@/lib/types'
 // rather than a section heading.
 export const metadata: Metadata = homeMetadata(DEFAULT_LOCALE)
 
-/** How many pieces the homepage shows. Two rows of four on a desktop. */
-const FEATURED_COUNT = 8
+/** How many pieces the homepage shows: one row of four. */
+const FEATURED_COUNT = 4
 
 /**
- * A few pieces for the homepage: available ones only, newest first. Chosen
- * on the server from the cached catalogue — the browser never downloads the
- * catalogue to pick eight products from it. A failed read costs the section,
- * never the page.
+ * The four most popular pieces, chosen on the server from the cached
+ * catalogue. The browser never downloads the catalogue to pick four products
+ * from it, and a failed read costs the section, never the page.
+ *
+ * Order: available pieces first, ranked by units sold in paid orders over
+ * the last six months (lib/server/popular-products.ts), then new arrivals,
+ * then catalogue order. Sold-out pieces only fill the row when fewer than
+ * four are available — the row is always four wide while the catalogue has
+ * four products. Without sales data (a new shop, or the read failing) the
+ * ranking is simply available-and-newest.
  */
 async function featuredProducts(): Promise<Product[]> {
   try {
-    const { products } = await readCatalog()
-    const available = products.filter(
-      (p) =>
-        !p.statuses.includes('out_of_stock') &&
-        !(p.variants && p.variants.length > 0 && p.variants.every((v) => v.stock <= 0)),
-    )
-    const fresh = available.filter((p) => p.isNew)
-    const rest = available.filter((p) => !p.isNew)
-    return [...fresh, ...rest].slice(0, FEATURED_COUNT)
+    const [{ products }, sold] = await Promise.all([
+      readCatalog(),
+      unitsSoldByProduct().catch((error) => {
+        console.error('[home] sales ranking unavailable:', error)
+        return new Map<string, number>()
+      }),
+    ])
+    const available = (p: Product) =>
+      !p.statuses.includes('out_of_stock') &&
+      !(p.variants && p.variants.length > 0 && p.variants.every((v) => v.stock <= 0))
+    return products
+      .map((p, index) => ({ p, index, available: available(p), sold: sold.get(p.id) ?? 0 }))
+      .sort(
+        (a, b) =>
+          Number(b.available) - Number(a.available) ||
+          b.sold - a.sold ||
+          Number(Boolean(b.p.isNew)) - Number(Boolean(a.p.isNew)) ||
+          a.index - b.index,
+      )
+      .slice(0, FEATURED_COUNT)
+      .map((x) => x.p)
   } catch (error) {
     console.error('[home] featured products unavailable:', error)
     return []
@@ -54,13 +64,13 @@ async function featuredProducts(): Promise<Product[]> {
 }
 
 /**
- * A Server Component: it arranges sections and picks the featured products;
- * the sections are client components where they need the store.
+ * A Server Component: it arranges the sections and picks the products; the
+ * sections are client components where they need the store.
  *
- * Order follows what a first visit needs: what this is (hero), why it can be
- * trusted (trust bar), what it sells (featured, departments), why buy here,
- * how buying works, what others said, the questions people ask, and one
- * last invitation.
+ * Deliberately short — a boutique's front window, not a brochure: what this
+ * is (hero, with its four facts beneath), where to go (the departments),
+ * what is popular (four pieces), and the footer with the newsletter. About,
+ * Shipping, Returns, FAQ and Contact are their own pages, in the header.
  */
 export default async function Home() {
   const featured = await featuredProducts()
@@ -71,14 +81,8 @@ export default async function Home() {
       <main id="main">
         <Hero />
         <TrustBar />
-        <FeaturedProducts products={featured} />
         <SectionsGrid />
-        <WhyLuxeVault />
-        <HowOrdering />
-        <Reviews />
-        <HomeFaq />
-        <FinalCta />
-        <AppPromoBanner />
+        <FeaturedProducts products={featured} />
         <Footer />
       </main>
 

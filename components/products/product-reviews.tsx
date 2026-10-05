@@ -156,9 +156,7 @@ export function ProductReviews({ productId }: { productId: string }) {
           action={
             canReview && !submitted && !writing
               ? { label: t('review.write'), onClick: () => setWriting(true) }
-              : !canReview && !submitted
-                ? { label: t('state.storeReviews'), href: '/#reviews' }
-                : undefined
+              : undefined
           }
         />
       ) : (

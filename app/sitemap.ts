@@ -27,9 +27,8 @@ const BASE = SITE_ORIGIN
  * listed below. They are the pages that can rank for a category query at all —
  * "#shop" never could, because Google treats `/#shop` and `/` as one URL.
  *
- * What remains anchors-only is the editorial content: #reviews is still a
- * section of `/`, and /reviews, /contacts, /new-arrivals and /sale are not
- * pages. /about, /shipping and /faq are real routes and listed below. Anchors are deliberately NOT listed — submitting them
+ * /reviews, /contacts, /new-arrivals and /sale are not pages, and the
+ * homepage's only anchor is #collections. /about, /shipping and /faq are real routes and listed below. Anchors are deliberately NOT listed — submitting them
  * would submit the homepage several times over rather than gain entries.
  */
 const SECTIONS_ARE_ANCHORS = true

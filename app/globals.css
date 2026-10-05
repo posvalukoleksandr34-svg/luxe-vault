@@ -742,26 +742,6 @@ body::before {
     }
   }
 
-  /* The homepage's four-column grid. "What to expect" and "How ordering
-     works" share it exactly — same columns, same gaps — so their column
-     starts line up to the pixel. */
-  .grid-4 {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    column-gap: 2rem;
-    row-gap: 2.5rem;
-  }
-  @media (min-width: 640px) {
-    .grid-4 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-  @media (min-width: 1024px) {
-    .grid-4 {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-
   /* Buttons for the content pages and homepage sections — one primary (the
      gold fill the checkout already uses) and one quiet outline, so a page
      never has to choose between eight hand-tuned variants. 48px tall: an

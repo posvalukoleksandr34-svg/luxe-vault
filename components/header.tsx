@@ -16,6 +16,8 @@ const PRIMARY_NAV = [
   { href: '/about', label: 'nav.about' },
   { href: '/shipping', label: 'footer.shipping' },
   { href: '/legal/refunds', label: 'nav.returns' },
+  // The questions the homepage used to answer in place (2026-10).
+  { href: '/faq', label: 'nav.faq' },
   { href: '/contact', label: 'nav.contact' },
 ] as const
 
@@ -156,16 +158,16 @@ export function Header() {
 
         {/* Quiet links, generous spacing: the space between them does the
             separating, not ornament. */}
-        {/* The five things a first-time customer looks for, as real links:
-            the shop, who runs it, how delivery and returns work, and how to
-            reach a person. */}
-        <nav aria-label="Main" className="ml-10 hidden items-center gap-7 xl:ml-12 xl:gap-8 lg:flex">
+        {/* What a first-time customer looks for, as real links: the shop,
+            who runs it, delivery, returns, answers, and how to reach a
+            person. */}
+        <nav aria-label="Main" className="ml-5 hidden items-center gap-3.5 lg:flex xl:ml-12 xl:gap-8">
           {PRIMARY_NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isCurrent(item.href) ? 'page' : undefined}
-              className="nav-link t-label"
+              className="nav-link t-label whitespace-nowrap"
             >
               {t(item.label)}
             </Link>
@@ -176,13 +178,16 @@ export function Header() {
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            className="tap-safe flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9 sm:hidden"
+            className="tap-safe flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9 xl:hidden"
             aria-label="Search"
           >
             <Search className="size-[18px]" />
           </button>
 
-          <div className="hidden sm:block">
+          {/* The inline search field from xl up. Below it the row has no
+              room for six menu items AND the field (it overflowed at
+              1024px), so the icon above opens the search row instead. */}
+          <div className="hidden xl:block">
             <SearchBox variant="desktop" />
           </div>
 
@@ -265,7 +270,7 @@ export function Header() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-border px-4 py-3 sm:hidden">
+        <div className="border-t border-border px-4 py-3 xl:hidden">
           <SearchBox variant="mobile" onNavigate={() => setSearchOpen(false)} />
         </div>
       )}
@@ -292,9 +297,6 @@ export function Header() {
             </button>
             <Link href="/stylist" onClick={() => setMobileOpen(false)} className={MOBILE_ITEM}>
               {t('stylist.cta')}
-            </Link>
-            <Link href="/faq" onClick={() => setMobileOpen(false)} className={MOBILE_ITEM}>
-              {t('footer.faq')}
             </Link>
             <button
               onClick={() => {

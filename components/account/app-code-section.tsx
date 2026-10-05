@@ -1,9 +1,9 @@
 'use client'
 
+import { AppPromoBanner } from '@/components/app-promo-banner'
 import { Check, Copy, Smartphone } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { LoadError } from '@/components/load-error'
-import { Link } from '@/components/locale-link'
 import type { AppCodeView, PromoKind } from '@/lib/promo-codes'
 import { isStandalone } from '@/lib/pwa'
 import { formatPrice, useStore } from '@/lib/store'
@@ -100,13 +100,15 @@ export function AppCodeSection() {
   if (view.status === 'disabled') {
     if (inApp) return note(t('appCode.disabled'))
     // In a browser tab with no code yet: the way to get one.
+    // The install panel itself, here — it used to be a link to a homepage
+    // section that the homepage no longer has.
     return (
-      <div className="max-w-xl rounded-xl border border-border p-6">
-        <Smartphone className="size-5 text-foreground/60" strokeWidth={1.5} aria-hidden />
-        <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/75">{t('appCode.installFirst')}</p>
-        <Link href="/#app" className="nav-link t-label tap-safe mt-5 inline-block">
-          {t('appCode.installLink')}
-        </Link>
+      <div className="space-y-6">
+        <div className="max-w-xl rounded-xl border border-border p-6">
+          <Smartphone className="size-5 text-foreground/60" strokeWidth={1.5} aria-hidden />
+          <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/75">{t('appCode.installFirst')}</p>
+        </div>
+        <AppPromoBanner />
       </div>
     )
   }
