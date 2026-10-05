@@ -6,17 +6,25 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Product reviews.
  *
- * `public.reviews` has existed since migration 0004 and nothing has ever read
- * or written it — the storefront's only reviews were site testimonials, which
- * are a different table and a different thing. This module is the first code
- * to use it.
+ * `public.reviews` has existed since migration 0004; this module is the only
+ * code that reads or writes it. (The store's own testimonials are
+ * `site_reviews`, a different table and a different thing.)
  *
- * WHAT MAKES A REVIEW TRUSTWORTHY HERE
+ * VERIFIED BUYERS ONLY (migration 0052)
  *
- * The RLS policy from 0004 only admits a review from a customer whose order
- * containing that product reached `delivered`, and a unique index keeps it to
- * one review per product per order. So every row is a verified purchase by
- * construction — the badge is a fact about the data, not a claim.
+ * A review can be written only by a signed-in customer with a DELIVERED order
+ * that contains the product, and only once per product. Three layers say so,
+ * so that no single edit can quietly drop the rule:
+ *
+ *   1. The API asks review_eligibility() before writing, and answers 401, 403
+ *      or 409 itself.
+ *   2. The insert runs as the customer (request-scoped client), so the RLS
+ *      policy asks the same question again.
+ *   3. A trigger asks it of every writer, service role included, and a unique
+ *      index keeps it to one review per customer per product.
+ *
+ * So every row is a verified purchase by construction, and the badge on the
+ * page states a fact about the data rather than making a claim.
  *
  * Reviews are still moderated: they arrive `pending` and only an admin can
  * approve them. The stats view excludes pending rows, so an unreviewed
@@ -30,8 +38,9 @@ export type ProductReview = {
   createdAt: number
   /** Display name, resolved from the profile. Never the email. */
   author: string
-  /** Always true today — the RLS policy admits nothing else — but carried
-   *  explicitly so the badge does not become a lie if the rule ever loosens. */
+  /** True while the review is still linked to its order. Every review is
+   *  written against a delivered order (0052); the link is lost only if that
+   *  order is later purged, and the badge then goes with it. */
   verified: boolean
 }
 
@@ -132,59 +141,88 @@ export async function readProductReviews(
 }
 
 /**
- * The delivered order this customer may review the product against, if any.
+ * Where the signed-in customer stands with this product:
  *
- * Asked before rendering the form: offering a review box to someone the
- * database will refuse is worse than not offering one.
+ *   signed_out     no session reached the database
+ *   not_purchased  no delivered order of theirs contains it (including an
+ *                  order that is paid but still on its way)
+ *   reviewed       they have already reviewed it, in any state
+ *   eligible       they may, against `orderId`, their latest delivered order
+ *                  containing it
+ *
+ * The answer comes from the database (review_eligibility, migration 0052),
+ * reading the customer's own order history; nothing in the request decides
+ * it. Null when the question could not be asked (database unreachable, 0052
+ * not applied): callers treat that as "no".
  */
-export async function canReview(productId: string): Promise<string | null> {
-  const { data, error } = await createClient().rpc('can_review', {
+export const REVIEW_ELIGIBILITY = ['signed_out', 'not_purchased', 'reviewed', 'eligible'] as const
+export type ReviewEligibility = (typeof REVIEW_ELIGIBILITY)[number]
+
+export async function reviewEligibility(
+  productId: string,
+): Promise<{ status: ReviewEligibility; orderId: string | null } | null> {
+  const { data, error } = await createClient().rpc('review_eligibility', {
     p_product_id: productId,
   })
 
-  if (error) return null
+  if (error) {
+    console.error('[reviews] eligibility check failed:', error.message)
+    return null
+  }
+
   const row = Array.isArray(data) ? data[0] : data
-  return row?.allowed ? (row.order_id as string) : null
+  const status = row?.status as ReviewEligibility | undefined
+  if (!status || !REVIEW_ELIGIBILITY.includes(status)) return null
+  if (status === 'eligible') {
+    return row.order_id ? { status, orderId: row.order_id as string } : null
+  }
+  return { status, orderId: null }
 }
+
+/** A star rating from a request body: a whole number from 1 to 5, or null. */
+export function parseRating(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null
+}
+
+export type SubmitReviewError = 'ALREADY_REVIEWED' | 'NOT_VERIFIED_BUYER' | 'SAVE_FAILED'
 
 /**
  * Submits a review as the signed-in customer.
  *
- * Deliberately uses the REQUEST-SCOPED client, so the RLS policy from 0004 is
- * what admits or refuses the row. Writing this with the service role would
- * move the "did they actually buy it" rule into application code, where a
- * future edit could drop it silently.
+ * Deliberately uses the REQUEST-SCOPED client, so the RLS policy and the
+ * trigger from 0052 admit or refuse the row even if the caller's own check
+ * were wrong. Writing this with the service role would leave the "did they
+ * actually buy it" rule to application code alone.
+ *
+ * `status` is not sent: customers cannot write that column, and the
+ * database's default is 'pending'.
  */
 export async function submitReview(input: {
+  userId: string
   productId: string
   orderId: string
   rating: number
   comment?: string
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-  const rating = Math.round(input.rating)
-  if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-    return { ok: false, error: 'Rating must be between 1 and 5' }
-  }
-
+}): Promise<{ ok: true } | { ok: false; error: SubmitReviewError }> {
   const comment = input.comment?.trim().slice(0, 4000) || null
 
   const { error } = await createClient().from('reviews').insert({
+    user_id: input.userId,
     product_id: input.productId,
     order_id: input.orderId,
-    rating,
+    rating: input.rating,
     comment,
-    // Never trusted from the client: a review is published only after a human
-    // approves it.
-    status: 'pending',
   })
 
   if (error) {
-    // 23505 is the one-review-per-order unique index doing its job.
-    if (error.code === '23505') {
-      return { ok: false, error: 'ALREADY_REVIEWED' }
-    }
-    console.error('[reviews] insert failed:', error.message)
-    return { ok: false, error: 'NOT_ELIGIBLE' }
+    // 23505: the one-review-per-customer-per-product index. Reached when two
+    // submissions race past the eligibility check together.
+    if (error.code === '23505') return { ok: false, error: 'ALREADY_REVIEWED' }
+    // 42501: the insert policy or the purchase trigger refused the row.
+    if (error.code === '42501') return { ok: false, error: 'NOT_VERIFIED_BUYER' }
+    console.error('[reviews] insert failed:', error.code, error.message)
+    return { ok: false, error: 'SAVE_FAILED' }
   }
 
   return { ok: true }

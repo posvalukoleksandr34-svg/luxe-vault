@@ -55,6 +55,16 @@ checks as (
   select 'migration 0051: newsletter double opt-in (pending status, confirmed_at)',
          case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'newsletter_subscribers' and column_name = 'confirmed_at') then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0051_newsletter_double_opt_in.sql — sign-ups are refused until it is'
+  union all
+  select 'migration 0052: product reviews need a delivered order containing the product',
+         case when exists (select 1 from pg_trigger where tgname = 'reviews_require_purchase' and tgrelid = 'public.reviews'::regclass and tgenabled <> 'D')
+               and not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'reviews' and policyname = 'users review their delivered orders')
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0052_verified_buyer_reviews.sql — product reviews are refused until it is'
+  union all
+  select 'migration 0052: one product review per customer per product',
+         case when to_regclass('public.reviews_one_per_user_product_idx') is not null then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0052_verified_buyer_reviews.sql'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -80,11 +90,11 @@ checks as (
   union all
   select 'security definer callable by anon: ' || p.proname,
          case when p.prorettype = 'trigger'::regtype
-                or p.proname in ('search_products', 'can_review', 'set_default_address')
+                or p.proname in ('search_products', 'review_eligibility', 'set_default_address')
               then 'OK' else 'PROBLEM' end,
          case when p.prorettype = 'trigger'::regtype then 'trigger function, not callable over the API'
               when p.proname = 'search_products' then 'reviewed: returns public catalogue slugs only'
-              when p.proname = 'can_review' then 'reviewed: reads only the caller''s own orders (auth.uid())'
+              when p.proname = 'review_eligibility' then 'reviewed: reads only the caller''s own orders and reviews (auth.uid())'
               when p.proname = 'set_default_address' then 'reviewed: changes only the caller''s own addresses (auth.uid())'
               else 'read it: it must check auth.uid() itself, or: revoke execute on function public.' || p.proname || ' from anon, public;' end
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace

@@ -1,7 +1,7 @@
 'use client'
 
-import { BadgeCheck, Loader2, MessageSquare, Star } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { BadgeCheck, Loader2, LogIn, MessageSquare, ShieldCheck, Star } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { LoadError } from '@/components/load-error'
 import { ReviewListSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/state-view'
@@ -11,10 +11,18 @@ import { cn } from '@/lib/utils'
 /**
  * Customer reviews on the product page.
  *
- * Every row here is a verified purchase by construction: the RLS policy from
- * migration 0004 only admits a review from someone whose order containing this
- * product reached `delivered`. The badge states a fact about the data rather
- * than making a claim about it.
+ * Verified buyers only. Every row here is a verified purchase by construction:
+ * the database admits a review only from someone with a delivered order
+ * containing this product, once per product (migration 0052). The badge
+ * states a fact about the data rather than making a claim about it.
+ *
+ * Below the reviews, what the visitor may do, as the server answers it:
+ *   signed out          a link that opens sign-in
+ *   signed in, no order a notice that only verified buyers can review
+ *   already reviewed    says so
+ *   verified buyer      the form
+ * The form is never shown to someone the server would refuse, and the server
+ * refuses them anyway (401 / 403 / 409) whatever the page shows.
  *
  * Loaded on the client rather than server-rendered with the rest of the page.
  * Reviews are not part of what a crawler needs to understand the product —
@@ -38,14 +46,18 @@ type Stats = {
   breakdown: Record<string, number>
 }
 
+/** Where the visitor stands. 'unknown': the server could not tell, so
+ *  nothing is offered. */
+type Eligibility = 'signed_out' | 'not_purchased' | 'reviewed' | 'eligible' | 'unknown'
+
 const STARS = [5, 4, 3, 2, 1] as const
 
 export function ProductReviews({ productId }: { productId: string }) {
-  const { t, locale, currentUser } = useStore()
+  const { t, locale, currentUser, openAuth } = useStore()
 
   const [reviews, setReviews] = useState<Review[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
-  const [canReview, setCanReview] = useState(false)
+  const [eligibility, setEligibility] = useState<Eligibility>('unknown')
   const [loading, setLoading] = useState(true)
   // A failed request, which must not read as "this product has no reviews".
   const [failed, setFailed] = useState(false)
@@ -54,8 +66,9 @@ export function ProductReviews({ productId }: { productId: string }) {
    *  here, and a round trip to hide four rows would be absurd. */
   const [starFilter, setStarFilter] = useState<number | null>(null)
 
-  const [writing, setWriting] = useState(false)
-  const [draftRating, setDraftRating] = useState(5)
+  // No stars until the customer picks: a form that arrives at five stars
+  // nudges every review towards five.
+  const [draftRating, setDraftRating] = useState(0)
   const [draftComment, setDraftComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -69,7 +82,11 @@ export function ProductReviews({ productId }: { productId: string }) {
       const data = await res.json()
       setReviews(data.reviews ?? [])
       setStats(data.stats ?? null)
-      setCanReview(Boolean(data.canReview))
+      setEligibility(
+        ['signed_out', 'not_purchased', 'reviewed', 'eligible'].includes(data.eligibility)
+          ? data.eligibility
+          : 'unknown',
+      )
     } catch {
       setFailed(true)
     } finally {
@@ -82,8 +99,13 @@ export function ProductReviews({ productId }: { productId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, currentUser?.id])
 
-  async function submit() {
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (submitting) return
+    if (draftRating < 1) {
+      setError(t('review.ratingRequired'))
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -92,14 +114,19 @@ export function ProductReviews({ productId }: { productId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: draftRating, comment: draftComment }),
       })
-      const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        setError(
-          data.error === 'ALREADY_REVIEWED'
-            ? t('review.already')
-            : t('review.notEligible'),
-        )
+        // The server's answer wins over what the page believed: a session
+        // that expired, an order that is not delivered after all, a review
+        // sent from another tab. Each switches to the state that explains it.
+        // Matched on the API's own codes, so a 403 from anything else in
+        // front of it (a firewall, a CSRF refusal) is not taken for one.
+        const data = await res.json().catch(() => ({}))
+        if (data.error === 'SIGN_IN_REQUIRED') setEligibility('signed_out')
+        else if (data.error === 'NOT_VERIFIED_BUYER') setEligibility('not_purchased')
+        else if (data.error === 'ALREADY_REVIEWED') setEligibility('reviewed')
+        else if (data.error === 'INVALID_RATING') setError(t('review.ratingRequired'))
+        else setError(t('review.failed'))
         return
       }
 
@@ -107,8 +134,9 @@ export function ProductReviews({ productId }: { productId: string }) {
       // showing it in the list immediately would be showing the customer
       // something nobody else can see.
       setSubmitted(true)
-      setWriting(false)
-      setCanReview(false)
+      setEligibility('reviewed')
+    } catch {
+      setError(t('review.failed'))
     } finally {
       setSubmitting(false)
     }
@@ -153,11 +181,6 @@ export function ProductReviews({ productId }: { productId: string }) {
           icon={MessageSquare}
           title={t('review.empty')}
           hint={t('state.productReviewsHint')}
-          action={
-            canReview && !submitted && !writing
-              ? { label: t('review.write'), onClick: () => setWriting(true) }
-              : undefined
-          }
         />
       ) : (
         <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
@@ -250,25 +273,62 @@ export function ProductReviews({ productId }: { productId: string }) {
         </div>
       )}
 
-      {/* Write a review — only for someone who can. */}
-      {submitted && (
-        <p className="mt-8 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold">
-          {t('review.pending')}
-        </p>
-      )}
-
-      {canReview && !submitted && (total > 0 || writing) && (
-        <div className="mt-8 border-t border-border/50 pt-6">
-          {!writing ? (
+      {/* Writing a review: verified buyers only. Nothing is offered when the
+          list failed to load (the visitor's status comes with it) or when the
+          server could not tell who the visitor is. */}
+      {!failed && (submitted || eligibility !== 'unknown') && (
+        <div
+          className={cn(
+            'mt-8 border-t border-border/50 pt-6',
+            // Under the centred empty state, centred too; under a list, aligned with it.
+            total === 0 && 'flex flex-col items-center text-center',
+          )}
+        >
+          {submitted ? (
+            <p
+              role="status"
+              className="rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold"
+            >
+              {t('review.pending')}
+            </p>
+          ) : eligibility === 'signed_out' ? (
             <button
               type="button"
-              onClick={() => setWriting(true)}
-              className="rounded-xl border border-transparent bg-gold-gradient px-6 py-3 text-[12px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"
+              onClick={() => openAuth('login')}
+              className="tap-safe inline-flex items-center gap-2 text-[13px] text-gold underline decoration-gold/40 underline-offset-4 transition hover:decoration-gold"
             >
-              {t('review.write')}
+              <LogIn className="size-4" strokeWidth={1.5} aria-hidden />
+              {t('review.signInToReview')}
             </button>
-          ) : (
-            <div className="max-w-xl space-y-3">
+          ) : eligibility === 'not_purchased' ? (
+            <div className="flex max-w-xl items-start gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3 text-left">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+              <div>
+                <p className="text-[13px] text-foreground">{t('review.verifiedOnly')}</p>
+                <p className="mt-1 text-[12px] font-light leading-relaxed text-muted-foreground">
+                  {t('review.verifiedOnlyHint')}
+                </p>
+              </div>
+            </div>
+          ) : eligibility === 'reviewed' ? (
+            <p className="flex items-center gap-2 text-[13px] font-light text-muted-foreground">
+              <BadgeCheck className="size-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+              {t('review.already')}
+            </p>
+          ) : eligibility === 'eligible' ? (
+            <form
+              onSubmit={submit}
+              noValidate
+              aria-labelledby="review-form-title"
+              className="w-full max-w-xl space-y-3 text-left"
+            >
+              <h3
+                id="review-form-title"
+                className="text-[11px] font-medium uppercase tracking-[0.14em] text-foreground"
+              >
+                {t('review.write')}
+              </h3>
+
               <div className="flex items-center gap-2">
                 <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                   {t('review.yourRating')}
@@ -277,12 +337,16 @@ export function ProductReviews({ productId }: { productId: string }) {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setDraftRating(n)}
-                    aria-label={`${n}`}
+                    onClick={() => {
+                      setDraftRating(n)
+                      setError(null)
+                    }}
+                    aria-label={`${n}/5`}
                     aria-pressed={draftRating === n}
                     className="transition-transform hover:scale-110"
                   >
                     <Star
+                      aria-hidden
                       className={cn(
                         'size-5',
                         n <= draftRating ? 'fill-gold text-gold' : 'text-muted-foreground/85',
@@ -308,29 +372,16 @@ export function ProductReviews({ productId }: { productId: string }) {
                 </p>
               )}
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWriting(false)
-                    setError(null)
-                  }}
-                  className="rounded-xl border border-border px-5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={submit}
-                  disabled={submitting}
-                  className="rounded-xl flex items-center gap-2 border border-transparent bg-gold-gradient px-6 py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:opacity-50 shadow-gold"
-                >
-                  {submitting && <Loader2 className="size-3.5 animate-spin" />}
-                  {t('review.submit')}
-                </button>
-              </div>
-            </div>
-          )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-xl flex items-center gap-2 border border-transparent bg-gold-gradient px-6 py-2.5 text-[11px] uppercase tracking-[0.12em] font-medium text-gold-foreground transition-all duration-300 hover:brightness-[1.05] disabled:opacity-50 shadow-gold"
+              >
+                {submitting && <Loader2 className="size-3.5 animate-spin" />}
+                {t('review.submit')}
+              </button>
+            </form>
+          ) : null}
         </div>
       )}
     </section>

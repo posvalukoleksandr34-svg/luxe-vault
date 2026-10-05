@@ -255,7 +255,7 @@ lock, a TOTP secret and every webhook secret configured.
   - RLS on every table in `public`;
   - migrations 0047–0049 applied (0048 checked by its effect, not its name);
   - write policies that apply to anon, `OK` only when scoped to `auth.uid()`;
-  - `SECURITY DEFINER` functions anon can call, `OK` only for trigger functions and the three that were read (`search_products`, `can_review`, `set_default_address`);
+  - `SECURITY DEFINER` functions anon can call, `OK` only for trigger functions and the three that were read (`search_products`, `can_review` — replaced by `review_eligibility` in 0052 — and `set_default_address`);
   - no policies at all on the server-only tables.
   - Verified: all 49 migrations apply cleanly to Postgres 16 with Supabase's roles and default grants, and the report shows no `PROBLEM`. A policy `using (true)` on orders, RLS switched off on a table, and an unguarded definer function were each planted and reported, then removed.
 
