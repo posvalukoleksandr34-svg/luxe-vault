@@ -46,6 +46,8 @@ export type Category = {
   slug: string
   name: LocalizedText
   sortOrder: number
+  /** Cover photograph for the subcategory card (0054); unset → a product photo. */
+  image?: string
 }
 
 /**

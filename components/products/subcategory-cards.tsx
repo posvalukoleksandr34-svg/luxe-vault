@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { Link } from '@/components/locale-link'
 import { productImage } from '@/lib/product-image'
 import { useStore } from '@/lib/store'
-import type { Product } from '@/lib/types'
+import { subcategoryCover } from '@/lib/subcategory-cover'
 import { cn } from '@/lib/utils'
 import { useListing } from './listing-context'
 
@@ -18,52 +18,54 @@ import { useListing } from './listing-context'
  * the department holds or where to go next. These are that answer, as real
  * links to /category/<department>/<subcategory>.
  *
- * DATA, NO NEW FIELDS. The subcategories are the department's own categories
- * (admin → Разделы), in the admin's order. The photograph is the subcategory's
- * own best product: the first one in stock, else any with a photo. A
- * subcategory with nothing in it yet still gets a card, with an initial on the
- * shop's sand ground instead of a photo and "Coming soon" instead of a count:
- * it is a real page that says so, and on a department still being stocked
- * hiding it would leave nothing to show.
+ * Every department with subcategories shows them. The subcategories are the
+ * department's own categories (admin → Разделы), in the admin's order. The
+ * photograph is the cover the admin chose for the subcategory, else its best
+ * product (lib/subcategory-cover.ts). A subcategory with neither still gets a
+ * card, with an initial on the shop's sand ground and "Coming soon" instead of
+ * a count: it is a real page that says so.
  *
  * LAYOUT. Phones and tablets: one row that scrolls sideways, bleeding to the
  * screen edge so the cut-off card says "there is more". From `lg`: a wrapped
  * grid across the full width above the sidebar and the grid.
  */
 
-/** Departments that show the cards. Started with Donna as the demo; add a
- *  slug (or drop the check in CategoryView) to roll it out. */
-export const SUBCATEGORY_CARD_DEPARTMENTS: ReadonlySet<string> = new Set(['women'])
-
-export function showsSubcategoryCards(group: string): boolean {
-  return SUBCATEGORY_CARD_DEPARTMENTS.has(group)
+/** Whether a department page shows the cards: it has subcategories. */
+export function useHasSubcategoryCards(group: string): boolean {
+  const { categoryTree } = useStore()
+  return (categoryTree.find((n) => n.group === group)?.items.length ?? 0) > 0
 }
 
-const available = (p: Product) =>
-  !p.statuses?.includes('out_of_stock') &&
-  !(p.variants && p.variants.length > 0 && p.variants.every((v) => (v.stock ?? 1) <= 0))
-
-type Card = { slug: string; label: string; count: number; image?: string }
+type Card = {
+  slug: string
+  label: string
+  count: number
+  image?: string
+  /** A product shot (usually on white): multiplied onto the ivory. A cover
+   *  the admin chose is shown as it is. */
+  blend: boolean
+}
 
 export function SubcategoryCards({ group }: { group: string }) {
-  const { categoryTree, categoryLabels, localize, t, tf } = useStore()
+  const { categoryTree, categories, categoryLabels, localize, t, tf } = useStore()
   const listing = useListing()
 
   const cards = useMemo<Card[]>(() => {
     const node = categoryTree.find((n) => n.group === group)
     if (!node) return []
     const products = listing?.products ?? []
-    return node.items.map((slug) => {
-      const own = products.filter((p) => p.group === group && p.category === slug && p.image)
-      const cover = own.find(available) ?? own[0]
-      return {
-        slug,
-        label: localize(categoryLabels[slug] ?? {}) || slug,
-        count: listing?.counts[`${group}/${slug}`] ?? own.length,
-        image: cover?.image,
-      }
-    })
-  }, [categoryTree, categoryLabels, localize, listing, group])
+    return node.items.map((slug) => ({
+      slug,
+      label: localize(categoryLabels[slug] ?? {}) || slug,
+      count:
+        listing?.counts[`${group}/${slug}`] ??
+        products.filter((p) => p.group === group && p.category === slug).length,
+      ...(() => {
+        const cover = subcategoryCover(categories, products, group, slug)
+        return { image: cover.src, blend: cover.source === 'product' }
+      })(),
+    }))
+  }, [categoryTree, categories, categoryLabels, localize, listing, group])
 
   if (cards.length === 0) return null
 
@@ -132,10 +134,11 @@ function SubcategoryCard({
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{caption}</span>
       </span>
 
-      {/* The photograph, cropped into the right side. Multiplied onto the
-          card's ivory, so a product shot on white — what most product photos
-          are — sits on the card's own ground instead of in a white box.
-          Decorative: the name is the link's text. */}
+      {/* The photograph, cropped into the right side. A product photo is
+          multiplied onto the card's ivory, so a shot on white — what most
+          product photos are — sits on the card's own ground instead of in a
+          white box; an admin's cover is shown as it is. Decorative: the name
+          is the link's text. */}
       <span aria-hidden className="absolute inset-y-0 right-0 isolate w-[46%] overflow-hidden bg-secondary">
         {photo ? (
           <Image
@@ -145,7 +148,10 @@ function SubcategoryCard({
             sizes="(min-width: 1280px) 130px, (min-width: 1024px) 150px, 110px"
             priority={priority}
             onError={() => setFailed(true)}
-            className="object-cover object-[50%_35%] mix-blend-multiply transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+            className={cn(
+              'object-cover object-[50%_35%] transition-transform duration-500 ease-out group-hover:scale-[1.05]',
+              card.blend && 'mix-blend-multiply',
+            )}
           />
         ) : (
           // Nothing to photograph yet: the initial, in the heading face, on

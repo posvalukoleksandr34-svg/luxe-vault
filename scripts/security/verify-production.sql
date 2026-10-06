@@ -62,6 +62,10 @@ checks as (
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0052_verified_buyer_reviews.sql — product reviews are refused until it is'
   union all
+  select 'migration 0054: subcategory cover images (categories.image_url)',
+         case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'categories' and column_name = 'image_url') then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0054_category_images.sql — covers cannot be saved until it is'
+  union all
   select 'migration 0053: card fraud guard (order_payment_risk, payment_blocks)',
          case when to_regclass('public.order_payment_risk') is not null and to_regclass('public.payment_blocks') is not null then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0053_payment_fraud_guard.sql — failed-attempt lockout is off until it is'

@@ -28,6 +28,13 @@ import type {
 
 const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
+/** With the subcategory cover (0054). Read first; CATEGORY_SELECT is the
+ *  fallback for a database that has not had 0054 yet. */
+const CATEGORY_SELECT_WITH_IMAGE = `${CATEGORY_SELECT}, image_url`
+
+/** Postgres / PostgREST "no such column". */
+const isMissingColumn = (error: { code?: string; message?: string } | null) =>
+  Boolean(error && (error.code === '42703' || error.code === 'PGRST204' || /column .* does not exist/i.test(error.message ?? '')))
 const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
   colors, statuses, is_new, limited, size_chart, specs, brand, style_tags, delivery_days_min, delivery_days_max,
@@ -243,10 +250,15 @@ export type TaxonomyLists = Pick<Catalog, 'collections' | 'categories'>
 async function readTaxonomyRows(
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<TaxonomyLists> {
-  const [collectionsRes, categoriesRes] = await Promise.all([
+  const [collectionsRes, withImages] = await Promise.all([
     supabase.from('collections').select(COLLECTION_SELECT).order('sort_order'),
-    supabase.from('categories').select(CATEGORY_SELECT).order('sort_order'),
+    supabase.from('categories').select(CATEGORY_SELECT_WITH_IMAGE).order('sort_order'),
   ])
+  // 0054 not applied yet: the catalogue without subcategory covers.
+  const categoriesRes: { data: Record<string, unknown>[] | null; error: { message: string } | null } =
+    isMissingColumn(withImages.error)
+      ? await supabase.from('categories').select(CATEGORY_SELECT).order('sort_order')
+      : withImages
 
   if (collectionsRes.error) throw new Error(`Failed to read collections: ${collectionsRes.error.message}`)
   if (categoriesRes.error) throw new Error(`Failed to read categories: ${categoriesRes.error.message}`)
@@ -261,6 +273,7 @@ async function readTaxonomyRows(
     slug: row.slug as string,
     name: (row.name ?? {}) as LocalizedText,
     sortOrder: (row.sort_order as number) ?? 0,
+    image: (row.image_url as string | null | undefined) ?? undefined,
   }))
 
   return { collections, categories }
@@ -414,12 +427,21 @@ export async function createCategory(input: {
  * Deletes a category. products.category_id is ON DELETE RESTRICT, so one that
  * still holds products fails here rather than taking them with it — surfaced
  * to the admin as a 409.
+ *
+ * Scoped to its department: since 0040 a slug is unique only within one
+ * (Women, Men and Kids each have "clothing"), so the slug alone would match
+ * several rows.
  */
-export async function deleteCategory(slug: string): Promise<boolean> {
-  const { data, error } = await createAdminClient()
+export async function deleteCategory(slug: string, collectionSlug: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  const collectionId = await collectionIdOf(supabase, collectionSlug)
+  if (!collectionId) return false
+
+  const { data, error } = await supabase
     .from('categories')
     .delete()
     .eq('slug', slug)
+    .eq('collection_id', collectionId)
     .select('id')
     .maybeSingle()
 
@@ -427,19 +449,67 @@ export async function deleteCategory(slug: string): Promise<boolean> {
   return Boolean(data)
 }
 
+/**
+ * Sets or clears (null) a subcategory's cover photograph. By id: a slug is
+ * unique only within its department.
+ */
+export async function updateCategoryImage(id: string, image: string | null): Promise<Category | null> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('categories')
+    .update({ image_url: image })
+    .eq('id', id)
+    .select(CATEGORY_SELECT_WITH_IMAGE)
+    .maybeSingle()
+
+  if (error) {
+    if (isMissingColumn(error)) throw new Error('Subcategory covers need migration 0054_category_images.sql')
+    throw new Error(`Failed to update category: ${error.message}`)
+  }
+  if (!data) return null
+  const row = data as unknown as Record<string, unknown>
+  const collectionSlug =
+    ((await supabase.from('collections').select('slug').eq('id', row.collection_id as string).maybeSingle()).data
+      ?.slug as string | undefined) ?? ''
+  return {
+    id: row.id as string,
+    collectionId: row.collection_id as string,
+    collectionSlug,
+    slug: row.slug as string,
+    name: (row.name ?? {}) as LocalizedText,
+    sortOrder: (row.sort_order as number) ?? 0,
+    image: (row.image_url as string | null) ?? undefined,
+  }
+}
+
+async function collectionIdOf(
+  supabase: ReturnType<typeof createAdminClient>,
+  slug: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.from('collections').select('id').eq('slug', slug).maybeSingle()
+  if (error) throw new Error(`Failed to read collection: ${error.message}`)
+  return (data?.id as string | undefined) ?? null
+}
+
 /** Resolves the uuids a product row needs from the slugs the app speaks. */
 async function resolveRefs(groupSlug: string, categorySlug: string) {
   const supabase = createAdminClient()
-  const [c, cat] = await Promise.all([
-    supabase.from('collections').select('id').eq('slug', groupSlug).maybeSingle(),
-    supabase.from('categories').select('id, collection_id').eq('slug', categorySlug).maybeSingle(),
-  ])
+  const c = await supabase.from('collections').select('id').eq('slug', groupSlug).maybeSingle()
   if (c.error || !c.data) throw new Error(`Unknown collection "${groupSlug}"`)
-  if (cat.error || !cat.data) throw new Error(`Unknown category "${categorySlug}"`)
-  if (cat.data.collection_id !== c.data.id) {
-    // Rejected here rather than stored: a product filed under a category that
-    // belongs to a different collection would vanish from both filters.
-    throw new Error(`Category "${categorySlug}" does not belong to "${groupSlug}"`)
+  // Looked up WITHIN the collection. Since 0040 a slug is unique only per
+  // department — Women, Men and Kids each have "clothing" — so the slug alone
+  // matched several rows, maybeSingle() failed, and every product saved into
+  // one of those categories was refused as "Unknown category".
+  const cat = await supabase
+    .from('categories')
+    .select('id')
+    .eq('collection_id', c.data.id)
+    .eq('slug', categorySlug)
+    .maybeSingle()
+  if (cat.error || !cat.data) {
+    // Also what a category from ANOTHER collection gets: filed under the wrong
+    // department, a product would vanish from both filters.
+    throw new Error(`Unknown category "${categorySlug}" in "${groupSlug}"`)
   }
   return { collectionId: c.data.id as string, categoryId: cat.data.id as string }
 }

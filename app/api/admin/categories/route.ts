@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createCategory, deleteCategory } from '@/lib/server/catalog-store'
+import { createCategory, deleteCategory, updateCategoryImage } from '@/lib/server/catalog-store'
 import type { Locale } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { revalidateStorefront } from '@/lib/server/revalidate'
@@ -71,14 +71,64 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Sets or clears a subcategory's cover photograph (the card on the department
+ * page). Body: { id: string, image: string | null } — by id, because a slug is
+ * unique only within its department.
+ *
+ * Accepted: an https:// address, a path on this site, or our own Storage's
+ * public URL (http on a local Supabase). The admin console uploads to Storage
+ * first (/api/admin/uploads) and sends the resulting URL; the database's check
+ * (0054) refuses anything that is not an address at all (a base64 blob,
+ * javascript:).
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Our own Storage, whatever its scheme: a local Supabase is plain http. */
+const STORAGE_PREFIX = `${(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')}/storage/v1/object/public/`
+
+function acceptableImage(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 2048 || /\s/.test(value)) return false
+  if (value.startsWith('https://')) return true
+  if (value.startsWith('/') && !value.startsWith('//')) return true
+  return STORAGE_PREFIX.length > '/storage/v1/object/public/'.length && value.startsWith(STORAGE_PREFIX)
+}
+
+export async function PATCH(request: NextRequest) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+  const body = await readJsonObject<{ id?: unknown; image?: unknown }>(request)
+  if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+
+  const id = typeof body.id === 'string' ? body.id : ''
+  if (!UUID_RE.test(id)) return NextResponse.json({ error: 'Category not found' }, { status: 404 })
+  const image = body.image === null ? null : acceptableImage(body.image) ? body.image : undefined
+  if (image === undefined) {
+    return NextResponse.json({ error: 'The image must be an https:// address (upload it first) or null' }, { status: 400 })
+  }
+
+  try {
+    const category = await updateCategoryImage(id, image)
+    if (!category) return NextResponse.json({ error: 'Category not found' }, { status: 404 })
+    revalidateStorefront()
+    return NextResponse.json({ category })
+  } catch (e) {
+    const message = (e as Error).message
+    console.error('[admin/categories] image update failed:', e)
+    return NextResponse.json({ error: message }, { status: /0054/.test(message) ? 503 : 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  const slug = new URL(request.url).searchParams.get('slug')
-  if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
+  const params = new URL(request.url).searchParams
+  const slug = params.get('slug')
+  const collection = params.get('collection')
+  if (!slug || !collection) return NextResponse.json({ error: 'Missing slug or collection' }, { status: 400 })
 
   try {
-    const removed = await deleteCategory(slug)
+    const removed = await deleteCategory(slug, collection)
     if (!removed) return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     revalidateStorefront()
     return NextResponse.json({ ok: true })

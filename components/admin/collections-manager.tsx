@@ -4,9 +4,10 @@ import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
+import { subcategoryCover } from '@/lib/subcategory-cover'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useFullCatalog, useStore } from '@/lib/store'
-import type { CategoryGroupKey } from '@/lib/types'
+import type { Category, CategoryGroupKey, Product } from '@/lib/types'
 
 // Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
 const MAX_FILE_SIZE_MB = 5
@@ -160,7 +161,7 @@ export function CollectionsManager() {
         ))}
       </div>
 
-      <CategoriesPanel onChanged={reloadCatalog} />
+      <CategoriesPanel products={products} onChanged={reloadCatalog} />
     </div>
   )
 }
@@ -292,15 +293,30 @@ function CategorySlot({
  * read the database, so a category added here appears everywhere without a
  * deploy. Only an empty category can be removed (products.category_id is ON
  * DELETE RESTRICT).
+ *
+ * Each one also carries the cover of its card on the department page
+ * (components/products/subcategory-cards.tsx): the preview here is exactly
+ * what the storefront shows — the chosen cover, else the subcategory's best
+ * product photo, else its initial (lib/subcategory-cover.ts).
  */
-function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void }) {
-  const { categoryTree, groupLabels, categoryLabels, products, collections, categories, pushToast } =
-    useStore()
+function CategoriesPanel({
+  products,
+  onChanged,
+}: {
+  /** The full catalogue: counts, and the product photo a card falls back to. */
+  products: Product[]
+  onChanged: () => Promise<void> | void
+}) {
+  const { categoryTree, groupLabels, categoryLabels, collections, categories, pushToast } = useStore()
   const [addingTo, setAddingTo] = useState<string | null>(null)
 
-  async function remove(slug: string, label: string) {
+  async function remove(group: string, slug: string, label: string) {
     if (!confirm(`Удалить категорию «${label}»?`)) return
-    const res = await fetch(`/api/admin/categories?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' })
+    // With its department: since 0040 the same slug exists in each one.
+    const res = await fetch(
+      `/api/admin/categories?slug=${encodeURIComponent(slug)}&collection=${encodeURIComponent(group)}`,
+      { method: 'DELETE' },
+    )
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       pushToast({ title: data?.error ?? 'Не удалось удалить категорию', variant: 'default' })
@@ -313,9 +329,10 @@ function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void 
   return (
     <section className="mt-10">
       <h2 className="mb-2 font-serif text-xl font-semibold text-foreground">Категории</h2>
-      <p className="mb-5 text-sm text-muted-foreground">
+      <p className="mb-5 max-w-3xl text-sm text-muted-foreground">
         По категориям работают фильтры магазина и выбор категории в карточке товара. Названия — на
-        всех языках сайта; пустой язык показывает русское название.
+        всех языках сайта; пустой язык показывает русское название. Обложка — фото на карточке
+        категории на странице раздела; если её нет, берётся фото товара из этой категории.
       </p>
 
       <div className="space-y-4">
@@ -341,37 +358,29 @@ function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void 
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {items.length === 0 && (
-                  <span className="text-xs text-muted-foreground/85">Категорий пока нет</span>
-                )}
-                {items.map((slug) => {
-                  const label = localize(categoryLabels[slug] ?? {}) || slug
-                  const count = products.filter((p) => p.group === group && p.category === slug).length
-                  const deletable = count === 0 && categories.some((c) => c.slug === slug)
-                  return (
-                    <span
-                      key={slug}
-                      className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground"
-                    >
-                      {label}
-                      <span className="font-mono text-[10px] text-muted-foreground/85">
-                        {slug} · {count}
-                      </span>
-                      {deletable && (
-                        <button
-                          type="button"
-                          onClick={() => void remove(slug, label)}
-                          className="text-muted-foreground/85 transition hover:text-destructive"
-                          aria-label={`Удалить категорию ${label}`}
-                        >
-                          <X className="size-3" />
-                        </button>
-                      )}
-                    </span>
-                  )
-                })}
-              </div>
+              {items.length === 0 ? (
+                <span className="text-xs text-muted-foreground/85">Категорий пока нет</span>
+              ) : (
+                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map((slug) => {
+                    const row = categories.find((c) => c.collectionSlug === group && c.slug === slug)
+                    const count = products.filter((p) => p.group === group && p.category === slug).length
+                    return (
+                      <CategoryTile
+                        key={slug}
+                        group={group}
+                        slug={slug}
+                        row={row}
+                        label={localize(categoryLabels[slug] ?? {}) || slug}
+                        count={count}
+                        cover={subcategoryCover(categories, products, group, slug)}
+                        onRemove={row && count === 0 ? remove : undefined}
+                        onChanged={onChanged}
+                      />
+                    )
+                  })}
+                </ul>
+              )}
 
               {addingTo === group && (
                 <NewCategoryForm
@@ -387,6 +396,155 @@ function CategoriesPanel({ onChanged }: { onChanged: () => Promise<void> | void 
         })}
       </div>
     </section>
+  )
+}
+
+/** One category: its card's cover (preview, upload, remove), name, slug, count. */
+function CategoryTile({
+  group,
+  slug,
+  row,
+  label,
+  count,
+  cover,
+  onRemove,
+  onChanged,
+}: {
+  group: string
+  slug: string
+  /** The database row; absent for a category that exists only in the code fallback. */
+  row?: Category
+  label: string
+  count: number
+  cover: ReturnType<typeof subcategoryCover>
+  onRemove?: (group: string, slug: string, label: string) => Promise<void>
+  onChanged: () => Promise<void> | void
+}) {
+  const { pushToast } = useStore()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState<'upload' | 'clear' | null>(null)
+  // A photo that fails to load shows the initial, as the storefront card does.
+  const [broken, setBroken] = useState<string | null>(null)
+  const preview = cover.src && cover.src !== broken ? cover.src : null
+
+  async function save(image: string | null) {
+    if (!row) return
+    const res = await fetch('/api/admin/categories', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: row.id, image }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error ?? 'Не удалось сохранить обложку')
+    await onChanged()
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (fileRef.current) fileRef.current.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      pushToast({ title: `«${file.name}» не является изображением`, variant: 'default' })
+      return
+    }
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      pushToast({ title: `«${file.name}» слишком большой (максимум ${MAX_FILE_SIZE_MB} МБ)`, variant: 'default' })
+      return
+    }
+    setBusy('upload')
+    try {
+      await save(await uploadCover(file))
+      pushToast({ title: `Обложка «${label}» обновлена`, variant: 'success' })
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'default' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function clear() {
+    setBusy('clear')
+    try {
+      await save(null)
+      pushToast({ title: `Своя обложка «${label}» убрана`, variant: 'default' })
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'default' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preview}
+            alt=""
+            onError={() => setBroken(preview)}
+            className={`size-full object-cover ${cover.source === 'product' ? 'mix-blend-multiply' : ''}`}
+          />
+        ) : (
+          <span className="flex size-full items-center justify-center font-serif text-2xl italic text-gold/70">
+            {label.trim().charAt(0).toUpperCase()}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm text-foreground">{label}</p>
+        <p className="font-mono text-[10px] text-muted-foreground/85">
+          {slug} · {count}
+        </p>
+        <p
+          className={`mt-0.5 text-[10px] uppercase tracking-[0.12em] ${cover.source === 'custom' ? 'text-gold' : 'text-muted-foreground'}`}
+        >
+          {cover.source === 'custom' ? 'Своя обложка' : cover.source === 'product' ? 'Фото товара' : 'Без фото'}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        {row && (
+          <>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy !== null}
+              title={cover.source === 'custom' ? 'Заменить обложку' : 'Загрузить обложку'}
+              aria-label={`${cover.source === 'custom' ? 'Заменить' : 'Загрузить'} обложку «${label}»`}
+              className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-gold/50 hover:text-gold disabled:opacity-50"
+            >
+              {busy === 'upload' ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
+            </button>
+            {cover.source === 'custom' && (
+              <button
+                type="button"
+                onClick={() => void clear()}
+                disabled={busy !== null}
+                title="Убрать свою обложку (вернуть фото товара)"
+                aria-label={`Убрать свою обложку «${label}»`}
+                className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
+              >
+                {busy === 'clear' ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+              </button>
+            )}
+          </>
+        )}
+        {onRemove && (
+          <button
+            type="button"
+            onClick={() => void onRemove(group, slug, label)}
+            title="Удалить категорию"
+            aria-label={`Удалить категорию ${label}`}
+            className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+    </li>
   )
 }
 

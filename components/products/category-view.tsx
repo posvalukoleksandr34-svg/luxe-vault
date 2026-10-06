@@ -5,7 +5,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CategoryNav } from '@/components/products/category-nav'
 import { FilterUrlSync } from '@/components/products/filter-url-sync'
 import { ProductGrid } from '@/components/products/product-grid'
-import { SubcategoryCards, showsSubcategoryCards } from '@/components/products/subcategory-cards'
+import { SubcategoryCards, useHasSubcategoryCards } from '@/components/products/subcategory-cards'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -28,8 +28,10 @@ export function CategoryView({ group, category }: { group: string; category?: st
   const groupLabel = localize(groupLabels[group] ?? {}) || group
   const categoryLabel = category ? localize(categoryLabels[category] ?? {}) || category : ''
 
-  // Department pages only: on a subcategory page you have already chosen.
-  const cards = !category && showsSubcategoryCards(group)
+  // Department pages with subcategories; on a subcategory page you have
+  // already chosen.
+  const hasCards = useHasSubcategoryCards(group)
+  const cards = !category && hasCards
 
   const trail = useMemo(
     () => [
