@@ -20,6 +20,7 @@ import {
   Users,
   Mail,
   RotateCcw,
+  MessageSquareWarning,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -35,6 +36,7 @@ import { ProductForm } from './product-form'
 import { TranslateCatalogButton } from './translate-catalog-button'
 import { GAP_LABELS, productGaps } from '@/lib/product-gaps'
 import { ReviewsManager } from './reviews-manager'
+import { ProductReviewsQueue } from './product-reviews-queue'
 import { STATUS_COLORS } from './order-controls'
 import { SupportManager } from './support-manager'
 import type { Order, Product } from '@/lib/types'
@@ -46,6 +48,7 @@ type AdminTab =
   | 'inventory'
   | 'customers'
   | 'reviews'
+  | 'productReviews'
   | 'support'
 
 /** Russian labels for the admin console, which is internal and Russian-only.
@@ -174,6 +177,9 @@ export function AdminPanel() {
             <NavButton active={tab === 'reviews'} onClick={() => setTab('reviews')} icon={<Star className="size-4" />}>
                 {t('reviews.title')}
               </NavButton>
+              <NavButton active={tab === 'productReviews'} onClick={() => setTab('productReviews')} icon={<MessageSquareWarning className="size-4" />}>
+                Отзывы о товарах
+              </NavButton>
               <NavButton active={tab === 'support'} onClick={() => setTab('support')} icon={<LifeBuoy className="size-4" />}>
                 {t('support.title')}
               </NavButton>
@@ -230,7 +236,7 @@ export function AdminPanel() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {/* Mobile nav */}
           <div className="mb-6 flex gap-1 overflow-x-auto lg:hidden">
             <NavButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')} icon={<LayoutDashboard className="size-4" />}>
@@ -257,6 +263,9 @@ export function AdminPanel() {
             </NavButton>
             <NavButton active={tab === 'reviews'} onClick={() => setTab('reviews')} icon={<Star className="size-4" />}>
               {t('reviews.title')}
+            </NavButton>
+            <NavButton active={tab === 'productReviews'} onClick={() => setTab('productReviews')} icon={<MessageSquareWarning className="size-4" />}>
+              Отзывы о товарах
             </NavButton>
             <NavButton active={tab === 'support'} onClick={() => setTab('support')} icon={<LifeBuoy className="size-4" />}>
               {t('support.title')}
@@ -532,6 +541,8 @@ export function AdminPanel() {
           {tab === 'customers' && <CustomersManager />}
 
           {tab === 'reviews' && <ReviewsManager />}
+
+          {tab === 'productReviews' && <ProductReviewsQueue />}
 
           {tab === 'support' && <SupportManager />}
         </main>

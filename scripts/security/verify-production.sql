@@ -62,6 +62,10 @@ checks as (
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0052_verified_buyer_reviews.sql — product reviews are refused until it is'
   union all
+  select 'migration 0053: card fraud guard (order_payment_risk, payment_blocks)',
+         case when to_regclass('public.order_payment_risk') is not null and to_regclass('public.payment_blocks') is not null then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0053_payment_fraud_guard.sql — failed-attempt lockout is off until it is'
+  union all
   select 'migration 0052: one product review per customer per product',
          case when to_regclass('public.reviews_one_per_user_product_idx') is not null then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0052_verified_buyer_reviews.sql'
@@ -106,7 +110,7 @@ checks as (
   select 'no customer access to public.' || t,
          case when not exists (select 1 from pg_policies where schemaname = 'public' and tablename = t) then 'OK' else 'PROBLEM' end,
          'server-only table: drop its policies'
-  from unnest(array['admin_sessions', 'admin_totp_steps', 'rate_limits', 'stripe_events']) as t
+  from unnest(array['admin_sessions', 'admin_totp_steps', 'rate_limits', 'stripe_events', 'order_payment_risk', 'payment_blocks']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action

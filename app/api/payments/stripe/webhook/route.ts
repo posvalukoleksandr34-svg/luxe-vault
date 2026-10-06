@@ -18,7 +18,8 @@ import {
   sendStockConflictAlert,
 } from '@/lib/server/mailer'
 import { notifyPaymentFailed } from '@/lib/server/notifications'
-import { constructWebhookEvent, isStripeWebhookConfigured } from '@/lib/server/stripe'
+import { constructWebhookEvent, getStripe, isStripeWebhookConfigured } from '@/lib/server/stripe'
+import { onCardFailure, onCardSuccess, onDispute, onEarlyFraudWarning } from '@/lib/server/payment-fraud'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
 import type { Order, PaymentStatus } from '@/lib/types'
 import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict, reportCriticalError } from '@/lib/telegram'
@@ -44,6 +45,10 @@ const HANDLED = [
   'payment_intent.payment_failed',
   'payment_intent.canceled',
   'charge.refunded',
+  // The fraud guard (lib/server/payment-fraud.ts). An early fraud warning on
+  // an order not yet shipped is refunded automatically; a dispute is flagged.
+  'radar.early_fraud_warning.created',
+  'charge.dispute.created',
 ]
 
 /**
@@ -99,6 +104,9 @@ export async function POST(request: NextRequest) {
     if (event.type === 'charge.refunded') {
       const synced = await syncRefund(event.data.object as Stripe.Charge)
       return NextResponse.json({ received: true, ...synced })
+    }
+    if (event.type === 'radar.early_fraud_warning.created' || event.type === 'charge.dispute.created') {
+      return await handleFraudSignal(event)
     }
     return await handlePaymentIntent(event)
   } catch (error) {
@@ -268,6 +276,16 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
     })
   }
 
+  // The fraud guard: a paid order Radar scored as risky is flagged for the
+  // admin; a failed card attempt is counted, and too many — or one that says
+  // the card is stolen or fraudulent — cancel the intent and lock the order.
+  if (next === 'paid') {
+    await afterPayment('risk check', paidOrder.id, () => onCardSuccess(paidOrder, intent))
+  }
+  if (next === 'failed') {
+    await afterPayment('fraud guard', paidOrder.id, () => onCardFailure(paidOrder, intent))
+  }
+
   // In-app notification for a failed payment. Guest orders have no user_id
   // and nowhere to deliver one — they still reach the order via its token.
   if (next === 'failed' && paidOrder.userId) {
@@ -310,6 +328,33 @@ async function handlePaymentIntent(event: Stripe.Event): Promise<NextResponse> {
   // Always 200 once the payment status is written. An email failure must not
   // make Stripe retry the event and re-run the money-state update.
   return NextResponse.json({ received: true, order: order.id, paymentStatus: next, receiptSent })
+}
+
+/**
+ * radar.early_fraud_warning.created and charge.dispute.created. Both name a
+ * charge; the order is found through its PaymentIntent.
+ */
+async function handleFraudSignal(event: Stripe.Event): Promise<NextResponse> {
+  const object = event.data.object as Stripe.Radar.EarlyFraudWarning | Stripe.Dispute
+  let paymentIntentId = typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id
+  if (!paymentIntentId) {
+    const chargeId = typeof object.charge === 'string' ? object.charge : object.charge?.id
+    if (chargeId) {
+      const charge = await getStripe().charges.retrieve(chargeId)
+      paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+    }
+  }
+  const order = paymentIntentId ? await findOrderByPaymentId(paymentIntentId) : null
+  if (!order) {
+    await reportCriticalError(`Stripe ${event.type} matched no order`, `${object.id} · ${paymentIntentId ?? 'no payment intent'}`)
+    return NextResponse.json({ received: true, matched: false })
+  }
+  if (event.type === 'charge.dispute.created') {
+    await onDispute(order, object as Stripe.Dispute)
+    return NextResponse.json({ received: true, order: order.id, flagged: 'dispute' })
+  }
+  const outcome = await onEarlyFraudWarning(order, object as Stripe.Radar.EarlyFraudWarning)
+  return NextResponse.json({ received: true, order: order.id, earlyFraudWarning: outcome })
 }
 
 /**

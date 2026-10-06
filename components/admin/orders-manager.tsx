@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ChevronDown, ClipboardList, FileDown, Search, Trash2, Truck } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ClipboardList, FileDown, Search, ShieldAlert, Trash2, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useMemo, useState } from 'react'
 import { ORDER_STATUS_LABELS_RU, PAYMENT_STATUS_LABELS_RU } from '@/lib/admin-labels'
@@ -8,6 +8,7 @@ import { formatCharged, orderCharge } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
 import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import type { OrderRisk } from '@/lib/server/payment-fraud'
 import { OrderStatusControl, PAYMENT_STATUS_COLORS, RefundControl, STATUS_COLORS } from './order-controls'
 
 /**
@@ -60,15 +61,30 @@ export function OrdersManager({
   initialOrderId,
   loadError,
   cappedAt,
+  risk: initialRisk = {},
 }: {
   initialOrders: Order[]
   initialOrderId: string | null
   loadError: boolean
+  /** Fraud-guard state by order number (lib/server/payment-fraud.ts). */
+  risk?: Record<string, OrderRisk>
   /** Set when only the newest N orders were loaded (see readOrders). */
   cappedAt: number | null
 }) {
   const { pushToast } = useStore()
   const [orders, setOrders] = useState<Order[]>(initialOrders)
+  const [risk, setRisk] = useState<Record<string, OrderRisk>>(initialRisk)
+
+  async function unlockPayment(id: string) {
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/unlock-payment`, { method: 'POST' })
+      if (!res.ok) throw new Error(String(res.status))
+      setRisk((prev) => ({ ...prev, [id]: { ...prev[id], failures: 0, lockedAt: undefined, lockReason: undefined } }))
+      pushToast({ title: `Оплата картой для ${id} разблокирована`, variant: 'default' })
+    } catch {
+      pushToast({ title: 'Не удалось разблокировать оплату', variant: 'default' })
+    }
+  }
   const [openId, setOpenId] = useState<string | null>(initialOrderId)
   const [tab, setTab] = useState<Tab>(() => {
     // Arriving for one order: open the tab it is in, not one that hides it.
@@ -359,6 +375,7 @@ export function OrdersManager({
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
+                          <RiskBadges risk={risk[order.id]} onUnlock={() => void unlockPayment(order.id)} />
                         </td>
                         <td className="px-4 py-3">
                           <Badge className={STATUS_COLORS[order.status]}>{ORDER_STATUS_LABELS_RU[order.status]}</Badge>
@@ -549,5 +566,44 @@ function Badge({ className, children }: { className: string; children: React.Rea
     <span className={cn('inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-medium', className)}>
       {children}
     </span>
+  )
+}
+
+const FRAUD_FLAG_LABELS: Record<NonNullable<OrderRisk['fraudFlag']>, string> = {
+  elevated_risk: 'Повышенный риск — проверить до отправки',
+  early_fraud_warning: 'Early fraud warning',
+  dispute: 'Спор (chargeback)',
+}
+
+/** The fraud guard's view of an order: a flag to check, a card-payment lock. */
+function RiskBadges({ risk, onUnlock }: { risk?: OrderRisk; onUnlock: () => void }) {
+  if (!risk || (!risk.fraudFlag && !risk.lockedAt)) return null
+  return (
+    <div className="mt-1 flex flex-col items-start gap-1">
+      {risk.fraudFlag && (
+        <Badge className="border-red-500/40 bg-red-500/10 text-red-700">
+          <span className="inline-flex items-center gap-1">
+            <ShieldAlert className="size-3" aria-hidden />
+            {FRAUD_FLAG_LABELS[risk.fraudFlag]}
+          </span>
+        </Badge>
+      )}
+      {risk.lockedAt && (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <Badge className="border-red-500/40 bg-red-500/10 text-red-700">Карта заблокирована</Badge>
+          <button
+            type="button"
+            title={risk.lockReason}
+            onClick={(event) => {
+              event.stopPropagation()
+              onUnlock()
+            }}
+            className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Разблокировать
+          </button>
+        </span>
+      )}
+    </div>
   )
 }

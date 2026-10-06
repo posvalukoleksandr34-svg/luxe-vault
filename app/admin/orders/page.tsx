@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { OrdersManager } from '@/components/admin/orders-manager'
 import { isAdminRequest } from '@/lib/server/admin-guard'
 import { ADMIN_ORDERS_LIMIT, readOrders } from '@/lib/server/orders-store'
+import { readOrderRisk, type OrderRisk } from '@/lib/server/payment-fraud'
 
 // Always the live list: statuses are changed here, and a cached render would
 // show a colleague's shipped order as still waiting.
@@ -27,8 +28,9 @@ export default async function AdminOrdersPage(props: { searchParams: Promise<{ o
 
   let orders: Awaited<ReturnType<typeof readOrders>> = []
   let loadError = false
+  let risk: Record<string, OrderRisk> = {}
   try {
-    orders = await readOrders()
+    ;[orders, risk] = await Promise.all([readOrders(), readOrderRisk()])
   } catch (e) {
     console.error('[admin/orders] read failed:', (e as Error).message)
     loadError = true
@@ -42,6 +44,7 @@ export default async function AdminOrdersPage(props: { searchParams: Promise<{ o
       initialOrders={orders}
       initialOrderId={initialOrderId}
       loadError={loadError}
+      risk={risk}
       cappedAt={orders.length >= ADMIN_ORDERS_LIMIT ? ADMIN_ORDERS_LIMIT : null}
     />
   )

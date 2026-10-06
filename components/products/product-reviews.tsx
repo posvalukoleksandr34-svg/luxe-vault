@@ -72,6 +72,7 @@ export function ProductReviews({ productId }: { productId: string }) {
   const [draftComment, setDraftComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [published, setPublished] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
@@ -130,11 +131,14 @@ export function ProductReviews({ productId }: { productId: string }) {
         return
       }
 
-      // Deliberately not optimistic. The review is pending moderation, so
-      // showing it in the list immediately would be showing the customer
-      // something nobody else can see.
+      // Published at once (the automatic filter passed it): reload so it
+      // appears in the list. Held for moderation: say so, and do not show it —
+      // nobody else can see it yet.
+      const data = await res.json().catch(() => ({}))
+      setPublished(data.pending === false)
       setSubmitted(true)
       setEligibility('reviewed')
+      if (data.pending === false) void load()
     } catch {
       setError(t('review.failed'))
     } finally {
@@ -289,7 +293,7 @@ export function ProductReviews({ productId }: { productId: string }) {
               role="status"
               className="rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-[13px] font-light text-gold"
             >
-              {t('review.pending')}
+              {published ? t('review.published') : t('review.pending')}
             </p>
           ) : eligibility === 'signed_out' ? (
             <button

@@ -35,12 +35,13 @@ export type RetentionResult = {
   orders: number
   newsletterPending: number
   cartRecords: number
+  paymentBlocks: number
   errors: string[]
 }
 
 export async function enforceRetention(): Promise<RetentionResult> {
   const supabase = createAdminClient()
-  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, errors: [] }
+  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, paymentBlocks: 0, errors: [] }
 
   // ---------------------------------------------------- support requests --
   try {
@@ -130,6 +131,22 @@ export async function enforceRetention(): Promise<RetentionResult> {
   } catch (e) {
     const err = e as { code?: string; message?: string }
     if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/carts: ${err.message}`)
+  }
+
+  // ------------------------------------------ expired card-payment blocks --
+  // Email / hashed-IP blocks from the fraud guard (0053) are only useful
+  // until they expire; nothing is kept after that.
+  try {
+    const { data, error } = await supabase
+      .from('payment_blocks')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+      .select('kind')
+    if (error) throw error
+    result.paymentBlocks = data?.length ?? 0
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/payment-blocks: ${err.message}`)
   }
 
   return result

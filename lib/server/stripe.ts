@@ -59,6 +59,20 @@ export function chargeCurrencies(): CardCurrencyCode[] {
   return listed.indexOf(BASE_CURRENCY) === -1 ? [BASE_CURRENCY].concat(listed) : listed
 }
 
+/**
+ * 3-D Secure for card payments. 'any' (the default) asks the card's bank to
+ * authenticate the cardholder whenever the card supports it, not only when
+ * Stripe or the law requires it: a stolen card number is useless without the
+ * owner's banking app or SMS code, and a fraud chargeback on an authenticated
+ * payment is normally the bank's loss, not the shop's (liability shift).
+ * The cost is one extra confirmation step for some customers.
+ * STRIPE_THREE_D_SECURE=automatic returns to Stripe's own judgement.
+ */
+export function threeDSecure(): 'any' | 'automatic' | 'challenge' {
+  const v = process.env.STRIPE_THREE_D_SECURE?.trim().toLowerCase()
+  return v === 'automatic' || v === 'challenge' ? v : 'any'
+}
+
 let client: Stripe | null = null
 
 /**
@@ -212,7 +226,7 @@ async function chargeIn(
         // Scoped to the card, never intent-wide — see the note on create.
         // '' clears a "remember this card" chosen on an earlier attempt.
         payment_method_options: {
-          card: { setup_future_usage: saveCard ? 'off_session' : '' },
+          card: { setup_future_usage: saveCard ? 'off_session' : '', request_three_d_secure: threeDSecure() },
         },
         // Clears an intent-wide value left by an intent minted BEFORE the move
         // to per-method scoping. Without this, an order that was already
@@ -250,9 +264,12 @@ async function chargeIn(
     // docs say so outright), and the tab strip can lose Klarna and Amazon Pay
     // entirely. Per-method, ticking "remember this card" changes the card and
     // nothing else.
-    ...(saveCard
-      ? { payment_method_options: { card: { setup_future_usage: 'off_session' as const } } }
-      : {}),
+    payment_method_options: {
+      card: {
+        request_three_d_secure: threeDSecure(),
+        ...(saveCard ? { setup_future_usage: 'off_session' as const } : {}),
+      },
+    },
   })
   return { ok: true, intent, currency, amount, rate }
 }

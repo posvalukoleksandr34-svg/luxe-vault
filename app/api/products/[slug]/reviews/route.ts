@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import {
+  autoApproveReview,
   parseRating,
   readProductReviews,
   reviewEligibility,
@@ -7,6 +8,7 @@ import {
   type ReviewEligibility,
 } from '@/lib/server/product-reviews'
 import { enforceLimit } from '@/lib/server/rate-limit'
+import { moderateReview } from '@/lib/server/review-moderation'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { readJsonObject } from '@/lib/server/http'
 
@@ -30,7 +32,9 @@ const PRIVATE = { 'Cache-Control': 'private, no-store' }
  *   403 NOT_VERIFIED_BUYER  no delivered order of theirs contains the product
  *   409 ALREADY_REVIEWED    one review per customer per product
  *   400                     malformed body, or a rating that is not 1–5
- *   201                     accepted, pending
+ *   201                     accepted: { pending: false } published at once by
+ *                           the automatic filter (4–5 stars, nothing flagged),
+ *                           { pending: true } held for the admin queue
  */
 export async function GET(_request: NextRequest, props: { params: Promise<{ slug: string }> }) {
   const params = await props.params
@@ -97,7 +101,13 @@ export async function POST(request: NextRequest, props: { params: Promise<{ slug
     return NextResponse.json({ error: result.error }, { status, headers: PRIVATE })
   }
 
-  // Pending, not published. The page says so rather than implying the review
-  // is live and leaving the customer to wonder why they cannot see it.
-  return NextResponse.json({ ok: true, pending: true }, { status: 201, headers: PRIVATE })
+  // Written as pending (customers cannot set the status). The filter decides
+  // whether it goes live now or waits for a person; either way the page tells
+  // the customer which, rather than leaving them to wonder where it went.
+  const comment = typeof body.comment === 'string' ? body.comment.trim().slice(0, 4000) : ''
+  const moderation = moderateReview({ rating, comment })
+  const published = moderation.decision === 'approve' && (await autoApproveReview(user.id, params.slug))
+  if (!published) console.info(`[reviews] held for moderation: ${params.slug} (${moderation.flags.join(', ') || 'auto-approve failed'})`)
+
+  return NextResponse.json({ ok: true, pending: !published }, { status: 201, headers: PRIVATE })
 }

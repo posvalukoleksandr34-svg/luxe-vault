@@ -91,9 +91,8 @@ Postgres 16 + PostgREST (scratch harness, not in the repo):
   - axe: no violations in the review area;
   - no console errors.
 
-## Still open
+## Moderation (since 2026-10-06)
 
-- **No admin screen moderates product reviews.** The admin "Reviews" tab
-  moderates store testimonials (`site_reviews`). A product review stays
-  `pending`, and invisible, until its `status` is set to `approved`, for now
-  in the Supabase table editor (`reviews`).
+A review with 4–5 stars and nothing flagged is published at once. Anything
+else stays `pending` in Admin → «Отзывы о товарах», with the reason. See
+[fraud-and-review-moderation-2026-10-06.md](fraud-and-review-moderation-2026-10-06.md).

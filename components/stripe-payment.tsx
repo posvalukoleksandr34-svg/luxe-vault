@@ -114,7 +114,7 @@ const EXPRESS_OPTIONS: StripeExpressCheckoutElementOptions = {
  * Never shows raw card data: Stripe's messages name the problem, not the card.
  */
 type PaymentProblem = {
-  kind: 'declined' | 'incomplete' | 'network' | 'field'
+  kind: 'declined' | 'incomplete' | 'network' | 'field' | 'blocked'
   message?: string
 }
 
@@ -122,6 +122,7 @@ const PROBLEM_COPY = {
   declined: { title: 'pay.declinedTitle', body: 'pay.declinedBody' },
   incomplete: { title: 'pay.incompleteTitle', body: 'pay.incompleteBody' },
   network: { title: 'pay.networkTitle', body: 'pay.networkBody' },
+  blocked: { title: 'pay.blockedTitle', body: 'checkout.paymentBlocked' },
 } as const
 
 function problemFrom(error: StripeError): PaymentProblem {
@@ -129,6 +130,11 @@ function problemFrom(error: StripeError): PaymentProblem {
   // 3-D Secure failed or was closed: nothing charged, the payment just did
   // not finish.
   if (error.code === 'payment_intent_authentication_failure') return { kind: 'incomplete' }
+  // The fraud guard cancelled this payment after too many failed or
+  // fraud-type attempts (lib/server/payment-fraud.ts): no card will work now.
+  if (error.code === 'payment_intent_unexpected_state' && error.payment_intent?.status === 'canceled') {
+    return { kind: 'blocked' }
+  }
   // Written for customers ("Your card has insufficient funds") and localised
   // by Stripe — worth showing as the explanation.
   if (error.type === 'card_error') return { kind: 'declined', message: error.message }

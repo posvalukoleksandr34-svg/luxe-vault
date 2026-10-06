@@ -15,7 +15,7 @@ export const PRIVACY: LegalDocSet = {
   ru: {
     title: 'Политика конфиденциальности',
     description: 'Какие персональные данные собирает Luxe Vault, зачем, кому передаёт, как долго хранит и как их удалить.',
-    effective: 'Действует с 4 октября 2026 года',
+    effective: 'Действует с 6 октября 2026 года',
     sections: [
       {
         h: '1. Кто отвечает за ваши данные',
@@ -90,7 +90,7 @@ export const PRIVACY: LegalDocSet = {
             'Обращения в поддержку и вложения — 24 месяца после закрытия, затем удаляются автоматически.',
             'Рассылка — до отписки; неподтверждённая подписка удаляется через 30 дней. После отписки хранится только отметка об отказе, чтобы больше не писать.',
             'Напоминание о корзине — не более 7 дней ожидания; запись удаляется через 30 дней после завершения. Отказ от напоминаний сохраняется, чтобы больше не писать.',
-            'Записи ограничения запросов (IP-адреса) — до 1 суток. Платёжные события Stripe — 90 дней.',
+            'Записи ограничения запросов (IP-адреса) — до 1 суток. Платёжные события Stripe — 90 дней. Защита от мошенничества с картами: после нескольких неудачных попыток оплаты или отказа банка по признакам мошенничества email и IP-адрес (в зашифрованном виде, HMAC) не могут платить картой 24 часа или 30 дней соответственно; затем запись удаляется. Stripe также проверяет каждый платёж своей системой Radar.',
             'Выбор по cookie — 12 месяцев, затем мы спрашиваем снова.',
             'Резервные копии — до 90 дней; удалённые данные исчезают из них по истечении этого срока.',
             'Сообщения в служебном Telegram-чате хранятся, пока продавец их не удалит; автоматически они не удаляются.',
@@ -140,7 +140,7 @@ export const PRIVACY: LegalDocSet = {
   en: {
     title: 'Privacy Policy',
     description: 'What personal data Luxe Vault collects, why, who receives it, how long it is kept and how to delete it.',
-    effective: 'In force since 4 October 2026',
+    effective: 'In force since 6 October 2026',
     sections: [
       {
         h: '1. Who is responsible for your data',
@@ -215,7 +215,7 @@ export const PRIVACY: LegalDocSet = {
             'Support requests and attachments — 24 months after they are closed, then deleted automatically.',
             'Newsletter — until you unsubscribe; an unconfirmed sign-up is deleted after 30 days. After unsubscribing, only a record of the opt-out is kept, so that we do not write again.',
             'Cart reminder — waits no more than 7 days; the record is deleted 30 days after it ends. An opt-out from reminders is kept, so that we do not write again.',
-            'Rate-limit records (IP addresses) — up to 1 day. Stripe payment events — 90 days.',
+            'Rate-limit records (IP addresses) — up to 1 day. Stripe payment events — 90 days. Card-fraud protection: after several failed card attempts, or a decline the bank marks as fraud, the email address and IP address (pseudonymised with an HMAC) are refused card payments for 24 hours or 30 days respectively; the record is then deleted. Stripe also screens every payment with its Radar system.',
             'Your cookie choice — 12 months, then we ask again.',
             'Backups — up to 90 days; deleted data leaves them when that period ends.',
             'Messages in the seller\'s internal Telegram chat stay until the seller deletes them; they are not deleted automatically.',
@@ -265,7 +265,7 @@ export const PRIVACY: LegalDocSet = {
   it: {
     title: 'Informativa sulla privacy',
     description: 'Quali dati personali raccoglie Luxe Vault, perché, chi li riceve, per quanto tempo li conserva e come cancellarli.',
-    effective: 'In vigore dal 4 ottobre 2026',
+    effective: 'In vigore dal 6 ottobre 2026',
     sections: [
       {
         h: '1. Chi è responsabile dei tuoi dati',
@@ -340,7 +340,7 @@ export const PRIVACY: LegalDocSet = {
             'Richieste di assistenza e allegati — 24 mesi dalla chiusura, poi cancellati automaticamente.',
             'Newsletter — fino alla disiscrizione; un\'iscrizione non confermata viene cancellata dopo 30 giorni. Dopo la disiscrizione resta solo la registrazione del rifiuto, per non scriverti più.',
             'Promemoria del carrello — attende al massimo 7 giorni; il record viene cancellato 30 giorni dopo la fine. Il rifiuto dei promemoria viene conservato, per non scriverti più.',
-            'Record dei limiti di richieste (indirizzi IP) — fino a 1 giorno. Eventi di pagamento Stripe — 90 giorni.',
+            'Record dei limiti di richieste (indirizzi IP) — fino a 1 giorno. Eventi di pagamento Stripe — 90 giorni. Protezione dalle frodi con carta: dopo diversi tentativi di pagamento falliti, o un rifiuto che la banca segnala come frode, l\'indirizzo email e l\'indirizzo IP (pseudonimizzato con HMAC) non possono pagare con carta per 24 ore o 30 giorni rispettivamente; poi il record viene cancellato. Stripe controlla inoltre ogni pagamento con il suo sistema Radar.',
             'La tua scelta sui cookie — 12 mesi, poi te la chiediamo di nuovo.',
             'Backup — fino a 90 giorni; i dati cancellati ne escono alla scadenza.',
             'I messaggi nella chat Telegram interna del venditore restano finché il venditore non li cancella; non vengono cancellati automaticamente.',

@@ -456,10 +456,16 @@ export function CheckoutFlow({
         // the customer can settle later rather than losing the basket.
         // Priced in the currency the customer is looking at. Only the code
         // goes up; the server converts the stored CHF total itself.
-        if (await requestCardIntent(order, currency)) {
+        const started = await requestCardIntent(order, currency)
+        if (started === true) {
           // Swap the form for the embedded PaymentElement. No navigation —
           // the customer never leaves the site.
           setCardOrder(order)
+          return
+        }
+        if (started === 'blocked') {
+          router.push('/')
+          pushToast({ title: t('checkout.paymentBlocked'), description: order.id, variant: 'default' })
           return
         }
 
@@ -495,7 +501,7 @@ export function CheckoutFlow({
    * it, or re-pricing the one the order already has. Returns false when
    * Stripe is unavailable.
    */
-  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean> {
+  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean | 'blocked'> {
     if (!order.lookupToken) return false
     const pay = await fetch('/api/payments/stripe/intent', {
       method: 'POST',
@@ -508,6 +514,9 @@ export function CheckoutFlow({
       }),
     })
     const payData = await pay.json().catch(() => ({}))
+    // The fraud guard refused: too many failed card attempts on this order or
+    // from this customer (lib/server/payment-fraud.ts).
+    if (pay.status === 403 && payData.error === 'PAYMENT_BLOCKED') return 'blocked'
     if (!pay.ok || !payData.clientSecret) return false
 
     setCharge({
@@ -532,7 +541,8 @@ export function CheckoutFlow({
     setRepricing(true)
     requestCardIntent(cardOrder, currency)
       .then((ok) => {
-        if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
+        if (ok === 'blocked') pushToast({ title: t('checkout.paymentBlocked'), variant: 'default' })
+        else if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
       })
       .catch(() => {})
       .finally(() => setRepricing(false))

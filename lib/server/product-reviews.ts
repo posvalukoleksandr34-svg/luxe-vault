@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { moderateReview, type ModerationFlag } from '@/lib/server/review-moderation'
 
 /**
  * Product reviews.
@@ -26,9 +27,11 @@ import { createClient } from '@/lib/supabase/server'
  * So every row is a verified purchase by construction, and the badge on the
  * page states a fact about the data rather than making a claim.
  *
- * Reviews are still moderated: they arrive `pending` and only an admin can
- * approve them. The stats view excludes pending rows, so an unreviewed
- * submission cannot move a product's average before a human has seen it.
+ * Then moderation (lib/server/review-moderation.ts): a 4–5 star review the
+ * filter finds clean is published at once; anything else stays `pending` for
+ * the admin queue (Admin → Отзывы о товарах). The stats view excludes pending
+ * rows, so a held review cannot move a product's average until a person has
+ * seen it.
  */
 
 export type ProductReview = {
@@ -226,4 +229,104 @@ export async function submitReview(input: {
   }
 
   return { ok: true }
+}
+
+/**
+ * Publishes a review the automatic filter passed (lib/server/review-moderation.ts).
+ *
+ * Service role, because customers cannot write `status` (0052). Matched on
+ * the customer and product (one review each, 0052) and only while still
+ * pending, so it can never re-publish something an admin rejected.
+ */
+export async function autoApproveReview(userId: string, productId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from('reviews')
+    .update({ status: 'approved' })
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .eq('status', 'pending')
+    .select('id')
+  if (error) {
+    console.error('[reviews] auto-approve failed:', error.message)
+    return false
+  }
+  return (data ?? []).length > 0
+}
+
+// ------------------------------------------------------------------ admin ----
+
+export type PendingProductReview = {
+  id: string
+  productId: string
+  productName: string
+  rating: number
+  comment?: string
+  createdAt: number
+  /** Full name and email: the admin sees who wrote it, the storefront never does. */
+  authorName: string
+  authorEmail: string
+  orderNumber?: string
+  /** Why the automatic filter held it. */
+  flags: ModerationFlag[]
+}
+
+/**
+ * The quarantine: product reviews still waiting for a person, oldest first,
+ * each with the reasons the filter held it. Admin only (the routes call
+ * requireAdmin); service role.
+ */
+export async function readPendingProductReviews(limit = 200): Promise<PendingProductReview[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('reviews')
+    .select('id, product_id, rating, comment, created_at, user_id, order_id')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+    .limit(limit)
+  if (error) throw new Error(error.message)
+  const rows = data ?? []
+  if (rows.length === 0) return []
+
+  const ids = <T,>(xs: T[]) => Array.from(new Set(xs.filter(Boolean)))
+  const [profiles, products, orders] = await Promise.all([
+    admin.from('profiles').select('id, name, email').in('id', ids(rows.map((r) => r.user_id as string))),
+    admin.from('products').select('slug, name').in('slug', ids(rows.map((r) => r.product_id as string))),
+    admin.from('orders').select('id, order_number').in('id', ids(rows.map((r) => r.order_id as string))),
+  ])
+  const who = new Map((profiles.data ?? []).map((p) => [p.id as string, p]))
+  const what = new Map((products.data ?? []).map((p) => [p.slug as string, p]))
+  const orderNo = new Map((orders.data ?? []).map((o) => [o.id as string, o.order_number as string]))
+
+  return rows.map((r) => {
+    const profile = who.get(r.user_id as string)
+    const product = what.get(r.product_id as string)
+    const name = product?.name as Record<string, string> | string | undefined
+    const comment = (r.comment as string | null) ?? undefined
+    return {
+      id: r.id as string,
+      productId: r.product_id as string,
+      productName: (typeof name === 'string' ? name : name?.ru || name?.it || name?.en) || (r.product_id as string),
+      rating: Number(r.rating),
+      comment,
+      createdAt: new Date(r.created_at as string).getTime(),
+      authorName: (profile?.name as string) || '—',
+      authorEmail: (profile?.email as string) || '',
+      orderNumber: orderNo.get(r.order_id as string),
+      flags: moderateReview({ rating: Number(r.rating), comment }).flags,
+    }
+  })
+}
+
+/** Approve (publish) or reject (keep hidden; the customer cannot post again). */
+export async function setProductReviewStatus(id: string, status: 'approved' | 'rejected'): Promise<boolean> {
+  const { data, error } = await createAdminClient().from('reviews').update({ status }).eq('id', id).select('id')
+  if (error) throw new Error(error.message)
+  return (data ?? []).length > 0
+}
+
+/** Delete outright; the customer may then write a new review. */
+export async function deleteProductReview(id: string): Promise<boolean> {
+  const { data, error } = await createAdminClient().from('reviews').delete().eq('id', id).select('id')
+  if (error) throw new Error(error.message)
+  return (data ?? []).length > 0
 }

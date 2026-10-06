@@ -7,6 +7,8 @@ import { getCurrentUser } from '@/lib/supabase/server'
 import { safeEqual } from '@/lib/server/secure-compare'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
+import { cardPaymentRefusal, hashIp, recordPaymentIp } from '@/lib/server/payment-fraud'
+import { clientIp } from '@/lib/server/client-ip'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,6 +81,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // The fraud guard (lib/server/payment-fraud.ts): an order locked after too
+  // many failed or fraud-type card attempts, or an email / IP address blocked
+  // for a while after one, gets no new client secret — and so no new chances
+  // to try cards. The customer is told to contact support.
+  const ipHash = hashIp(clientIp(request.headers))
+  const refusal = await cardPaymentRefusal(order, ipHash)
+  if (refusal) {
+    console.warn(`[fraud] card payment refused for ${order.id}: ${refusal}`)
+    return NextResponse.json({ error: 'PAYMENT_BLOCKED' }, { status: 403 })
+  }
+
   try {
     // The Stripe Customer that owns saved cards. Resolved from the SESSION,
     // never from the request body — a client-supplied customer id would let
@@ -135,6 +148,8 @@ export async function POST(request: NextRequest) {
     if (!attached) {
       return NextResponse.json({ error: 'This order is already paid or being paid' }, { status: 409 })
     }
+
+    await recordPaymentIp(order, ipHash)
 
     return NextResponse.json({
       clientSecret: intent.client_secret,
