@@ -1,0 +1,200 @@
+[33mf2c4a53[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: rebase (abort): returning to refs/heads/main
+[33mc7eb050[m HEAD@{1}: pull origin main --rebase (start): checkout c7eb050f9b44fe10a84eb740fcee6004cd531c8c
+[33mf2c4a53[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{2}: commit: fix: add @tanstack/react-query dependency
+[33m43d6a00[m HEAD@{3}: commit: feat: complete commercial release build with dashboard and admin panel
+[33m94839eb[m[33m ([m[1;32mclaude/serene-sutherland-bf381f[m[33m)[m HEAD@{4}: commit: perf+fix: pre-launch audit — indexes, a promo-code leak, N+1 reads, caching
+[33m14c8527[m HEAD@{5}: commit: feat(promo): /admin/promocodes with usage limits and expiry; a personal app code
+[33mfe67073[m HEAD@{6}: commit: fix(stripe-webhook): log failures with their stack; isolate work after the status is saved
+[33m621863d[m HEAD@{7}: commit: feat(telegram): a paid order arrives as a full shipping slip
+[33md1817cd[m HEAD@{8}: commit: feat(admin): /admin/orders — orders as a table; a SHIPPED Telegram alert
+[33md9a8916[m HEAD@{9}: commit: feat(checkout): ask for first and last name; show the buyer in Telegram alerts
+[33mbf9db3c[m HEAD@{10}: commit: feat(admin): /admin/referrals — edit the programme's terms, track and mark payouts
+[33mb56c7b3[m HEAD@{11}: commit: fix(storefront): hero button goes to departments; find a phone country by name
+[33m1dbfcd7[m HEAD@{12}: commit: chore: track .env.example
+[33m678a39a[m HEAD@{13}: commit: feat(admin): download an order's invoice or packing slip as a PDF
+[33m7782ef2[m HEAD@{14}: commit: feat(stock): warn the stock topic when an order takes a variant to two or fewer
+[33m7c882e2[m HEAD@{15}: commit: feat(telegram): route each kind of alert to its own forum topic
+[33m1a29d72[m HEAD@{16}: commit: feat(cron): the nightly sweep removes return photos no request points at
+[33m5f09c25[m HEAD@{17}: commit: feat(returns): customers can attach photos to a return request
+[33m39a912a[m HEAD@{18}: commit: feat(admin): /admin/returns — approve, reject, or mark a hand refund done
+[33mc902d96[m HEAD@{19}: commit: feat(returns): a return is a request with a reason, not a one-click button
+[33m4e2c5d1[m HEAD@{20}: commit: feat(monitoring): crash alerting, from the browser and from the money paths
+[33md8f88d5[m HEAD@{21}: commit (merge): merge: per-language URLs into main
+[33m8827afe[m[33m ([m[1;32mbackup/pre-locale-merge[m[33m)[m HEAD@{22}: commit: feat(ux): wishlist toasts, loading skeletons, a way out of the error page
+[33m81fe062[m HEAD@{23}: commit: feat(catalog): departments become Women/Men/Kids (migration + labels)
+[33mae1ec95[m HEAD@{24}: commit: fix(wishlist,home): count saved items that still exist; keep faces in the crop
+[33m59011e2[m HEAD@{25}: commit: feat(nav): a wishlist heart with its count in the header, and in the account menu
+[33md374041[m[33m ([m[1;32mfeat/url-filters[m[33m)[m HEAD@{26}: merge feat/url-filters: Fast-forward
+[33mcc60fb6[m[33m ([m[1;31morigin/feat/returns-rma[m[33m, [m[1;32mfeat/returns-rma[m[33m)[m HEAD@{27}: checkout: moving from feat/url-filters to main
+[33md374041[m[33m ([m[1;32mfeat/url-filters[m[33m)[m HEAD@{28}: commit: feat(wishlist): server-backed for an account, merged from this browser at sign-in
+[33m7819920[m HEAD@{29}: commit: feat(catalog): the filter lives in the URL, and the wishlist migration can run
+[33mcc60fb6[m[33m ([m[1;31morigin/feat/returns-rma[m[33m, [m[1;32mfeat/returns-rma[m[33m)[m HEAD@{30}: checkout: moving from main to feat/url-filters
+[33mcc60fb6[m[33m ([m[1;31morigin/feat/returns-rma[m[33m, [m[1;32mfeat/returns-rma[m[33m)[m HEAD@{31}: merge feat/returns-rma: Fast-forward
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{32}: checkout: moving from feat/returns-rma to main
+[33mcc60fb6[m[33m ([m[1;31morigin/feat/returns-rma[m[33m, [m[1;32mfeat/returns-rma[m[33m)[m HEAD@{33}: commit: feat(returns): schema, types and server layer for RMA requests
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{34}: checkout: moving from main to feat/returns-rma
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{35}: checkout: moving from main to main
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{36}: merge fix/stripe-webhook-order-lookup: Fast-forward
+[33mce249eb[m HEAD@{37}: pull origin main: Fast-forward
+[33m7a25335[m HEAD@{38}: checkout: moving from fix/stripe-webhook-order-lookup to main
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{39}: pull origin main --rebase (finish): returning to refs/heads/fix/stripe-webhook-order-lookup
+[33m64e25d6[m[33m ([m[1;32mfix/stripe-webhook-order-lookup[m[33m)[m HEAD@{40}: pull origin main --rebase (pick): fix(stripe): match a payment to its order by metadata when payment_id is absent
+[33mce249eb[m HEAD@{41}: pull origin main --rebase (start): checkout ce249eb7a0de9401bb4b1f4a256fecd050dd299b
+[33mee25cfb[m HEAD@{42}: commit: fix(stripe): match a payment to its order by metadata when payment_id is absent
+[33m7a25335[m HEAD@{43}: checkout: moving from main to fix/stripe-webhook-order-lookup
+[33m7a25335[m HEAD@{44}: checkout: moving from feat/locale-routes to main
+[33m21a9cc0[m[33m ([m[1;32mfeat/locale-routes[m[33m)[m HEAD@{45}: commit: perf(images): the department cards' sizes now matches the grid they sit in
+[33ma9019ad[m HEAD@{46}: commit: feat(i18n): every storefront route and every internal link now carries language
+[33m87a8162[m HEAD@{47}: commit: feat(seo): localised metadata, hreflang and a truthful sitemap, on /catalog
+[33m1954cf4[m HEAD@{48}: commit: feat(i18n): per-language URLs — the foundation, proven on /catalog
+[33m7a25335[m HEAD@{49}: checkout: moving from main to feat/locale-routes
+[33m7a25335[m HEAD@{50}: commit: feat(seo): one origin, a linked brand graph, and listing schema on the catalogue
+[33m3b507a3[m HEAD@{51}: commit: feat(i18n): the storefront drops Russian; the admin keeps it, independently
+[33me74948e[m HEAD@{52}: commit: fix(support): the header opens the support hub, not the form
+[33m0f03c80[m HEAD@{53}: commit: feat(support): the bot opens on the left, over its own button
+[33m5c34927[m HEAD@{54}: commit: feat(support): two entry points — the bot on the left, the request form on the right
+[33m524f004[m HEAD@{55}: commit: style(home): verified Unsplash art for the department cards
+[33m7c0b580[m HEAD@{56}: commit: feat(home): the homepage is a landing page — no products
+[33md65ae96[m HEAD@{57}: commit: feat(catalog): /catalog is a real page; departments open it directly
+[33me091fb8[m HEAD@{58}: commit: feat(fit): metric only — drop the inches/pounds toggle
+[33m7cc251a[m HEAD@{59}: commit: feat(fit): advanced fit finder — units, morphology, measurements, shoes
+[33m3b973d0[m HEAD@{60}: commit: feat(auth): open the account drawer on registration by default
+[33m08ef9d5[m HEAD@{61}: commit: feat(auth): Cloudflare Turnstile on sign-in, registration and password reset
+[33mff07e54[m HEAD@{62}: commit: feat(catalog): departments (Разделы) replace collections
+[33m9f5bf74[m HEAD@{63}: checkout: moving from main to main
+[33m9f5bf74[m HEAD@{64}: commit: style(mobile): full-bleed media, and fix the header overflow behind it
+[33m2cd6b63[m HEAD@{65}: reset: moving to HEAD
+[33m2cd6b63[m HEAD@{66}: checkout: moving from main to main
+[33m2cd6b63[m HEAD@{67}: commit: fix(ux): never block the first view — remove the welcome gate
+[33me51da00[m HEAD@{68}: commit: feat(pwa): disable zoom for the app-like feel
+[33m8b1752b[m HEAD@{69}: checkout: moving from main to main
+[33m8b1752b[m HEAD@{70}: commit: feat(mobile): app-style tab bar, first-launch welcome, wishlist
+[33m5c0a2c5[m[33m ([m[1;31morigin/feature/stealth-automation[m[33m, [m[1;32mfeature/stealth-automation[m[33m)[m HEAD@{71}: merge feature/stealth-automation: Fast-forward
+[33m95f545d[m[33m ([m[1;31morigin/refactor/continuous-hardening[m[33m)[m HEAD@{72}: checkout: moving from feature/stealth-automation to main
+[33m5c0a2c5[m[33m ([m[1;31morigin/feature/stealth-automation[m[33m, [m[1;32mfeature/stealth-automation[m[33m)[m HEAD@{73}: commit: style(ui): drop the Lifestyle card, three equal columns
+[33m8a7992e[m HEAD@{74}: commit: style(ui): lift the promo banner off the page instead of going black
+[33m7447217[m HEAD@{75}: commit: style(ui): restyle the app promo banner for the dark theme
+[33m63ed5d3[m HEAD@{76}: commit: feat(ui): departments grid on the homepage and PWA install banner
+[33mee2194c[m HEAD@{77}: commit: feat: Telegram ops alerts, live multi-currency with USDT, PWA, abandoned-cart action
+[33m95f545d[m[33m ([m[1;31morigin/refactor/continuous-hardening[m[33m)[m HEAD@{78}: checkout: moving from main to feature/stealth-automation
+[33m95f545d[m[33m ([m[1;31morigin/refactor/continuous-hardening[m[33m)[m HEAD@{79}: merge refactor/continuous-hardening: Fast-forward
+[33m1083293[m HEAD@{80}: checkout: moving from refactor/continuous-hardening to main
+[33m95f545d[m[33m ([m[1;31morigin/refactor/continuous-hardening[m[33m)[m HEAD@{81}: commit: ui: global error boundary and accessible names for form fields
+[33mad7bbc3[m HEAD@{82}: commit: security: upstream timeouts, upload signature checks, no provider error leaks
+[33m96bb4e0[m HEAD@{83}: commit: perf: purge dead UI kit and dependencies, memoise store context
+[33m9d1504f[m HEAD@{84}: commit: refactor: consolidate duplicated helpers and harden JSON body parsing
+[33m5f99a71[m[33m ([m[1;31morigin/security/csrf-csp-rate-limits[m[33m, [m[1;32msecurity/csrf-csp-rate-limits[m[33m)[m HEAD@{85}: checkout: moving from security/csrf-csp-rate-limits to refactor/continuous-hardening
+[33m5f99a71[m[33m ([m[1;31morigin/security/csrf-csp-rate-limits[m[33m, [m[1;32msecurity/csrf-csp-rate-limits[m[33m)[m HEAD@{86}: checkout: moving from refactor/continuous-hardening to security/csrf-csp-rate-limits
+[33m1083293[m HEAD@{87}: checkout: moving from main to refactor/continuous-hardening
+[33m1083293[m HEAD@{88}: checkout: moving from security/csrf-csp-rate-limits to main
+[33m5f99a71[m[33m ([m[1;31morigin/security/csrf-csp-rate-limits[m[33m, [m[1;32msecurity/csrf-csp-rate-limits[m[33m)[m HEAD@{89}: commit: security: CSP, rate limits, UI cleanup and security headers
+[33m1083293[m HEAD@{90}: checkout: moving from main to security/csrf-csp-rate-limits
+[33m1083293[m HEAD@{91}: commit: security: fix admin bypass, XSS, rate limits and tailwind styles
+[33m1b6fea9[m HEAD@{92}: commit: update: добавил новые фиксы
+[33m828e079[m HEAD@{93}: reset: moving to origin/main
+[33m828e079[m HEAD@{94}: reset: moving to origin/main
+[33m828e079[m HEAD@{95}: commit: feat: add Farfetch-style account dashboard and header dropdown
+[33m2fa9f04[m HEAD@{96}: commit: feat: add Farfetch-style account dashboard and header dropdown
+[33m5a7e060[m HEAD@{97}: reset: moving to origin/main
+[33m5a7e060[m HEAD@{98}: commit: feat: add Farfetch-style account dashboard and header dropdown
+[33m8a3c373[m HEAD@{99}: commit: feat: add Farfetch-style account dashboard and header dropdown
+[33m240a521[m HEAD@{100}: reset: moving to HEAD
+[33m240a521[m HEAD@{101}: commit: style: art-direction pass, phases 1-2 (design system, header, hero)
+[33me6f2f09[m HEAD@{102}: commit: fix(a11y): Web Interface Guidelines pass on search and Fit Finder; search all description languages
+[33mfad92b5[m HEAD@{103}: commit: feat: Fit Finder with usual size and product cut; natural-language search
+[33m48108c9[m HEAD@{104}: commit: feat(cart): drawer slides out as well as in; free-shipping bar on top
+[33mfd47458[m HEAD@{105}: commit: fix(admin): derive product availability from variant stock
+[33mde060d2[m HEAD@{106}: commit: feat: back-in-stock waitlist via Server Action; low-stock "Hurry" line
+[33m144b581[m HEAD@{107}: commit: feat: support center with ticket conversations; per-variant stock limits
+[33mb350b36[m HEAD@{108}: commit: feat(brand): LV monogram icon set, manifest, redesigned preview cards, BIMI assets
+[33mf6cb5d4[m HEAD@{109}: commit: ci: hourly GitHub Actions trigger for the abandoned-cart reminders
+[33mf0a1f72[m HEAD@{110}: commit: chore(cron): drop the hourly abandoned-cart cron for the Vercel Hobby plan
+[33m7abb8c5[m HEAD@{111}: commit: refactor(emails): minimal order confirmation, tracking in the shipped email, Dark Luxury redesign
+[33me7fd3ce[m HEAD@{112}: commit: feat: consent-gated GA4 + Meta Pixel, abandoned-cart recovery emails
+[33m8201c27[m HEAD@{113}: commit: feat: dark order emails with delivery estimate, product OG cards, SEO fixes, Apple/Google Pay
+[33m8ab6f3b[m HEAD@{114}: commit: perf: lazy-load drawers, cookie banner, audio and support widget; image priority
+[33m66751a5[m HEAD@{115}: reset: moving to HEAD
+[33m66751a5[m HEAD@{116}: commit: feat(shipping): admin-managed shipping fee, threshold and delivery timeframe
+[33ma826dc9[m HEAD@{117}: commit: fix(build): self-host Inter and Bodoni Moda instead of next/font/google
+[33m6fd3726[m HEAD@{118}: pull origin main: Fast-forward
+[33m9100bfd[m HEAD@{119}: commit: feat(content): pre-release audit - image/description fallbacks, admin gap flags, localised leftovers
+[33m1a99018[m HEAD@{120}: commit: feat(emails): localised light-design transactional emails, test mode, preview
+[33m8287063[m HEAD@{121}: commit: feat: 404/error/offline states, mobile hardening, touch targets, reduce-animations switch
+[33md20c4c0[m HEAD@{122}: commit: feat(payments): exactly-once webhook events, refund sync, clear payment outcomes
+[33mbc58ecc[m HEAD@{123}: commit: feat: unified empty/loading/error states; stylist quiz with a final summary screen
+[33m16fae24[m HEAD@{124}: commit: feat: gallery arrow fix, size-specific stock, readable descriptions, multilingual product copy
+[33m7a130e3[m HEAD@{125}: commit: feat: standard-only shipping, per-product delivery estimates, expanded categories
+[33mb8b4457[m HEAD@{126}: commit: feat(payments): charge cards in the selected currency (CHF, EUR, USD)
+[33m41f7cba[m HEAD@{127}: commit: feat: language & currency menu, discount badges, product page service panel
+[33m805e303[m HEAD@{128}: reset: moving to 805e303
+[33mcbee1dc[m HEAD@{129}: commit: feat(storefront): products above the fold, featured row, Quick View, wishlist, advanced filters
+[33m805e303[m HEAD@{130}: commit: fix(checkout): Stripe and every payment message follow the site's language
+[33m5ac7571[m HEAD@{131}: commit: fix: stylist never falls back to English; guest checkout from the cart
+[33mcae36cc[m HEAD@{132}: commit: feat(stylist): answer in the customer's language; Saved Looks in the profile
+[33m00d737b[m HEAD@{133}: commit: fix(mobile): account fields that move, lose focus, and drop the caret
+[33ma7822d8[m HEAD@{134}: commit: feat(stylist): write look copy with Google Gemini via @google/genai
+[33md6ea1f9[m HEAD@{135}: commit: feat: site-wide UI sound, mobile form fields, Curated Vaults, smart share
+[33m2f7c501[m HEAD@{136}: commit: feat: complete UI polish, mobile layout fixes and audio feedback
+[33md69a80c[m HEAD@{137}: commit: feat: saved looks and shareable capsules, notify-when-available dialog, fit advisor
+[33m59e2222[m HEAD@{138}: commit: fix(i18n): localise every AI Stylist survey option and result label
+[33m3cc0704[m HEAD@{139}: commit: feat: AI Stylist — consultation, look engine, and outfit checkout
+[33mdf547b6[m HEAD@{140}: commit: fix: page transition broke every in-page fixed modal
+[33m1bf6127[m HEAD@{141}: commit: fix: one reader for ADMIN_PASSWORD, and trim both sides on login
+[33m7d53a21[m HEAD@{142}: pull origin main: Fast-forward
+[33mfa9adee[m HEAD@{143}: reset: moving to HEAD~1
+[33m7d53a21[m HEAD@{144}: reset: moving to HEAD
+[33m7d53a21[m HEAD@{145}: reset: moving to HEAD~1
+[33m9873b14[m HEAD@{146}: commit: feat: cap the About measure, add a hero weave, add payment marks
+[33m7d53a21[m HEAD@{147}: commit: perf: split payment SDKs and the cursor layer, cache the catalogue API
+[33mfa9adee[m HEAD@{148}: commit: feat: add Meest carrier, drop the hardcoded Swiss Post from the timeline
+[33me49da58[m HEAD@{149}: commit: fix: UX audit — failures no longer render as empty states
+[33m58370b2[m HEAD@{150}: commit: feat: custom gold cursor across the site
+[33md3f1ea2[m HEAD@{151}: commit: fix: pointer atmosphere stayed dark after the cursor left the window
+[33mdc63f43[m HEAD@{152}: commit: feat: cinematic visual pass — cursor-reactive gold, layered hero, card depth
+[33mb82ff06[m HEAD@{153}: commit: feat: updated catalog routing, migrations, and account components
+[33m979730b[m HEAD@{154}: commit: feat: drop replica labels from products, add an editable brand field
+[33m86ae97a[m HEAD@{155}: commit: feat: remove the wishlist feature
+[33mc0fd9ba[m HEAD@{156}: commit: feat: hierarchical catalog routing with category and subcategory pages
+[33m1fb0a35[m HEAD@{157}: commit: feat: finalize account drawer with edit profile, password change and wishlist
+[33m6f632bd[m HEAD@{158}: commit: feat: finalize account drawer with edit profile, password change and wishlist
+[33m787f2b9[m HEAD@{159}: commit: feat: finalize account drawer with edit profile, password change and wishlist
+[33mcf97daf[m HEAD@{160}: commit: fix: adjust cron schedule for vercel hobby plan
+[33mc14fbc9[m HEAD@{161}: commit: chore: force vercel rebuild
+[33m9b36bec[m HEAD@{162}: commit: feat: complete P0-P3, polish Swiss e-commerce features, readiness for production
+[33mb1dac45[m HEAD@{163}: commit: feat: implement cart persistence via localStorage with reconciliation and bug fixes
+[33m567d0fe[m HEAD@{164}: commit: Fix security vulnerabilities, UI layers, and secure server-side order processing
+[33m87bf34a[m HEAD@{165}: commit: Fix security vulnerabilities, UI layers, and secure server-side order processing
+[33mabdaeae[m HEAD@{166}: commit: Add Supabase order generation and tracking redirect
+[33m95fab8e[m HEAD@{167}: commit: Update project and sync changes
+[33m45bb21b[m HEAD@{168}: commit: Update project and sync changes
+[33m737c856[m HEAD@{169}: commit: Fix checkout routing bug on PDP
+[33m99e2ba9[m HEAD@{170}: commit: Add database migration, triggers and notification center UI
+[33m9c27b02[m[33m ([m[1;31morigin/fix/order-tracker-and-card-payment-retry[m[33m, [m[1;32mfix/order-tracker-and-card-payment-retry[m[33m)[m HEAD@{171}: merge fix/order-tracker-and-card-payment-retry: Fast-forward
+[33m8cf1258[m HEAD@{172}: checkout: moving from fix/order-tracker-and-card-payment-retry to main
+[33m9c27b02[m[33m ([m[1;31morigin/fix/order-tracker-and-card-payment-retry[m[33m, [m[1;32mfix/order-tracker-and-card-payment-retry[m[33m)[m HEAD@{173}: commit: fix(orders): honour stored payment method on retry; redesign tracker
+[33m8cf1258[m HEAD@{174}: checkout: moving from main to fix/order-tracker-and-card-payment-retry
+[33m8cf1258[m HEAD@{175}: commit: feat: add SEO product pages and dynamic sitemap
+[33m371adb0[m HEAD@{176}: commit: add dynamic sitemap and robots.txt
+[33mf5df634[m HEAD@{177}: commit: add dynamic sitemap and robots.txt
+[33m7bce9d6[m HEAD@{178}: commit: add google verification file
+[33mdc462c1[m HEAD@{179}: commit: Fix legal pages localization bug and update store UI
+[33m71cd6ae[m HEAD@{180}: commit: Update Stillwave project files
+[33mfd5c2d6[m HEAD@{181}: commit: Fix Stripe overlay, update order lifecycle, and reframe legal pages for private seller
+[33m32ecd89[m HEAD@{182}: commit: Update Luxe Vault and Stillwave configuration
+[33me7ffd41[m HEAD@{183}: Branch: renamed refs/heads/main to refs/heads/main
+[33me7ffd41[m HEAD@{185}: commit: feat: migrate to stripe payment element and configure webhooks
+[33m3e9df2f[m HEAD@{186}: commit: feat: secure stripe integration, save profiles and auth access control
+[33m8d4498f[m[33m ([m[1;31morigin/feat/ambient-atmosphere-juicy-hover[m[33m, [m[1;32mfeat/ambient-atmosphere-juicy-hover[m[33m)[m HEAD@{187}: merge feat/ambient-atmosphere-juicy-hover: Fast-forward
+[33mbd617d4[m HEAD@{188}: checkout: moving from feat/ambient-atmosphere-juicy-hover to main
+[33m8d4498f[m[33m ([m[1;31morigin/feat/ambient-atmosphere-juicy-hover[m[33m, [m[1;32mfeat/ambient-atmosphere-juicy-hover[m[33m)[m HEAD@{189}: commit: feat(ui): live ambient atmosphere, global hover physics, frosted cards
+[33mbd617d4[m HEAD@{190}: checkout: moving from main to feat/ambient-atmosphere-juicy-hover
+[33mbd617d4[m HEAD@{191}: commit: Fix OTP verification flow, update email templates to 6-digit tokens, and set support@luxe-vault.store sender
+[33m8936ea0[m HEAD@{192}: commit: feat: support 8-digit OTP verification and Google OAuth login
+[33m5f6cc51[m HEAD@{193}: commit: feat: complete resend email integration and stabilize project
+[33m8e96345[m HEAD@{194}: commit: Fix OTP race condition with useRef and update recovery flow
+[33m38965eb[m HEAD@{195}: commit: Fix password recovery language flow and OTP
+[33m0fd1dce[m HEAD@{196}: commit: update database and structure migration
+[33md71abe6[m HEAD@{197}: commit: Update project state
+[33ma3aae8f[m HEAD@{198}: Branch: renamed refs/heads/main to refs/heads/main
+[33ma3aae8f[m HEAD@{200}: Branch: renamed refs/heads/master to refs/heads/main
+[33ma3aae8f[m HEAD@{202}: commit (initial): Replace old project with new elite build
