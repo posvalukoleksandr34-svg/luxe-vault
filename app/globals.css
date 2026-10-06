@@ -2155,3 +2155,49 @@ html[data-keyboard='open'] .hide-with-keyboard {
 main[tabindex='-1']:focus {
   outline: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Size finder: the preferred-fit slider (components/products/size-finder).
+   A hairline track and a charcoal thumb ringed in gold, as the reference.
+--------------------------------------------------------------------------- */
+.finder-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.finder-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.22);
+}
+.finder-range::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(var(--foreground) / 0.22);
+}
+.finder-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -12.5px;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 0 0 1px hsl(var(--gold) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
+  transition: transform 150ms ease;
+}
+.finder-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: hsl(var(--foreground));
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 0 0 1px hsl(var(--gold) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
+}
+.finder-range:active::-webkit-slider-thumb { transform: scale(1.08); }
+.finder-range:focus { outline: none; }
+.finder-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
+.finder-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }

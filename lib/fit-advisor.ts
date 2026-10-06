@@ -422,3 +422,193 @@ export function isNumericSizeRun(sizes: string[]): boolean {
     return Number.isFinite(n) && n >= 15 && n <= 60
   })
 }
+
+// ------------------------------------------------- the step-by-step finder --
+//
+// "Trova la tua misura" (components/products/size-finder) asks for height and
+// weight, then a few things height and weight cannot see — age, hips,
+// abdomen — and how the shopper wants THIS piece to sit, on a slider rather
+// than three buttons. Same tables as recommendSize above; the extra answers
+// move the size by fractions, never by whole sizes on their own.
+
+/** -1 narrower / flatter than average, 0 average, +1 wider / rounder. */
+export type ShapeLevel = -1 | 0 | 1
+
+export type FinderInput = {
+  heightCm: number
+  weightKg: number
+  /** Optional: the shopper may skip it. */
+  age?: number
+  hips?: ShapeLevel
+  abdomen?: ShapeLevel
+  /** The slider: -1 more fitted … 0 as designed … +1 looser. Continuous. */
+  fit: number
+  /** How the piece itself is cut (admin tag or read from its name). */
+  productCut?: FitPreference
+  /** Tops are led by chest and abdomen, bottoms by hips. */
+  kind: 'tops' | 'bottoms'
+}
+
+export const AGE_RANGE = { min: 16, max: 100 } as const
+
+/** Height and weight → a continuous index on the letter run (0 = XS). */
+function bodyIndex(heightCm: number, weightKg: number): { index: number; bmi: number } {
+  const meters = heightCm / 100
+  const bmi = weightKg / (meters * meters)
+  let index = bmiToIndex(bmi)
+  if (heightCm >= 180) index += Math.min(1, (heightCm - 180) / 16)
+  else if (heightCm <= 166) index -= Math.min(1, (166 - heightCm) / 16)
+  return { index, bmi }
+}
+
+/**
+ * How much each answer moves the size, per kind of garment.
+ *
+ * Hips decide trousers and skirts — a third of a size either way — and barely
+ * touch a jacket. The abdomen is the reverse. Both are self-descriptions, so
+ * neither can move the answer a whole size; together at most about two thirds.
+ */
+const SHAPE_WEIGHT = {
+  tops: { hips: 0.12, abdomen: 0.32 },
+  bottoms: { hips: 0.32, abdomen: 0.2 },
+} as const
+
+/**
+ * Age: at one height and weight, more of the weight sits at the waist with
+ * the years. A small nudge up from 40 and again from 55 — it can tip someone
+ * who is between two sizes, never on its own move a whole size.
+ */
+function ageShift(age: number | undefined): number {
+  if (age === undefined || !Number.isFinite(age)) return 0
+  if (age >= 55) return 0.18
+  if (age >= 40) return 0.1
+  return 0
+}
+
+/** The fit slider onto the cut-aware shift table, interpolated between stops. */
+function fitShift(fit: number, cut: FitPreference): number {
+  const t = Math.max(-1, Math.min(1, fit))
+  const row = SHIFT[cut]
+  return t < 0 ? row.regular + (row.slim - row.regular) * -t : row.regular + (row.oversized - row.regular) * t
+}
+
+/** The continuous size index the finder's answers point to. */
+export function finderScore(input: FinderInput): { score: number; bmi: number } {
+  const { index, bmi } = bodyIndex(input.heightCm, input.weightKg)
+  const w = SHAPE_WEIGHT[input.kind]
+  const score =
+    index +
+    (input.hips ?? 0) * w.hips +
+    (input.abdomen ?? 0) * w.abdomen +
+    ageShift(input.age) +
+    fitShift(input.fit, input.productCut ?? 'regular')
+  return { score, bmi }
+}
+
+export type SizeShare = {
+  size: string
+  /** The chance, in percent, that this is the shopper's size. */
+  percent: number
+  /** Buyable now, in the colour chosen. */
+  available: boolean
+}
+
+/** Below this chance of being the shopper's size, a size is never offered. */
+export const MIN_MATCH = 30
+
+/**
+ * The finder's answer fitted onto this product. Unlike fitToProduct it never
+ * offers "the nearest" for its own sake: a stand-in size is offered only when
+ * it is itself a likely match, or the answer is "none" and says why.
+ */
+export type FinderFit =
+  /** The size the answers point to — made, and in stock in this colour. */
+  | { kind: 'exact'; size: string; ideal: LetterSize }
+  /** The ideal size is sold out in this colour, or not made in this piece;
+   *  `size` is another that is still a likely match. */
+  | { kind: 'sold_out'; size: string; ideal: LetterSize }
+  | { kind: 'not_carried'; size: string; ideal: LetterSize }
+  /**
+   * Nothing this product sells right now is a likely match. `range`: beyond
+   * what the table can answer; `sold_out`: the ideal size is made but sold
+   * out in this colour; `not_carried`: the ideal size is not made at all.
+   */
+  | { kind: 'none'; ideal: LetterSize; reason: 'range' | 'sold_out' | 'not_carried' }
+
+export type FinderResult = {
+  /** The size their answers point to, before looking at this product. */
+  rec: FitRecommendation
+  /** That answer fitted onto what this product makes and has in stock. */
+  fit: FinderFit
+  /**
+   * For each size this product makes, the chance that it is the shopper's
+   * size, highest first. A spread rather than a verdict, because between two
+   * sizes is a real answer: "M 62 %, L 31 %" says more than "M". They add up
+   * to 100 only when the product's run covers the shopper; when it does not,
+   * the sizes it lacks keep their share and the bars stay short — "M 23 %,
+   * L 10 %" is what "no size found" looks like.
+   */
+  shares: SizeShare[]
+  /** Outside what the table can answer (very low or high BMI, or past the
+   *  ends of the run): shown as "no size found", never as a confident size. */
+  outOfRange: boolean
+}
+
+/**
+ * How far the estimate looks past both ends of the letter run. A frame beyond
+ * XXXL keeps its chance out there instead of piling it onto XXXL. Three is
+ * past the furthest any answer can reach (about -2.9 and 9.2).
+ */
+const RUN_PAD = 3
+
+/**
+ * The finder's whole answer for one product.
+ *
+ * The chances are a normal curve over the size run centred on the score, as
+ * wide as the uncertainty: tight when the answers land squarely on one size,
+ * broad when they sit between two or the frame is at the ends of the table.
+ */
+export function finderRecommendation(
+  input: FinderInput,
+  productSizes: string[],
+  isAvailable: (size: string) => boolean,
+): FinderResult {
+  const { score, bmi } = finderScore(input)
+  const rounded = Math.round(score)
+  const index = Math.max(0, Math.min(LETTER_SIZES.length - 1, rounded))
+  const offGrid = Math.abs(score - rounded)
+  const outOfRange = bmi < 16 || bmi > 35 || score < -0.75 || score > LETTER_SIZES.length - 0.25
+  const confidence: Confidence = outOfRange ? 'low' : offGrid < 0.2 ? 'high' : offGrid < 0.35 ? 'medium' : 'low'
+  const ideal = LETTER_SIZES[index]
+  const rec: FitRecommendation = { size: ideal, score, confidence, basis: 'body' }
+
+  const sigma = outOfRange ? 1 : 0.42
+  const weight = (i: number) => Math.exp(-((i - score) ** 2) / (2 * sigma * sigma))
+  let total = 0
+  for (let i = -RUN_PAD; i < LETTER_SIZES.length + RUN_PAD; i++) total += weight(i)
+  const chance = (size: string) => (weight(indexOfSize(size)) / total) * 100
+
+  // Ranked on the exact chance, ties to the LARGER size (slightly roomy is
+  // wearable, slightly tight is a return); rounded only for display.
+  const ranked = productSizes
+    .filter((s) => indexOfSize(s) !== -1)
+    .map((size) => ({ size, exact: chance(size), available: isAvailable(size) }))
+    .sort((a, b) => b.exact - a.exact || indexOfSize(b.size) - indexOfSize(a.size))
+  const shares = ranked.map(({ size, exact, available }) => ({ size, percent: Math.round(exact), available }))
+
+  const idealMade = ranked.some((s) => indexOfSize(s.size) === index)
+  const best = ranked.find((s) => s.available)
+  let fit: FinderFit
+  if (!outOfRange && best && best.exact >= MIN_MATCH) {
+    fit =
+      indexOfSize(best.size) === index
+        ? { kind: 'exact', size: best.size, ideal }
+        : { kind: idealMade ? 'sold_out' : 'not_carried', size: best.size, ideal }
+  } else {
+    // Past the end of the run, even the ideal size is not a likely match.
+    const reason = outOfRange || chance(ideal) < MIN_MATCH ? 'range' : idealMade ? 'sold_out' : 'not_carried'
+    fit = { kind: 'none', ideal, reason }
+  }
+
+  return { rec, fit, shares, outOfRange }
+}

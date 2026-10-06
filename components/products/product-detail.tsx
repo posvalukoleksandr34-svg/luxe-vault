@@ -22,6 +22,8 @@ import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
+import { SizeFinder } from '@/components/products/size-finder/size-finder'
+import { isLetterSizeRun } from '@/lib/fit-advisor'
 import { HurryDot } from '@/components/products/hurry-dot'
 import { resolveTags } from '@/lib/stylist/tagging'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
@@ -686,25 +688,43 @@ export function ProductDetail({ product }: { product: Product }) {
               {t('product.size')}
             </p>
             <div className="flex items-center gap-4">
-              {/* Renders nothing unless the run is letter sizes — a
-                  height-and-weight table has nothing to say about 42 or OS.
+              {/* Letter-sized clothing: the step-by-step finder. Shoes keep
+                  the foot-length finder below; anything else gets neither.
                   "Available" means buyable in the colour chosen right now. */}
-              <FitAdvisorModal
-                sizes={p.sizes}
-                // Buyable now: the catalogue's stock AND the server's latest
-                // word on it (the store's stockLimit).
-                isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor, p) !== 0}
-                onApply={setSize}
-                productCut={resolveTags(p).fit}
-                sizeChart={p.sizeChart}
-                productId={p.id}
-                // Decides which measurements the finder asks for: a chest for
-                // a jacket, a foot length for sneakers.
-                group={p.group}
-                category={p.category}
-                // The printed chart lives on this page; the finder links to it.
-                onOpenSizeChart={sizeChart.length > 0 ? () => setShowGuide(true) : undefined}
-              />
+              {isLetterSizeRun(p.sizes) ? (
+                <SizeFinder
+                  sizes={p.sizes}
+                  isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor, p) !== 0}
+                  onApply={setSize}
+                  productCut={resolveTags(p).fit}
+                  // The chosen colour's own first photo, not whichever slide
+                  // of the gallery happens to be showing.
+                  image={allImages[0] ?? p.image}
+                  name={productName}
+                  // Trousers and skirts are read from the hips, the rest
+                  // from chest and abdomen.
+                  kind={/\b(pants?|trousers?|jeans|shorts|skirts?|leggings?|chinos?|pantaloni|gonna|gonne|pantalons?|jupes?|hosen?|röcke?|rock)\b/i.test(`${p.category} ${localize(p.name)}`) ? 'bottoms' : 'tops'}
+                  group={p.group}
+                  onOpenSizeChart={sizeChart.length > 0 ? () => setShowGuide(true) : undefined}
+                />
+              ) : (
+                <FitAdvisorModal
+                  sizes={p.sizes}
+                  // Buyable now: the catalogue's stock AND the server's latest
+                  // word on it (the store's stockLimit).
+                  isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor, p) !== 0}
+                  onApply={setSize}
+                  productCut={resolveTags(p).fit}
+                  sizeChart={p.sizeChart}
+                  productId={p.id}
+                  // Decides which measurements the finder asks for: a chest for
+                  // a jacket, a foot length for sneakers.
+                  group={p.group}
+                  category={p.category}
+                  // The printed chart lives on this page; the finder links to it.
+                  onOpenSizeChart={sizeChart.length > 0 ? () => setShowGuide(true) : undefined}
+                />
+              )}
               {/* Hidden entirely when the product has no measurements — an
                   empty guide is worse than no guide. */}
               {sizeChart.length > 0 && (
@@ -734,6 +754,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   onMouseEnter={soldOut ? undefined : playHoverSound}
                   disabled={soldOut}
                   aria-label={soldOut ? `${s} — ${t('sold.out')}` : s}
+                  aria-pressed={size === s}
                   title={soldOut ? `${s} — ${t('sold.out')}` : undefined}
                   className={cn(
                     'tap-safe min-w-11 rounded-xl border px-3 py-2.5 text-[13px] font-light transition-all duration-200',
