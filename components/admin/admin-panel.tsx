@@ -3,7 +3,6 @@
 import {
   Boxes,
   ChevronLeft,
-  Gift,
   ChevronRight,
   Edit2,
   Images,
@@ -215,13 +214,6 @@ export function AdminPanel() {
                 <RotateCcw className="size-4" />
                 Возвраты
               </Link>
-              <Link
-                href="/admin/referrals"
-                className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-              >
-                <Gift className="size-4" />
-                Рефералы
-              </Link>
             </nav>
 
             <button
@@ -294,13 +286,6 @@ export function AdminPanel() {
             >
               <RotateCcw className="size-4" />
               Возвраты
-            </Link>
-            <Link
-              href="/admin/referrals"
-              className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            >
-              <Gift className="size-4" />
-              Рефералы
             </Link>
             <button
               type="button"

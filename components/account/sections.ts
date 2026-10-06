@@ -8,8 +8,6 @@ export type AccountSectionKey =
   | 'credits'
   | 'details'
   | 'settings'
-  | 'referral'
-  | 'app'
   | 'addresses'
   | 'looks'
 
@@ -29,9 +27,6 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
   { key: 'credits', labelKey: 'acct.credits', inMenu: true },
   { key: 'details', labelKey: 'acct.details', inMenu: true, card: { titleKey: 'acct.details', descKey: 'acct.detailsDesc' } },
   { key: 'settings', labelKey: 'acct.settings', inMenu: true },
-  { key: 'referral', labelKey: 'acct.referral', inMenu: true, card: { titleKey: 'acct.referral', descKey: 'acct.referralDesc' } },
-  // The installed app's personal promo code (and, in a browser, how to get it).
-  { key: 'app', labelKey: 'acct.appCode', inMenu: true },
   { key: 'addresses', labelKey: 'acct.addresses', inMenu: false, card: { titleKey: 'acct.addresses', descKey: 'acct.addressesDesc' } },
   // Saved capsules from the stylist. Not in the brief's menu, but an existing
   // part of the account — reachable from the section rail.
@@ -39,7 +34,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
 ]
 
 /** Dashboard card order, as the brief lists them. */
-export const CARD_ORDER: AccountSectionKey[] = ['orders', 'details', 'addresses', 'referral']
+export const CARD_ORDER: AccountSectionKey[] = ['orders', 'details', 'addresses']
 
 export function accountHref(key: AccountSectionKey): string {
   return `/account?section=${key}`

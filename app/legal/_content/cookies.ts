@@ -6,7 +6,6 @@ const SUPPORT = 'support@luxe-vault.store'
  * The Cookie Policy — every cookie and browser-storage entry the site sets,
  * from the code:
  *   sb-*-auth-token        lib/supabase (@supabase/ssr, 400-day default)
- *   lv_ref                 app/r/[code]/route.ts (REFERRAL_COOKIE_DAYS = 30)
  *   __Host-lv_admin_session lib/server/admin-auth.ts (8 h, console only)
  *   __stripe_mid/_sid      Stripe.js, on the payment form
  *   __cf_bm                Cloudflare bot management (when enabled)
@@ -32,7 +31,6 @@ export const COOKIES: LegalDocSet = {
         blocks: [
           { ul: [
             '**sb-…-auth-token** (Luxe Vault / Supabase) — сохраняет вход в аккаунт. До выхода из аккаунта, не дольше 400 дней.',
-            '**lv_ref** (Luxe Vault) — ставится, только если вы открыли реферальную ссылку: хранит код, чтобы при оформлении применить скидку для приглашённого. 30 дней.',
             '**__stripe_mid**, **__stripe_sid** (Stripe) — защита от мошенничества при оплате картой; появляются, когда загружается форма оплаты. 1 год и 30 минут.',
             '**__cf_bm** (Cloudflare) — может ставиться для отсева ботов. 30 минут. Проверка Cloudflare Turnstile в формах работает во встроенном окне Cloudflare.',
             '**__Host-lv_admin_session** (Luxe Vault) — только для входа продавца в панель управления. 8 часов.',
@@ -70,7 +68,7 @@ export const COOKIES: LegalDocSet = {
             '**lv.fit.v1**, **lv.finder.v1** — мерки и ответы из помощника по размеру (рост, вес, возраст — если указан). «Начать заново» удаляет ответы.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — язык, валюта, анимация и звук.',
             '**lv.analytics.purchases** — номера заказов, уже переданных в аналитику (только с согласием), чтобы не учитывать покупку дважды.',
-            '**lv.welcome-checked**, **lv.appCode.announced** — показ промокода приложения.',
+            '**lv.welcome-checked** (sessionStorage, до закрытия вкладки) — чтобы приветственное письмо не запрашивалось при каждой загрузке страницы.',
             '**luxe-vault-category-images** — изображения разделов, чтобы страница открывалась быстрее.',
           ] },
           { p: 'Сайт также использует service worker, который кэширует файлы сайта для быстрой и офлайн-загрузки. Персональных данных он не кэширует.' },
@@ -101,7 +99,6 @@ export const COOKIES: LegalDocSet = {
         blocks: [
           { ul: [
             '**sb-…-auth-token** (Luxe Vault / Supabase) — keeps you signed in. Until you sign out, at most 400 days.',
-            '**lv_ref** (Luxe Vault) — set only when you open a referral link: holds the code so the friend\'s discount can be applied at checkout. 30 days.',
             '**__stripe_mid**, **__stripe_sid** (Stripe) — fraud prevention for card payments; set when the payment form loads. 1 year and 30 minutes.',
             '**__cf_bm** (Cloudflare) — may be set to filter out bots. 30 minutes. The Cloudflare Turnstile check on forms runs in Cloudflare\'s own embedded frame.',
             '**__Host-lv_admin_session** (Luxe Vault) — the seller\'s console sign-in only. 8 hours.',
@@ -139,7 +136,7 @@ export const COOKIES: LegalDocSet = {
             '**lv.fit.v1**, **lv.finder.v1** — measurements and answers entered in the size advisor and size finder (height, weight, and age if given). "Start over" deletes the answers.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — language, currency, animation and sound.',
             '**lv.analytics.purchases** — order numbers already reported to analytics (only with consent), so a purchase is not counted twice.',
-            '**lv.welcome-checked**, **lv.appCode.announced** — whether the app\'s promo code has been shown.',
+            '**lv.welcome-checked** (sessionStorage, until the tab is closed) — so the welcome email is not requested again on every page load.',
             '**luxe-vault-category-images** — department images, so pages open faster.',
           ] },
           { p: 'The site also uses a service worker that caches the site\'s own files for fast and offline loading. It does not cache personal data.' },
@@ -170,7 +167,6 @@ export const COOKIES: LegalDocSet = {
         blocks: [
           { ul: [
             '**sb-…-auth-token** (Luxe Vault / Supabase) — mantiene l\'accesso all\'account. Fino all\'uscita, al massimo 400 giorni.',
-            '**lv_ref** (Luxe Vault) — impostato solo se apri un link referral: conserva il codice per applicare lo sconto dell\'invitato al checkout. 30 giorni.',
             '**__stripe_mid**, **__stripe_sid** (Stripe) — prevenzione delle frodi nei pagamenti con carta; impostati quando si carica il modulo di pagamento. 1 anno e 30 minuti.',
             '**__cf_bm** (Cloudflare) — può essere impostato per filtrare i bot. 30 minuti. La verifica Cloudflare Turnstile nei moduli funziona nel riquadro incorporato di Cloudflare.',
             '**__Host-lv_admin_session** (Luxe Vault) — solo per l\'accesso del venditore alla console. 8 ore.',
@@ -208,7 +204,7 @@ export const COOKIES: LegalDocSet = {
             '**lv.fit.v1**, **lv.finder.v1** — le misure e le risposte inserite nel consulente taglie e in «Trova la tua misura» (altezza, peso ed età, se indicata). «Inizia da capo» cancella le risposte.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — lingua, valuta, animazioni e suoni.',
             '**lv.analytics.purchases** — numeri d\'ordine già comunicati all\'analisi (solo con consenso), per non contare due volte un acquisto.',
-            '**lv.welcome-checked**, **lv.appCode.announced** — se il codice promo dell\'app è già stato mostrato.',
+            '**lv.welcome-checked** (sessionStorage, fino alla chiusura della scheda) — per non richiedere l\'email di benvenuto a ogni caricamento di pagina.',
             '**luxe-vault-category-images** — immagini dei reparti, per aprire le pagine più in fretta.',
           ] },
           { p: 'Il sito usa anche un service worker che memorizza i file del sito per un caricamento rapido e offline. Non memorizza dati personali.' },

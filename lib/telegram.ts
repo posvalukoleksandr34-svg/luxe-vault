@@ -1,7 +1,6 @@
 import 'server-only'
 
 import { formatCharged } from '@/lib/currency'
-import { REFERRAL_CODE_RE } from '@/lib/referral-program'
 import { getSiteUrl } from '@/lib/site-url'
 import type { Order, OrderStatus } from '@/lib/types'
 
@@ -250,9 +249,7 @@ export function notifyPaymentConfirmed(
   return dispatch(() => {
     const c = order.customer
     const dash = '—'
-    const promo = order.promo?.trim().toUpperCase() ?? ''
-    const referral = REFERRAL_CODE_RE.test(promo) ? promo : ''
-    const coupon = promo && !referral ? promo : ''
+    const coupon = order.promo?.trim().toUpperCase() ?? ''
     // Orders from before the address was split into fields have one line.
     const structured = Boolean(c.street || c.postalCode || c.city)
 
@@ -292,7 +289,6 @@ export function notifyPaymentConfirmed(
       ...(order.shippingCost ? [`• Shipping: ${esc(chf(order.shippingCost))}`] : []),
       '',
       `💰 <b>TOTAL PAID:</b> ${esc(paidAmount(order, provider, charged))}`,
-      `🏷️ <b>Referral Code:</b> ${esc(referral || 'None')}`,
       '',
       `<a href="${esc(`${adminLink()}/orders?order=${encodeURIComponent(order.id)}`)}">Open in admin</a>`,
     ].join('\n')

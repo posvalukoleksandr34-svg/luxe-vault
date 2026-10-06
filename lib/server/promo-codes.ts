@@ -1,12 +1,8 @@
 import 'server-only'
 
-import { randomInt } from 'crypto'
 import {
-  DEFAULT_APP_WELCOME,
   PROMO_CODE_RE,
   PROMO_LIMITS,
-  type AppCodeView,
-  type AppWelcomeSettings,
   type PromoCode,
   type PromoKind,
   type PromoSource,
@@ -71,9 +67,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // ------------------------------------------------------------------ admin --
 
 export type PromoList = {
+  /** The admin's own codes. Retired app codes (source 'app_welcome',
+   *  switched off by migration 0055) are left out. */
   codes: PromoCode[]
-  /** App codes are one per customer; the list shows the newest and counts. */
-  appCodes: { issued: number; used: number; recent: PromoCode[] }
   /** False until 0043 adds valid_for_days / source. */
   migrated: boolean
 }
@@ -85,11 +81,8 @@ export async function listPromoCodes(): Promise<PromoList> {
 
   const rows = (data ?? []) as CouponRow[]
   const migrated = rows.length === 0 ? await hasPromoColumns() : 'source' in rows[0]
-  const all = rows.map(toPromo)
-  const app = all.filter((p) => p.source === 'app_welcome')
   return {
-    codes: all.filter((p) => p.source !== 'app_welcome'),
-    appCodes: { issued: app.length, used: app.filter((p) => p.used > 0).length, recent: app.slice(0, 50) },
+    codes: rows.map(toPromo).filter((p) => p.source !== 'app_welcome'),
     migrated,
   }
 }
@@ -236,145 +229,6 @@ export async function deletePromoCode(id: string): Promise<{ ok: true } | { ok: 
   }
   if (!data) return { ok: false, error: 'Промокод не найден', status: 404 }
   return { ok: true }
-}
-
-// ------------------------------------------------------ app welcome code --
-
-const APP_SETTINGS_KEY = 'app_welcome_code'
-
-function sanitiseAppSettings(value: unknown): AppWelcomeSettings {
-  const v = (value && typeof value === 'object' ? value : {}) as Partial<AppWelcomeSettings>
-  const kind: PromoKind = v.kind === 'fixed' ? 'fixed' : 'percent'
-  const range = PROMO_LIMITS[kind]
-  const num = (x: unknown, fallback: number, min: number, max: number) =>
-    typeof x === 'number' && Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : fallback
-  return {
-    enabled: typeof v.enabled === 'boolean' ? v.enabled : DEFAULT_APP_WELCOME.enabled,
-    kind,
-    value: num(v.value, DEFAULT_APP_WELCOME.value, range.min, range.max),
-    maxUses: Math.round(num(v.maxUses, DEFAULT_APP_WELCOME.maxUses, 1, 100)),
-    validForDays: Math.round(num(v.validForDays, DEFAULT_APP_WELCOME.validForDays, 1, 3650)),
-  }
-}
-
-export async function getAppWelcomeSettings(): Promise<{ settings: AppWelcomeSettings; stored: boolean }> {
-  try {
-    const { data, error } = await createAdminClient()
-      .from('store_settings')
-      .select('value')
-      .eq('key', APP_SETTINGS_KEY)
-      .maybeSingle()
-    if (error) {
-      if (!isMissing(error)) console.error('[promo-codes] app settings read failed:', error.message)
-      return { settings: DEFAULT_APP_WELCOME, stored: false }
-    }
-    return data ? { settings: sanitiseAppSettings(data.value), stored: true } : { settings: DEFAULT_APP_WELCOME, stored: false }
-  } catch (e) {
-    console.error('[promo-codes] app settings read failed:', e)
-    return { settings: DEFAULT_APP_WELCOME, stored: false }
-  }
-}
-
-export async function saveAppWelcomeSettings(input: AppWelcomeSettings): Promise<{ ok: true; settings: AppWelcomeSettings } | { ok: false; error: string }> {
-  const settings = sanitiseAppSettings(input)
-  const { error } = await createAdminClient()
-    .from('store_settings')
-    .upsert({ key: APP_SETTINGS_KEY, value: settings, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-  if (error) {
-    console.error('[promo-codes] app settings save failed:', error)
-    return { ok: false, error: 'Не удалось сохранить настройки кода приложения' }
-  }
-  return { ok: true, settings }
-}
-
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function newAppCode(): string {
-  let s = 'APP-'
-  for (let i = 0; i < 6; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
-  return s
-}
-
-function viewOf(p: PromoCode): AppCodeView {
-  const expired = Boolean(p.expiresAt && Date.parse(p.expiresAt) <= Date.now())
-  const exhausted = p.maxUses !== null && p.used >= p.maxUses
-  if (exhausted) return { status: 'used', code: p.code, kind: p.kind, value: p.value, expiresAt: p.expiresAt }
-  if (expired || !p.active) return { status: 'expired', code: p.code, kind: p.kind, value: p.value, expiresAt: p.expiresAt }
-  return {
-    status: 'ready',
-    code: p.code,
-    kind: p.kind,
-    value: p.value,
-    expiresAt: p.expiresAt,
-    usesLeft: p.maxUses === null ? null : p.maxUses - p.used,
-  }
-}
-
-async function findAppCode(userId: string): Promise<{ promo: PromoCode | null; missing: boolean }> {
-  const { data, error } = await createAdminClient()
-    .from('coupons')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('source', 'app_welcome')
-    .maybeSingle()
-  if (error) {
-    if (!isMissing(error)) console.error('[promo-codes] app code lookup failed:', error.message)
-    return { promo: null, missing: isMissing(error) }
-  }
-  return { promo: data ? toPromo(data as CouponRow) : null, missing: false }
-}
-
-/**
- * The customer's app code — issued now if they have none and `issue` is set.
- *
- * One per ACCOUNT, not per device or per install: an install cannot be
- * verified by a server, an account can, and the unique index in 0043 makes a
- * second code impossible even when two first launches race. Only the customer
- * it was issued to can redeem it (coupons.user_id, checked by redeem_coupon).
- */
-export async function appCodeFor(userId: string, options: { issue: boolean }): Promise<AppCodeView> {
-  try {
-    const existing = await findAppCode(userId)
-    if (existing.missing) return { status: 'unavailable' }
-    if (existing.promo) return viewOf(existing.promo)
-
-    const { settings } = await getAppWelcomeSettings()
-    if (!settings.enabled) return { status: 'disabled' }
-    if (!options.issue) return { status: 'disabled' }
-
-    const supabase = createAdminClient()
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const { data, error } = await supabase
-        .from('coupons')
-        .insert({
-          code: newAppCode(),
-          kind: settings.kind,
-          value: settings.value,
-          active: true,
-          expires_at: new Date(Date.now() + settings.validForDays * DAY_MS).toISOString(),
-          max_redemptions: settings.maxUses,
-          valid_for_days: settings.validForDays,
-          user_id: userId,
-          source: 'app_welcome',
-        })
-        .select('*')
-        .single()
-      if (!error) return viewOf(toPromo(data as CouponRow))
-      if (error.code === '23505') {
-        // Either the code collided (retry with another) or a concurrent first
-        // launch issued this customer's code a moment ago (read it).
-        const raced = await findAppCode(userId)
-        if (raced.promo) return viewOf(raced.promo)
-        continue
-      }
-      if (isMissing(error)) return { status: 'unavailable' }
-      console.error('[promo-codes] app code issue failed:', error)
-      return { status: 'unavailable' }
-    }
-    return { status: 'unavailable' }
-  } catch (e) {
-    console.error('[promo-codes] app code failed:', e)
-    return { status: 'unavailable' }
-  }
 }
 
 // --------------------------------------------------- uses that come back --

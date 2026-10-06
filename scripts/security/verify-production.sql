@@ -62,6 +62,12 @@ checks as (
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0052_verified_buyer_reviews.sql — product reviews are refused until it is'
   union all
+  select 'migration 0055: issued app codes switched off',
+         -- to_jsonb: parses even before 0043 added the column (then: OK).
+         case when exists (select 1 from public.coupons c where to_jsonb(c) ->> 'source' = 'app_welcome' and c.active)
+              then 'PROBLEM' else 'OK' end,
+         'apply supabase/migrations/0055_retire_referrals_and_app_codes.sql — app codes already issued still redeem until it is'
+  union all
   select 'migration 0054: subcategory cover images (categories.image_url)',
          case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'categories' and column_name = 'image_url') then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0054_category_images.sql — covers cannot be saved until it is'

@@ -1,54 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { REFERRAL_COOKIE, REFERRAL_COOKIE_DAYS } from '@/lib/referral-program'
-import { checkLimit, clientKey } from '@/lib/server/rate-limit'
-import { normaliseReferralCode, recordReferralClick, referrerForCode } from '@/lib/server/referrals'
-import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * A referral link: /r/REF-XXXXXX.
+ * An old referral link: /r/REF-XXXXXX.
  *
- * Records the visit, remembers the code for 30 days so checkout can offer the
- * friend's discount, and sends the visitor to the homepage. Always redirects —
- * an unknown code, a throttled visitor or the referrer clicking their own link
- * simply land on the shop without the click being counted.
- *
- * A repeat visit with the same code already in the cookie is not counted
- * again, so one friend opening the link five times is one click.
+ * The referral programme is switched off (October 2026). Links customers
+ * already shared still lead somewhere: the homepage, with no click recorded
+ * and no code remembered. A browser that still holds the old `lv_ref`
+ * cookie has it removed here.
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ code: string }> }) {
-  const params = await props.params;
-  const home = new URL('/', request.url)
-  const response = NextResponse.redirect(home, 307)
+export function GET(request: NextRequest) {
+  const response = NextResponse.redirect(new URL('/', request.url), 307)
   response.headers.set('X-Robots-Tag', 'noindex')
-
-  const code = normaliseReferralCode(decodeURIComponent(params.code))
-  if (!code) return response
-
-  const referrerId = await referrerForCode(code)
-  if (!referrerId) return response
-
-  let viewerId: string | undefined
-  try {
-    viewerId = (await getCurrentUser())?.id
-  } catch {
-    // Anonymous visitor.
-  }
-  if (viewerId === referrerId) return response
-
-  const alreadyCounted = request.cookies.get(REFERRAL_COOKIE)?.value?.toUpperCase() === code
-  if (!alreadyCounted) {
-    const limit = await checkLimit('referral.click', clientKey(request))
-    if (limit.allowed) await recordReferralClick(referrerId)
-  }
-
-  response.cookies.set(REFERRAL_COOKIE, code, {
-    path: '/',
-    maxAge: REFERRAL_COOKIE_DAYS * 24 * 60 * 60,
-    sameSite: 'lax',
-    secure: request.nextUrl.protocol === 'https:',
-    httpOnly: false,
-  })
+  if (request.cookies.has('lv_ref')) response.cookies.delete('lv_ref')
   return response
 }

@@ -70,13 +70,6 @@ const LIMITS = {
    *  bounded, since tokens are the only thing standing behind it. */
   'newsletter.unsubscribe': { max: 20, windowSeconds: 600 },
 
-  /** Referral-link visits that count as clicks. Beyond this the visitor is
-   *  still redirected; the visit just is not counted. */
-  'referral.click': { max: 20, windowSeconds: 600 },
-
-  /** Linking a new account to the friend who invited it. */
-  'referral.claim': { max: 10, windowSeconds: 600 },
-
   /** Product reviews and site testimonials. */
   'review.create': { max: 10, windowSeconds: 3600 },
 
@@ -134,10 +127,6 @@ const LIMITS = {
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */
   'coupon.validate': { max: 15, windowSeconds: 600 },
-  /** The installed app's personal code (/api/app/welcome-code). One code per
-   *  account whatever happens, so this only keeps a script from turning the
-   *  endpoint into a database load. */
-  'app.code': { max: 30, windowSeconds: 600 },
 
   /** Admin login. Replaces the in-memory throttle this module supersedes. */
   'admin.login': { max: 8, windowSeconds: 300 },

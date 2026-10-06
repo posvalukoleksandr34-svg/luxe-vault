@@ -9,8 +9,6 @@ import { CuratedVaults } from '@/components/account/curated-vaults'
 import { DeleteAccount } from '@/components/account/delete-account'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
-import { AppCodeSection } from '@/components/account/app-code-section'
-import { ReferralSection } from '@/components/account/referral-section'
 import {
   ACCOUNT_SECTIONS,
   CARD_ORDER,
@@ -45,9 +43,6 @@ import type { Order, StorefrontLocale } from '@/lib/types'
  * The account drawer (components/user-panel.tsx) stays for the quick path —
  * sign-in, and an order mid-browse. Both read the same components, so there is
  * one implementation of each thing rather than two that drift.
- *
- * The referral programme and the bonus balance it feeds are real (migration
- * 0036); until that migration is applied they say so plainly.
  *
  * An unknown section — including the retired `loyalty` — is not an error page:
  * the address is replaced with /account and the overview shows.
@@ -170,7 +165,7 @@ function Overview() {
       </h1>
       <p className="mt-3 text-[13px] font-light text-foreground/70">{currentUser?.email}</p>
 
-      <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:mt-12">
+      <ul className="mt-10 grid gap-4 md:grid-cols-3 lg:mt-12">
         {cards.map((s) => (
           <li key={s.key}>
             <Link
@@ -289,8 +284,6 @@ function SectionView({ section }: { section: AccountSectionKey }) {
           )}
           {section === 'looks' && <CuratedVaults />}
           {section === 'settings' && <SettingsSection />}
-          {section === 'referral' && <ReferralSection />}
-          {section === 'app' && <AppCodeSection />}
           {section === 'credits' && <CreditsSection />}
         </div>
       </div>
@@ -300,37 +293,9 @@ function SectionView({ section }: { section: AccountSectionKey }) {
 
 function CreditsSection() {
   const { t } = useStore()
-  // The referral bonus balance (account_credits). Null while loading, or when
-  // the ledger is not there yet — then the section reads as it always did.
-  const [balance, setBalance] = useState<number | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/account/credits', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.available) setBalance(Number(data.balance) || 0)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   return (
     <div className="max-w-xl rounded-xl border border-border p-6">
-      {balance !== null && balance > 0 ? (
-        <>
-          <p className="t-label text-foreground/70">{t('acct.creditsBalance')}</p>
-          <p className="mt-3 font-serif text-[36px] font-normal leading-none tabular-nums text-foreground">
-            {formatPrice(balance)}
-          </p>
-          <p className="mt-4 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsSpendSoon')}</p>
-          <div className="my-6 border-t border-border" />
-        </>
-      ) : (
-        <p className="text-[15px] font-normal text-foreground">{t('acct.creditsEmpty')}</p>
-      )}
+      <p className="text-[15px] font-normal text-foreground">{t('acct.creditsEmpty')}</p>
       <p className="mt-3 text-[14px] font-light leading-relaxed text-foreground/65">{t('acct.creditsHint')}</p>
       <Link
         href={accountHref('orders')}

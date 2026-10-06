@@ -2106,37 +2106,6 @@ html[data-keyboard='open'] .hide-with-keyboard {
   opacity: 0.6;
 }
 
-/* "Get the LUXE VAULT app" (components/app-promo-banner.tsx): cream into
-   sand into a matte gold, with a soft gold light from the top right — the
-   storefront's own warm palette instead of the steel gradient it had. Text is
-   near-black; the body copy a deep warm brown, AA on every part of the panel. */
-.app-promo {
-  color: #1c1c1c;
-  background:
-    radial-gradient(circle at 92% -10%, hsl(var(--gold) / 0.24), transparent 52%),
-    linear-gradient(135deg, hsl(42 55% 97%) 0%, hsl(38 42% 91%) 50%, hsl(39 46% 84%) 100%);
-  border: 1px solid hsl(var(--gold) / 0.32);
-  box-shadow: var(--shadow-soft);
-}
-
-.app-promo__text {
-  color: hsl(30 22% 26%);
-}
-
-/* The small gold label: a deeper gold than the storefront's text gold, which
-   drops below AA on the panel's sandy end. */
-.app-promo__eyebrow {
-  color: hsl(38 64% 25%);
-}
-
-.app-promo__qr {
-  background: hsl(42 60% 98.5%);
-  border: 1px solid hsl(var(--gold) / 0.38);
-  box-shadow:
-    inset 0 0 0 4px hsl(42 60% 98.5%),
-    0 6px 18px -10px hsl(var(--gold-dark) / 0.55);
-}
-
 /* iOS Safari zooms the page into any form field whose text is smaller than
    16px. While zoom was locked off that could not happen; with zoom allowed
    (WCAG 1.4.4, see the viewport in app/layout.tsx) fields on iOS get 16px

@@ -43,30 +43,3 @@ export const PROMO_LIMITS = {
   maxUses: { min: 1, max: 1_000_000 },
   days: { min: 1, max: 3650 },
 } as const
-
-/** The installed app's personal code: what each customer is given. */
-export type AppWelcomeSettings = {
-  enabled: boolean
-  kind: PromoKind
-  value: number
-  /** Uses per customer's code — almost always 1. */
-  maxUses: number
-  /** From the moment the code is issued. */
-  validForDays: number
-}
-
-/** Until the admin saves their own: the offer the install banner already
- *  states (−10% on the first order in the app), one use, a month to use it. */
-export const DEFAULT_APP_WELCOME: AppWelcomeSettings = {
-  enabled: true,
-  kind: 'percent',
-  value: 10,
-  maxUses: 1,
-  validForDays: 30,
-}
-
-/** A customer's own app code, as the account page shows it. */
-export type AppCodeView =
-  | { status: 'ready'; code: string; kind: PromoKind; value: number; expiresAt: string | null; usesLeft: number | null }
-  | { status: 'used' | 'expired'; code: string; kind: PromoKind; value: number; expiresAt: string | null }
-  | { status: 'disabled' | 'unavailable' | 'signed_out' }

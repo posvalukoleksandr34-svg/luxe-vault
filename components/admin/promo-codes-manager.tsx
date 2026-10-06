@@ -1,13 +1,12 @@
 'use client'
 
-import { ArrowLeft, Check, Loader2, Plus, Smartphone, Tag, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, Plus, Tag, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import {
   PROMO_LIMITS,
   promoState,
-  type AppWelcomeSettings,
   type PromoCode,
   type PromoKind,
   type PromoState,
@@ -19,9 +18,10 @@ import { cn } from '@/lib/utils'
 /**
  * /admin/promocodes, in the console's language (Russian, fixed).
  *
- * Three parts: a form for a new code (discount, how many people may use it,
- * how long it lasts), the list of codes with a bar of uses against the limit
- * and a state badge, and the terms of the installed app's personal code.
+ * Two parts: a form for a new code (discount, how many people may use it,
+ * how long it lasts), and the list of codes with a bar of uses against the
+ * limit and a state badge. (The installed app's personal code was retired in
+ * October 2026 with migration 0055.)
  * After every change the page is re-read from the server, so the counts are
  * always the database's.
  *
@@ -58,15 +58,7 @@ function expiryLabel(iso: string | null, now: number): string {
   return `До ${formatDate(iso)} · ещё ${days} дн.`
 }
 
-export function PromoCodesManager({
-  list,
-  appSettings,
-  appSettingsStored,
-}: {
-  list: PromoList | null
-  appSettings: AppWelcomeSettings
-  appSettingsStored: boolean
-}) {
+export function PromoCodesManager({ list }: { list: PromoList | null }) {
   const [filter, setFilter] = useState<'all' | PromoState>('all')
   const codes = useMemo(() => list?.codes ?? [], [list])
   const now = Date.now()
@@ -107,7 +99,7 @@ export function PromoCodesManager({
         {list && !list.migrated && (
           <p className="mb-6 rounded-xl border border-gold/30 p-4 text-xs leading-relaxed text-muted-foreground">
             Миграция <code className="text-foreground">0043_promo_codes_admin.sql</code> ещё не применена: коды
-            создаются и работают, но код приложения не выдаётся, а использования неоплаченных заказов не возвращаются.
+            создаются и работают, но использования неоплаченных заказов не возвращаются.
           </p>
         )}
 
@@ -148,8 +140,6 @@ export function PromoCodesManager({
                 ))}
               </ul>
             )}
-
-            <AppCodeSettings initial={appSettings} stored={appSettingsStored} stats={list.appCodes} migrated={list.migrated} />
           </>
         )}
       </div>
@@ -547,193 +537,5 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
         </p>
       )}
     </li>
-  )
-}
-
-// ------------------------------------------------------ app welcome code --
-
-function AppCodeSettings({
-  initial,
-  stored,
-  stats,
-  migrated,
-}: {
-  initial: AppWelcomeSettings
-  stored: boolean
-  stats: PromoList['appCodes']
-  migrated: boolean
-}) {
-  const router = useRouter()
-  const [enabled, setEnabled] = useState(initial.enabled)
-  const [kind, setKind] = useState<PromoKind>(initial.kind)
-  const [value, setValue] = useState(String(initial.value))
-  const [maxUses, setMaxUses] = useState(String(initial.maxUses))
-  const [days, setDays] = useState(String(initial.validForDays))
-  const [saving, setSaving] = useState(false)
-  const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    setStatus(null)
-    try {
-      const res = await fetch('/api/admin/promocodes/app-code', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enabled,
-          kind,
-          value: Number(value.replace(',', '.')),
-          maxUses: Number(maxUses),
-          validForDays: Number(days),
-        }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof body?.error === 'string' ? body.error : `Ошибка ${res.status}`)
-      setStatus({ kind: 'ok', text: 'Сохранено. Действует для кодов, выданных с этого момента.' })
-      router.refresh()
-    } catch (err) {
-      setStatus({ kind: 'error', text: (err as Error).message })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <section aria-labelledby="app-code-title" className="mt-12 rounded-2xl border border-border bg-card p-6">
-      <div className="mb-5 flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gold/10">
-          <Smartphone className="size-4 text-gold" />
-        </div>
-        <div>
-          <h2 id="app-code-title" className="text-sm font-medium text-foreground">
-            Код приложения
-          </h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Личный код, который получает каждый покупатель при первом запуске установленного приложения (нужен вход в
-            аккаунт). Один на аккаунт, работает только у своего владельца. Покупатель видит его в кабинете — текстом и
-            QR-кодом.
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Выдано: <span className="tabular-nums text-foreground">{stats.issued}</span> · использовано:{' '}
-            <span className="tabular-nums text-foreground">{stats.used}</span>
-            {!stored && ' · сейчас действуют значения по умолчанию (−10%, 1 раз, 30 дней), как обещает баннер на сайте'}
-          </p>
-        </div>
-      </div>
-
-      {!migrated ? (
-        <p className="text-xs text-muted-foreground">Станет доступно после применения миграции 0043.</p>
-      ) : (
-        <form onSubmit={save}>
-          <div className="grid gap-5 sm:grid-cols-4">
-            <label className="flex items-center gap-2 text-sm text-foreground sm:col-span-4">
-              <input id="app-code-enabled" type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-              Выдавать код в приложении
-            </label>
-            <fieldset className="sm:col-span-2">
-              <legend className="mb-1.5 text-xs text-muted-foreground">Скидка</legend>
-              <div className="flex gap-2">
-                <input
-                  id="app-code-value"
-                  type="number"
-                  inputMode="decimal"
-                  step={kind === 'percent' ? 1 : 0.01}
-                  min={PROMO_LIMITS[kind].min}
-                  max={PROMO_LIMITS[kind].max}
-                  required
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className={INPUT}
-                  aria-label="Размер скидки"
-                />
-                <select
-                  id="app-code-kind"
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value as PromoKind)}
-                  aria-label="Тип скидки"
-                  className="rounded-lg border border-border bg-background px-2 text-sm text-foreground outline-none focus:border-gold"
-                >
-                  <option value="percent">%</option>
-                  <option value="fixed">CHF</option>
-                </select>
-              </div>
-            </fieldset>
-            <label className="block">
-              <span className="mb-1.5 block text-xs text-muted-foreground">Раз на код</span>
-              <input
-                id="app-code-uses"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={100}
-                step={1}
-                required
-                value={maxUses}
-                onChange={(e) => setMaxUses(e.target.value)}
-                className={INPUT}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs text-muted-foreground">Действует, дней</span>
-              <input
-                id="app-code-days"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={3650}
-                step={1}
-                required
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                className={INPUT}
-              />
-            </label>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center gap-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-medium text-gold-foreground transition disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-              Сохранить
-            </button>
-            {status && (
-              <p
-                role={status.kind === 'error' ? 'alert' : 'status'}
-                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-700')}
-              >
-                {status.text}
-              </p>
-            )}
-          </div>
-        </form>
-      )}
-
-      {stats.recent.length > 0 && (
-        <details className="mt-6 border-t border-border pt-4">
-          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-            Последние выданные коды ({Math.min(stats.recent.length, 50)})
-          </summary>
-          <ul className="mt-3 space-y-1.5 text-xs">
-            {stats.recent.map((p) => {
-              const s = promoState(p)
-              return (
-                <li key={p.id} className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-foreground">{p.code}</span>
-                  <span className="text-muted-foreground">{discountLabel(p.kind, p.value)}</span>
-                  <span className={cn('rounded-full border px-2 py-0.5 text-[10px]', STATE_BADGE[s].className)}>
-                    {p.used > 0 ? 'Использован' : STATE_BADGE[s].label}
-                  </span>
-                  <span className="text-muted-foreground/85">выдан {formatDate(p.createdAt)}</span>
-                </li>
-              )
-            })}
-          </ul>
-        </details>
-      )}
-    </section>
   )
 }

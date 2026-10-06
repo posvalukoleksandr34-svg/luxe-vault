@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { applyCoupon } from '@/lib/server/coupons'
-import { checkReferralCode, normaliseReferralCode } from '@/lib/server/referrals'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { readJsonObject } from '@/lib/server/http'
@@ -47,17 +46,7 @@ export async function POST(request: NextRequest) {
 
   const result = await applyCoupon(code, subtotal, { userId, productSlugs, commit: false })
 
-  if (!result.ok) {
-    // Not a coupon: perhaps a friend's referral code (REF-XXXXXX). Previewed
-    // with what is known now; order creation checks the full rules again.
-    const referralCode = normaliseReferralCode(code)
-    if (result.reason === 'NOT_FOUND' && referralCode) {
-      const referral = await checkReferralCode(referralCode, subtotal, { userId, email: user?.email ?? undefined })
-      if (referral.ok) return NextResponse.json({ ok: true, code: referralCode, discount: referral.discount })
-      return NextResponse.json({ ok: false, reason: referral.reason })
-    }
-    return NextResponse.json({ ok: false, reason: result.reason })
-  }
+  if (!result.ok) return NextResponse.json({ ok: false, reason: result.reason })
 
   // The coupon's id is deliberately not returned — the browser has no use for
   // it and it is an internal identifier.
