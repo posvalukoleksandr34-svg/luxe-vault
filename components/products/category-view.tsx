@@ -5,7 +5,9 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CategoryNav } from '@/components/products/category-nav'
 import { FilterUrlSync } from '@/components/products/filter-url-sync'
 import { ProductGrid } from '@/components/products/product-grid'
+import { SubcategoryCards, showsSubcategoryCards } from '@/components/products/subcategory-cards'
 import { useStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
 /**
  * The body of a category route: trail, heading, left navigation, grid.
@@ -26,6 +28,9 @@ export function CategoryView({ group, category }: { group: string; category?: st
   const groupLabel = localize(groupLabels[group] ?? {}) || group
   const categoryLabel = category ? localize(categoryLabels[category] ?? {}) || category : ''
 
+  // Department pages only: on a subcategory page you have already chosen.
+  const cards = !category && showsSubcategoryCards(group)
+
   const trail = useMemo(
     () => [
       { name: t('nav.shop'), url: '/catalog' },
@@ -45,16 +50,27 @@ export function CategoryView({ group, category }: { group: string; category?: st
 
       <Breadcrumbs trail={trail} />
 
-      <h1 className="mb-10 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+      <h1
+        className={cn(
+          'font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl',
+          cards ? 'mb-6 lg:mb-8' : 'mb-10',
+        )}
+      >
         {category ? categoryLabel : groupLabel}
       </h1>
+
+      {/* A department page opens on where to go next: its subcategories as
+          photo cards, above the sidebar, the filters and the grid. */}
+      {cards && <SubcategoryCards group={group} />}
 
       {/* Column below `lg`, where CategoryNav renders its scrollable rail above
           the grid instead of a sidebar. From `lg`, a real two-column layout —
           `items-start` so the sticky sidebar has a taller parent to stick
           inside, because a stretched flex child cannot be sticky. */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-10">
-        <CategoryNav group={group} category={category} />
+        {/* With the cards above, the phone rail of the same subcategories
+            would be the same links twice in a row. */}
+        <CategoryNav group={group} category={category} mobileRail={!cards} />
 
         {/* min-w-0: without it the grid's own content sets the flex basis and
             a long product name pushes the sidebar off-screen. */}

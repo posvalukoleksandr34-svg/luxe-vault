@@ -25,11 +25,14 @@ import { useListing } from './listing-context'
 export function CategoryNav({
   group,
   category,
+  mobileRail = true,
 }: {
   /** Undefined on /catalog, where no department is chosen yet. */
   group?: string
   /** Undefined on a collection page; a category slug on a subcategory page. */
   category?: string
+  /** False where the page already shows these links (the subcategory cards). */
+  mobileRail?: boolean
 }) {
   const { categoryTree, groupLabels, categoryLabels, localize, t } = useStore()
 
@@ -178,7 +181,7 @@ export function CategoryNav({
         </nav>
       )}
 
-      {active && active.items.length > 0 && (
+      {mobileRail && active && active.items.length > 0 && (
         <nav
           aria-label={t('filter.categoryLabel')}
           className="sticky top-[56px] z-20 -mx-4 mb-8 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
