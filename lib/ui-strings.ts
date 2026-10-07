@@ -477,7 +477,6 @@ export const UI = {
   'toast.wishlistFailed': { ru: 'Не удалось сохранить. Попробуйте ещё раз.', en: 'Could not save. Please try again.', it: 'Impossibile salvare. Riprova.', fr: 'Enregistrement impossible. Réessayez.', de: 'Konnte nicht gespeichert werden. Bitte erneut versuchen.' },
   'state.contactSupport': { ru: 'Написать в поддержку', en: 'Contact support', it: 'Contatta l’assistenza', fr: 'Contacter le support', de: 'Support kontaktieren' },
   'state.loadingCatalog': { ru: 'Загрузка каталога', en: 'Loading the catalogue', it: 'Caricamento del catalogo', fr: 'Chargement du catalogue', de: 'Katalog wird geladen' },
-  'state.loadingProduct': { ru: 'Загрузка товара', en: 'Loading the product', it: 'Caricamento del prodotto', fr: 'Chargement du produit', de: 'Produkt wird geladen' },
   'toast.addedToCart': { ru: 'Добавлено в корзину', en: 'Added to cart', it: 'Aggiunto al carrello', fr: 'Ajouté au panier', de: 'Zum Warenkorb hinzugefügt' },
 
   // Header: language and currency.

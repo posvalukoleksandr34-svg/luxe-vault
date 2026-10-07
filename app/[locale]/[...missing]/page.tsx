@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { NotFoundView } from '@/components/not-found-view'
+import { notFound } from 'next/navigation'
 
 /**
  * Any address under a language that matches no page: /it/cart, /fr/old-link.
@@ -9,19 +9,14 @@ import { NotFoundView } from '@/components/not-found-view'
  * browser redrew it in the URL's — a flash of the wrong language. Rendered
  * here, inside the segment, it is in the URL's language on both sides.
  *
- * It renders the 404 view itself rather than calling notFound(). The root
- * layout wraps every page in a <Suspense> (see app/layout.tsx), and notFound()
- * thrown inside one cannot change the status code: Next answers 200 with a
- * noindex tag either way, and the boundary is dropped from the server HTML and
- * redrawn in the browser (React error #419 in the console). Rendering the view
- * directly gives the same status and the same noindex, with real server HTML
- * and no error. Switch back to notFound() — for a true 404 status — once that
- * boundary is gone.
+ * notFound() rather than rendering the 404 view: the status is a real 404
+ * (no Suspense boundary above the pages any more — see app/layout.tsx), and
+ * [locale]/not-found.tsx draws it in the URL's language.
  */
 export const metadata: Metadata = {
   robots: { index: false, follow: true },
 }
 
 export default function MissingLocalePage() {
-  return <NotFoundView kind="page" />
+  notFound()
 }
