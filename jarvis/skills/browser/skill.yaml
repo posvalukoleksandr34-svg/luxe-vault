@@ -1,0 +1,10 @@
+name: browser
+version: 1.0.0
+title: Браузер
+icon: globe
+description: Operate a real (isolated) browser — open sites, read, click, fill forms, take screenshots — for pages that need interaction.
+triggers: [открой сайт, зайди на, браузер, кликни, заполни форму, browser, open the site, click, fill the form, screenshot]
+tools: [browser_open, browser_snapshot, browser_click, browser_type, browser_screenshot]
+requires: [browser]
+permissions:
+  browser_type: confirm   # typing into forms can submit data to third parties

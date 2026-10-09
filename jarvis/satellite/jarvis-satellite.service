@@ -1,0 +1,14 @@
+[Unit]
+Description=JARVIS voice satellite
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/jarvis/satellite
+ExecStart=/home/pi/jarvis/satellite/.venv/bin/python jarvis_satellite.py
+Restart=always
+RestartSec=5
+User=pi
+
+[Install]
+WantedBy=multi-user.target

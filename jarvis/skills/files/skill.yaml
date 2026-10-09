@@ -1,0 +1,9 @@
+name: files
+version: 1.0.0
+title: Файлы и документы
+icon: folder
+description: Read, create, edit, organise and search files in JARVIS's workspace (PDF, DOCX, text, CSV, Markdown); analyse documents.
+triggers: [файл, документ, папк, pdf, docx, csv, отчёт в файл, сохрани, file, document, folder, save to]
+tools: [files_list, files_read, files_write, files_move, files_delete, files_search]
+permissions:
+  files_delete: confirm

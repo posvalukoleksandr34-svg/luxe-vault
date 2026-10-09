@@ -1,0 +1,17 @@
+# MCP servers whose tools JARVIS may use. Each tool becomes `mcp__<server>__<tool>` and goes through the
+# same permission gate (default_risk: external → confirmation), audit log, timeouts and rate limits.
+# ${ENV_VARS} are expanded from the worker's environment.
+servers: []
+# servers:
+#   - name: github
+#     transport: http
+#     url: https://api.githubcopilot.com/mcp/
+#     headers: {Authorization: "Bearer ${GITHUB_TOKEN}"}
+#     default_risk: external
+#     tools:
+#       get_file_contents: {risk: read}
+#   - name: home
+#     transport: http
+#     url: http://homeassistant.local:8123/mcp_server/sse
+#     headers: {Authorization: "Bearer ${HOME_ASSISTANT_TOKEN}"}
+#     default_risk: external

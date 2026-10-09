@@ -1,0 +1,46 @@
+# Human-in-the-loop policy. Tools declare a risk; this file maps risk → tier.
+#   autonomous  — runs without asking
+#   confirm     — "Я готов выполнить действие. Подтвердить?" (web, Telegram, WhatsApp or voice)
+#   restricted  — explicit authorization in the web app with re-authentication (password / TOTP)
+#   forbidden   — never available to the agent
+# User rules set in the UI (Permissions page) override this file, except `forbidden`.
+
+defaults:
+  read: autonomous        # look things up
+  write: autonomous       # change JARVIS-owned/user-owned data (memory, reminders, own calendar, files)
+  external: confirm       # anything that leaves the system (send e-mail, post, call external APIs)
+  high: restricted        # destructive, financial, security-sensitive
+
+tools:
+  email_send_draft: confirm
+  calendar_delete_event: confirm
+  files_delete: confirm
+  sandbox_exec: confirm
+  automation_create: confirm      # scheduled agent runs act on their own later — ask once
+  drive_upload: confirm
+  browser_type: confirm
+  api_call: confirm
+  command_create: confirm         # a new macro can later act on its own — ask once
+
+# Glob patterns that are never exposed to the model.
+forbidden:
+  - "payments_*"
+  - "*_purchase"
+  - "mcp__*__delete_repo*"
+
+# The strongest tier each channel may approve.
+channels:
+  web: restricted
+  telegram: confirm
+  whatsapp: confirm
+  voice: confirm
+
+# After untrusted content (web page, e-mail, file, MCP output) enters a task, write tools also need
+# confirmation — a prompt-injection cannot silently plant memories or automations.
+taint:
+  write: confirm
+  exempt: [reminder_create, notify_user, skill_load, task_status, time_now, files_write, computer_media, computer_volume,
+           computer_status]
+
+elevation_minutes: 10
+allow_always: true   # "always allow" button on confirm-tier approvals (never for high-risk tools)

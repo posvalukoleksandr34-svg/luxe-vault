@@ -1,0 +1,20 @@
+{
+  "name": "JARVIS",
+  "short_name": "JARVIS",
+  "description": "Персональный ИИ-агент",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#06080b",
+  "theme_color": "#06080b",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Голос", "url": "/voice" },
+    { "name": "Чат", "url": "/chat" }
+  ]
+}

@@ -1,0 +1,6 @@
+# Windows scripts must keep CRLF (cmd.exe misparses LF batch files).
+scripts/windows/*.bat text eol=crlf
+scripts/windows/*.ps1 text eol=crlf
+scripts/windows/*.vbs text eol=crlf
+*.ico binary
+*.png binary

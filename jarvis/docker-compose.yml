@@ -1,0 +1,235 @@
+# JARVIS — one command:  docker compose up -d
+#
+#   caddy ─(edge)─ api ─(data, internal)─ postgres, redis
+#                   │                      ▲
+#                worker ───────────────────┘
+#                   ├─(browser_net)─ browser    isolated Chromium, internet but no path to data
+#                   └─(sandbox_net, internal)─ sandbox   code runner without internet or data
+#   backup ─(data)─ postgres dump + restic snapshots of /data
+#
+# Optional components are compose profiles, enabled via COMPOSE_PROFILES in .env:
+#   browser, sandbox, monitoring (Prometheus + Grafana), local-ai (Ollama)
+
+name: jarvis
+
+x-app: &app
+  build: ./backend
+  image: jarvis-backend:local
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    JARVIS_DATABASE_URL: postgresql+asyncpg://jarvis:${POSTGRES_PASSWORD:-jarvis}@postgres:5432/jarvis
+    JARVIS_REDIS_URL: redis://redis:6379/0
+    JARVIS_BROWSER_WS_ENDPOINT: ${JARVIS_BROWSER_WS_ENDPOINT:-}
+    JARVIS_SANDBOX_URL: ${JARVIS_SANDBOX_URL:-}
+    JARVIS_SANDBOX_TOKEN: ${SANDBOX_TOKEN:-}
+  volumes:
+    - jarvis_data:/data
+    - ./config:/app/config:ro
+    - ./skills:/app/skills:ro
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  init: true
+  security_opt: ["no-new-privileges:true"]
+  logging: &logging
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jarvis}
+      POSTGRES_DB: jarvis
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d jarvis"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [data]
+    shm_size: 256mb
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [data]
+    logging: *logging
+
+  api:
+    <<: *app
+    command: ["api"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 6
+    networks: [edge, data, egress]
+
+  worker:
+    <<: *app
+    command: ["worker"]
+    environment:
+      <<: *app-env
+      JARVIS_METRICS_PORT: "9100"
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [data, egress, browser_net, sandbox_net]
+    stop_grace_period: 30s
+
+  caddy:
+    build: ./frontend
+    image: jarvis-web:local
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      JARVIS_SITE_ADDRESS: ${JARVIS_SITE_ADDRESS:-:80}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [edge]
+    logging: *logging
+
+  backup: &backup
+    build: ./infrastructure/backup
+    image: jarvis-backup:local
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PGHOST: postgres
+      PGUSER: jarvis
+      PGPASSWORD: ${POSTGRES_PASSWORD:-jarvis}
+      PGDATABASE: jarvis
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backups/restic}
+      BACKUP_CRON: ${BACKUP_CRON:-30 3 * * *}
+    volumes:
+      - jarvis_data:/data:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [data, egress]
+    logging: *logging
+
+  # One-off disaster recovery (scripts/restore.sh): same image, data volume writable.
+  restore:
+    <<: *backup
+    restart: "no"
+    profiles: [restore]
+    command: ["restore", "latest"]
+    volumes:
+      - jarvis_data:/data
+      - ${BACKUP_DIR:-./backups}:/backups
+
+  # ---------------------------------------------------------------- optional: browser automation
+  browser:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    profiles: [browser]
+    restart: unless-stopped
+    init: true
+    user: pwuser
+    command: ["npx", "-y", "playwright@1.63.0", "run-server", "--port", "3000", "--host", "0.0.0.0"]
+    shm_size: 1gb
+    mem_limit: 2g
+    security_opt: ["no-new-privileges:true"]
+    networks: [browser_net]
+    logging: *logging
+
+  # ---------------------------------------------------------------- optional: code sandbox
+  sandbox:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/sandbox/Dockerfile
+    image: jarvis-sandbox:local
+    profiles: [sandbox]
+    restart: unless-stopped
+    environment:
+      SANDBOX_TOKEN: ${SANDBOX_TOKEN:-}
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]
+    volumes: [sandbox_workspace:/workspace]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.5
+    networks: [sandbox_net]
+    logging: *logging
+
+  # ---------------------------------------------------------------- optional: monitoring
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=90d"]
+    environment:
+      JARVIS_METRICS_TOKEN: ${JARVIS_METRICS_TOKEN:-}
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/metrics_token:/etc/prometheus/metrics_token:ro
+      - prometheus_data:/prometheus
+    networks: [data]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3001"
+    ports: ["127.0.0.1:3001:3001"]
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks: [data, egress]
+
+  # ---------------------------------------------------------------- optional: local model (failover / private mode)
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [local-ai]
+    restart: unless-stopped
+    volumes: [ollama_data:/root/.ollama]
+    networks: [egress]
+
+networks:
+  edge: {}
+  egress: {}
+  data:
+    internal: true
+  browser_net: {}
+  sandbox_net:
+    internal: true
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  jarvis_data: {}
+  caddy_data: {}
+  caddy_config: {}
+  sandbox_workspace: {}
+  prometheus_data: {}
+  grafana_data: {}
+  ollama_data: {}

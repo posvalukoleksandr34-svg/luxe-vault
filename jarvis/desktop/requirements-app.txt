@@ -1,0 +1,6 @@
+# JARVIS desktop app (JARVIS.exe): tray + sign-in + computer control + "Hey Jarvis"
+-r requirements.txt
+-r ../satellite/requirements.txt
+httpx>=0.27
+keyring>=25          # Windows Credential Manager / macOS Keychain / Secret Service
+pystray>=0.19        # tray icon
