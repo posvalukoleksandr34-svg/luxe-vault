@@ -18,7 +18,7 @@ export const COOKIES: LegalDocSet = {
   ru: {
     title: 'Политика cookie',
     description: 'Какие cookie и записи в хранилище браузера использует Luxe Vault, зачем и как долго.',
-    effective: 'Действует с 6 октября 2026 года',
+    effective: 'Действует с 10 октября 2026 года',
     sections: [
       {
         h: '1. Коротко',
@@ -65,7 +65,7 @@ export const COOKIES: LegalDocSet = {
             '**luxe-vault-orders** — номера и ключи доступа к заказам, оформленным на этом устройстве без аккаунта.',
             '**lv.checkout.profile.v1** — данные для оформления заказа; только если вы включили «Сохранить данные». Номер карты не сохраняется никогда.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — недавно просмотренные товары и поиски.',
-            '**lv.fit.v1**, **lv.finder.v1** — мерки и ответы из помощника по размеру (рост, вес, возраст — если указан). «Начать заново» удаляет ответы.',
+            '**lv.fit.v1**, **lv.finder.v1**, **lv.finder.kids.v1** — мерки и ответы из помощника по размеру (рост, вес, возраст — если указан; для детских вещей — рост ребёнка, отдельно). «Начать заново» удаляет ответы.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — язык, валюта, анимация и звук.',
             '**lv.analytics.purchases** — номера заказов, уже переданных в аналитику (только с согласием), чтобы не учитывать покупку дважды.',
             '**lv.welcome-checked** (sessionStorage, до закрытия вкладки) — чтобы приветственное письмо не запрашивалось при каждой загрузке страницы.',
@@ -86,7 +86,7 @@ export const COOKIES: LegalDocSet = {
   en: {
     title: 'Cookie Policy',
     description: 'Which cookies and browser-storage entries Luxe Vault uses, why, and for how long.',
-    effective: 'In force since 6 October 2026',
+    effective: 'In force since 10 October 2026',
     sections: [
       {
         h: '1. In short',
@@ -133,7 +133,7 @@ export const COOKIES: LegalDocSet = {
             '**luxe-vault-orders** — numbers and access keys of orders placed on this device without an account.',
             '**lv.checkout.profile.v1** — your checkout details, only if you switched on "Save my details". A card number is never saved.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — recently viewed products and searches.',
-            '**lv.fit.v1**, **lv.finder.v1** — measurements and answers entered in the size advisor and size finder (height, weight, and age if given). "Start over" deletes the answers.',
+            '**lv.fit.v1**, **lv.finder.v1**, **lv.finder.kids.v1** — measurements and answers entered in the size advisor and size finder (height, weight, and age if given; for children’s pieces, the child’s height, kept separately). "Start over" deletes the answers.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — language, currency, animation and sound.',
             '**lv.analytics.purchases** — order numbers already reported to analytics (only with consent), so a purchase is not counted twice.',
             '**lv.welcome-checked** (sessionStorage, until the tab is closed) — so the welcome email is not requested again on every page load.',
@@ -154,7 +154,7 @@ export const COOKIES: LegalDocSet = {
   it: {
     title: 'Cookie Policy',
     description: 'Quali cookie e dati nella memoria del browser usa Luxe Vault, perché e per quanto tempo.',
-    effective: 'In vigore dal 6 ottobre 2026',
+    effective: 'In vigore dal 10 ottobre 2026',
     sections: [
       {
         h: '1. In breve',
@@ -201,7 +201,7 @@ export const COOKIES: LegalDocSet = {
             '**luxe-vault-orders** — numeri e chiavi di accesso degli ordini fatti da questo dispositivo senza account.',
             '**lv.checkout.profile.v1** — i dati per il checkout, solo se hai attivato «Salva i miei dati». Il numero di carta non viene mai salvato.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — prodotti visti e ricerche recenti.',
-            '**lv.fit.v1**, **lv.finder.v1** — le misure e le risposte inserite nel consulente taglie e in «Trova la tua misura» (altezza, peso ed età, se indicata). «Inizia da capo» cancella le risposte.',
+            '**lv.fit.v1**, **lv.finder.v1**, **lv.finder.kids.v1** — le misure e le risposte inserite nel consulente taglie e in «Trova la tua misura» (altezza, peso ed età, se indicata; per i capi bambino, l’altezza del bambino, conservata a parte). «Inizia da capo» cancella le risposte.',
             '**luxe-vault-locale**, **lv.currency.v1**, **lv.motion**, **soundEnabled** — lingua, valuta, animazioni e suoni.',
             '**lv.analytics.purchases** — numeri d\'ordine già comunicati all\'analisi (solo con consenso), per non contare due volte un acquisto.',
             '**lv.welcome-checked** (sessionStorage, fino alla chiusura della scheda) — per non richiedere l\'email di benvenuto a ogni caricamento di pagina.',

@@ -1,6 +1,18 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { MIN_MATCH, finderRecommendation, finderScore, indexOfSize, type FinderInput, type ShapeLevel } from '@/lib/fit-advisor'
+import {
+  MIN_MATCH,
+  finderRecommendation,
+  finderRunFor,
+  finderScore,
+  indexOfSize,
+  isKidsHeightRun,
+  kidsFinderRecommendation,
+  kidsHeightOf,
+  type FinderInput,
+  type KidsFinderInput,
+  type ShapeLevel,
+} from '@/lib/fit-advisor'
 
 const RUN = ['XS', 'S', 'M', 'L', 'XL']
 const all = () => true
@@ -107,5 +119,67 @@ describe('size finder', () => {
   it('only sizes the product makes appear in the shares', () => {
     const r = finderRecommendation(base, ['S', 'M'], all)
     assert.deepEqual(r.shares.map((s) => s.size).sort(), ['M', 'S'])
+  })
+
+  // ------------------------------------------------------------- children --
+  const KIDS = ['98', '104', '110', '116', '122', '128', '134', '140']
+  const kid: KidsFinderInput = { heightCm: 116, fit: 0, kind: 'tops' }
+
+  it('children: a size is the height it fits — 116 cm wears 116, 112 cm wears 116, 110 cm wears 110', () => {
+    assert.equal(kidsFinderRecommendation(kid, KIDS, all).fit.kind, 'exact')
+    for (const [h, size] of [[116, '116'], [112, '116'], [110, '110'], [104, '104'], [127, '128']] as const) {
+      const r = kidsFinderRecommendation({ ...kid, heightCm: h }, KIDS, all)
+      assert.deepEqual([r.rec.size, r.fit.kind === 'none' ? null : r.fit.size], [size, size], `${h} cm`)
+    }
+  })
+
+  it('children: looser fit and a rounder build move up, never by more than a size on one answer', () => {
+    const at = (p: Partial<KidsFinderInput>) => kidsFinderRecommendation({ ...kid, ...p }, KIDS, all).rec.score
+    assert.ok(at({ fit: 1 }) > at({}) && at({ fit: -1 }) < at({}))
+    assert.ok(at({ abdomen: 1 }) > at({}) && at({ abdomen: 1 }) - at({}) < 0.5)
+    assert.equal(kidsFinderRecommendation({ ...kid, fit: 1 }, KIDS, all).rec.size, '122')
+  })
+
+  it('children: a run that stops short of the child says "not made in your size"', () => {
+    const r = kidsFinderRecommendation({ ...kid, heightCm: 146 }, ['98', '104', '110', '116'], all)
+    assert.equal(r.fit.kind, 'none')
+    assert.equal(r.fit.kind === 'none' && r.fit.reason, 'not_carried')
+    assert.ok(r.shares.every((s) => s.percent < MIN_MATCH))
+  })
+
+  it('children: double sizes ("110/116") and sold-out sizes', () => {
+    const r = kidsFinderRecommendation({ ...kid, heightCm: 113 }, ['98/104', '110/116', '122/128'], all)
+    assert.equal(r.fit.kind !== 'none' && r.fit.size, '110/116')
+    const soldOut = kidsFinderRecommendation(kid, KIDS, (s) => s !== '116')
+    assert.deepEqual(soldOut.fit, { kind: 'none', ideal: '116', reason: 'sold_out' })
+  })
+
+  it('children: which runs are heights, and which finder a product gets', () => {
+    assert.equal(kidsHeightOf('116'), 116)
+    assert.equal(kidsHeightOf('110/116'), 113)
+    assert.equal(kidsHeightOf('116 cm'), 116)
+    assert.equal(kidsHeightOf('M'), null)
+    assert.equal(kidsHeightOf('6Y'), null)
+    assert.ok(isKidsHeightRun(['104', '110', '116']) && !isKidsHeightRun(['104', 'M']) && !isKidsHeightRun([]))
+    assert.equal(finderRunFor(['104', '110'], 'kids'), 'kids')
+    assert.equal(finderRunFor(['S', 'M'], 'kids'), null)
+    assert.equal(finderRunFor(['S', 'M'], 'women'), 'adult')
+    assert.equal(finderRunFor(['40', '41'], 'women'), null)
+  })
+
+  it('children: an offered size is always made, buyable and likely', () => {
+    const runs = [KIDS, ['104', '110', '116'], ['122/128', '134/140'], ['140', '146', '152', '158', '164']]
+    for (const heightCm of [92, 101, 110, 118, 125, 133, 141, 150, 166])
+      for (const hips of [-1, 0, 1] as ShapeLevel[])
+        for (const fit of [-1, 0, 1])
+          for (const run of runs)
+            for (const ok of [all, (s: string) => s !== run[1]]) {
+              const r = kidsFinderRecommendation({ heightCm, hips, abdomen: hips, fit, kind: 'bottoms' }, run, ok)
+              const f = r.fit
+              if (f.kind === 'none') continue
+              const label = JSON.stringify({ heightCm, hips, fit, run, f })
+              assert.ok(run.includes(f.size) && ok(f.size), label)
+              assert.ok((r.shares.find((x) => x.size === f.size)?.percent ?? 0) >= MIN_MATCH, label)
+            }
   })
 })

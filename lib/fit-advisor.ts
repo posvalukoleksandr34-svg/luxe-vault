@@ -520,24 +520,35 @@ export const MIN_MATCH = 30
  * The finder's answer fitted onto this product. Unlike fitToProduct it never
  * offers "the nearest" for its own sake: a stand-in size is offered only when
  * it is itself a likely match, or the answer is "none" and says why.
+ *
+ * `ideal` is a size as the scale writes it: a letter for adults ("M"), a
+ * height for children ("116").
  */
 export type FinderFit =
   /** The size the answers point to — made, and in stock in this colour. */
-  | { kind: 'exact'; size: string; ideal: LetterSize }
+  | { kind: 'exact'; size: string; ideal: string }
   /** The ideal size is sold out in this colour, or not made in this piece;
    *  `size` is another that is still a likely match. */
-  | { kind: 'sold_out'; size: string; ideal: LetterSize }
-  | { kind: 'not_carried'; size: string; ideal: LetterSize }
+  | { kind: 'sold_out'; size: string; ideal: string }
+  | { kind: 'not_carried'; size: string; ideal: string }
   /**
    * Nothing this product sells right now is a likely match. `range`: beyond
    * what the table can answer; `sold_out`: the ideal size is made but sold
    * out in this colour; `not_carried`: the ideal size is not made at all.
    */
-  | { kind: 'none'; ideal: LetterSize; reason: 'range' | 'sold_out' | 'not_carried' }
+  | { kind: 'none'; ideal: string; reason: 'range' | 'sold_out' | 'not_carried' }
+
+/** Where the answers point, before looking at this product. */
+export type FinderRec = {
+  size: string
+  /** The continuous position on the scale (0 = its first size). */
+  score: number
+  confidence: Confidence
+}
 
 export type FinderResult = {
   /** The size their answers point to, before looking at this product. */
-  rec: FitRecommendation
+  rec: FinderRec
   /** That answer fitted onto what this product makes and has in stock. */
   fit: FinderFit
   /**
@@ -555,60 +566,167 @@ export type FinderResult = {
 }
 
 /**
- * How far the estimate looks past both ends of the letter run. A frame beyond
- * XXXL keeps its chance out there instead of piling it onto XXXL. Three is
- * past the furthest any answer can reach (about -2.9 and 9.2).
+ * How far the estimate looks past both ends of a scale. A frame beyond XXXL
+ * keeps its chance out there instead of piling it onto XXXL. Three is past
+ * the furthest any answer can reach (about -2.9 and 9.2 on the letters).
  */
 const RUN_PAD = 3
 
 /**
- * The finder's whole answer for one product.
+ * The shared half of the finder: a score on a size scale, fitted onto one
+ * product. Adults and children differ only in the scale (letters, heights)
+ * and in how the score is reached.
  *
- * The chances are a normal curve over the size run centred on the score, as
+ * The chances are a normal curve over the scale centred on the score, as
  * wide as the uncertainty: tight when the answers land squarely on one size,
  * broad when they sit between two or the frame is at the ends of the table.
  */
+function fitOnScale(opts: {
+  score: number
+  outOfRange: boolean
+  /** The scale's sizes, as they are written, in order. */
+  scale: readonly string[]
+  /** A product size's position on the scale (fractions allowed), or null
+   *  when it is not on this scale at all. */
+  position: (size: string) => number | null
+  productSizes: string[]
+  isAvailable: (size: string) => boolean
+}): Omit<FinderResult, 'outOfRange'> {
+  const { score, outOfRange, scale, position } = opts
+  const rounded = Math.round(score)
+  const index = Math.max(0, Math.min(scale.length - 1, rounded))
+  const offGrid = Math.abs(score - rounded)
+  const confidence: Confidence = outOfRange ? 'low' : offGrid < 0.2 ? 'high' : offGrid < 0.35 ? 'medium' : 'low'
+  const ideal = scale[index]
+
+  const sigma = outOfRange ? 1 : 0.42
+  const weight = (i: number) => Math.exp(-((i - score) ** 2) / (2 * sigma * sigma))
+  let total = 0
+  for (let i = -RUN_PAD; i < scale.length + RUN_PAD; i++) total += weight(i)
+  const chanceAt = (i: number) => (weight(i) / total) * 100
+
+  // Ranked on the exact chance, ties to the LARGER size (slightly roomy is
+  // wearable, slightly tight is a return); rounded only for display.
+  const ranked = opts.productSizes
+    .map((size) => ({ size, at: position(size) }))
+    .filter((s): s is { size: string; at: number } => s.at !== null)
+    .map(({ size, at }) => ({ size, at, exact: chanceAt(at), available: opts.isAvailable(size) }))
+    .sort((a, b) => b.exact - a.exact || b.at - a.at)
+  const shares = ranked.map(({ size, exact, available }) => ({ size, percent: Math.round(exact), available }))
+
+  const isIdeal = (at: number) => Math.round(at) === index
+  const idealMade = ranked.some((s) => isIdeal(s.at))
+  const best = ranked.find((s) => s.available)
+  let fit: FinderFit
+  if (!outOfRange && best && best.exact >= MIN_MATCH) {
+    fit = isIdeal(best.at)
+      ? { kind: 'exact', size: best.size, ideal }
+      : { kind: idealMade ? 'sold_out' : 'not_carried', size: best.size, ideal }
+  } else {
+    // Past the end of the scale, even the ideal size is not a likely match.
+    const reason = outOfRange || chanceAt(index) < MIN_MATCH ? 'range' : idealMade ? 'sold_out' : 'not_carried'
+    fit = { kind: 'none', ideal, reason }
+  }
+
+  return { rec: { size: ideal, score, confidence }, fit, shares }
+}
+
+/** The finder's whole answer for one adult product, on the letter run. */
 export function finderRecommendation(
   input: FinderInput,
   productSizes: string[],
   isAvailable: (size: string) => boolean,
 ): FinderResult {
   const { score, bmi } = finderScore(input)
-  const rounded = Math.round(score)
-  const index = Math.max(0, Math.min(LETTER_SIZES.length - 1, rounded))
-  const offGrid = Math.abs(score - rounded)
   const outOfRange = bmi < 16 || bmi > 35 || score < -0.75 || score > LETTER_SIZES.length - 0.25
-  const confidence: Confidence = outOfRange ? 'low' : offGrid < 0.2 ? 'high' : offGrid < 0.35 ? 'medium' : 'low'
-  const ideal = LETTER_SIZES[index]
-  const rec: FitRecommendation = { size: ideal, score, confidence, basis: 'body' }
-
-  const sigma = outOfRange ? 1 : 0.42
-  const weight = (i: number) => Math.exp(-((i - score) ** 2) / (2 * sigma * sigma))
-  let total = 0
-  for (let i = -RUN_PAD; i < LETTER_SIZES.length + RUN_PAD; i++) total += weight(i)
-  const chance = (size: string) => (weight(indexOfSize(size)) / total) * 100
-
-  // Ranked on the exact chance, ties to the LARGER size (slightly roomy is
-  // wearable, slightly tight is a return); rounded only for display.
-  const ranked = productSizes
-    .filter((s) => indexOfSize(s) !== -1)
-    .map((size) => ({ size, exact: chance(size), available: isAvailable(size) }))
-    .sort((a, b) => b.exact - a.exact || indexOfSize(b.size) - indexOfSize(a.size))
-  const shares = ranked.map(({ size, exact, available }) => ({ size, percent: Math.round(exact), available }))
-
-  const idealMade = ranked.some((s) => indexOfSize(s.size) === index)
-  const best = ranked.find((s) => s.available)
-  let fit: FinderFit
-  if (!outOfRange && best && best.exact >= MIN_MATCH) {
-    fit =
-      indexOfSize(best.size) === index
-        ? { kind: 'exact', size: best.size, ideal }
-        : { kind: idealMade ? 'sold_out' : 'not_carried', size: best.size, ideal }
-  } else {
-    // Past the end of the run, even the ideal size is not a likely match.
-    const reason = outOfRange || chance(ideal) < MIN_MATCH ? 'range' : idealMade ? 'sold_out' : 'not_carried'
-    fit = { kind: 'none', ideal, reason }
+  const position = (size: string) => {
+    const i = indexOfSize(size)
+    return i === -1 ? null : i
   }
+  return { ...fitOnScale({ score, outOfRange, scale: LETTER_SIZES, position, productSizes, isAvailable }), outOfRange }
+}
 
-  return { rec, fit, shares, outOfRange }
+// ------------------------------------------------ children, sized by height --
+//
+// Children's clothes are sold by the height of the child they fit — 104, 110,
+// 116, in steps of 6 cm (the European run). So the finder asks a child's
+// height rather than height and weight, and the hips and abdomen answers and
+// the fit slider move it along the same run, by fractions of a size, as for
+// adults. Age is not asked: at one height, a child's age says little about
+// the cut of a garment.
+
+/** The European children's run, by height in cm. */
+export const KIDS_RUN = [50, 56, 62, 68, 74, 80, 86, 92, 98, 104, 110, 116, 122, 128, 134, 140, 146, 152, 158, 164, 170, 176] as const
+const KIDS_STEP = 6
+
+/** Heights the children's table is meant for. Outside them we do not guess. */
+export const KIDS_HEIGHT_RANGE = { min: 50, max: 185 } as const
+
+/**
+ * The height a children's size is for: "116" → 116, "110/116" or "110-116"
+ * (a size that covers both) → 113. Null for anything else.
+ */
+export function kidsHeightOf(size: string): number | null {
+  const m = size.trim().match(/^(\d{2,3})(?:\s*[/-]\s*(\d{2,3}))?\s*(?:cm)?$/i)
+  if (!m) return null
+  const a = Number(m[1])
+  const b = m[2] ? Number(m[2]) : a
+  const h = (a + b) / 2
+  return h >= 44 && h <= 194 && b >= a ? h : null
+}
+
+/** True when every size is a child's height ("104", "110/116"). */
+export function isKidsHeightRun(sizes: string[]): boolean {
+  return sizes.length > 0 && sizes.every((s) => kidsHeightOf(s) !== null)
+}
+
+export type KidsFinderInput = {
+  heightCm: number
+  hips?: ShapeLevel
+  abdomen?: ShapeLevel
+  /** The slider: -1 more fitted … 0 as designed … +1 looser. Continuous. */
+  fit: number
+  productCut?: FitPreference
+  kind: 'tops' | 'bottoms'
+}
+
+/** A child's answers as a position on KIDS_RUN (0 = 50 cm). */
+export function kidsFinderScore(input: KidsFinderInput): number {
+  const w = SHAPE_WEIGHT[input.kind]
+  return (
+    (input.heightCm - KIDS_RUN[0]) / KIDS_STEP +
+    // A size is the height it fits UP TO: a child of 112 cm wears 116, not
+    // 110. A third of a size up puts "just over" on the larger side, and a
+    // child exactly on a size still on it.
+    0.3 +
+    (input.hips ?? 0) * w.hips +
+    (input.abdomen ?? 0) * w.abdomen +
+    fitShift(input.fit, input.productCut ?? 'regular')
+  )
+}
+
+/** The finder's whole answer for one children's product, on the height run. */
+export function kidsFinderRecommendation(
+  input: KidsFinderInput,
+  productSizes: string[],
+  isAvailable: (size: string) => boolean,
+): FinderResult {
+  const score = kidsFinderScore(input)
+  const outOfRange = input.heightCm < KIDS_HEIGHT_RANGE.min || input.heightCm > KIDS_HEIGHT_RANGE.max
+  const position = (size: string) => {
+    const h = kidsHeightOf(size)
+    return h === null ? null : (h - KIDS_RUN[0]) / KIDS_STEP
+  }
+  const scale = KIDS_RUN.map(String)
+  return { ...fitOnScale({ score, outOfRange, scale, position, productSizes, isAvailable }), outOfRange }
+}
+
+/**
+ * Which finder a product gets: the letter run for adults, the height run for
+ * children, or none (shoes, one-size pieces, children's pieces in letters —
+ * the adult table says nothing about a child).
+ */
+export function finderRunFor(sizes: string[], group: string | undefined): 'adult' | 'kids' | null {
+  if (group === 'kids') return isKidsHeightRun(sizes) ? 'kids' : null
+  return isLetterSizeRun(sizes) ? 'adult' : null
 }

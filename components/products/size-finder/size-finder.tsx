@@ -8,9 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import {
   AGE_RANGE,
   HEIGHT_RANGE,
+  KIDS_HEIGHT_RANGE,
   WEIGHT_RANGE,
   finderRecommendation,
-  isLetterSizeRun,
+  finderRunFor,
+  kidsFinderRecommendation,
   type FinderResult,
   type FitPreference,
   type ShapeLevel,
@@ -20,6 +22,18 @@ import { productImage } from '@/lib/product-image'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { AbdomenFigure, HipsFigure } from './body-shape'
+import boyBellyAverage from './photos/kids/boy-belly-average.webp'
+import boyBellyLarge from './photos/kids/boy-belly-large.webp'
+import boyBellySmall from './photos/kids/boy-belly-small.webp'
+import boyHipsAverage from './photos/kids/boy-hips-average.webp'
+import boyHipsLarge from './photos/kids/boy-hips-large.webp'
+import boyHipsSmall from './photos/kids/boy-hips-small.webp'
+import girlBellyAverage from './photos/kids/girl-belly-average.webp'
+import girlBellyLarge from './photos/kids/girl-belly-large.webp'
+import girlBellySmall from './photos/kids/girl-belly-small.webp'
+import girlHipsAverage from './photos/kids/girl-hips-average.webp'
+import girlHipsLarge from './photos/kids/girl-hips-large.webp'
+import girlHipsSmall from './photos/kids/girl-hips-small.webp'
 import manAbdomen from './photos/man-abdomen.webp'
 import womanAbdomen from './photos/woman-abdomen.webp'
 import womanHips from './photos/woman-hips.webp'
@@ -43,22 +57,29 @@ import womanHips from './photos/woman-hips.webp'
  * the product photo, the questions as a list that fills in as they are
  * answered, and the privacy line; on the right the question.
  *
- * PHOTOS for the hips and abdomen questions (./photos), by department: the
- * women's set, the men's abdomen. Where there is no photo — men's hips — the
- * line drawing (./body-shape) stands in.
+ * PHOTOS for the hips and abdomen questions (./photos), by who the piece is
+ * for (finderAudience). A set of three — one per answer — changes with the
+ * choice; a single photo shows the area; with none, the line drawing
+ * (./body-shape) stands in. Today: children have sets of three, women a
+ * photo per question, men the abdomen.
+ *
+ * CHILDREN (group "kids", sizes by height: 104, 110, 116…) get their own
+ * table (kidsFinderRecommendation): the child's height, hips, abdomen and
+ * fit — no weight, no age — and their answers are remembered apart from the
+ * shopper's own.
  *
  * PRIVACY. Everything is computed in the browser. The answers are remembered
  * on this device only (localStorage) so the next product does not ask again,
  * and "Start over" forgets them. Nothing is sent to the server.
  *
- * Shown for letter-sized adult clothing (XS…XXXL). Shoes keep the
- * foot-length finder (fit-advisor-modal.tsx); kids' pieces get none — the
- * table is for adults.
+ * Shown for letter-sized adult clothing (XS…XXXL) and height-sized children's
+ * clothing (finderRunFor). Shoes keep the foot-length finder
+ * (fit-advisor-modal.tsx).
  */
 
 type Step = 'body' | 'age' | 'hips' | 'belly' | 'fit' | 'result'
-const STEPS: Step[] = ['body', 'age', 'hips', 'belly', 'fit', 'result']
-const QUESTIONS = STEPS.length - 1
+const ADULT_STEPS: Step[] = ['body', 'age', 'hips', 'belly', 'fit', 'result']
+const KIDS_STEPS: Step[] = ['body', 'hips', 'belly', 'fit', 'result']
 const NAV: Record<Step, UIKey> = {
   body: 'finder.nav.body',
   age: 'finder.nav.age',
@@ -68,14 +89,39 @@ const NAV: Record<Step, UIKey> = {
   result: 'finder.nav.result',
 }
 
-const STORAGE_KEY = 'lv.finder.v1'
+/** A shopper's answers and a child's are not the same body: kept apart. */
+const STORAGE_KEY = { adult: 'lv.finder.v1', kids: 'lv.finder.kids.v1' } as const
 const SHAPES: ShapeLevel[] = [-1, 0, 1]
 
-/** The reference photo for each body question, by department. */
-type Photos = Partial<Record<'hips' | 'belly', StaticImageData>>
-const PHOTOS: Record<'women' | 'men', Photos> = {
+/** Who a piece is for, as far as the photos go. */
+export type FinderAudience = 'women' | 'men' | 'boys' | 'girls'
+
+/**
+ * From the department, and for children from the category and the name:
+ * "Bambina", "Girls", "Fille", "Mädchen" → girls; "Bambino", "Boys",
+ * "Garçon", "Junge" → boys. A children's piece that says neither gets the
+ * boys' set (the one on the shop's own cream ground).
+ */
+export function finderAudience(group: string | undefined, text: string): FinderAudience {
+  if (group === 'men') return 'men'
+  if (group !== 'kids') return 'women'
+  return /\b(girls?|bambin[ae]|ragazz[ae]|filles?|m[aä]dchen)\b|девоч/i.test(text) ? 'girls' : 'boys'
+}
+
+/** One photo for a question, or three — one per answer, in SHAPES order. */
+type ShapePhoto = StaticImageData | readonly [StaticImageData, StaticImageData, StaticImageData]
+const isPhotoSet = (p: ShapePhoto | undefined): p is readonly [StaticImageData, StaticImageData, StaticImageData] => Array.isArray(p)
+const PHOTOS: Record<FinderAudience, Partial<Record<'hips' | 'belly', ShapePhoto>>> = {
   women: { hips: womanHips, belly: womanAbdomen },
   men: { belly: manAbdomen },
+  boys: {
+    hips: [boyHipsSmall, boyHipsAverage, boyHipsLarge],
+    belly: [boyBellySmall, boyBellyAverage, boyBellyLarge],
+  },
+  girls: {
+    hips: [girlHipsSmall, girlHipsAverage, girlHipsLarge],
+    belly: [girlBellySmall, girlBellyAverage, girlBellyLarge],
+  },
 }
 
 type Saved = {
@@ -98,9 +144,9 @@ function num(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
-function readSaved(): Saved | null {
+function readSaved(key: string): Saved | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
+    const raw = JSON.parse(localStorage.getItem(key) ?? 'null')
     if (!raw || typeof raw !== 'object') return null
     const shape = (v: unknown): ShapeLevel => (v === -1 || v === 1 ? v : 0)
     const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 6) : '')
@@ -134,6 +180,7 @@ export function SizeFinder({
   name,
   kind,
   group,
+  audience,
   onOpenSizeChart,
 }: {
   sizes: string[]
@@ -147,6 +194,8 @@ export function SizeFinder({
   name: string
   kind: 'tops' | 'bottoms'
   group?: string
+  /** Who the piece is for: picks the photos (finderAudience). */
+  audience: FinderAudience
   onOpenSizeChart?: () => void
 }) {
   const { t, tf } = useStore()
@@ -161,6 +210,10 @@ export function SizeFinder({
     if (open) headingRef.current?.focus()
   }, [step, open])
 
+  const run = finderRunFor(sizes, group)
+  const kids = run === 'kids'
+  const STEPS = kids ? KIDS_STEPS : ADULT_STEPS
+  const storageKey = STORAGE_KEY[kids ? 'kids' : 'adult']
   const index = STEPS.indexOf(step)
   const set = (patch: Partial<Saved>) => {
     setA((prev) => ({ ...prev, ...patch }))
@@ -169,13 +222,21 @@ export function SizeFinder({
 
   const heightCm = num(a.cm)
   const weightKg = num(a.kg)
-  const age = a.ageSkipped ? undefined : num(a.age)
+  const age = a.ageSkipped || kids ? undefined : num(a.age)
 
-  const bodyFilled = heightCm !== undefined && weightKg !== undefined
+  const bodyFilled = heightCm !== undefined && (kids || weightKg !== undefined)
   const ageValid = age !== undefined && age >= AGE_RANGE.min && age <= AGE_RANGE.max
 
   const result = useMemo(() => {
-    if (step !== 'result' || heightCm === undefined || weightKg === undefined) return null
+    if (step !== 'result' || heightCm === undefined) return null
+    if (kids) {
+      return kidsFinderRecommendation(
+        { heightCm, hips: a.hips, abdomen: a.belly, fit: a.fitStop / 2, productCut, kind },
+        sizes,
+        isAvailable,
+      )
+    }
+    if (weightKg === undefined) return null
     return finderRecommendation(
       {
         heightCm,
@@ -190,28 +251,28 @@ export function SizeFinder({
       sizes,
       isAvailable,
     )
-  }, [step, heightCm, weightKg, age, a.hips, a.belly, a.fitStop, productCut, kind, sizes, isAvailable])
+  }, [step, kids, heightCm, weightKg, age, a.hips, a.belly, a.fitStop, productCut, kind, sizes, isAvailable])
 
   // Remembered on this device once there is an answer to remember.
   useEffect(() => {
     if (step !== 'result') return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(a))
+      localStorage.setItem(storageKey, JSON.stringify(kids ? { ...a, kg: '', age: '', ageSkipped: false } : a))
     } catch {
       // Storage unavailable: the finder simply asks again next time.
     }
-  }, [step, a])
+  }, [step, a, kids, storageKey])
 
-  // Not offered: anything but letter sizes, and children's pieces.
-  if (!isLetterSizeRun(sizes) || group === 'kids') return null
+  // Not offered: shoes, one-size pieces, children's pieces not sized by height.
+  if (!run) return null
 
-  const photos = PHOTOS[group === 'men' ? 'men' : 'women']
+  const photos = PHOTOS[audience]
 
   function openFinder(next: boolean) {
     setOpen(next)
     if (next) {
       // Answers from an earlier product, on this device: filled in, from step 1.
-      setA(readSaved() ?? EMPTY)
+      setA(readSaved(storageKey) ?? EMPTY)
       setStep('body')
       setError(null)
     }
@@ -224,7 +285,12 @@ export function SizeFinder({
 
   function next(e?: FormEvent) {
     e?.preventDefault()
-    if (step === 'body') {
+    if (step === 'body' && kids) {
+      if (heightCm === undefined || heightCm < KIDS_HEIGHT_RANGE.min || heightCm > KIDS_HEIGHT_RANGE.max) {
+        setError(tf('finder.kids.invalid', { min: KIDS_HEIGHT_RANGE.min, max: KIDS_HEIGHT_RANGE.max }))
+        return
+      }
+    } else if (step === 'body') {
       if (
         heightCm === undefined ||
         weightKg === undefined ||
@@ -246,7 +312,7 @@ export function SizeFinder({
 
   function restart() {
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(storageKey)
     } catch {
       // nothing to forget
     }
@@ -254,12 +320,16 @@ export function SizeFinder({
     go('body')
   }
 
-  const remaining = QUESTIONS - index
+  const remaining = STEPS.length - 1 - index
   const progressText =
     step === 'result' ? t('finder.leftDone') : remaining <= 1 ? t('finder.leftOne') : tf('finder.left', { n: remaining })
   const canContinue = step === 'body' ? bodyFilled : step === 'age' ? a.ageSkipped || a.age.trim() !== '' : true
   const subtitle =
-    step === 'hips' || step === 'belly' ? t('finder.shape.sub') : step === 'fit' ? t('finder.fit.question') : null
+    step === 'hips' || step === 'belly'
+      ? t(kids ? 'finder.kids.shape.sub' : 'finder.shape.sub')
+      : step === 'fit'
+        ? t('finder.fit.question')
+        : null
 
   return (
     <Dialog open={open} onOpenChange={openFinder}>
@@ -299,7 +369,7 @@ export function SizeFinder({
             {STEPS.map((s, n) => {
               const done = n < index
               const current = n === index
-              const label = t(NAV[s])
+              const label = t(kids && s === 'body' ? 'finder.height' : NAV[s])
               return (
                 <li key={s}>
                   <button
@@ -355,10 +425,10 @@ export function SizeFinder({
               tabIndex={-1}
               className="mt-2 pr-8 text-[15px] font-semibold uppercase tracking-[0.16em] text-foreground outline-none md:text-[17px]"
             >
-              {step === 'body' && t('finder.body.title')}
+              {step === 'body' && t(kids ? 'finder.kids.body.title' : 'finder.body.title')}
               {step === 'age' && t('finder.age.title')}
-              {step === 'hips' && t('finder.hips.title')}
-              {step === 'belly' && t('finder.belly.title')}
+              {step === 'hips' && t(kids ? 'finder.kids.hips.title' : 'finder.hips.title')}
+              {step === 'belly' && t(kids ? 'finder.kids.belly.title' : 'finder.belly.title')}
               {step === 'fit' && t('finder.fit.title')}
               {step === 'result' &&
                 (result?.fit.kind === 'none' && result.fit.reason !== 'sold_out' ? t('finder.none.title') : t('finder.result.title'))}
@@ -366,7 +436,7 @@ export function SizeFinder({
             {subtitle && <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-foreground/70">{subtitle}</p>}
 
             <div className={cn('mt-7 flex flex-1 flex-col', (step === 'body' || step === 'age' || step === 'fit') && 'md:justify-center md:pb-10')}>
-              {step === 'body' && <BodyStep a={a} set={set} />}
+              {step === 'body' && <BodyStep a={a} set={set} kids={kids} />}
               {step === 'age' && <AgeStep a={a} set={set} onSkip={() => { set({ ageSkipped: true, age: '' }); go('hips') }} />}
               {step === 'hips' && <ShapeStep kind="hips" photo={photos.hips} value={a.hips} onChange={(hips) => set({ hips })} />}
               {step === 'belly' && <ShapeStep kind="belly" photo={photos.belly} value={a.belly} onChange={(belly) => set({ belly })} />}
@@ -459,26 +529,29 @@ function PrivacyLine() {
   )
 }
 
-function BodyStep({ a, set }: { a: Saved; set: (p: Partial<Saved>) => void }) {
+function BodyStep({ a, set, kids }: { a: Saved; set: (p: Partial<Saved>) => void; kids: boolean }) {
   const { t } = useStore()
   return (
     <div className="max-w-lg">
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className={cn('grid gap-5', !kids && 'sm:grid-cols-2')}>
         <div>
           <label htmlFor="finder-cm" className={LABEL}>
             {t('finder.height')} (cm)
           </label>
           <input id="finder-cm" inputMode="decimal" autoComplete="off" maxLength={5} className={FIELD} value={a.cm} onChange={(e) => set({ cm: e.target.value })} />
         </div>
-        <div>
-          <label htmlFor="finder-kg" className={LABEL}>
-            {t('finder.weight')} (kg)
-          </label>
-          <input id="finder-kg" inputMode="decimal" autoComplete="off" maxLength={5} className={FIELD} value={a.kg} onChange={(e) => set({ kg: e.target.value })} />
-        </div>
+        {/* Children's sizes are heights: their weight is not asked. */}
+        {!kids && (
+          <div>
+            <label htmlFor="finder-kg" className={LABEL}>
+              {t('finder.weight')} (kg)
+            </label>
+            <input id="finder-kg" inputMode="decimal" autoComplete="off" maxLength={5} className={FIELD} value={a.kg} onChange={(e) => set({ kg: e.target.value })} />
+          </div>
+        )}
       </div>
       <div className="mt-7">
-        <Note icon={Ruler}>{t('finder.body.sub')}</Note>
+        <Note icon={Ruler}>{t(kids ? 'finder.kids.body.sub' : 'finder.body.sub')}</Note>
       </div>
       <PrivacyLine />
     </div>
@@ -521,8 +594,9 @@ function ShapeStep({
   onChange,
 }: {
   kind: 'hips' | 'belly'
-  /** A reference photo of the area; without one, the line drawing. */
-  photo?: StaticImageData
+  /** A reference photo of the area, or three (one per answer); without
+   *  one, the line drawing. */
+  photo?: ShapePhoto
   value: ShapeLevel
   onChange: (v: ShapeLevel) => void
 }) {
@@ -557,18 +631,40 @@ function ShapeStep({
         <button type="button" onClick={() => move(-1)} disabled={i === 0} aria-label={t('finder.shapePrev')} className={arrow}>
           <ChevronLeft className="size-5" />
         </button>
-        {/* The photo sits on the card's warm ground: multiplied, its own
-            near-white background disappears into it. Decorative — the radios
-            below carry the question and the answer. */}
-        <div className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-[22px] border border-border/50 bg-[linear-gradient(180deg,#f6f2eb_0%,#eee7dc_100%)] sm:h-[230px]">
-          {photo ? (
-            <Image src={photo} alt="" fill sizes="300px" loading="eager" className="object-contain object-bottom mix-blend-multiply" />
-          ) : (
-            <div className="flex h-full items-center justify-center py-4">
-              {kind === 'hips' ? <HipsFigure level={value} /> : <AbdomenFigure level={value} />}
-            </div>
-          )}
-        </div>
+        {isPhotoSet(photo) ? (
+          // One photo per answer, all three loaded at once and cross-faded,
+          // so a choice shows at once. The card takes the photos' own shape
+          // and ground. Decorative: the radios below carry the meaning.
+          <div
+            className="relative w-full max-w-[calc(200px*var(--a))] overflow-hidden rounded-[22px] border border-border/50 shadow-[0_18px_40px_-28px_rgba(28,24,18,0.55)] sm:max-w-[calc(230px*var(--a))]"
+            style={{ aspectRatio: `${photo[0].width} / ${photo[0].height}`, ['--a' as string]: photo[0].width / photo[0].height }}
+          >
+            {photo.map((src, n) => (
+              <Image
+                key={n}
+                src={src}
+                alt=""
+                fill
+                sizes="340px"
+                loading="eager"
+                className={cn('object-cover transition-opacity duration-300 ease-out', n === i ? 'opacity-100' : 'opacity-0')}
+              />
+            ))}
+          </div>
+        ) : (
+          // A single photo sits on the card's warm ground: multiplied, its own
+          // near-white background disappears into it. Decorative — the radios
+          // below carry the question and the answer.
+          <div className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-[22px] border border-border/50 bg-[linear-gradient(180deg,#f6f2eb_0%,#eee7dc_100%)] sm:h-[230px]">
+            {photo ? (
+              <Image src={photo} alt="" fill sizes="300px" loading="eager" className="object-contain object-bottom mix-blend-multiply" />
+            ) : (
+              <div className="flex h-full items-center justify-center py-4">
+                {kind === 'hips' ? <HipsFigure level={value} /> : <AbdomenFigure level={value} />}
+              </div>
+            )}
+          </div>
+        )}
         <button type="button" onClick={() => move(1)} disabled={i === SHAPES.length - 1} aria-label={t('finder.shapeNext')} className={arrow}>
           <ChevronRight className="size-5" />
         </button>

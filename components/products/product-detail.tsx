@@ -22,8 +22,8 @@ import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
-import { SizeFinder } from '@/components/products/size-finder/size-finder'
-import { isLetterSizeRun } from '@/lib/fit-advisor'
+import { SizeFinder, finderAudience } from '@/components/products/size-finder/size-finder'
+import { finderRunFor, isLetterSizeRun } from '@/lib/fit-advisor'
 import { HurryDot } from '@/components/products/hurry-dot'
 import { resolveTags } from '@/lib/stylist/tagging'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
@@ -688,10 +688,12 @@ export function ProductDetail({ product }: { product: Product }) {
               {t('product.size')}
             </p>
             <div className="flex items-center gap-4">
-              {/* Letter-sized clothing: the step-by-step finder. Shoes keep
-                  the foot-length finder below; anything else gets neither.
+              {/* Letter-sized clothing, and children's clothing sized by
+                  height: the step-by-step finder. Shoes keep the foot-length
+                  finder below; anything else gets neither (a children's piece
+                  in letters included — the adult table says nothing of it).
                   "Available" means buyable in the colour chosen right now. */}
-              {isLetterSizeRun(p.sizes) ? (
+              {isLetterSizeRun(p.sizes) || finderRunFor(p.sizes, p.group) ? (
                 <SizeFinder
                   sizes={p.sizes}
                   isAvailable={(s) => stockFor(s, color) !== 0 && stockLimit(p.id, s, lineColor, p) !== 0}
@@ -705,6 +707,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   // from chest and abdomen.
                   kind={/\b(pants?|trousers?|jeans|shorts|skirts?|leggings?|chinos?|pantaloni|gonna|gonne|pantalons?|jupes?|hosen?|röcke?|rock)\b/i.test(`${p.category} ${localize(p.name)}`) ? 'bottoms' : 'tops'}
                   group={p.group}
+                  audience={finderAudience(p.group, `${p.category} ${localize(p.name)}`)}
                   onOpenSizeChart={sizeChart.length > 0 ? () => setShowGuide(true) : undefined}
                 />
               ) : (
