@@ -32,7 +32,7 @@
     "autoprefixer": "10.4.15",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "eslint": "8.57.1",
+    "eslint": "10.12.0",
     "eslint-config-next": "^15.5.27",
     "libphonenumber-js": "^1.13.12",
     "lucide-react": "^0.446.0",
