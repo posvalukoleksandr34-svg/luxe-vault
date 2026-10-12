@@ -40,6 +40,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Generate Next.js types
+        # next-env.d.ts (image module declarations) and the route types are
+        # generated files, git-ignored; a fresh checkout has neither, and
+        # without them every static image import fails the typecheck.
+        run: npx next typegen
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
