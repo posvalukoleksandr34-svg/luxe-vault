@@ -1,7 +1,6 @@
 # Remediation log — audit of 2026-10-12
 
-Branch `claude/admiring-albattani-xgdcm5`, based on `main` at `17eb2c9`.
-Nothing here has been deployed or merged; production is unchanged.
+Branch `claude/admiring-albattani-xgdcm5`, based on `main` at `17eb2c9`. Merged to `main` and deployed to production on 2026-10-12 at the owner's request (`d8a18cf`; Vercel production deploy succeeded).
 No migration was added. No secret was read, printed or rotated. No real money
 moved: every payment test ran against a local Stripe stand-in.
 
@@ -121,7 +120,8 @@ for the people using the shop.
   - the build;
   - gitleaks (no leaks after the allow-list);
   - the migration script: 55 migrations applied, 29 re-applied, the rules hold, and 3 negative tests are caught.
-- The workflow has **not yet run on GitHub**.
+- First run on `main` (`af5943b`): migrations, secret scan and dependency audit passed; the typecheck failed on a fresh checkout. `next-env.d.ts`, which declares image modules, is generated and git-ignored. Fixed with `npx next typegen` before the typecheck (`d8a18cf`), after reproducing the failure in a clean clone. CI on `d8a18cf`: **all jobs green**.
+- Dependabot opened PRs at once, including major npm versions, although the config comment promised otherwise. Fixed: npm majors ignored, minor and patch grouped.
 
 ### 12. Backups fail loudly when not configured — AUD-01
 

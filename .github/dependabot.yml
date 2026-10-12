@@ -1,5 +1,10 @@
-# Keeps the SHA-pinned GitHub Actions current, and proposes npm security
-# updates. Each update arrives as a pull request that CI (ci.yml) checks.
+# Keeps the SHA-pinned GitHub Actions current, and proposes npm updates within
+# the current major versions. Each update arrives as a pull request that CI
+# (ci.yml) checks.
+#
+# Major npm upgrades (Next, React, Tailwind, ESLint, Stripe.js…) are migrations,
+# not bumps: they are ignored here and done deliberately, as their own change.
+# Security alerts still appear under Security → Dependabot.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -10,9 +15,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # Security fixes and patch releases only; minor and major upgrades of the
-    # framework are deliberate, separate changes.
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
-      patches:
-        update-types: [patch]
+      minor-and-patch:
+        update-types: [minor, patch]

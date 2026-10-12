@@ -22,7 +22,7 @@
 | No secrets in the code or history beyond known, burned ones | VERIFIED | gitleaks 8.28.0: 211 commits and the working tree. The only findings are the 4 known burned-credential lines (AUD-10). |
 | Burned admin credentials not in use in production | NOT VERIFIED | Owner: confirm or rotate `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` (AUD-10). |
 | Admin console: every API handler and page checks the session | VERIFIED | 46/46 handlers call `requireAdmin()`; all admin pages call `isAdminRequest()` (AUD-14). |
-| Admin MFA enforced | NOT VERIFIED | Code verified: an invalid secret now fails closed (AUD-05). Whether production has a valid `ADMIN_TOTP_SECRET`: owner. |
+| Admin MFA enforced | NOT VERIFIED | Code verified and deployed: an invalid secret now fails closed (AUD-05). Whether production has a valid `ADMIN_TOTP_SECRET`: owner (sign in once to check). |
 | Admin behind Cloudflare Access | NOT VERIFIED | Dashboard. |
 | CSRF guard | VERIFIED | Locally (security suite 47/47); live (cross-site POST → 403). |
 | Origin lock (no Cloudflare bypass) | VERIFIED | Live, 2026-10-12 15:36 UTC: direct, forged-Host and guessed-secret requests refused. |
@@ -78,7 +78,7 @@
 | Offsite backups | FAILED | Never ran: every run skipped the backup (AUD-01). |
 | Restore tested | FAILED | Never ran (AUD-01). |
 | Supabase's own backups | NOT VERIFIED | Plan and retention: dashboard. |
-| CI on every change | NOT VERIFIED | Workflow written and checked locally (AUD-08); first GitHub run and branch protection pending. |
+| CI on every change | VERIFIED (runs) / NOT VERIFIED (required) | CI green on `main` at `d8a18cf` (all four jobs). Making the checks required (branch protection): owner. |
 | Actions pinned to SHAs, least privilege | VERIFIED | All `uses:` pinned; `permissions` set on every workflow. |
 | Crash and security alerting | VERIFIED (partial) | Telegram alerts in code; no log drain or 5xx-rate alerting (`docs/security/README.md` F7). |
 | Rollback | NOT VERIFIED | Vercel Instant Rollback exists on the platform; not exercised. |
@@ -103,9 +103,9 @@
 | Imprint complete | NOT VERIFIED | The admin dashboard warns while `config/business.ts` fields are missing; values are environment variables. |
 | Privacy policy matches processing | NOT VERIFIED (today) | Audited 2026-10-04; cookie list updated for the Size Finder keys. |
 
-## Before merging this branch
+## Deployed 2026-10-12 (`d8a18cf`) — what to do now
 
-1. **TOTP:** confirm the live admin sign-in asks for a 6-digit code, or that `ADMIN_TOTP_SECRET` is unset (AUD-05). Otherwise this deploy blocks admin sign-in until it is fixed.
-2. **Expect red runs:** "Offsite backup" and "Backup restore test" will fail until backups are configured. That is intended (AUD-01).
+1. **TOTP:** sign in to the admin console once. If it answers "Вход временно недоступен", `ADMIN_TOTP_SECRET` is set but invalid (AUD-05): fix or remove it and redeploy.
+2. **Expect red runs:** "Offsite backup" (nightly) and "Backup restore test" (weekly) now fail until backups are configured. That is intended (AUD-01).
 3. **Staff:** paid orders can no longer be deleted; refunds on a stale screen ask for a refresh.
-4. After merge, open the Actions tab and confirm the new CI workflow passes on `main`. Then make its jobs required.
+4. **CI:** green on `main`. Make its jobs required (Settings → Branches).

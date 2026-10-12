@@ -129,6 +129,14 @@ GitHub Actions history (API, 2026-10-12):
 - "Offsite backup" and "Backup restore test" concluded success while their backup and restore steps were **skipped** on every listed run (AUD-01).
 - Both abandoned-cart workflows ran hourly (AUD-16).
 
+After the merge and the production deploy of `d8a18cf`, the same workflow was run again (run `38298169074`). It concluded **success**, and the run carries no failure or warning annotations from the checks.
+
+CI on GitHub, after the merge:
+
+- On `af5943b`: migrations, secret scan and dependency audit passed. The typecheck failed on the fresh checkout (generated `next-env.d.ts` missing).
+- That failure was reproduced in a clean clone and fixed with `next typegen`.
+- On `d8a18cf`: **all four jobs passed**.
+
 ## 6. Final run — every suite on the final build
 
 Production build of the final code (exit 0), then each suite in turn on that build.
@@ -157,6 +165,6 @@ Two runs needed a second attempt because of the harness, not the code:
 
 - **Stripe:** a local stand-in, not Stripe test mode (no test keys in this environment). Idempotency semantics were modelled on Stripe's documented behaviour.
 - **The end-to-end harness** (gateway, stand-ins, suites) is not in the repository. Recommended next: a `docker compose` integration harness in CI. Until then CI runs the unit tests, the build and the migration checks only.
-- **CI** (`ci.yml`) has been validated locally step by step, but **has not yet run on GitHub**.
+- **CI** (`ci.yml`) runs unit tests, the build and migration checks, not the end-to-end suites.
 - **Out of scope:** load, concurrency at scale and performance (Core Web Vitals) were not measured. A full accessibility audit was not repeated (axe runs inside the Size Finder suite only).
 - **Live site:** no production endpoint was exercised directly from this environment (it cannot reach the live domain); live evidence is the workflow result above.

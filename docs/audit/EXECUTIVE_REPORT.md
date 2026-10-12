@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12.
 **Code audited:** `main` at `17eb2c9`.
-**Fixes:** branch `claude/admiring-albattani-xgdcm5`, not merged and not deployed.
+**Fixes:** branch `claude/admiring-albattani-xgdcm5`, merged to `main` and **deployed to production** on 2026-10-12 as `d8a18cf`. The Vercel production deploy succeeded, CI is green on `main`, and the live security check passed after the deploy.
 
 **Companion documents:**
 
@@ -41,12 +41,13 @@ No audit can show an application is secure. This one shows what was tested, how,
    - Meanwhile, check the Supabase plan's own backups and take a manual dump.
    - After this branch is merged, both backup workflows turn **red** until configured. That is deliberate.
 2. **Legal review of the catalogue (AUD-02).** IP counsel, plus written confirmation from Stripe and NOWPayments that replica / designer-inspired goods are acceptable to them. "Replica" on the label does not make a sale lawful.
-3. **Before merging:**
-   - Confirm the live admin sign-in asks for a 6-digit code, or that `ADMIN_TOTP_SECRET` is unset (AUD-05). An invalid secret now blocks sign-in instead of silently switching MFA off.
+3. **Now that it is live:**
+   - Sign in to the admin console once. If it answers "Вход временно недоступен", `ADMIN_TOTP_SECRET` is set but invalid (AUD-05): fix it with `scripts/admin-totp-setup.mjs`, or remove it, and redeploy. An invalid secret now blocks sign-in instead of silently switching MFA off.
    - Confirm the old, burned admin password and session secret are not in use (AUD-10).
 4. **Decide how long an unpaid order may hold stock (AUD-09).** Today it is forever. Anyone can reserve the whole catalogue without paying, at checkout speed.
-5. **After merging:**
+5. **Next:**
    - Make the new CI checks required on `main` (AUD-08).
+   - Review the Dependabot pull requests. The config now ignores major npm versions; the major-version PRs it opened first (Tailwind 4, ESLint 10, eslint-config-next 16, Stripe.js 10) are migrations to schedule deliberately, not to merge as bumps.
    - Work through the dashboard items in [FINDINGS AUD-21](FINDINGS.md#aud-21): Vercel plan, Netlify leftover, Supabase Auth settings, Stripe webhook events and Radar, Cloudflare WAF and Access, GitHub branch protection, and MFA on every console.
 
 ## Fixed in this branch

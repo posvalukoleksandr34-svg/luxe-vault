@@ -115,7 +115,7 @@ Verified as holding (no finding): see [What holds](#what-holds) at the end.
 | Impact | The owner believes the console has MFA when it does not. |
 | Remediation | Three states: off / invalid / ready. **Invalid fails closed:** the form still asks for a code and sign-in answers **503**, with the reason in the server log, until the secret is fixed or removed. |
 | Tests | `tests/security/admin-totp.test.ts` (3). End to end with an invalid secret: GET → `mfa: true`; correct password → **503**; wrong password → 401. |
-| Verification | FIXED · VERIFIED locally. **Deployment caveat:** if production currently has an *invalid* `ADMIN_TOTP_SECRET`, admin sign-in will answer 503 after this deploy until it is corrected (`scripts/admin-totp-setup.mjs`). Check before merging: if the live sign-in form does **not** ask for a 6-digit code while the variable is set, it is invalid. |
+| Verification | FIXED · VERIFIED locally. **Deployment caveat:** if production currently has an *invalid* `ADMIN_TOTP_SECRET`, admin sign-in will answer 503 after this deploy until it is corrected (`scripts/admin-totp-setup.mjs`). Deployed 2026-10-12: sign in once to confirm. "Вход временно недоступен" means the secret is invalid. |
 
 ## AUD-06
 
@@ -156,7 +156,7 @@ Verified as holding (no finding): see [What holds](#what-holds) at the end.
 | Evidence | `.github/workflows/` had only scheduled jobs; nothing ran typecheck, lint, tests, build, a secret scan, a dependency audit or the migrations on a change. `actions/checkout@v4` by tag in three workflows. |
 | Remediation | `.github/workflows/ci.yml`: typecheck, lint, unit/security tests, production build with placeholder public env only; gitleaks over the full history (binary pinned by version **and** SHA-256); `npm audit` (blocks on critical, reports high); every migration applied to an empty Postgres 17 plus `scripts/ci/check-access.sql` (RLS on every table, `search_path` on every SECURITY DEFINER function, no browser-callable definer function outside a reviewed allow-list, no policy on server-only tables, no browser write policy on orders/stock/catalogue, no RLS-bypassing view, private buckets private). All `uses:` pinned to commit SHAs; `permissions: contents: read`; `.github/dependabot.yml` keeps pins and npm patches current. `.gitleaksignore` lists the four known historical fingerprints (AUD-10) by fingerprint only. |
 | Tests | Locally: typecheck, lint, 96 unit tests, build, gitleaks (history + tree: no leaks), migration script on an empty database (55 applied, 29 re-applied, rules hold) and three negative tests (RLS off, `place_order` granted to anon, an UPDATE policy on `orders`) — each caught. |
-| Verification | FIXED in code. **NOT VERIFIED on GitHub** until the workflow first runs. Owner: make the four jobs required checks on `main` (Settings → Branches). |
+| Verification | FIXED · VERIFIED on GitHub: all four jobs green on `main` at `d8a18cf`. The first run, on `af5943b`, caught a generated file missing from fresh checkouts; fixed with `next typegen`. Owner: make the four jobs required checks on `main` (Settings → Branches). |
 
 ## AUD-09
 
