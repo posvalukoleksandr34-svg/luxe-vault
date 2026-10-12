@@ -18,6 +18,11 @@ export async function resolve(specifier, context, next) {
     const file = withExtension(path.join(ROOT, specifier.slice(2)))
     if (file) return { url: pathToFileURL(file).href, shortCircuit: true }
   }
+  // next/server, next/cache, next/headers…: Next ships these as CommonJS files
+  // without an ESM `exports` map, so Node's resolver wants the `.js` spelled out.
+  if (/^next\/[a-z-]+$/.test(specifier)) {
+    return next(`${specifier}.js`, context)
+  }
   if ((specifier.startsWith('./') || specifier.startsWith('../')) && context.parentURL?.startsWith('file:')) {
     const file = withExtension(path.resolve(path.dirname(fileURLToPath(context.parentURL)), specifier))
     if (file) return { url: pathToFileURL(file).href, shortCircuit: true }

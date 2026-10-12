@@ -27,15 +27,27 @@ const DRIFT = 1
 
 const MISSING_TABLE = new Set(['42P01', 'PGRST205'])
 
-function secret(): Buffer | null {
+/**
+ * The enrolled key: 'off' when ADMIN_TOTP_SECRET is not set, 'invalid' when
+ * it is set but is not a base32 key of at least 80 bits.
+ *
+ * INVALID IS NOT OFF. It used to be: a secret with a typo (a 0 for an O, a
+ * pasted otpauth:// URL, a truncated value) read as "no second factor", and
+ * the console quietly went back to the password alone while the owner
+ * believed MFA was on. Now a set-but-unusable secret fails closed — sign-in
+ * answers 503 and the log says why — until it is corrected or removed.
+ */
+function secretState(): { state: 'off' } | { state: 'invalid' } | { state: 'ready'; key: Buffer } {
   const raw = process.env.ADMIN_TOTP_SECRET?.replace(/\s+/g, '').toUpperCase()
-  if (!raw) return null
+  if (!raw) return { state: 'off' }
   const key = base32Decode(raw)
-  return key && key.length >= 10 ? key : null
+  return key && key.length >= 10 ? { state: 'ready', key } : { state: 'invalid' }
 }
 
+/** True when sign-in must ask for the code — including when the configured
+ *  secret is unusable, so the form never hides a factor the owner set up. */
 export function isTotpConfigured(): boolean {
-  return secret() !== null
+  return secretState().state !== 'off'
 }
 
 /** RFC 4648 base32 (what authenticator apps use), padding optional. */
@@ -87,10 +99,20 @@ export function matchingStep(key: Buffer, code: string, now = Date.now()): numbe
  * 'ok'          valid, and its step had not been used before (now it has).
  * 'invalid'     wrong, malformed, outside the window, or already used.
  * 'unconfigured' no ADMIN_TOTP_SECRET: the caller signs in on the password alone.
+ *
+ * Throws when ADMIN_TOTP_SECRET is set but unusable (see secretState), or the
+ * replay record cannot be written: the login route answers 503.
  */
 export async function checkTotp(code: unknown): Promise<'ok' | 'invalid' | 'unconfigured'> {
-  const key = secret()
-  if (!key) return 'unconfigured'
+  const configured = secretState()
+  if (configured.state === 'off') return 'unconfigured'
+  if (configured.state === 'invalid') {
+    throw new Error(
+      'ADMIN_TOTP_SECRET is set but is not a valid base32 key of at least 80 bits — sign-in is refused ' +
+        'until it is corrected (scripts/admin-totp-setup.mjs) or removed.',
+    )
+  }
+  const key = configured.key
   const step = typeof code === 'string' ? matchingStep(key, code.replace(/\s+/g, '')) : null
   if (step === null) return 'invalid'
 

@@ -72,7 +72,7 @@ export async function refundOrder(order: Order, amount?: number): Promise<Refund
     }
   }
 
-  const result = await refundPayment(order.paymentId, amount, orderChargeRate(order))
+  const result = await refundPayment(order.paymentId, amount, orderChargeRate(order), order.refundedAmount ?? 0)
   if (!result.ok) return { ok: false, reason: 'stripe', message: result.message }
 
   // Cumulative, not incremental — see the note above. A full refund records

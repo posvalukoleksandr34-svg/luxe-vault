@@ -15,6 +15,7 @@ import {
   type ExchangeRates,
 } from '@/lib/currency'
 import { getExchangeRates } from '@/lib/server/exchange-rates'
+import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
 import type { Order } from '@/lib/types'
 
 /**
@@ -453,6 +454,26 @@ export type RefundOutcome =
   | { ok: true; refundId: string; amountRefunded: number; fullyRefunded: boolean }
   | { ok: false; message: string }
 
+/** How long a claimed refund state blocks a duplicate (see refundPayment). */
+const REFUND_LOCK_WINDOW_MS = 10 * 60 * 1000
+
+/**
+ * The Stripe idempotency key for one refund (see refundPayment): the payment,
+ * what Stripe's ledger says was already refunded, what OUR order records as
+ * refunded, and this amount — minor units throughout. Two requests share a
+ * key only while neither ledger has moved, i.e. when they are the same
+ * request sent twice. Both ledgers are in it so a deliberate second refund
+ * never collapses into the first, even if one of them lags.
+ */
+export function refundIdempotencyKey(
+  paymentIntentId: string,
+  stripeRefunded: number,
+  recordedRefunded: number,
+  amount: number,
+): string {
+  return `refund:${paymentIntentId}:${stripeRefunded}:${recordedRefunded}:${amount}`
+}
+
 /**
  * Refunds a captured PaymentIntent, in full or in part.
  *
@@ -473,6 +494,8 @@ export async function refundPayment(
   paymentIntentId: string,
   amount?: number,
   rate = 1,
+  /** What the order already records as refunded, CHF — for the idempotency key. */
+  recordedRefunded = 0,
 ): Promise<RefundOutcome> {
   const stripe = getStripe()
   try {
@@ -504,12 +527,46 @@ export async function refundPayment(
       }
     }
 
-    const refund = await stripe.refunds.create({
-      payment_intent: paymentIntentId,
-      amount: requested,
-      reason: 'requested_by_customer',
-      metadata: intent.metadata?.orderId ? { orderId: intent.metadata.orderId } : undefined,
-    })
+    // ONE REFUND PER LEDGER STATE. Two requests that see the same ledgers —
+    // Stripe's refunded total and ours — are the same refund asked twice: two
+    // tabs, two members of staff, a re-sent request. Stripe's own "not more
+    // than the remainder" check does not stop that for partial refunds (two
+    // 30 % refunds both fit), so:
+    //
+    //   1. the first to arrive claims the state (stripe_events, a primary-key
+    //      insert); the other is told a refund is already under way. The
+    //      claim carries a 10-minute window so one left behind by a crash
+    //      cannot block the order for good;
+    //   2. the Stripe call carries the same state as its idempotency key, so
+    //      even two requests that both got past (1) — across a window
+    //      boundary, or with the ledger table unavailable — get ONE refund.
+    //
+    // A refund made deliberately afterwards sees moved ledgers: new state,
+    // new key. A stale screen is caught by the caller's expected-total check
+    // (app/api/admin/orders/[id]/refund).
+    const key = refundIdempotencyKey(paymentIntentId, alreadyRefunded, toMinorUnits(recordedRefunded), requested)
+    const lock = `${key}:${Math.floor(Date.now() / REFUND_LOCK_WINDOW_MS)}`
+    const claim = await claimStripeEvent(lock, 'refund.lock')
+    if (claim === 'duplicate') {
+      return { ok: false, message: 'A refund for this payment is already being processed. Refresh the order before trying again.' }
+    }
+
+    let refund: Stripe.Refund
+    try {
+      refund = await stripe.refunds.create(
+        {
+          payment_intent: paymentIntentId,
+          amount: requested,
+          reason: 'requested_by_customer',
+          metadata: intent.metadata?.orderId ? { orderId: intent.metadata.orderId } : undefined,
+        },
+        { idempotencyKey: key },
+      )
+    } catch (error) {
+      // Nothing was refunded: the state is free again for a corrected retry.
+      if (claim === 'claimed') await releaseStripeEvent(lock)
+      throw error
+    }
 
     return {
       ok: true,

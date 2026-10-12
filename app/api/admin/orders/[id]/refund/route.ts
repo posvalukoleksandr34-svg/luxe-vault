@@ -22,6 +22,9 @@ export const dynamic = 'force-dynamic'
  * Body:
  *   amount?: number   Major units IN CHF (same as order.total). Omit for a
  *                     full refund of whatever remains unrefunded.
+ *   expectedRefunded?: number
+ *                     CHF already refunded as the console showed it; 409 when
+ *                     the order has moved on since (a stale screen).
  *
  * A card payment taken in EUR or USD is refunded in that currency, at the
  * rate it was CHARGED at — recorded on the order — never today's, so a
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   }
 
   // An empty (or non-object) body means a full refund.
-  const body = (await readJsonObject<{ amount?: unknown }>(request)) ?? {}
+  const body = (await readJsonObject<{ amount?: unknown; expectedRefunded?: unknown }>(request)) ?? {}
 
   let amount: number | undefined
   if (body.amount !== undefined && body.amount !== null && body.amount !== '') {
@@ -53,6 +56,21 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
 
   const order = await getOrderById(params.id)
   if (!order) return NextResponse.json({ error: 'Заказ не найден' }, { status: 404 })
+
+  // The screen the refund was pressed on must still be true: what it showed
+  // as already refunded is what the order records now. A second tab, or a
+  // colleague, refunding in between makes it stale — and a refund pressed on
+  // a stale screen is how one refund becomes two. (The console sends it;
+  // other callers may omit it.)
+  if (body.expectedRefunded !== undefined && body.expectedRefunded !== null) {
+    const expected = Number(body.expectedRefunded)
+    if (!Number.isFinite(expected) || Math.abs(expected - (order.refundedAmount ?? 0)) > 0.004) {
+      return NextResponse.json(
+        { error: 'По заказу уже был возврат — обновите страницу и проверьте сумму.', refundedAmount: order.refundedAmount ?? 0 },
+        { status: 409 },
+      )
+    }
+  }
 
   // The refund itself — Stripe call, currency rate, cumulative recording — is
   // lib/server/refund-order.ts, shared with approving a return so the two

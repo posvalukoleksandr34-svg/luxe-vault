@@ -164,7 +164,10 @@ export async function POST(request: NextRequest) {
     // a key rotated, a currency refused — all of it is worth knowing within
     // minutes rather than from a drop in the day's orders.
     void reportServerError('Checkout · Stripe intent', error, request.url)
-    const message = error instanceof Error ? error.message : 'Stripe error'
-    return NextResponse.json({ error: message }, { status: 502 })
+    // Stripe's own wording stays in the logs and the alert above. It used to
+    // be sent to the browser, and some of it is not for customers — an
+    // "Invalid API Key provided" error quotes the end of the secret key.
+    console.error('[stripe/intent]', order.id, error instanceof Error ? error.message : error)
+    return NextResponse.json({ error: 'STRIPE_UNAVAILABLE' }, { status: 502 })
   }
 }

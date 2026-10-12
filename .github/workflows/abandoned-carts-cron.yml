@@ -16,6 +16,11 @@
 # changes host — the call would arrive without its secret and fail with 401.
 #
 # Run it by hand from the Actions tab ("Run workflow") to test the setup.
+#
+# This is the only scheduler for it. A second workflow
+# (abandoned-cart-reminders.yml) used to call the same endpoint every hour at
+# the same minute; harmless thanks to the claims, but every run was doubled.
+# Its Telegram failure report moved here.
 
 name: Abandoned-cart reminders
 
@@ -58,3 +63,15 @@ jobs:
             echo "::error::/api/cron/abandoned-carts answered HTTP $status (401: the secret does not match Vercel's; 503: CRON_SECRET unset on Vercel or migration 0029 not applied)."
             exit 1
           fi
+
+      - name: Report failure to Telegram
+        if: failure()
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          [ -n "$INTERNAL_API_SECRET" ] || exit 0
+          curl -sS --max-time 20 -X POST "$SITE_URL/api/internal/telegram" \
+            -H "Authorization: Bearer $INTERNAL_API_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"kind":"error","context":"Abandoned-cart cron (GitHub Actions)","text":"The hourly reminder run failed; see the Actions log."}'

@@ -173,11 +173,14 @@ export function OrdersManager({
    */
   async function handleRefund(id: string, amount?: number) {
     setRefundingId(id)
+    // What this screen shows as already refunded: the server refuses (409)
+    // when the order has moved on, e.g. a refund from another tab.
+    const expectedRefunded = orders.find((o) => o.id === id)?.refundedAmount ?? 0
     try {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/refund`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(amount === undefined ? {} : { amount }),
+        body: JSON.stringify(amount === undefined ? { expectedRefunded } : { amount, expectedRefunded }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -205,11 +208,15 @@ export function OrdersManager({
     if (openId === id) setOpenId(null)
     try {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(typeof data?.error === 'string' ? data.error : '')
+      }
       pushToast({ title: 'Заказ удалён', variant: 'default' })
-    } catch {
+    } catch (e) {
       setOrders(previous)
-      pushToast({ title: 'Не удалось удалить заказ', variant: 'default' })
+      // The server says why — e.g. a paid order, which is kept on record.
+      pushToast({ title: 'Не удалось удалить заказ', description: (e as Error).message || undefined, variant: 'default' })
     }
   }
 

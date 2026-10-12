@@ -7,6 +7,7 @@ filtering are already in place and are not repeated here.
 
 | Doc | Covers |
 |---|---|
+| [../audit/EXECUTIVE_REPORT.md](../audit/EXECUTIVE_REPORT.md) | **Latest (2026-10-12):** full audit — findings, fixes, tests, production-readiness checklist (`docs/audit/`) |
 | [../performance/README.md](../performance/README.md) | The performance half: measured audit, speed quick wins, structural plan |
 | [phase-1-perimeter.md](phase-1-perimeter.md) | Cloudflare WAF, rate limits, origin lock, admin behind Cloudflare Access |
 | [phase-1-backups.md](phase-1-backups.md) | Offsite encrypted backups, weekly restore test, restore runbook |

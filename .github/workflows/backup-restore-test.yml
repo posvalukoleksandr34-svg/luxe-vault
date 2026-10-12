@@ -49,13 +49,15 @@ jobs:
         id: config
         run: |
           if [ -z "$BACKUP_AGE_IDENTITY" ] || [ -z "$BACKUP_BUCKET" ]; then
-            echo "::warning::The restore test is not configured yet. See docs/security/phase-1-backups.md."
+            # Red, not green-with-a-warning: an untested backup is not a backup.
+            echo "::error::The restore test is NOT configured — no backup was restored or verified. See docs/security/phase-1-backups.md."
             echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 1
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         if: steps.config.outputs.ready == 'true'
         with:
           persist-credentials: false

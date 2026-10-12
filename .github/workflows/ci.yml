@@ -1,0 +1,121 @@
+# Checks every pull request and every push to main before it can reach
+# production: types, lint, unit tests, a production build, committed secrets,
+# vulnerable dependencies, and the database migrations applied to an empty
+# Postgres with the access rules (RLS, SECURITY DEFINER) verified.
+#
+# Make it required: Settings → Branches → Branch protection rule for `main` →
+# Require status checks to pass → select the jobs below.
+#
+# Every third-party action is pinned to a full commit SHA (a tag can be moved
+# to point at different code); the comment beside it is the tag it was.
+# Dependabot's github-actions updates (dependabot.yml) keep the pins fresh.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Read-only token; no job here writes to the repository or needs secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Typecheck, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npx next lint
+      - name: Unit and security tests
+        run: npm run test:security
+      - name: Production build
+        # Public values only, and placeholders: the build must not need a
+        # single real secret. Server secrets are read at request time.
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+        run: npx next build
+
+  secrets:
+    name: Secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (pinned version, checksum verified)
+        env:
+          VERSION: 8.28.0
+          SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+      - name: Scan every commit
+        # Known, already-handled findings are listed by fingerprint in
+        # .gitleaksignore; anything else fails the job.
+        run: ./gitleaks git --redact --no-banner --exit-code 1 .
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Fail on critical advisories
+        run: npm audit --audit-level=critical
+      - name: Report high advisories
+        # Not blocking: as of 2026-10-12 every high advisory is in build-time
+        # tooling (tailwindcss 3 → chokidar/micromatch/braces, eslint-config-next)
+        # with no patched release — see docs/audit/FINDINGS.md. Reviewed by hand.
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  migrations:
+    name: Migrations on an empty database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      # Disposable: exists for this job only.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Apply every migration and check the access rules
+        env:
+          DATABASE_URL: postgresql://postgres:ci-only@127.0.0.1:5432/postgres
+        run: scripts/ci/verify-migrations.sh

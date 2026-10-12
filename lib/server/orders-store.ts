@@ -18,7 +18,7 @@ import { reportServerError } from '@/lib/monitoring/alert'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { safeEqual } from '@/lib/server/secure-compare'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
-import { transitionFilter } from '@/lib/payment-state'
+import { CANCELLABLE_ORDER_STATUSES, cancellationFilter, transitionFilter } from '@/lib/payment-state'
 // The payment state machine lives in lib/payment-state.ts (pure, unit-tested).
 export { isPaymentTransitionAllowed } from '@/lib/payment-state'
 
@@ -755,28 +755,55 @@ export async function setOrderStatus(
 
 /**
  * Permanently removes the order. Its `order_items` go with it via ON DELETE
- * CASCADE. Returns false if no order with that number existed.
+ * CASCADE.
+ *
+ * NEVER AN ORDER THAT TOOK MONEY. Paid, partially refunded, refunded or
+ * still settling ('confirming'): such a row is the shop's record of a
+ * payment — the bookkeeping that has to be kept for years, the only thing a
+ * later refund, dispute or early-fraud-warning webhook can find the payment
+ * by, and what Stripe's ledger is reconciled against. Deleting it orphaned
+ * the payment silently. Test orders and abandoned unpaid ones can still be
+ * removed; a paid one is cancelled and refunded instead. Enforced inside the
+ * DELETE, so a webhook landing a payment between the click and the write
+ * cannot be erased by it.
  */
-export async function deleteOrder(id: string): Promise<boolean> {
+export async function deleteOrder(id: string): Promise<'deleted' | 'not_found' | 'has_payment'> {
   const { data, error } = await createAdminClient()
     .from('orders')
     .delete()
     .eq('order_number', id)
-    .select('id')
+    .or(cancellationFilter())
+    // payment_status must be among the returned columns: PostgREST applies an
+    // `or` filter on a mutation to the returned rows, and refuses one that
+    // names a column the select leaves out.
+    .select('id, payment_status')
     .maybeSingle()
 
   if (error) throw new Error(`Failed to delete order: ${error.message}`)
-  return Boolean(data)
+  if (data) return 'deleted'
+  // Nothing deleted: either there is no such order, or the guard kept it.
+  const { data: kept } = await createAdminClient()
+    .from('orders')
+    .select('id')
+    .eq('order_number', id)
+    .maybeSingle()
+  return kept ? 'has_payment' : 'not_found'
 }
 
 
 /**
  * Marks an order cancelled.
  *
- * Guarded on the CURRENT state in the same statement (`.eq('status', ...)` /
- * `.neq('payment_status', 'paid')`) rather than checked-then-written, so two
- * concurrent cancels — or a cancel racing the payment webhook — cannot both
- * succeed. A paid order is never cancellable here; that needs a refund.
+ * Guarded on the CURRENT state in the same statement rather than
+ * checked-then-written, so two concurrent cancels — or a cancel racing the
+ * payment webhook — cannot both succeed. The rule is cancellationRefusal()
+ * in lib/payment-state.ts: no money arrived (paid, partially refunded or
+ * refunded all need a refund instead), none in flight, nothing shipped.
+ *
+ * It used to exclude only `paid`, so a partially refunded order — still
+ * holding the rest of the customer's money, often already delivered — could
+ * be cancelled: its payment_status rewritten to 'expired', its units put
+ * back on sale and its promo-code use returned.
  */
 export async function cancelOrder(
   id: string,
@@ -790,13 +817,14 @@ export async function cancelOrder(
       cancelled_reason: reason?.trim() || null,
     })
     .eq('order_number', id)
-    .neq('status', 'cancelled')
-    .neq('payment_status', 'paid')
+    .in('status', [...CANCELLABLE_ORDER_STATUSES])
+    .or(cancellationFilter())
     .select(await resolveOrderSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to cancel order: ${error.message}`)
-  // No row updated means the guards rejected it: already cancelled, or paid.
+  // No row updated means the guards rejected it: already cancelled, money
+  // received or on its way, or already shipped.
   if (!data) return { order: null, conflict: true }
 
   await restoreStock(id)

@@ -1,0 +1,18 @@
+# Keeps the SHA-pinned GitHub Actions current, and proposes npm security
+# updates. Each update arrives as a pull request that CI (ci.yml) checks.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Security fixes and patch releases only; minor and major upgrades of the
+    # framework are deliberate, separate changes.
+    open-pull-requests-limit: 5
+    groups:
+      patches:
+        update-types: [patch]

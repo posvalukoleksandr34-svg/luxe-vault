@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { deleteOrder, setOrderStatus } from '@/lib/server/orders-store'
+import { cancelOrder, deleteOrder, getOrderById, setOrderStatus } from '@/lib/server/orders-store'
+import { cancelPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
+import { cancellationRefusal } from '@/lib/payment-state'
 import { notifyStatusUpdate } from '@/lib/server/notifications'
-import { ORDER_STATUSES, type OrderStatus } from '@/lib/types'
+import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { readJsonObject } from '@/lib/server/http'
 import { notifyOrderStatus } from '@/lib/telegram'
@@ -58,12 +60,38 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     courierName = trimmed.length > 0 ? trimmed : null
   }
 
-  const updated = await setOrderStatus(
-    params.id,
-    body.status as OrderStatus,
-    trackingNumber,
-    courierName,
-  )
+  // Cancelling an order nobody has paid for goes through the same path as
+  // the customer's own cancel button: its open PaymentIntent is cancelled
+  // first, then the order, its units go back on sale, its promo-code use is
+  // returned and its payment status says 'expired'. Setting the status alone
+  // left the units reserved for an order that would never ship. A paid order
+  // set to "cancelled" keeps the plain status change: its money and units
+  // follow the refund (lib/server/refund-order.ts).
+  let updated: Order | null
+  const current = body.status === 'cancelled' ? await getOrderById(params.id) : null
+  if (current && current.status !== 'cancelled' && cancellationRefusal(current) === null) {
+    if (current.paymentProvider === 'stripe' && current.paymentId && isStripeConfigured()) {
+      const intent = await cancelPaymentIntent(current.paymentId)
+      if (!intent.ok) {
+        return NextResponse.json(
+          {
+            error:
+              intent.reason === 'captured'
+                ? 'Оплата по этому заказу уже прошла — оформите возврат вместо отмены.'
+                : 'Не удалось отменить платёж в Stripe, попробуйте ещё раз.',
+          },
+          { status: 409 },
+        )
+      }
+    }
+    const result = await cancelOrder(params.id)
+    if (result.conflict) {
+      return NextResponse.json({ error: 'Статус заказа изменился — обновите страницу.' }, { status: 409 })
+    }
+    updated = result.order
+  } else {
+    updated = await setOrderStatus(params.id, body.status as OrderStatus, trackingNumber, courierName)
+  }
   if (!updated) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
@@ -93,8 +121,15 @@ export async function DELETE(_request: NextRequest, props: { params: Promise<{ i
   const denied = await requireAdmin()
   if (denied) return denied
   const removed = await deleteOrder(params.id)
-  if (!removed) {
+  if (removed === 'not_found') {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+  }
+  if (removed === 'has_payment') {
+    // The record of a payment is kept (lib/server/orders-store.ts, deleteOrder).
+    return NextResponse.json(
+      { error: 'Оплаченный заказ нельзя удалить: отмените его и оформите возврат.' },
+      { status: 409 },
+    )
   }
   return NextResponse.json({ ok: true })
 }

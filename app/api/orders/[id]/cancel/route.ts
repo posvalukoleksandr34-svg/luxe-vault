@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/supabase/server'
 import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { readJsonObject } from '@/lib/server/http'
 import { notifyOrderStatus } from '@/lib/telegram'
+import { cancellationRefusal } from '@/lib/payment-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,8 +19,9 @@ export const dynamic = 'force-dynamic'
  * Two gates, both required:
  *   1. The order must belong to the signed-in user. Checked against
  *      `order.userId`, never against anything in the request.
- *   2. The order must not be paid. A paid order needs a refund, which is an
- *      admin action; see /api/admin/orders/[id]/refund.
+ *   2. No money may have arrived (paid, partially refunded or refunded) or be
+ *      on its way, and nothing may have shipped. Money that arrived needs a
+ *      refund, which is an admin action; see /api/admin/orders/[id]/refund.
  *
  * ORDER OF OPERATIONS MATTERS. Stripe is cancelled FIRST, and the database row
  * is only flipped if that succeeds. The reverse order would leave a window
@@ -45,10 +47,14 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
-  if (order.status === 'cancelled') {
+  // The whole rule — no money arrived, none on its way, nothing shipped —
+  // lives in lib/payment-state.ts (cancellationRefusal), and cancelOrder()
+  // enforces it again inside its UPDATE.
+  const refusal = cancellationRefusal(order)
+  if (refusal === 'already_cancelled') {
     return NextResponse.json({ order, alreadyCancelled: true })
   }
-  if (order.paymentStatus === 'paid') {
+  if (refusal === 'money_received') {
     return NextResponse.json(
       { error: 'A paid order cannot be cancelled — request a refund instead.' },
       { status: 409 },
@@ -56,9 +62,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   }
   // A payment mid-flight must settle or fail before the order can be resolved,
   // or we would cancel a row that is about to be marked paid.
-  if (order.paymentStatus === 'confirming') {
+  if (refusal === 'payment_in_flight') {
     return NextResponse.json(
       { error: 'The payment is still being processed. Try again in a few minutes.' },
+      { status: 409 },
+    )
+  }
+  if (refusal === 'already_fulfilled') {
+    return NextResponse.json(
+      { error: 'This order has already been sent. Please contact support.' },
       { status: 409 },
     )
   }

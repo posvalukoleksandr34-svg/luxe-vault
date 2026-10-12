@@ -7,7 +7,8 @@
 # Deployment branches: main only). A workflow edited on a branch or in a pull
 # request cannot read the database URL.
 #
-# Does nothing but warn until SUPABASE_DB_URL is set.
+# FAILS (red, and a Telegram alert) until SUPABASE_DB_URL is set: a backup
+# that is not configured must not look like one that ran.
 
 name: Offsite backup
 
@@ -49,13 +50,16 @@ jobs:
         id: config
         run: |
           if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::warning::Offsite backup is not configured yet (SUPABASE_DB_URL is empty). See docs/security/phase-1-backups.md."
+            # A red run, not a green one with a warning: until 2026-10-12 this
+            # job showed "success" every night while backing up nothing.
+            echo "::error::Offsite backup is NOT configured (SUPABASE_DB_URL is empty) — no backup was taken. See docs/security/phase-1-backups.md."
             echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 1
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         if: steps.config.outputs.ready == 'true'
         with:
           # Every branch and tag, for the git bundle.

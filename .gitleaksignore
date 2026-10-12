@@ -1,0 +1,13 @@
+# Findings gitleaks reports in history that are already known and handled.
+# Each line is a fingerprint (commit:file:rule:line) from `gitleaks git`.
+#
+# The admin password and session secret once committed as code fallbacks
+# (removed in 6916cd4) and their SHA-256 digests (c6cd794). Both credentials
+# are BURNED: they must never be used again, and production must not run on
+# them — see docs/security/hardening-2026-09-29.md and docs/audit/FINDINGS.md.
+# Ignoring the fingerprints does not hide anything new: a different commit,
+# file or line is a new fingerprint and fails the scan.
+c6cd79417e15269cf3c012489ce746d645099abf:scripts/verify-security.mjs:generic-api-key:29
+c6cd79417e15269cf3c012489ce746d645099abf:scripts/verify-security.mjs:generic-api-key:30
+6916cd4560439fa3c551809c9f75cbf72162009a:scripts/verify-security.mjs:generic-api-key:29
+6916cd4560439fa3c551809c9f75cbf72162009a:scripts/verify-security.mjs:generic-api-key:30

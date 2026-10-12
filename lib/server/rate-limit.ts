@@ -12,14 +12,23 @@ import { clientIp } from '@/lib/server/client-ip'
  * starts empty, and everything is forgotten on recycle. The database is the
  * one piece of state every instance already shares.
  *
- * FAIL OPEN, DELIBERATELY
+ * FAIL OPEN BY DEFAULT — CLOSED WHERE A GUESS IS THE ATTACK
  *
  * If the limiter itself errors — the migration is not applied, the database is
- * briefly unreachable — the request is allowed through and the failure is
- * logged. A throttle that takes checkout down when it has a bad minute causes
- * more damage than the abuse it exists to prevent. The endpoints behind it all
- * have their own authorisation and validation; this is a volume control, not
- * an access control, and it must never become a single point of failure.
+ * briefly unreachable — most requests are allowed through and the failure is
+ * logged. A throttle that takes browsing or checkout down when it has a bad
+ * minute causes more damage than the abuse it exists to prevent; those
+ * endpoints have their own authorisation and validation, and the limit there
+ * is a volume control.
+ *
+ * Not so for the buckets marked `failClosed` below: the admin password, the
+ * password-reset mail, the order-lookup, support-ticket and coupon oracles and
+ * the start of a card payment. On those the limit IS the defence against
+ * guessing — a password, a token, a code, a stolen card number — and a limiter
+ * that waves everything through while it is down is exactly the window a
+ * brute-force script needs. They answer 503 instead. Each of them reads or
+ * writes the same database the limiter does, so when the limiter is down
+ * because the database is, they could not have succeeded anyway.
  */
 
 export type LimitName = keyof typeof LIMITS
@@ -37,7 +46,7 @@ const LIMITS = {
   'order.create': { max: 10, windowSeconds: 600 },
 
   /** Order lookup. The enumeration surface: LV- plus six characters. */
-  'order.lookup': { max: 20, windowSeconds: 600 },
+  'order.lookup': { max: 20, windowSeconds: 600, failClosed: true },
 
   /** Crash reports from the browser (/api/monitoring/report). Unauthenticated
    *  by necessity — a crash in the root layout means there is no session — so
@@ -52,7 +61,7 @@ const LIMITS = {
   'returns.upload': { max: 20, windowSeconds: 600 },
 
   /** Password recovery. Sends mail, so this is also spend control. */
-  'auth.recovery': { max: 5, windowSeconds: 900 },
+  'auth.recovery': { max: 5, windowSeconds: 900, failClosed: true },
 
   /** Support tickets. */
   /** The chat concierge (/api/support/assistant). Each message is one model
@@ -95,7 +104,7 @@ const LIMITS = {
 
   /** Opening one ticket's conversation — guarded by the ticket's token, and
    *  bounded so the token cannot be guessed at volume. */
-  'support.read': { max: 60, windowSeconds: 600 },
+  'support.read': { max: 60, windowSeconds: 600, failClosed: true },
 
   /** Catalogue search. Generous — typing is iterative — but bounded, because
    *  an unthrottled search endpoint is a cheap way to make the database work. */
@@ -116,7 +125,7 @@ const LIMITS = {
    *  call reaches a paid provider API and is gated only by the order's lookup
    *  token, so it is bounded — generously, since switching currency or coin
    *  re-prices the same order. */
-  'payment.start': { max: 30, windowSeconds: 600 },
+  'payment.start': { max: 30, windowSeconds: 600, failClosed: true },
 
   /** Saved looks / share links. Guests can create them (a link has to work for
    *  whoever receives it), so this is what keeps an anonymous script from
@@ -126,10 +135,10 @@ const LIMITS = {
 
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */
-  'coupon.validate': { max: 15, windowSeconds: 600 },
+  'coupon.validate': { max: 15, windowSeconds: 600, failClosed: true },
 
   /** Admin login. Replaces the in-memory throttle this module supersedes. */
-  'admin.login': { max: 8, windowSeconds: 300 },
+  'admin.login': { max: 8, windowSeconds: 300, failClosed: true },
 
   /** Signed-in account writes: addresses, saved cards, profile, notification
    *  read-marks, order cancellation and refund requests, the welcome email.
@@ -159,11 +168,18 @@ const LIMITS = {
   'internal.telegram': { max: 30, windowSeconds: 600 },
 } as const
 
+type LimitConfig = { max: number; windowSeconds: number; failClosed?: boolean }
+
 export type LimitResult = {
   allowed: boolean
   remaining: number
   retryAfter: number
+  /** The limiter could not be consulted and this bucket fails closed. */
+  unavailable?: boolean
 }
+
+/** Seconds a fail-closed caller is asked to wait while the limiter is down. */
+const UNAVAILABLE_RETRY_SECONDS = 30
 
 /**
  * Identifies the caller for throttling.
@@ -184,7 +200,7 @@ export async function checkLimit(
   name: LimitName,
   subject: string,
 ): Promise<LimitResult> {
-  const { max, windowSeconds } = LIMITS[name]
+  const { max, windowSeconds, failClosed } = LIMITS[name] as LimitConfig
 
   try {
     const { data, error } = await createAdminClient().rpc('check_rate_limit', {
@@ -206,9 +222,18 @@ export async function checkLimit(
       retryAfter: Number(row.retry_after) || windowSeconds,
     }
   } catch (e) {
+    if (failClosed) {
+      console.error(`[rate-limit] ${name} check failed, refusing request (fail closed):`, e)
+      return { allowed: false, remaining: 0, retryAfter: UNAVAILABLE_RETRY_SECONDS, unavailable: true }
+    }
     console.error(`[rate-limit] ${name} check failed, allowing request:`, e)
     return { allowed: true, remaining: max, retryAfter: 0 }
   }
+}
+
+/** Whether a bucket refuses requests while the limiter is down (for tests and docs). */
+export function failsClosed(name: LimitName): boolean {
+  return Boolean((LIMITS[name] as LimitConfig).failClosed)
 }
 
 /**
@@ -228,6 +253,7 @@ export async function enforceLimit(
   subject?: string,
 ): Promise<NextResponse | null> {
   const result = await checkLimit(name, subject ?? clientKey(request))
+  if (result.unavailable) return temporarilyUnavailable(result.retryAfter)
   return result.allowed ? null : tooManyRequests(result.retryAfter)
 }
 
@@ -241,7 +267,15 @@ export async function enforceLimit(
  */
 export async function enforceUserLimit(name: LimitName, userId: string): Promise<NextResponse | null> {
   const result = await checkLimit(name, `user:${userId}`)
+  if (result.unavailable) return temporarilyUnavailable(result.retryAfter)
   return result.allowed ? null : tooManyRequests(result.retryAfter)
+}
+
+function temporarilyUnavailable(retryAfter: number): NextResponse {
+  return NextResponse.json(
+    { error: 'TEMPORARILY_UNAVAILABLE', retryAfter },
+    { status: 503, headers: { 'Retry-After': String(retryAfter) } },
+  )
 }
 
 function tooManyRequests(retryAfter: number): NextResponse {

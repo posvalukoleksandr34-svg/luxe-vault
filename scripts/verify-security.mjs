@@ -26,8 +26,8 @@ import { createClient } from '@supabase/supabase-js'
  * it used to carry both in plain text, which re-published them.
  */
 const BURNED = {
-  adminPassword: '1f5df87ae46571cc31019912382ad5c6fa03dfa36d760d299bd33ae85957ba04',
-  sessionSecret: '88d4708a3ecdf708300363cfbcc05f6729e6fa0c8e34a4614ea9d7aadf1607a1',
+  adminPassword: '1f5df87ae46571cc31019912382ad5c6fa03dfa36d760d299bd33ae85957ba04', // gitleaks:allow — a SHA-256 digest of a burned credential, kept to detect its reuse
+  sessionSecret: '88d4708a3ecdf708300363cfbcc05f6729e6fa0c8e34a4614ea9d7aadf1607a1', // gitleaks:allow — a SHA-256 digest of a burned credential, kept to detect its reuse
 }
 
 /** True when any token-like run of characters in `text` hashes to `digest`. */

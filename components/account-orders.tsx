@@ -11,6 +11,7 @@ import { OrderListSkeleton } from '@/components/skeletons'
 import { TrackingDetails } from '@/components/tracking-details'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { paymentMethodLabel } from '@/lib/payment-labels'
+import { hasReceivedMoney } from '@/lib/payment-state'
 import { ORDER_STATUS_KEYS } from '@/lib/i18n'
 import { tokenFor } from '@/lib/order-registry'
 import { formatCharged, orderCharge } from '@/lib/currency'
@@ -65,10 +66,13 @@ export function isCancelled(order: Order): boolean {
  * customer pay for an order that no longer exists.
  *
  * Orders with no payment status at all predate prepayment and never appear.
+ * Neither does one whose money arrived and was then partly refunded: it used
+ * to land here — "not paid" — with a live "Pay now" and "Cancel" on an order
+ * that still held the customer's money (hasReceivedMoney).
  */
 export function isUnpaid(order: Order): boolean {
   if (isCancelled(order)) return false
-  return Boolean(order.paymentStatus) && order.paymentStatus !== 'paid'
+  return Boolean(order.paymentStatus) && !hasReceivedMoney(order.paymentStatus)
 }
 
 export function AccountOrders({

@@ -71,6 +71,9 @@ export type ValidatedDraft = {
   deliveryDays?: Range
 }
 
+/** Lines per order. Equal to the cart's own cap (MAX_ITEMS in lib/cart-storage.ts). */
+export const MAX_ORDER_LINES = 50
+
 function isValidItem(item: unknown): item is CartItem {
   if (!item || typeof item !== 'object') return false
   const i = item as CartItem
@@ -146,6 +149,10 @@ export function validateOrderDraft(
 
   const items = Array.isArray(body.items) ? body.items.filter(isValidItem) : []
   if (items.length === 0) return { ok: false, error: 'Empty cart' }
+  // The browser's cart holds at most this many lines (lib/cart-storage.ts).
+  // Without the same bound here one crafted request could carry thousands —
+  // each repriced, inserted and taken out of stock by place_order().
+  if (items.length > MAX_ORDER_LINES) return { ok: false, error: 'Too many items' }
 
   // NOTE: prices are NOT taken from the body. See repriceItems() in the caller
   // — every figure below is recomputed from the catalogue. The client's
