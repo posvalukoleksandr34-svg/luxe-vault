@@ -131,15 +131,27 @@ GitHub Actions history (API, 2026-10-12):
 
 ## 6. Final run — every suite on the final build
 
-Production build of the final code (exit 0), then each suite in turn.
+Production build of the final code (exit 0), then each suite in turn on that build.
 
 | Suite | Mode | Result |
 |---|---|---|
 | Audit suite (§4) | integration | **45 / 45** |
 | Payments (state machine, webhooks, admin session) | integration | **33 / 33** |
 | Integration (account deletion, retention, newsletter, …) | integration | **24 / 24** |
+| Card-fraud guard | integration | **35 / 35** |
+| Referral / app-code switch-off (API) | integration | **20 / 20** |
+| Security (headers, CSP, CSRF, admin session lifecycle, tokens) | fake | **47 / 47** |
+| Server-side pricing | fake | **17 / 17** |
+| 404 status and hydration | fake | **29 / 29** |
+| Size Finder (browser, incl. axe) | fake | **106 / 106** |
+| Referral / app-code switch-off (browser) | fake | **13 / 13** |
+| Status matrix (browser and Googlebot) | fake | every missing page **404** (11 / 11) |
+| `noindex` on `/order/*`, `/admin/login`, `/checkout`, `/account` | fake | all four `noindex, nofollow` |
 
-The remaining suites of the final run are recorded in the next commit.
+Two runs needed a second attempt because of the harness, not the code:
+
+- **The security suite (first attempt, before this run).** The in-memory Supabase answered `null` to every RPC, including the rate limiter's. The fail-closed buckets correctly answered 503, so admin login could not proceed. The stand-in now answers the limiter like the real function.
+- **The Size Finder suite (first attempt of this run).** The test-fixture backend failed to restart (its port was still held), so a fixture product was missing and the suite stopped at check 60. Restarted properly: 106 / 106. One check in that first attempt also read a circle's colour mid-transition; it passed on the re-run and in the earlier runs.
 
 ## Limitations
 
