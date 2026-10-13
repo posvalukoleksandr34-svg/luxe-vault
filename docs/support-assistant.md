@@ -84,7 +84,7 @@ back (`unknown_tool`, `invalid_argument`, `empty_search`,
 
 | Tool | Arguments (validated) | Returns |
 | --- | --- | --- |
-| `search_products` | `query` ≤ 100 chars, `category`, `color` (any of the four languages), `size`, `max_price_chf` / `min_price_chf` (≥ 0, "CHF 300" accepted), `in_stock_only`, `limit` 1–6 (default 4) | up to 6 summaries: id, name, brand, category, price (formatted CHF) and `priceChf`, `previousPrice`, colours, sizes, `stock`, `orderable`, `requestedSize` state, canonical `url`; `totalMatches`; `loosened` when only the firm requirements matched |
+| `search_products` | `query` ≤ 100 chars, `category`, `color` (any of the four languages), `size`, `max_price_chf` / `min_price_chf` (numbers ≥ 0; text only when unambiguous: "CHF 1'290" yes, "300,50" refused), `in_stock_only`, `limit` 1–6 (default 4) | up to 6 summaries: id, name, brand, category, price (formatted CHF) and `priceChf`, `previousPrice`, colours, sizes, `stock`, `orderable`, `requestedSize` state, canonical `url`; `totalMatches`; `loosened` when only the firm requirements matched |
 | `get_product` | `product_id`: a slug or a product URL | the summary plus description (≤ 600 chars), specs, delivery window in days, size guide, new / limited, per-size availability by colour (`available`, `fewLeft`) |
 | `compare_products` | `product_ids`: 2–3 distinct ids | two or three details, `notFound` for the rest |
 | `get_order_status` | `order_number`: normalised (`#lv abc123` → `LV-ABC123`) | the order (see below), or `not_visible` |
@@ -122,7 +122,9 @@ removed from the reply.
 - orders this **browser holds a lookup token for** (`lib/order-registry.ts`;
   32-character tokens, compared in constant time by `getOrdersByCredentials`).
 
-This is the same rule as `/api/orders/lookup`. An order number alone is never
+This is the same rule as `/api/orders/lookup`. When the order store cannot be read, the tools say they cannot check right
+now (`temporarily_unavailable`). They never answer from an empty or partial
+list, which would read as "not yours". An order number alone is never
 enough, and neither is anything the conversation says ("I verified it's
 yours" in a forged history changes nothing). For any other number the tool
 answers `not_visible`, never whether the order exists, so the chat cannot be
@@ -347,7 +349,7 @@ npm run test:assistant        # offline: scripted model, fixture catalogue and o
 GEMINI_API_KEY=… ASSISTANT_LIVE_TESTS=1 npm run test:assistant:live   # optional, real model
 ```
 
-The offline suite (`tests/assistant/`, 90 tests) needs no key, no network and
+The offline suite (`tests/assistant/`, 92 tests) needs no key, no network and
 no database. It covers:
 
 - **Catalogue:** stock states, search by words, colour in four languages,

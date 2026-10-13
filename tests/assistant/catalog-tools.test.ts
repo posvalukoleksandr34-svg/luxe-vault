@@ -111,7 +111,16 @@ describe('catalogue tools: only public fields reach the model', () => {
       { color: 'Nero', available: true, fewLeft: true },
       { color: 'Cammello', available: true, fewLeft: false },
     ])
-    assert.equal(d.availability!.find((a) => a.size === 'L')!.colors[0].available, false)
+    // L: Nero has a row at 0; Cammello has no row at all — on the product page
+    // (and in place_order) that combination has none, so it is listed as such.
+    assert.deepEqual(d.availability!.find((a) => a.size === 'L')!.colors, [
+      { color: 'Nero', available: false, fewLeft: false },
+      { color: 'Cammello', available: false, fewLeft: false },
+    ])
+    // Marked unavailable by the shop: nothing is available, whatever the rows say.
+    const marked = detail(CATALOG, { ...product('cappotto-cashmere'), statuses: ['out_of_stock'] }, 'en', { min: 20, max: 35 })
+    assert.ok(marked.availability!.every((a) => a.colors.every((c) => !c.available)))
+    assert.equal(marked.stock, 'sold_out')
     assert.deepEqual(d.deliveryDays, { min: 25, max: 40 })
     assert.equal(d.hasSizeGuide, true)
     assert.equal(detail(CATALOG, product('borsa-tote'), 'en', { min: 20, max: 35 }).availability, undefined)
@@ -141,6 +150,13 @@ describe('tool arguments are validated, never trusted', () => {
     assert.ok(v.args.query.length <= 100)
     assert.equal(v.args.maxPriceChf, 300)
     assert.equal(v.args.limit, 6)
+  })
+  it('a price as text is read only when it is unambiguous — never multiplied or divided by a guess', () => {
+    const price = (p: unknown) => (validateCall('search_products', { query: 'coat', max_price_chf: p }) as { args?: { maxPriceChf: number }; error?: string })
+    assert.equal(price("CHF 1'290").args?.maxPriceChf, 1290)
+    assert.equal(price('1’290.50').args?.maxPriceChf, 1290.5)
+    assert.equal(price('Fr. 300').args?.maxPriceChf, 300)
+    for (const ambiguous of ['300,50', '1.290,00', '1.290', 'about 300', '3OO']) assert.equal(price(ambiguous).error, 'invalid_argument', ambiguous)
   })
   it('product ids: slugs or product URLs only — no paths, no SQL, no wildcards', () => {
     assert.equal(productIdFrom('https://www.luxe-vault.store/it/product/cappotto-cashmere'), 'cappotto-cashmere')

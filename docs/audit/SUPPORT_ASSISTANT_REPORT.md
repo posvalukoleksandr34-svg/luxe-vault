@@ -23,7 +23,7 @@ How it works now is described in [`docs/support-assistant.md`](../support-assist
 | Widget | any failure switched to prepared answers for the rest of the visit; conversation lost on every open; plain-text links; no Escape or focus handling | Retry; the AI stays on after a one-off failure; cancellation on close; "still checking" after 7 s; conversation kept for the tab (2 h, disclosed); "New conversation"; clickable checked links; product cards; Escape and focus return; safe-area padding |
 | Hand-over | form pre-filled when the model asked for it; the question was lost when the AI failed | category, first-person summary and order number pre-filled and editable; the customer's question is carried over in every failure path |
 | Quality signals | none | one `assistant_event` log line per turn (counts, timings, tools, fallback reason) and per rating; no text, no identifiers |
-| Tests | none in the repository | 90 offline tests in CI (`npm run test:assistant`), an optional live-model suite, and end-to-end and browser runs (below) |
+| Tests | none in the repository | 92 offline tests in CI (`npm run test:assistant`), an optional live-model suite, and end-to-end and browser runs (below) |
 
 ## 2. Files changed
 
@@ -58,6 +58,7 @@ Modified:
 | S5 | Model links shown unchecked | an invented product page or an external URL could be presented as the shop's | links grounded against the catalogue and tool results; others removed |
 | S6 | A closed widget left the model call running | wasted budget, and replies to nobody | client abort → `request.signal` → model call aborted (verified end to end) |
 | S7 | Payment confirmation not distinguished | the model could read `paymentStatus` loosely | `paymentConfirmed` only for `paid`, `partially_refunded` or `refunded` records, with a prompt rule |
+| S8 | A price given as text was stripped to its digits (found in the pre-PR review) | "300,50" became 30 050 and "1.290,00" became 1.29, so a search could exceed the customer's budget | only unambiguous numbers are accepted ("CHF 1'290", "300"); anything else is an error the model can recover from |
 | C1 | Italian, French and German colour names (Nero, Bianco, Blanc, Schwarz…) mapped to no colour family | "black jacket" could not find a product whose colour is "Nero": a storefront-wide search, stylist and concierge defect | `COLOR_PATTERNS` extended, short words bounded (`Carrot` is not red) |
 | C2 | The concierge's keyword fallback dropped colour, category and brand (found by the integration run) | "white coat" returned the black coat | the fallback re-applies every firm filter |
 | C3 | CHF amount reader | "CHF 14.9" read as 149; "CHF 14.90 2 days" as 14 902 | stricter number grammar |
@@ -66,12 +67,38 @@ Modified:
 | C6 | The hand-over lost the question when the AI failed | the customer had to retype it | the question is carried into the form in every path |
 | C7 | Untracked stock was shown as "Made to order" | inaccurate: the shop sources items, it doesn't make them | "Available to order" (it: Ordinabile, fr: Disponible à la commande, de: Bestellbar) |
 | C8 | Italian chat strings switched to "tu"; a German closing quote was wrong | inconsistent formal voice | fixed |
+| C9 | Per-size availability omitted a colour with no stock row (found in the pre-PR review) | the product page and `place_order()` treat that combination as none, but the model saw nothing and could guess | every colour is listed for every size, missing rows as unavailable |
+| C10 | An order-store failure returned an empty list (pre-existing, found in the pre-PR review) | the concierge would tell customers their own order was not visible "for privacy" while the database was down | a failed lookup now reports "cannot check right now"; it never shows more than before |
 
 Unchanged: the route's rate limit (40 per 10 min per IP; not re-tested
 here). Kept and re-verified by the tests below: orders are visible only by
 session or browser token, never by number; `not_visible` doesn't say whether
 the order exists; no name, address, phone, email or token is sent to the
 model.
+
+### Pre-PR review of the complete diff
+
+Before the pull request, the whole diff against `main` was read again for
+five kinds of regression:
+
+- **Authorization:** unchanged rule (session `userId` plus the browser's
+  tokens, token compared in constant time). The only changes make it
+  stricter: shape-checked credentials, and fail-closed lookups (C10).
+  Nothing in the conversation is read as authority.
+- **Availability:** `stockState` matches the storefront's `isProductBuyable`.
+  The per-size rule and the low-stock threshold match the product page. One
+  gap was fixed (C9).
+- **Privacy:** the only log statements are tool and provider error messages
+  and the counts-only `assistant_event` line. Tokens never enter a query (the
+  comparison is in code), and the model never receives customer contact
+  fields.
+- **Model tool calls:** six tools, five of them pure reads. Every one was
+  checked, down to the database: the order reads are `select`s, the catalogue
+  read is a `select`, and the `search_products` SQL function is `stable`.
+  `offer_human_support` writes nothing. One parsing bug was fixed (S8).
+- **Order handling:** `get_order_status` and `list_my_orders` keep the same
+  visibility rule and the same `not_visible` answer. The order store's own
+  functions are not modified.
 
 ## 4. Catalogue tools and the fields they support
 
@@ -121,28 +148,37 @@ Nothing about streaming was verified because nothing was built.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Assistant suite (offline) | `npm run test:assistant` | **90 / 90 pass** |
+| Assistant suite (offline) | `npm run test:assistant` | **92 / 92 pass** |
 | Unit and security suite | `npm run test:security` | **133 / 133 pass** |
-| Live-model suite | `npm run test:assistant:live` | **skipped** (no `GEMINI_API_KEY` in this environment) |
+| Live-model suite | `GEMINI_API_KEY=… ASSISTANT_LIVE_TESTS=1 npm run test:assistant:live` | **skipped**: no key in this environment; without both variables the suite reports itself as skipped |
 | Typecheck | `npm run typecheck` | pass, 0 errors |
 | Lint | `npx next lint` | no warnings or errors |
-| Production build | `next build` | exit 0 |
+| Production build | `npx next build` (as in CI) | exit 0 |
 | Client bundle | `scripts/ci/check-client-bundle.sh` | clean (36 server-only names, 5 secret shapes, 234 files) |
-| Secret scan | gitleaks 8.28.0 over the diff and the new files | no leaks |
+| Secret scan | gitleaks 8.28.0: `gitleaks git` over the branch's commits, and `gitleaks dir` over every tracked file | no leaks (branch commits; full history, as CI runs it; tracked tree) |
+
+### CI-equivalent run from a fresh clone
+
+A fresh clone of the branch at its final commit ran the steps of CI's
+"Typecheck, lint, unit tests, build" job, in CI's order and with CI's
+placeholder environment: `npm ci`, `npx next typegen`, `npm run typecheck`,
+`npx next lint`, `npm run test:security` (133/133), `npm run test:assistant`
+(92/92), `tests/backup/run.sh` (0 failed), `npx next build`, and
+`scripts/ci/check-client-bundle.sh`. **All passed.** The other CI jobs read
+nothing this change touches (no lockfile, migration or CI script changes) and
+are green on `main` at `b85cb15`.
 
 ### End to end (production build, Postgres 16 + PostgREST, scripted Gemini)
 
 | Suite | Result |
 | --- | --- |
-| `assistant-e2e` — API: model and tools offered, catalogue search on the real DB (Italian colour, price limit, product URL), link grounding, product context, every order case above, hand-over, loop caps, language rewrite and fallback, 503 retry, 5xx, 429, blocked reply, 20 s timeout, client abort, 413, 400, feedback, the log holding counts only | **43 / 43** |
-| `chat-ui` — browser (Chromium), Italian: focus on open, product answer with card and same-site link, order token sent but never stored, feedback, `sessionStorage` persistence and its 2 h expiry, Escape and focus return, card → product page with the chat open → "About this piece" with the page as context, "New conversation", network failure → Retry, model failure → help-centre answer with the AI still on, hand-over form pre-filled and editable, axe WCAG 2.2 AA on the open chat (0 violations), 390 px without overflow, no page errors | **26 / 26** |
+| `assistant-e2e` — API: model and tools offered, catalogue search on the real DB (Italian colour, price limit, product URL, every size and colour in the availability), link grounding, product context, every order case above, hand-over, loop caps, language rewrite and fallback, 503 retry, 5xx, 429, blocked reply, 20 s timeout, client abort, the order store down (PostgREST stopped) → "cannot check now", 413, 400, feedback, the log holding counts only | **45 / 45** |
+| `chat-ui` — browser (Chromium), Italian: focus on open, product answer with card and same-site link, order token sent but never stored, feedback, `sessionStorage` persistence (cards included) and its 2 h expiry, tampered stored cards (`javascript:`, `//host`, absolute, malformed) dropped on restore, Escape and focus return, card → product page with the chat open → "About this piece" with the page as context, "New conversation", network failure → Retry, model failure → help-centre answer with the AI still on, hand-over form pre-filled and editable, axe WCAG 2.2 AA on the open chat (0 violations), 390 px without overflow, the privacy and cookie policy wording as published pages render it (en, it), no page errors | **32 / 32** |
 
-### Regression (all earlier suites, same build)
+### Regression (all earlier suites, final build)
 
-Run with the earlier rounds' runner on the build before the last two edits
-(the restored-card check in the widget and the privacy-policy wording). The
-final build was then re-checked with every static check, both assistant
-suites, `assistant-e2e` and `chat-ui`.
+Run with the earlier rounds' runner on the production build of the final
+code (the pre-PR review fixes included).
 
 | Suite (mode) | Result |
 | --- | --- |
@@ -157,15 +193,29 @@ suites, `assistant-e2e` and `chat-ui`.
 | price-suite (fixtures) | 17 / 17 |
 | hydration-404 (fixtures) | 29 / 29 |
 | finder-ui (fixtures, browser) | 106 / 106 |
-| noref-ui (fixtures, browser) | 13 / 13 |
+| noref-ui (fixtures, browser) | 13 / 13 on a re-run; **11 / 13 on the first run**, see below |
 | status matrix | 11 × 404 and 9 × 200 for browser and Googlebot, as before |
 | robots | `noindex, nofollow` on order, admin login, checkout, account |
 
-**419 / 419** checks across the 12 suites.
+**419 / 419** checks across the 12 suites, after one harness fix:
 
-The harness for the end-to-end and browser runs (fake Gemini, integration
-database, edge proxy) lives outside the repository, as in earlier audits. CI
-runs the offline suite.
+- **What failed:** on the first run, `noref-ui`'s two admin checks failed.
+  The browser stayed on `/admin/login`, and the server logged no login
+  attempt at all.
+- **Cause:** the login page shows its one-time-code field only after
+  `GET /api/admin/login` reports that MFA is on. The test looked for the
+  field immediately after typing the password. When that request was slower,
+  the field wasn't there yet, the code was never typed, and the form's
+  `required` attribute blocked the submit.
+- **Fix:** the test now waits for the field. It is a test race: the admin
+  login is not touched by this change.
+- **Result:** the re-run, in the same fixture mode, passed 13/13.
+
+`assistant-e2e`, `chat-ui` and the regression suites are this audit's own
+harness (fake Gemini, integration database, edge proxy, Playwright). They live
+outside the repository, as in earlier audits, so they **cannot be run from the
+repository**. What the repository runs, locally and in CI, is the commands in
+the first table.
 
 ## 8. Failed or skipped tests
 
@@ -181,6 +231,13 @@ runs the offline suite.
     was verified directly against the origin;
   - the first browser run (the launcher is not on product pages; the test now
     follows the real path from the home page).
+- **During the pre-PR checks:** the container restarted and Postgres had to
+  be started again (environment); the e2e run's first attempt killed its own
+  shell (`pkill -f` matched the launching command; now `pkill -x`). Neither
+  was a product failure; both runs were repeated in full.
+- **Regression re-run on the final build:** `noref-ui` 11/13 on the first
+  run. This was a test race on the admin MFA field (section 7); after the
+  harness fix the re-run passed 13/13.
 - **Failed at the end:** none.
 
 ## 9. Remaining limitations and external configuration
@@ -209,7 +266,7 @@ runs the offline suite.
    English and Italian, the languages they exist in. French and German
    readers see the English version, as before. The "effective" dates were
    not changed: that is the owner's decision when publishing.
-8. **The end-to-end harness is not in CI.** CI runs the 90 offline tests; the
+8. **The end-to-end harness is not in CI.** CI runs the 92 offline tests; the
    API and browser runs above were done here.
 9. **Not deployed.** Nothing was deployed or pushed to production.
 

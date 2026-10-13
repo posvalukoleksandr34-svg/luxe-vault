@@ -130,10 +130,19 @@ function optionalText(v: unknown, max: number): string | undefined | Invalid {
   return text || undefined
 }
 
+/** A price: a number, or text that is unambiguously one ("300", "CHF 300",
+ *  "1'290", "1’290.50"). Anything a guess would be needed for — "300,50",
+ *  "1.290,00" — is refused rather than misread, so a budget can never be
+ *  silently multiplied or divided. */
 function optionalPrice(v: unknown): number | undefined | Invalid {
   if (v === undefined || v === null || v === '') return undefined
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) : NaN
-  if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return { error: 'invalid_argument', hint: 'Prices are numbers in CHF.' }
+  let n = NaN
+  if (typeof v === 'number') n = v
+  else if (typeof v === 'string') {
+    const text = v.replace(/chf|fr\.?|sfr\.?/gi, '').replace(/[\s'’]/g, '')
+    if (/^\d+(?:\.\d{1,2})?$/.test(text)) n = Number(text)
+  }
+  if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return { error: 'invalid_argument', hint: 'Prices are plain numbers in CHF, e.g. 300.' }
   return n
 }
 

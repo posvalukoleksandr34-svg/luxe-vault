@@ -60,20 +60,29 @@ export function readCredentials(value: unknown): OrderCredential[] {
 }
 
 /** Everything the requester may see, newest first: the signed-in account's
- *  orders (`userId`, from the verified session) and the browser's tokens. */
+ *  orders (`userId`, from the verified session) and the browser's tokens.
+ *
+ *  A lookup that fails THROWS rather than returning what is left: an empty or
+ *  partial list would read as "that order is not yours to see", which is
+ *  wrong when the database is simply unavailable. The tool loop turns the
+ *  error into "cannot check right now" (chat.ts). */
 export async function requesterOrders(credentials: OrderCredential[], userId: string | null): Promise<Order[]> {
   let account: Order[] = []
+  let failed = false
   try {
     if (userId) account = await getOrdersByUserId(userId)
   } catch (e) {
+    failed = true
     console.warn('[assistant] account orders unavailable:', (e as Error).message)
   }
   let tokens: Order[] = []
   try {
     tokens = credentials.length > 0 ? await getOrdersByCredentials(credentials) : []
   } catch (e) {
+    failed = true
     console.warn('[assistant] token orders unavailable:', (e as Error).message)
   }
+  if (failed) throw new Error('orders_unavailable')
   const byId = new Map<string, Order>()
   for (const order of [...account, ...tokens]) byId.set(order.id, order)
   return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt)

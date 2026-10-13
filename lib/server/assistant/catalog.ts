@@ -155,19 +155,30 @@ export function detail(
 ): ProductDetail {
   const base = summarize(catalog, p, locale)
   const tracked = (p.variants?.length ?? 0) > 0
+  const markedOut = p.statuses.includes('out_of_stock')
+  // Every colour in every size, as the product page offers them: a tracked
+  // product with no row for a combination has none of it (the product page
+  // and place_order() agree), so it is listed as unavailable rather than left
+  // out for the model to guess about.
   const availability = tracked
-    ? p.sizes.slice(0, MAX_SIZES).map((size) => ({
-        size,
-        colors: (p.variants ?? [])
-          .filter((v) => sameSize(v.size, size))
-          .slice(0, MAX_COLORS)
-          .map((v) => ({
-            color: cleanText(v.color, 40),
-            available: v.stock > 0 && !p.statuses.includes('out_of_stock'),
-            // The product page's own "only N left" threshold — no exact counts.
-            fewLeft: v.stock > 0 && v.stock <= (v.lowStockAt ?? 0),
-          })),
-      }))
+    ? p.sizes.slice(0, MAX_SIZES).map((size) => {
+        const rows = (p.variants ?? []).filter((v) => sameSize(v.size, size))
+        const names = (p.colors ?? []).map((c) => c.name)
+        for (const v of rows) if (names.indexOf(v.color) === -1) names.push(v.color)
+        return {
+          size,
+          colors: names.slice(0, MAX_COLORS).map((color) => {
+            const row = rows.find((v) => v.color === color)
+            const stock = row?.stock ?? 0
+            return {
+              color: cleanText(color, 40),
+              available: stock > 0 && !markedOut,
+              // The product page's own "only N left" threshold — no exact counts.
+              fewLeft: Boolean(row) && stock > 0 && stock <= (row?.lowStockAt ?? 0),
+            }
+          }),
+        }
+      })
     : undefined
   return {
     ...base,

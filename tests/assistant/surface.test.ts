@@ -5,7 +5,7 @@ import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { NextRequest } from 'next/server'
-import { readCredentials, orderForAssistant } from '@/lib/server/assistant/orders'
+import { readCredentials, orderForAssistant, requesterOrders } from '@/lib/server/assistant/orders'
 import { knowledgeFor } from '@/lib/server/assistant/knowledge'
 import { FAQ } from '@/lib/support/faq'
 import { UI } from '@/lib/ui-strings'
@@ -125,6 +125,13 @@ describe('order credentials from the browser', () => {
     const many = Array.from({ length: 300 }, (_, i) => ({ id: `LV-${String(i).padStart(6, '0')}`, token }))
     assert.equal(readCredentials(many).length, 50)
     assert.deepEqual(readCredentials('LV-AAA111'), [])
+  })
+  it('an order store that cannot be read is an error, never an empty list read as "not yours"', async () => {
+    // No database in this environment: the lookup fails, and must say so.
+    await assert.rejects(requesterOrders([{ id: 'LV-AAA111', token }], null), /orders_unavailable/)
+    await assert.rejects(requesterOrders([], '00000000-0000-0000-0000-000000000000'), /orders_unavailable/)
+    // Nothing to look up: nothing to fail.
+    assert.deepEqual(await requesterOrders([], null), [])
   })
   it('what the model is told about an order holds no personal data and no token', () => {
     const json = JSON.stringify(Object.values(ORDERS).map(orderForAssistant))
