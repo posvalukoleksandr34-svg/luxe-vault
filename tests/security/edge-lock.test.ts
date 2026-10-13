@@ -66,4 +66,27 @@ describe('origin lock', () => {
     spoofed.set('x-edge-auth', SECRET)
     assert.equal(clientIp(spoofed), '1.2.3.4')
   })
+
+  it('a wrong, partial or padded edge secret does not make a forged CF-Connecting-IP believable', () => {
+    set({ EDGE_ORIGIN_SECRET: SECRET })
+    for (const presented of [SECRET.slice(0, 63), SECRET + 'a', 'b'.repeat(64), '', ` ${SECRET}x`]) {
+      const h = new Headers({ 'cf-connecting-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9', 'x-edge-auth': presented })
+      assert.equal(clientIp(h), '9.9.9.9', JSON.stringify(presented))
+    }
+  })
+
+  it('without an edge secret configured, CF-Connecting-IP is never believed', () => {
+    set({})
+    const h = new Headers({ 'cf-connecting-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9', 'x-edge-auth': '' })
+    assert.equal(clientIp(h), '9.9.9.9')
+    assert.equal(cameThroughEdge(h), false)
+  })
+
+  it('X-Forwarded-For: the first hop (the one the platform set), trimmed; then X-Real-IP; then nothing', () => {
+    set({})
+    assert.equal(clientIp(new Headers({ 'x-forwarded-for': ' 203.0.113.5 , 10.0.0.1, 10.0.0.2' })), '203.0.113.5')
+    assert.equal(clientIp(new Headers({ 'x-forwarded-for': '2001:db8::1' })), '2001:db8::1')
+    assert.equal(clientIp(new Headers({ 'x-forwarded-for': ' ', 'x-real-ip': '198.51.100.7' })), '198.51.100.7')
+    assert.equal(clientIp(new Headers({})), '')
+  })
 })

@@ -1,111 +1,116 @@
-# Executive report — security, integrity and readiness audit
+# Executive report — security remediation (code)
 
-**Date:** 2026-10-12.
-**Code audited:** `main` at `17eb2c9`.
-**Fixes:** branch `claude/admiring-albattani-xgdcm5`, merged to `main` and **deployed to production** on 2026-10-12 as `d8a18cf`. The Vercel production deploy succeeded, CI is green on `main`, and the live security check passed after the deploy.
+**Dates:** audit 2026-10-12; remediation rounds 2026-10-12 (deployed), 2026-10-13 round 2 and round 3 (both uncommitted).
+
+**Production:** `db36302` on `main`, deployed, CI green: the 2026-10-12 fixes.
+
+**This work:** in the working tree of `claude/admiring-albattani-xgdcm5`. **It is not committed, pushed, deployed or migrated**, as the briefs require. No production system, provider dashboard, real payment, refund or customer notification was touched.
 
 **Companion documents:**
 
-- [FINDINGS.md](FINDINGS.md): every finding, with evidence;
-- [REMEDIATION_LOG.md](REMEDIATION_LOG.md): what changed;
-- [TEST_REPORT.md](TEST_REPORT.md): what was run and the results;
-- [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md): checklist with VERIFIED, FAILED and NOT VERIFIED.
+- [FINDINGS.md](FINDINGS.md): 32 findings, with evidence, root cause, test and status;
+- [REMEDIATION_LOG.md](REMEDIATION_LOG.md): every file changed, and why;
+- [TEST_REPORT.md](TEST_REPORT.md): exact commands, exit codes and counts (§R3 for this round);
+- [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md): code readiness (Part A) and external requirements (Part B);
+- [MANUAL_ACTIONS_REQUIRED.md](MANUAL_ACTIONS_REQUIRED.md): what only the owner can do.
 
 ## Bottom line
 
-The application's core controls hold up under direct testing:
+**The code is ready for staging.** Every repository-level check passes on the final tree:
 
-- row-level security on every table;
-- server-side pricing;
-- signed, de-duplicated payment webhooks with a payment state machine;
-- an admin session that can be revoked at the edge;
-- a live origin lock behind Cloudflare.
+- typecheck and lint;
+- 133 unit tests;
+- 41 backup-script tests;
+- 58 migrations and 89 database tests on Postgres 16 and 17;
+- the production build;
+- a check that no server-only code or secret reaches the browser bundle;
+- 14 end-to-end and browser suites (about 470 checks) against the build;
+- a refund-race stress test.
 
-Most earlier audit work is still sound. This audit found **no way for an outsider to read another customer's data, change a price or mark an order paid.**
+**Production readiness is not established, and code cannot establish it:**
 
-It did find:
+1. **No offsite backup of production exists** (AUD-01). The scripts are proven, not the backups.
+2. **The catalogue has no legal or payment-provider sign-off** (AUD-02). It sells goods described as replicas of designer items. This is the largest risk to the business.
+3. **This code and migrations 0056–0058 are not in production.**
+4. **Unverified settings:**
+   - admin MFA;
+   - rotation of the burned admin credentials;
+   - provider dashboards;
+   - branch protection;
+   - a log drain.
 
-- several ways the shop's own **records of money and stock could become untrue**;
-- places where a **control failed open**;
-- one operational gap that matters more than any code finding: **there are no offsite backups.** The backup workflow has shown a green "success" every night while skipping the backup.
+No review proves an application secure. This one records what was tested, how, and what was not.
 
-The largest risk is not technical. The shop sells goods described as replicas of designer items, and that needs a lawyer and the payment providers to sign off (AUD-02).
+## Most important code fixes, by risk
 
-No audit can show an application is secure. This one shows what was tested, how, and what could not be checked from here.
+| # | Finding | What was wrong | Evidence it is fixed |
+|---|---|---|---|
+| 1 | **AUD-32** (round 3) | Two refund presses a few milliseconds apart could **both be paid**, despite the deployed double-refund fix (AUD-07): one checked the order, the other read Stripe. | Without the fix, **15 of 30** racing pairs refunded twice; with it, **0 of 30**. Plus a deterministic end-to-end test and 3 unit tests. |
+| 2 | **AUD-09** (round 2) | Anyone could hold the whole catalogue without paying. | Lapsed unpaid orders release after 48 h, never mid-payment, paid or shipped; DB, unit and end-to-end tests. |
+| 3 | **AUD-27** (round 3) | In that release, one database error stopped the run, and a failed restock lost units silently and forever. | Per-order isolation; failed restocks repaired exactly once; database failures alert and turn the hourly job red. 9 unit tests; end to end with injected faults. |
+| 4 | **AUD-18** (round 2) | A product-limited coupon discounted the whole basket (60.00 instead of 30.00); collection limits were ignored. | Reproduced on the deployed schema; `coupons.sql` 21; end to end. |
+| 5 | **AUD-20** (round 3) | The public search function, callable with the public key, had no bounds. One request of 70 000 words cost ~2 s of CPU and then crashed with "stack depth limit exceeded". | Migration 0058: clamped, length-bound, service-role only. 8 ms instead of 2 s; `search.sql` 17; CI refuses a re-grant. |
+| 6 | **AUD-22** (round 2) | A refund Stripe did not confirm could be issued again. | The claim is kept on timeouts and 5xx; end to end. |
+| 7 | **AUD-23 / AUD-29** | Backup scripts accepted empty or truncated backups, and would restore into a Supabase project. They had no tests in the repository. | 41 tests in CI, **14 of which fail on the deployed scripts**; isolated real-tool restore of 120/120 orders. |
+| 8 | AUD-24, 25, 26, 28, 30 | Smaller gaps: no Stripe reconciliation; unavailable products could be bought by a crafted request; no security event log; webhook errors echoed internals; nothing guarded the browser bundle. | Each tested; see FINDINGS. |
 
-## What needs the owner, in order
+Also verified as already correct in round 3, and now pinned by tests:
 
-1. **Backups (AUD-01).**
-   - Configure the offsite backup (`docs/security/phase-1-backups.md`).
-   - Run the restore test by hand and confirm it passes.
-   - Meanwhile, check the Supabase plan's own backups and take a manual dump.
-   - After this branch is merged, both backup workflows turn **red** until configured. That is deliberate.
-2. **Legal review of the catalogue (AUD-02).** IP counsel, plus written confirmation from Stripe and NOWPayments that replica / designer-inspired goods are acceptable to them. "Replica" on the label does not make a sale lawful.
-3. **Now that it is live:**
-   - Sign in to the admin console once. If it answers "Вход временно недоступен", `ADMIN_TOTP_SECRET` is set but invalid (AUD-05): fix it with `scripts/admin-totp-setup.mjs`, or remove it, and redeploy. An invalid secret now blocks sign-in instead of silently switching MFA off.
-   - Confirm the old, burned admin password and session secret are not in use (AUD-10).
-4. **Decide how long an unpaid order may hold stock (AUD-09).** Today it is forever. Anyone can reserve the whole catalogue without paying, at checkout speed.
-5. **Next:**
-   - Make the new CI checks required on `main` (AUD-08).
-   - Review the Dependabot pull requests. The config now ignores major npm versions; the major-version PRs it opened first (Tailwind 4, ESLint 10, eslint-config-next 16, Stripe.js 10) are migrations to schedule deliberately, not to merge as bumps.
-   - Work through the dashboard items in [FINDINGS AUD-21](FINDINGS.md#aud-21): Vercel plan, Netlify leftover, Supabase Auth settings, Stripe webhook events and Radar, Cloudflare WAF and Access, GitHub branch protection, and MFA on every console.
+- rate-limit counting under concurrency (10 requests against a limit of 5 → exactly 5);
+- forged proxy headers cannot mint rate-limit buckets;
+- the admin session cookie's attributes;
+- the password check failing closed.
 
-## Fixed in this branch
+## Code quality
 
-| ID | Severity | Fixed |
-|---|---|---|
-| AUD-03 | Medium | A customer could "cancel" an order that had been paid and refunded, or that had shipped. Units of delivered goods went back on sale and the payment record was rewritten. Cancellation now uses the payment state machine, enforced inside the database write. |
-| AUD-04 | Medium | When the rate limiter failed, the admin password, order-lookup tokens, coupon codes and card numbers could be guessed without limit. These six endpoints now fail closed (503). |
-| AUD-05 | Medium | A mistyped MFA secret silently turned admin MFA off. It now fails closed. |
-| AUD-06 | Medium | Admins could permanently delete paid and refunded orders. Orders that took money are now kept. |
-| AUD-07 | Medium | The same refund pressed twice (two tabs, two staff) was paid twice. Now one refund per ledger state, a Stripe idempotency key, and a stale-screen check. |
-| AUD-08 | Medium | No CI. Added typecheck, lint, tests, build, a secret scan over all history, a dependency audit, and every migration applied to an empty database with RLS and function-privilege rules checked. Actions are pinned to commit SHAs. |
-| AUD-01 (part) | High | Backup workflows now fail loudly instead of reporting a backup that did not happen. |
-| AUD-11 to AUD-17 | Low | Staff cancellation releases stock; order size bounded; Stripe error text no longer sent to browsers; extra admin page guards; `noindex` on private pages; duplicate cron removed; one dependency advisory patched. |
+The codebase is careful where it matters: server-side pricing, a payment state machine enforced inside the database writes, RLS on every table, signed and revocable admin sessions, and documented reasoning beside the decisions. The defects found this round were at the **seams between steps**, where two correct steps leave a window between them:
 
-Every Medium fix was **reproduced on the unmodified code first**, then shown fixed on the same test suite. That suite is 44 checks against the production build, real Postgres and PostgREST, and a Stripe stand-in: 23 failed before, and all 44 pass after. All existing suites still pass: security, payments, fraud, integration, pricing, 404 handling, Size Finder and referral. See TEST_REPORT.md for the numbers.
+- cancel, then restock;
+- check the order, then read Stripe;
+- an RPC granted more widely than its only caller needed.
+
+The tests added this round target exactly those seams. They are concurrent, fault-injected and deterministic.
+
+**Weak points that remain:**
+
+- The end-to-end harness lives outside the repository, so CI does not run the HTTP or browser suites.
+- 11 build-tool advisories wait on major upgrades.
+- Admin access is one shared password, with an optional second factor (AUD-31).
 
 ## Still open
 
-| ID | Severity | What | Why open |
+| ID | Severity | What | Blocked on |
 |---|---|---|---|
-| AUD-02 | Critical (legal) | Replica goods: trade-mark and payment-provider exposure | Legal decision |
-| AUD-01 | High | No offsite backup exists; no restore tested | Accounts and secrets to set up |
-| AUD-09 | Medium | Unpaid orders hold stock indefinitely | Business rule |
-| AUD-10 | Medium | Burned credentials in git history; rotation unconfirmed | Production secrets |
-| AUD-17 | Low | 11 build-tool advisories, no patched releases | Tailwind 4 / ESLint 9 migrations |
-| AUD-18 to AUD-20 | Low / Info | Latent coupon scoping, two old non-re-runnable migrations, unbounded search limit | Backlog |
+| AUD-02 | Critical (legal) | Replica goods | Counsel; providers in writing |
+| AUD-01 | High | No production backup | Owner: bucket, keys, first run |
+| AUD-10 | Medium | Burned admin credentials | Owner: confirm or rotate |
+| AUD-07 → 32, 09, 18, 20 | Medium | Fixed in code, not in production | Commit, migrations 0056–0058, deploy |
+| AUD-31 | Low | Shared admin password; MFA optional when unset | Owner sets TOTP; per-person accounts are a later change |
+| AUD-17 | Low | 11 build-tool advisories | Tailwind 4 / ESLint migrations |
+| AUD-19 | Info | Two old migrations not re-runnable | By design: applied migrations are not edited |
+| AUD-21 | Info | Dashboard settings | Owner |
 
-## Scope and method
+## What the owner should do next
 
-**Read:**
+1. **Approve committing and pushing** this work to the branch. The container is temporary: uncommitted work is lost when it is reclaimed.
+2. **Apply 0056, 0057 and 0058**, preview the first release with `?dry=1`, then merge and deploy.
+3. **Configure offsite backups** and run the restore test.
+4. **Sign in once** to confirm MFA; confirm or rotate the admin credentials.
+5. **Get the legal review** and provider confirmation.
+6. **Check the dashboards**, set up a log drain and branch protection, and fill in the runbook contacts.
+7. **Run reconciliation** for the last 30 days.
 
-- middleware, admin authentication, sessions and TOTP;
-- rate limiting, CSRF and client-IP handling;
-- every `/api/admin` and customer API route;
-- order creation, pricing, cancellation, deletion and refunds;
-- Stripe and NOWPayments flows;
-- coupons and inventory;
-- all 55 migrations;
-- CI workflows;
-- SEO metadata.
+## Scope
 
-**Run:**
-
-- all 55 migrations on an empty Postgres, with Supabase's default grants emulated;
-- role-by-role RLS probes;
-- the production build with the end-to-end suites;
-- gitleaks over all 211 commits;
-- `npm audit`;
-- the GitHub Actions run history through the API.
+**Changed:** application code, migrations (new, forward-only), tests, scripts, CI and documentation.
 
 **Not done:**
 
-- no production data was read or written;
-- no deployment;
-- no real or test-mode Stripe charges or refunds;
-- no secret was read, printed or rotated;
-- no provider dashboard was accessed;
-- no penetration test of the live site beyond the repository's own passive live check.
-
-Design, performance and accessibility were spot-checked, not re-audited. The 2026-10-04 compliance audit and the performance document remain the reference. Core Web Vitals field data was not available.
+- no deploy;
+- no commit or push;
+- no production migration;
+- no secret read, printed or rotated;
+- no real or test-mode payment or refund;
+- no customer notified;
+- no dashboard accessed;
+- no legal review.

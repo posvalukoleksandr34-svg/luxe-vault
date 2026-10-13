@@ -3,6 +3,7 @@ import 'server-only'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { clientIp } from '@/lib/server/client-ip'
+import { securityEvent } from '@/lib/server/security-events'
 
 /**
  * Request throttling, counted in Postgres.
@@ -253,8 +254,13 @@ export async function enforceLimit(
   subject?: string,
 ): Promise<NextResponse | null> {
   const result = await checkLimit(name, subject ?? clientKey(request))
-  if (result.unavailable) return temporarilyUnavailable(result.retryAfter)
-  return result.allowed ? null : tooManyRequests(result.retryAfter)
+  if (result.unavailable) {
+    securityEvent('rate_limiter_unavailable', { bucket: name, route: request.nextUrl.pathname })
+    return temporarilyUnavailable(result.retryAfter)
+  }
+  if (result.allowed) return null
+  securityEvent('rate_limited', { bucket: name, route: request.nextUrl.pathname, ip: clientKey(request) })
+  return tooManyRequests(result.retryAfter)
 }
 
 /**
@@ -267,8 +273,13 @@ export async function enforceLimit(
  */
 export async function enforceUserLimit(name: LimitName, userId: string): Promise<NextResponse | null> {
   const result = await checkLimit(name, `user:${userId}`)
-  if (result.unavailable) return temporarilyUnavailable(result.retryAfter)
-  return result.allowed ? null : tooManyRequests(result.retryAfter)
+  if (result.unavailable) {
+    securityEvent('rate_limiter_unavailable', { bucket: name })
+    return temporarilyUnavailable(result.retryAfter)
+  }
+  if (result.allowed) return null
+  securityEvent('rate_limited', { bucket: name })
+  return tooManyRequests(result.retryAfter)
 }
 
 function temporarilyUnavailable(retryAfter: number): NextResponse {

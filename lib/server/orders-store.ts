@@ -537,7 +537,26 @@ export async function setOrderPaymentSession(
     void reportServerError('Supabase · payment session not attached', error.message)
     throw new Error(`Failed to attach payment session: ${error.message}`)
   }
+  if (data) await markPaymentSessionStarted(id)
   return data ? rowToOrder(asRow(data)) : null
+}
+
+/**
+ * Stamps when a payment was started, so the reservation sweep does not
+ * release an order while its customer is on the payment sheet (0056, grace).
+ *
+ * A separate, best-effort write rather than part of the attach above: before
+ * migration 0056 the column does not exist, and the payment must not fail for
+ * a timestamp. Without it the order simply has no grace period.
+ */
+async function markPaymentSessionStarted(id: string): Promise<void> {
+  const { error } = await createAdminClient()
+    .from('orders')
+    .update({ payment_session_at: new Date().toISOString() })
+    .eq('order_number', id)
+  if (error && error.code !== 'PGRST204' && error.code !== '42703') {
+    console.warn(`[orders] could not stamp the payment session of ${id}: ${error.message}`)
+  }
 }
 
 export async function findOrderByPaymentId(paymentId: string): Promise<Order | null> {
@@ -808,7 +827,10 @@ export async function deleteOrder(id: string): Promise<'deleted' | 'not_found' |
 export async function cancelOrder(
   id: string,
   reason?: string,
-): Promise<{ order: Order | null; conflict: boolean }> {
+  /** `notify: false` skips the customer's "order cancelled" email — for a
+   *  reservation released by the sweep (lib/server/reservations.ts). */
+  options: { notify?: boolean } = {},
+): Promise<{ order: Order | null; conflict: boolean; restockFailed: boolean }> {
   const { data, error } = await createAdminClient()
     .from('orders')
     .update({
@@ -825,14 +847,14 @@ export async function cancelOrder(
   if (error) throw new Error(`Failed to cancel order: ${error.message}`)
   // No row updated means the guards rejected it: already cancelled, money
   // received or on its way, or already shipped.
-  if (!data) return { order: null, conflict: true }
+  if (!data) return { order: null, conflict: true, restockFailed: false }
 
-  await restoreStock(id)
+  const restockFailed = (await restoreStock(id)) === 'failed'
   await reverseReferralReward(id)
   await releaseOrderCoupon(id)
   const cancelled = rowToOrder(asRow(data))
-  void sendOrderStatusEmail(cancelled, 'cancelled')
-  return { order: cancelled, conflict: false }
+  if (options.notify !== false) void sendOrderStatusEmail(cancelled, 'cancelled')
+  return { order: cancelled, conflict: false, restockFailed }
 }
 
 /**
@@ -869,14 +891,22 @@ export async function ensurePaidOrderStock(
  * Idempotency lives in the database (orders.restocked_at), not here, so a
  * webhook delivered twice cannot credit the same units twice.
  */
-async function restoreStock(orderNumber: string): Promise<void> {
-  const { error } = await createAdminClient().rpc('restore_order_stock', {
+async function restoreStock(orderNumber: string): Promise<'restocked' | 'already' | 'failed'> {
+  const { data, error } = await createAdminClient().rpc('restore_order_stock', {
     p_order_number: orderNumber,
   })
 
-  if (error && error.code !== 'PGRST202') {
+  if (error) {
+    if (error.code === 'PGRST202') return 'already'
+    // The units are now off the shelf with no order holding them. Said
+    // loudly: the reservation sweep repairs its own cancellations, but a
+    // cancellation from the console or the customer needs a person to put
+    // the stock right (Admin → Inventory).
     console.error(`[orders] restock failed for ${orderNumber}:`, error.message)
+    void reportServerError('Supabase · stock not returned after a cancellation', `${orderNumber}: ${error.message}`)
+    return 'failed'
   }
+  return data === true ? 'restocked' : 'already'
 }
 
 /**

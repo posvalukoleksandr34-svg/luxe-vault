@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import {
   ADMIN_SESSION_COOKIE,
-  ADMIN_SESSION_MAX_AGE_SECONDS,
+  adminSessionCookieOptions,
   createSession,
   isAdminConfigured,
   verifyAdminPassword,
@@ -11,6 +11,7 @@ import { recordSession, revokeSession } from '@/lib/server/admin-sessions'
 import { checkTotp, isTotpConfigured } from '@/lib/server/admin-totp'
 import { clientIp } from '@/lib/server/client-ip'
 import { enforceLimit } from '@/lib/server/rate-limit'
+import { securityEvent } from '@/lib/server/security-events'
 
 /** Whether the sign-in form must ask for the 6-digit code (lib/server/admin-totp.ts). */
 export function GET() {
@@ -52,7 +53,10 @@ export async function POST(request: NextRequest) {
   const mfa = isTotpConfigured()
   const refused = NextResponse.json({ error: mfa ? 'Неверный пароль или код' : 'Неверный пароль' }, { status: 401 })
 
-  if (!(await verifyAdminPassword(password))) return refused
+  if (!(await verifyAdminPassword(password))) {
+    securityEvent('admin_login_failed', { ip: clientIp(request.headers), reason: 'password' })
+    return refused
+  }
 
   // The code is checked (and spent) only after the password, so someone
   // without it cannot burn the admin's current code.
@@ -61,9 +65,13 @@ export async function POST(request: NextRequest) {
     second = await checkTotp(code)
   } catch (e) {
     console.error('[admin/login]', (e as Error).message)
+    securityEvent('admin_login_refused_config', { ip: clientIp(request.headers), reason: 'second factor unavailable' })
     return NextResponse.json({ error: 'Вход временно недоступен' }, { status: 503 })
   }
-  if (second === 'invalid') return refused
+  if (second === 'invalid') {
+    securityEvent('admin_login_failed', { ip: clientIp(request.headers), reason: 'code' })
+    return refused
+  }
   if (second === 'unconfigured' && process.env.VERCEL_ENV === 'production') {
     console.warn('[admin/login] signed in with the password alone — set ADMIN_TOTP_SECRET (scripts/admin-totp-setup.mjs).')
   }
@@ -88,19 +96,8 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true })
-  response.cookies.set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    // Lax, not Strict: a link to the console from a Telegram alert or an
-    // email must arrive signed in. Cross-site WRITES are refused by the CSRF
-    // guard in middleware.ts regardless.
-    sameSite: 'lax',
-    // '/', not '/admin': the console's API lives under /api/admin, and a
-    // cookie has one path. (The __Host- prefix in production requires '/'.)
-    path: '/',
-    // Matches the expiry signed into the token itself. The cookie's lifetime
-    // is a browser convenience; the token's is what the server enforces.
-    maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
-  })
+  // HttpOnly, Secure in production, SameSite=Lax, Path=/ — the reasons are
+  // with adminSessionCookieOptions().
+  response.cookies.set(ADMIN_SESSION_COOKIE, token, adminSessionCookieOptions())
   return response
 }

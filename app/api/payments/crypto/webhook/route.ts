@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { securityEvent } from '@/lib/server/security-events'
 import { isMailConfigured, sendStockConflictAlert } from '@/lib/server/mailer'
 import { ensurePaidOrderStock, findOrderByPaymentId, setPaymentStatus } from '@/lib/server/orders-store'
 import {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
 
   const signature = request.headers.get('x-nowpayments-sig')
   if (!(await verifyIpnSignature(payload, signature))) {
+    securityEvent('webhook_signature_invalid', { route: 'nowpayments', reason: signature ? 'mismatch' : 'missing header' })
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 

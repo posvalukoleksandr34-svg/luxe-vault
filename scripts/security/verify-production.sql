@@ -104,10 +104,10 @@ checks as (
   union all
   select 'security definer callable by anon: ' || p.proname,
          case when p.prorettype = 'trigger'::regtype
-                or p.proname in ('search_products', 'review_eligibility', 'set_default_address')
+                or p.proname in ('review_eligibility', 'set_default_address')
               then 'OK' else 'PROBLEM' end,
          case when p.prorettype = 'trigger'::regtype then 'trigger function, not callable over the API'
-              when p.proname = 'search_products' then 'reviewed: returns public catalogue slugs only'
+              when p.proname = 'search_products' then 'apply migration 0058: it makes search_products service-role only, with bounded limits'
               when p.proname = 'review_eligibility' then 'reviewed: reads only the caller''s own orders and reviews (auth.uid())'
               when p.proname = 'set_default_address' then 'reviewed: changes only the caller''s own addresses (auth.uid())'
               else 'read it: it must check auth.uid() itself, or: revoke execute on function public.' || p.proname || ' from anon, public;' end

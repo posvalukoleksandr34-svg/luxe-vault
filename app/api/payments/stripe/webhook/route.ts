@@ -21,6 +21,7 @@ import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, getStripe, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { onCardFailure, onCardSuccess, onDispute, onEarlyFraudWarning } from '@/lib/server/payment-fraud'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
+import { securityEvent } from '@/lib/server/security-events'
 import type { Order, PaymentStatus } from '@/lib/types'
 import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict, reportCriticalError } from '@/lib/telegram'
 
@@ -86,8 +87,12 @@ export async function POST(request: NextRequest) {
   try {
     event = constructWebhookEvent(rawBody, signature)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid signature'
-    return NextResponse.json({ error: message }, { status: 400 })
+    // The SDK's reason (no matching signature, timestamp outside tolerance)
+    // stays in the log; the caller — Stripe or whoever forged the request —
+    // learns only that it was refused.
+    console.warn('[stripe] webhook refused:', error instanceof Error ? error.message : error)
+    securityEvent('webhook_signature_invalid', { route: 'stripe', reason: signature ? 'mismatch or stale' : 'missing header' })
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
   if (HANDLED.indexOf(event.type) === -1) {
@@ -119,7 +124,9 @@ export async function POST(request: NextRequest) {
     // what makes a 500 diagnosable either way.
     console.error(`[stripe] webhook ${event.type} ${event.id} failed:`, error)
     await reportCriticalError(`Stripe webhook ${event.type}`, message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    // Generic on the wire: a database error text is for the log above, not
+    // for a response body Stripe stores and shows in its dashboard.
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }
 

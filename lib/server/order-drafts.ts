@@ -265,6 +265,12 @@ export async function repriceItems(
     const product = byId.get(item.productId)
     // Unknown product: refuse. Accepting it would let anyone invent a line.
     if (!product) return { ok: false, error: `Unknown product: ${item.productId}` }
+    // Marked unavailable by the admin. A product that tracks stock is also
+    // stopped by place_order(); one that does not (no variant rows) had only
+    // the storefront hiding its button — a crafted request could still buy it.
+    if (product.statuses?.includes('out_of_stock')) {
+      return { ok: false, error: `Unavailable product: ${item.productId}` }
+    }
 
     // The size and colour must be ones this product is sold in. Stock-tracked
     // products are also checked by place_order(), but one without variant
@@ -315,6 +321,8 @@ export async function repriceItems(
     const coupon = await applyCoupon(draft.promo, subtotal, {
       userId: draft.userId,
       productSlugs: priced.map((i) => i.productId),
+      // A restricted code is sized on its own lines only (migration 0057).
+      lines: priced.map((i) => ({ slug: i.productId, qty: i.qty })),
       commit: true,
     })
     if (coupon.ok) {

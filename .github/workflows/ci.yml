@@ -1,7 +1,9 @@
 # Checks every pull request and every push to main before it can reach
-# production: types, lint, unit tests, a production build, committed secrets,
-# vulnerable dependencies, and the database migrations applied to an empty
-# Postgres with the access rules (RLS, SECURITY DEFINER) verified.
+# production: types, lint, unit tests, the backup scripts' failure paths, a
+# production build (and that no server-only code reached its browser bundle),
+# committed secrets, vulnerable dependencies, and the database migrations
+# applied to an empty Postgres with the access rules (RLS, SECURITY DEFINER)
+# and the database tests verified.
 #
 # Make it required: Settings → Branches → Branch protection rule for `main` →
 # Require status checks to pass → select the jobs below.
@@ -51,6 +53,10 @@ jobs:
         run: npx next lint
       - name: Unit and security tests
         run: npm run test:security
+      - name: Backup script tests
+        # scripts/backup/* against stubbed docker/age and a temporary
+        # directory as the bucket: every failure path must fail the run.
+        run: tests/backup/run.sh
       - name: Production build
         # Public values only, and placeholders: the build must not need a
         # single real secret. Server secrets are read at request time.
@@ -59,6 +65,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
         run: npx next build
+      - name: No server-only code or secrets in the browser bundle
+        run: scripts/ci/check-client-bundle.sh
 
   secrets:
     name: Secret scan (gitleaks, full history)
@@ -103,7 +111,7 @@ jobs:
         run: npm audit --audit-level=high
 
   migrations:
-    name: Migrations on an empty database
+    name: Migrations and database tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -124,3 +132,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:ci-only@127.0.0.1:5432/postgres
         run: scripts/ci/verify-migrations.sh
+      - name: Database tests (access denials, coupons, reservations, races)
+        env:
+          DATABASE_URL: postgresql://postgres:ci-only@127.0.0.1:5432/postgres
+        run: scripts/ci/db-tests.sh

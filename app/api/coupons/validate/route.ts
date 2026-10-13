@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('coupon.validate', request)
   if (limited) return limited
 
-  const body = await readJsonObject<{ code?: unknown; subtotal?: unknown; productSlugs?: unknown }>(request)
+  const body = await readJsonObject<{ code?: unknown; subtotal?: unknown; productSlugs?: unknown; items?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -41,10 +41,19 @@ export async function POST(request: NextRequest) {
     ? body.productSlugs.filter((s): s is string => typeof s === 'string').slice(0, 50)
     : []
 
+  // The basket's lines — product and quantity only; the database prices them
+  // (0057) so a restricted code previews the discount checkout will give.
+  const lines = Array.isArray(body.items)
+    ? body.items
+        .filter((i): i is { productId: string; qty?: unknown } => typeof (i as { productId?: unknown })?.productId === 'string')
+        .slice(0, 50)
+        .map((i) => ({ slug: i.productId.slice(0, 200), qty: Number.isFinite(Number(i.qty)) ? Math.trunc(Number(i.qty)) : 1 }))
+    : productSlugs.map((slug) => ({ slug, qty: 1 }))
+
   const user = await getCurrentUser()
   const userId = user?.id
 
-  const result = await applyCoupon(code, subtotal, { userId, productSlugs, commit: false })
+  const result = await applyCoupon(code, subtotal, { userId, productSlugs, lines, commit: false })
 
   if (!result.ok) return NextResponse.json({ ok: false, reason: result.reason })
 

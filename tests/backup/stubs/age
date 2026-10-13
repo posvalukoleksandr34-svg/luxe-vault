@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Test stand-in for `age`. NOT encryption: it records the recipients and a
+# checksum so the scripts' handling can be tested — that the dump is
+# "encrypted" before upload, that decryption needs the matching identity, and
+# that a modified file is refused. Real age is exercised by the backup
+# workflows themselves. Never used outside tests/backup/run.sh.
+#   age -r R [-r R…] -o OUT IN        "encrypt"
+#   age -d -i IDENTITY_FILE -o OUT IN "decrypt"
+set -euo pipefail
+mode=enc recipients=() identity='' out='' in=''
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -d) mode=dec; shift ;;
+    -r) recipients+=("$2"); shift 2 ;;
+    -i) identity=$2; shift 2 ;;
+    -o) out=$2; shift 2 ;;
+    *) in=$1; shift ;;
+  esac
+done
+if [ "$mode" = enc ]; then
+  [ "${#recipients[@]}" -gt 0 ] || { echo "age: error: missing recipients" >&2; exit 1; }
+  { echo "FAKE-AGE v1"; echo "to ${recipients[*]}"; echo "sum $(sha256sum "$in" | cut -d' ' -f1)"; base64 -w0 "$in"; echo; } > "$out"
+else
+  [ "$(head -n1 "$in")" = "FAKE-AGE v1" ] || { echo "age: error: not an age file" >&2; exit 1; }
+  key=$(grep -m1 '^AGE-SECRET-KEY-STUB-' "$identity" | sed 's/^AGE-SECRET-KEY-STUB-//') || { echo "age: error: no identity" >&2; exit 1; }
+  sed -n 2p "$in" | grep -qw "age1stub$key" || { echo "age: error: no identity matched any of the recipients" >&2; exit 1; }
+  sed -n 4p "$in" | base64 -d > "$out" 2>/dev/null || { echo "age: error: failed to decrypt" >&2; exit 1; }
+  [ "sum $(sha256sum "$out" | cut -d' ' -f1)" = "$(sed -n 3p "$in")" ] || { rm -f "$out"; echo "age: error: failed to decrypt and authenticate payload chunk" >&2; exit 1; }
+fi

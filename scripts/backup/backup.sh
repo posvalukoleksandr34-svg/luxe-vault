@@ -19,6 +19,11 @@
 #            SUPABASE_S3_ENDPOINT  SUPABASE_S3_REGION  SUPABASE_S3_ACCESS_KEY_ID
 #            SUPABASE_S3_SECRET_ACCESS_KEY  BACKUP_MEDIA_PASSPHRASE  (media)
 #            BACKUP_STORAGE_BUCKETS  PG_IMAGE  RCLONE_IMAGE
+#            BACKUP_SKIP_MEDIA=true  (an explicit decision not to back up the
+#            Storage buckets; without it, missing media settings FAIL the run)
+#
+# Exit status is the truth: non-zero whenever any part that should have been
+# backed up was not, and every uploaded file is checked in the bucket.
 
 set -euo pipefail
 . "$(dirname "$0")/common.sh"
@@ -39,6 +44,14 @@ for recipient in $BACKUP_AGE_RECIPIENTS; do age_args+=(-r "$recipient"); done
 # ------------------------------------------------------------------ database --
 log "Dumping the database"
 pg_run "$work" sh -c 'pg_dump "$PGURL" --format=custom --schema=public --schema=auth --schema=storage --file=/work/db.dump'
+# An archive pg_restore cannot read, or one without the shop's tables, is not
+# a backup — caught here rather than on the day it is needed.
+[ -s "$work/db.dump" ] || fail "pg_dump produced an empty file."
+pg_run "$work" sh -c 'pg_restore --list /work/db.dump' > "$work/toc.txt" ||
+  fail "The dump is not a readable pg_dump archive."
+grep -q 'TABLE public orders ' "$work/toc.txt" ||
+  fail "The dump has no public.orders table: wrong database, or a broken dump."
+rm -f "$work/toc.txt"
 pg_run "$work" sh -c 'psql "$PGURL" -X -q -t -A -v ON_ERROR_STOP=1 -f /scripts/manifest.sql' > "$work/contents.json"
 
 jq --arg stamp "$stamp" \
@@ -55,8 +68,8 @@ rm -f "$work/db.dump"
 
 # The dump first, the manifest last: the restore test looks for manifests, so
 # a run that dies halfway never leaves a manifest pointing at nothing.
-rclone_run "$work" copyto "/work/$stamp.dump.age" "backup:$BACKUP_BUCKET/db/$stamp.dump.age"
-rclone_run "$work" copyto "/work/$stamp.manifest.json" "backup:$BACKUP_BUCKET/db/$stamp.manifest.json"
+upload_verified "$work" "$stamp.dump.age" "backup:$BACKUP_BUCKET/db/$stamp.dump.age"
+upload_verified "$work" "$stamp.manifest.json" "backup:$BACKUP_BUCKET/db/$stamp.manifest.json"
 log "Database: $(jq -r '[.tables[]] | add' "$work/$stamp.manifest.json") rows in $(jq -r '.tables | length' "$work/$stamp.manifest.json") tables"
 
 # --------------------------------------------------------------------- media --
@@ -79,8 +92,12 @@ if [ -n "${SUPABASE_S3_ACCESS_KEY_ID:-}" ] && [ -n "${BACKUP_MEDIA_PASSPHRASE:-}
     log "Copying Storage bucket $bucket"
     rclone_run "$work" copy "supabase:$bucket" "media:$bucket" --stats-one-line --stats=0 -v
   done
+elif [ "${BACKUP_SKIP_MEDIA:-}" = "true" ]; then
+  echo "::warning::Storage buckets were NOT backed up (BACKUP_SKIP_MEDIA=true)."
 else
-  echo "::warning::Storage buckets were NOT backed up: SUPABASE_S3_ACCESS_KEY_ID or BACKUP_MEDIA_PASSPHRASE is not set."
+  # Recorded now, reported at the end: the database and code backups still
+  # run, but the job must not end green with the product photos missing.
+  media_missing=1
 fi
 
 # ---------------------------------------------------------------------- code --
@@ -88,7 +105,10 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
   log "Bundling the git repository"
   git bundle create "$work/repo.bundle" --all
   age "${age_args[@]}" -o "$work/$stamp.bundle.age" "$work/repo.bundle"
-  rclone_run "$work" copyto "/work/$stamp.bundle.age" "backup:$BACKUP_BUCKET/code/$stamp.bundle.age"
+  upload_verified "$work" "$stamp.bundle.age" "backup:$BACKUP_BUCKET/code/$stamp.bundle.age"
 fi
 
-log "Backup $stamp complete"
+if [ "${media_missing:-0}" = 1 ]; then
+  fail "Database and code backed up as $stamp, but the Storage buckets were NOT: set SUPABASE_S3_ACCESS_KEY_ID and BACKUP_MEDIA_PASSPHRASE, or BACKUP_SKIP_MEDIA=true to skip them on purpose."
+fi
+log "Backup $stamp complete in $SECONDS s"

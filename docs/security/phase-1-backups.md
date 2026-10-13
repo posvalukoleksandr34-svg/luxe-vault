@@ -139,6 +139,57 @@ does.
    verdict.
 3. Try deleting a file in the bucket with the CI key. It must be refused.
 
+## What the scripts guarantee, and how that was verified (2026-10-13)
+
+The exit status is the truth. `backup.sh` ends non-zero, with a specific `::error::`, when:
+
+- any setting is missing;
+- the dump is empty, unreadable by `pg_restore`, or has no `public.orders`;
+- an upload fails, or the object in the bucket is not the size that was sent;
+- the Storage buckets could not be backed up and `BACKUP_SKIP_MEDIA=true` was not set deliberately.
+
+Nothing is deleted or overwritten. Media is copied, never synced, and the bucket's Object Lock backs that up.
+
+`restore-test.sh` ends non-zero when:
+
+- there is no backup, or the newest is older than 30 h;
+- it does not decrypt;
+- its checksum is not the recorded one;
+- the manifest lists no shop tables;
+- a table is missing, empty or short after the restore.
+
+It refuses to restore into anything that looks like a Supabase project.
+
+### Verified procedure (isolated, no production system involved)
+
+The same scripts and container images the workflows use, against:
+
+- a synthetic database (all migrations and 120 synthetic orders) on a disposable Postgres;
+- an S3 endpoint served by `rclone serve s3` into a local directory;
+- a throwaway `postgres:17` container as the restore target.
+
+| Step | Result |
+|---|---|
+| 1. Back up | exit 0; `db/<stamp>.dump.age`, `db/<stamp>.manifest.json` and `code/<stamp>.bundle.age` uploaded, each size-verified in the bucket |
+| 2. Artifact valid | `pg_restore --list` passed before encryption; the manifest records SHA-256 and size |
+| 3. Integrity | the restore test recomputed the SHA-256 after decryption: match |
+| 4. Restore into a disposable database | 38 tables, 359 rows; `public.orders` 120 of 120 |
+| 5. Protection | encrypted with age before leaving the runner; logs checked: no access key, no age secret key, no connection string |
+| 6. Duration | 34 s for backup and restore together on this data (the restore step itself 3 s) |
+| 7. Clean-up | containers and the local bucket removed |
+
+The failure paths were run on the same setup, and each exited 1 with its own message:
+
+- destination unset;
+- wrong credentials (the bucket stayed empty);
+- a tampered artifact (did not decrypt);
+- a manifest checksum mismatch;
+- an empty database (refused before upload);
+- media not configured;
+- a Supabase URL as the restore target.
+
+**This proves the scripts, not production.** Production is backed up only once the setup above is done and both workflows have run green (`docs/audit/MANUAL_ACTIONS_REQUIRED.md` §2).
+
 ## Restoring for real
 
 Supabase's own restore (Dashboard → Database → Backups) is faster when the

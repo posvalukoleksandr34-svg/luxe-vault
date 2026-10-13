@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { cancellationFilter, cancellationRefusal, hasReceivedMoney } from '@/lib/payment-state'
 import { MAX_ORDER_LINES, validateOrderDraft } from '@/lib/server/order-drafts'
-import { refundIdempotencyKey } from '@/lib/server/stripe'
+import { refundIdempotencyKey, stripeLedgerAhead } from '@/lib/server/stripe'
 import type { OrderStatus, PaymentStatus } from '@/lib/types'
 
 const ALL_PAYMENT: (PaymentStatus | null)[] = [
@@ -113,5 +113,27 @@ describe('refund idempotency', () => {
     assert.notEqual(first, refundIdempotencyKey('pi_1', 0, 3000, 3000))
     assert.notEqual(first, refundIdempotencyKey('pi_1', 0, 0, 2000))
     assert.notEqual(first, refundIdempotencyKey('pi_2', 0, 0, 3000))
+  })
+
+  it('two presses racing: the second sees Stripe already refunded what the order does not yet record → refused', () => {
+    // First refund of CHF 100 created at Stripe, not yet recorded on the order.
+    assert.equal(stripeLedgerAhead(10000, 0, 1, 20000), true)
+    // A partial refund in flight on top of an earlier, recorded one.
+    assert.equal(stripeLedgerAhead(15000, 100, 1, 20000), true)
+  })
+
+  it('ledgers that agree: a deliberate further refund may go ahead', () => {
+    assert.equal(stripeLedgerAhead(0, 0, 1, 20000), false)
+    assert.equal(stripeLedgerAhead(10000, 100, 1, 20000), false)
+    // The order ahead of Stripe (Stripe's figure lagging) is not this check's concern: the key differs.
+    assert.equal(stripeLedgerAhead(0, 100, 1, 20000), false)
+  })
+
+  it('a converted payment tolerates a cent of rounding, not a refund', () => {
+    // EUR at 1.07: CHF 93.46 recorded ≈ EUR 100.00 at Stripe.
+    assert.equal(stripeLedgerAhead(10000, 93.46, 1.07, 21400), false)
+    assert.equal(stripeLedgerAhead(10002, 93.46, 1.07, 21400), false)
+    // A further EUR 10 refund at Stripe that the order does not show yet.
+    assert.equal(stripeLedgerAhead(11000, 93.46, 1.07, 21400), true)
   })
 })

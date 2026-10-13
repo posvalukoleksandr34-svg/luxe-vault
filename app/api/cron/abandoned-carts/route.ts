@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
+import { securityEvent } from '@/lib/server/security-events'
+import { clientIp } from '@/lib/server/client-ip'
 import { reportCriticalError } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * NOT scheduled in vercel.json: the Vercel Hobby plan allows only daily cron
  * jobs and fails the deployment on an hourly one, and a daily run would turn
  * "two hours" into "up to a day". Call it hourly from an external scheduler
- * instead — .github/workflows/abandoned-cart-reminders.yml does exactly that
+ * instead — .github/workflows/abandoned-carts-cron.yml does exactly that
  * once CRON_SECRET and SITE_URL are set as repository secrets. The nightly
  * sweep also runs it, so reminders still go out (up to a day late) with no
  * external scheduler at all.
@@ -36,6 +38,7 @@ async function run(request: NextRequest) {
     return NextResponse.json({ error: 'Not configured' }, { status: 503 })
   }
   if (!hasBearerSecret(request.headers.get('authorization'), secret)) {
+    securityEvent('cron_unauthorized', { route: 'abandoned-carts', ip: clientIp(request.headers) })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

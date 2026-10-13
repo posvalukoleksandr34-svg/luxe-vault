@@ -150,3 +150,234 @@ for the people using the shop.
 - **AUD-18:** coupon scoping, latent.
 - **AUD-20:** search RPC limit; for the next search migration.
 - Next.js, React, Tailwind and ESLint versions: no framework upgrade in this change.
+
+
+---
+
+# Round 2 — 2026-10-13
+
+On top of `db36302` (`main`, deployed). **Uncommitted**: per the brief, nothing was committed or pushed. Nothing deployed, no production system touched, no secret read or rotated. Every check below ran against disposable databases, local containers and stand-ins.
+
+Each entry gives the finding, the files, the change, the rationale, the tests and their outcome, and the risk that remains.
+
+### R2-1. Reservation expiry for unpaid orders — AUD-09
+
+- **Files:**
+  - `supabase/migrations/0056_unpaid_order_reservations.sql` (new);
+  - `lib/server/reservations.ts` (new);
+  - `app/api/cron/reservations/route.ts` (new);
+  - `lib/server/orders-store.ts`: `cancelOrder(…, { notify })` and `markPaymentSessionStarted()`;
+  - `app/api/cron/sweep/route.ts`;
+  - `.github/workflows/abandoned-carts-cron.yml`;
+  - `.env.example`.
+- **Change:**
+  - Lapsed unpaid orders (48 h hold, 60 min grace after a payment start, 72 h ceiling) are released hourly and nightly.
+  - Card PaymentIntents are cancelled at Stripe first.
+  - Nothing paid, settling, refunded or shipped is touched.
+  - The release goes through the state-machine-guarded `cancelOrder` and the idempotent `restore_order_stock`.
+- **Rationale:** stock could be held forever without paying, and orders whose Stripe PaymentIntent was cancelled kept their units too.
+- **Tests:**
+  - `tests/db/reservations.sql`: 10/10.
+  - `tests/db/concurrency.sh`: release race and last-unit race, 9/9 overall.
+  - Unit: 4 policy tests and the cron authentication test.
+  - Audit suite 2, reservations and payment-start grace: 18/18.
+- **Remaining risk:**
+  - The 48 h hold is a business choice for the owner.
+  - Nothing runs in production until 0056 is applied.
+  - The first run cancels every currently lapsed unpaid order, so preview it with `?dry=1`.
+
+### R2-2. Coupon line scoping — AUD-18
+
+- **Files:**
+  - `supabase/migrations/0057_coupon_line_scope.sql` (new);
+  - `lib/server/coupons.ts` (`lines`, plus a fallback to the old signature);
+  - `lib/server/order-drafts.ts`;
+  - `app/api/coupons/validate/route.ts`;
+  - `lib/store.tsx`.
+- **Change:**
+  - A restricted code is sized on its eligible lines, which the database prices.
+  - `collection_slugs` is now enforced.
+  - Any invalid or unverifiable restriction answers `NOT_APPLICABLE`.
+- **Rationale:** reproduced on 0015. A 10 % coat code took 60.00 off a 599.99 basket instead of 30.00, and a collection-restricted code applied outside its collection.
+- **Tests:**
+  - `tests/db/coupons.sql`: 21/21.
+  - Concurrency: single use, four racers, exactly one wins.
+  - Audit suite 2, §coupons: 3/3.
+- **Remaining risk:** there is no admin UI for restrictions, and none is needed for this fix.
+
+### R2-3. Ambiguous refund failures keep their claim — AUD-22
+
+- **Files:** `lib/server/stripe.ts` (`isAmbiguousStripeFailure`; `refundPayment`).
+- **Change:** a timeout, a connection error or a Stripe 5xx keeps the per-ledger claim and tells the admin to check Stripe. Definite refusals still release the claim.
+- **Rationale:** a retry after a refund that succeeded but went unconfirmed would see a moved ledger, get a new key, and be a second refund.
+- **Tests:**
+  - Unit: 2.
+  - Audit suite 2, §refund: 4/4. With Stripe answering 500, the second press reaches Stripe zero times, and every attempt carried one key.
+- **Remaining risk:** not exercised against Stripe test mode.
+
+### R2-4. Payment reconciliation — AUD-24
+
+- **Files:**
+  - `lib/payment-reconciliation.ts` (new, pure);
+  - `lib/server/reconciliation.ts` (new);
+  - `app/api/admin/reconciliation/route.ts` (new, admin only, read-only).
+- **Tests:**
+  - Unit: 9 scenarios.
+  - Audit suite 2, §reconciliation: 5/5.
+- **Remaining risk:** never run against the real account (MANUAL_ACTIONS_REQUIRED.md §6).
+
+### R2-5. Truthful backup scripts — AUD-01, AUD-23
+
+- **Files:**
+  - `scripts/backup/common.sh` (`upload_verified`);
+  - `scripts/backup/backup.sh`;
+  - `scripts/backup/restore-test.sh`;
+  - `.github/workflows/offsite-backup.yml` (`BACKUP_SKIP_MEDIA`);
+  - `docs/security/phase-1-backups.md`.
+- **Change:**
+  - The dump is validated before upload.
+  - Uploads are size-verified.
+  - Missing media fails the run unless skipped deliberately.
+  - The restore test refuses Supabase targets and empty manifests, and reports its duration.
+- **Tests (isolated, real scripts and images):** the happy path (backup, then an isolated restore with 120/120 orders back) plus 7 failure paths, each exit 1 with a specific error (all re-run 2026-10-13 04:24–04:30 UTC). No secret appeared in any log.
+- **Remaining risk:** production backups do not exist until the owner configures them.
+
+### R2-6. Unavailable products — AUD-25
+
+- **Files:** `lib/server/order-drafts.ts`, `app/api/orders/route.ts`.
+- **Change:** a product tagged `out_of_stock` is refused at repricing, answering 409 `OUT_OF_STOCK`.
+- **Tests:** audit suite 2: 1/1.
+
+### R2-7. Security events — AUD-26
+
+- **Files:**
+  - `lib/server/security-events.ts` (new);
+  - `app/api/admin/login/route.ts`;
+  - `lib/server/rate-limit.ts`;
+  - both webhooks;
+  - the three cron routes;
+  - `docs/security/incident-response.md` (new runbook).
+- **Tests:** unit 1/1 (JSON shape, no raw IP, a stable hash).
+- **Remaining risk:** alerting needs a log drain.
+
+### R2-8. Database tests in CI
+
+- **Files:**
+  - `tests/db/_fixture.sql`, `rls.sql`, `coupons.sql`, `reservations.sql`, `concurrency.sh` (new);
+  - `scripts/ci/db-tests.sh` (new; refuses Supabase URLs);
+  - `.github/workflows/ci.yml` (new step after the migrations).
+- **Tests:**
+  - 60/60 on a freshly migrated database, on Postgres 16.13 and on 17.11 (CI's `postgres:17` image, run locally).
+  - The concurrency script was repeated 3× with stable results.
+  - Negative check: a permissive UPDATE policy on `orders` makes `rls.sql` fail.
+- **Remaining risk:** the new CI step has not run on GitHub yet, because nothing is pushed. The local run on the same image makes a surprise unlikely, but it is not proof.
+
+### R2-9. Housekeeping
+
+- `.env.example`: documents the reservation settings, and that an invalid `ADMIN_TOTP_SECRET` blocks sign-in.
+- `.env.example` and `app/api/cron/abandoned-carts/route.ts`: references to the removed workflow corrected.
+
+# Round 3 — 2026-10-13 (code-only remediation brief)
+
+On top of round 2, in the same working tree. **Uncommitted**: nothing committed, pushed, deployed or migrated; no production system, provider dashboard, real payment or customer notification touched. Every check ran against disposable Postgres databases (16.13 and a 17.11 container), local stand-ins and temporary directories.
+
+Each entry is reproduced on the code before the change wherever a test could show it.
+
+### R3-1. `search_products` bounded and made service-role only — AUD-20
+
+- **Files:**
+  - `supabase/migrations/0058_search_products_limits.sql` (new);
+  - `scripts/ci/check-access.sql` (allow-list tightened);
+  - `scripts/security/verify-production.sql` (reports it until 0058 is applied);
+  - `tests/db/search.sql` (new);
+  - `scripts/ci/db-tests.sh`.
+- **Change:**
+  - Limit clamped to 1..50, with NULL meaning 24.
+  - Query trimmed and cut to 100 characters.
+  - EXECUTE only for `service_role`, which is what `/api/search` uses.
+  - Same signature and results for the storefront.
+- **Rationale:** reproduced on 0001–0055:
+  - unbounded and NULL limits;
+  - a negative limit raised an error;
+  - `anon` could call it, around the route's rate limit;
+  - a 70 000-word query cost ~2 s of CPU, then raised "stack depth limit exceeded".
+- **Tests:**
+  - `search.sql`: 17.
+  - Negative: re-granting to `anon` fails `check-access.sql` (exit 3).
+  - End to end (`audit-suite3`): the route still answers, the anon key is refused, and the service role gets at most 50 rows.
+- **Remaining risk:** live only after 0058 is applied.
+
+### R3-2. Reservation sweep: per-order isolation, visible failures, restock repair — AUD-27
+
+- **Files:**
+  - `lib/server/reservations.ts` (injectable dependencies, `failed`, `restockFailed`, `restockRepaired`);
+  - `lib/server/orders-store.ts` (`cancelOrder` reports `restockFailed`; `restoreStock` alerts on failure);
+  - `app/api/cron/reservations/route.ts` (HTTP 500 and an alert on database failures);
+  - `app/api/cron/sweep/route.ts`;
+  - `.github/workflows/abandoned-carts-cron.yml` (error text).
+- **Change:**
+  - Each order is handled on its own.
+  - A failed cancellation is listed and retried.
+  - A cancelled-but-not-restocked order, from this sweep only, is restocked on the next run.
+  - `restore_order_stock` is idempotent.
+- **Rationale:** one database error stopped the whole run, and a failed restock lost units silently and permanently.
+- **Tests:**
+  - Unit: 9.
+  - End to end (`audit-suite3`): faults injected with a temporary trigger. HTTP 500 names them; after recovery, everything is released and repaired exactly once.
+- **Remaining risk:** a failed restock after a customer or console cancellation is alerted, not auto-repaired.
+
+### R3-3. Refunds: no second refund while Stripe's ledger is ahead of the order — AUD-32
+
+- **Files:** `lib/server/stripe.ts` (`stripeLedgerAhead`, check in `refundPayment`).
+- **Change:** a refund is refused while Stripe shows more refunded than the order records.
+- **Rationale:** the round-1 suite's F-05 reproduced a double refund on the round-2 code: two keys, `…:0:0:10000` and `…:10000:0:10000`.
+- **Tests:**
+  - Unit: 3.
+  - End to end: deterministic (`audit-suite3`), plus F-05 re-run on the final build.
+- **Remaining risk:** see AUD-32 (conversion tolerance); not run against Stripe test mode.
+
+### R3-4. Generic webhook error bodies — AUD-28
+
+- **Files:** `app/api/payments/stripe/webhook/route.ts`.
+- **Change:** the 400 and 500 bodies are generic; the detail stays in the log and the alert. Status codes are unchanged.
+- **Tests:** end to end, exact body `{"error":"Invalid signature"}`; payments suite unchanged.
+
+### R3-5. Backup scripts tested in the repository — AUD-29 (and AUD-23 evidence)
+
+- **Files:**
+  - `tests/backup/run.sh`, `tests/backup/stubs/docker`, `tests/backup/stubs/age` (new);
+  - `scripts/backup/restore-test.sh` (named failures: listing, download, invalid manifest JSON);
+  - `.github/workflows/ci.yml` ("Backup script tests").
+- **Tests:** 41, stable over repeated runs. On the deployed scripts (`db36302`) 14 of them fail.
+- **Remaining risk:** the stubs neither encrypt nor upload; production backups still do not exist (AUD-01).
+
+### R3-6. Browser bundle checked for server-only code and secrets — AUD-30
+
+- **Files:** `scripts/ci/check-client-bundle.sh` (new), `.github/workflows/ci.yml`.
+- **Tests:**
+  - Clean on the final build.
+  - Planted reads of `SUPABASE_SERVICE_ROLE_KEY` and `STRIPE_SECRET_KEY`, and a `whsec_` string, each fail it.
+  - An admin help text that names a variable does not.
+
+### R3-7. Rate limiting and authentication: tests for what already held
+
+- **Files:**
+  - `tests/db/rate_limits.sql` (new: thresholds, retry-after, independent subjects and buckets, window reset, zero window, no browser access);
+  - `tests/db/concurrency.sh` (10 simultaneous requests against a limit of 5 → exactly 5 allowed, 10 counted);
+  - `tests/security/edge-lock.test.ts` and `rate-limit.test.ts` (forged, partial or padded edge secrets cannot mint buckets; X-Forwarded-For parsing; callers with no address share a bucket);
+  - `tests/security/admin-session.test.ts` (missing or blank password fails closed; cookie attributes);
+  - `lib/server/admin-auth.ts` (`adminSessionCookieOptions`, one definition of the cookie);
+  - `app/api/admin/login/route.ts`.
+- **Rationale:** these behaviours were correct but unpinned by tests.
+- **Remaining risk:** the admin model itself (AUD-31) is unchanged by design.
+
+### R3-8. Checked and not changed
+
+- **`npm audit fix` (non-force), dry run:** 66 lockfile changes, 0 of the 11 advisories fixed, so not applied (AUD-17).
+- **Workflows:**
+  - all actions pinned to SHAs;
+  - least-privilege `permissions`;
+  - no `pull_request_target`;
+  - backup secrets only in the `backups` environment.
+- **Admin password:** compared as constant-time SHA-256 digests of an environment value, rate-limited and failing closed. A slow hash would add nothing without a stored hash (AUD-31).
+- **API limits:** every user-controlled `limit`/`days`/`ids` parameter found is clamped server-side (notifications 1–100, reconciliation 1–90 days, lookup 50 ids, returns 1–500).

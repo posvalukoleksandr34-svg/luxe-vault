@@ -23,18 +23,37 @@ set -euo pipefail
 require BACKUP_BUCKET BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY \
   BACKUP_AGE_IDENTITY RESTORE_DB_URL
 
+# The restore target is wiped by design. Never a Supabase project — above all
+# not the production one.
+case "$RESTORE_DB_URL" in
+  *supabase.co*|*supabase.com*|*pooler*) fail "RESTORE_DB_URL looks like a Supabase project. The restore test needs a DISPOSABLE database.";;
+esac
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 export PGURL=$RESTORE_DB_URL
 
 # ---------------------------------------------------------- newest backup --
-latest=$(rclone_run "$work" lsf "backup:$BACKUP_BUCKET/db" --files-only --include '*.manifest.json' | sort | tail -n 1)
+# Each step that can fail says which one did: "the bucket is unreachable"
+# and "there is no backup" need different fixes.
+listing=$(rclone_run "$work" lsf "backup:$BACKUP_BUCKET/db" --files-only --include '*.manifest.json') ||
+  fail "Could not list $BACKUP_BUCKET/db: check the bucket name, endpoint and storage credentials."
+latest=$(printf '%s\n' "$listing" | sort | tail -n 1)
 [ -n "$latest" ] || fail "No database backup found in $BACKUP_BUCKET/db."
 stamp=${latest%.manifest.json}
 log "Newest backup: $stamp"
 
-rclone_run "$work" copyto "backup:$BACKUP_BUCKET/db/$stamp.manifest.json" /work/manifest.json
-rclone_run "$work" copyto "backup:$BACKUP_BUCKET/db/$stamp.dump.age" /work/dump.age
+rclone_run "$work" copyto "backup:$BACKUP_BUCKET/db/$stamp.manifest.json" /work/manifest.json ||
+  fail "Could not download the manifest of $stamp."
+rclone_run "$work" copyto "backup:$BACKUP_BUCKET/db/$stamp.dump.age" /work/dump.age ||
+  fail "Could not download the database backup $stamp, although its manifest exists."
+jq -e . "$work/manifest.json" > /dev/null 2>&1 || fail "The manifest of $stamp is not valid JSON."
+
+# A manifest that lists no tables would make every check below pass vacuously.
+[ "$(jq '[.tables | keys[] | select(startswith("public."))] | length' "$work/manifest.json")" -gt 0 ] ||
+  fail "The manifest of $stamp lists no public tables: the backup is empty or the manifest is broken."
+[ "$(jq '.tables["public.orders"] != null' "$work/manifest.json")" = true ] ||
+  fail "The manifest of $stamp has no public.orders: not a backup of the shop database."
 
 created=$(jq -r .created_at "$work/manifest.json")
 age_hours=$(( ( $(date -u +%s) - $(date -u -d "$created" +%s) ) / 3600 ))
@@ -91,7 +110,7 @@ problems=$(jq -r --slurpfile got "$work/restored.json" '
 
 tables=$(jq '.tables | length' "$work/manifest.json")
 rows=$(jq '[.tables[]] | add // 0' "$work/restored.json")
-summary="Backup $stamp ($age_hours h old): $tables tables, $rows rows restored, $errors pg_restore errors."
+summary="Backup $stamp ($age_hours h old): $tables tables, $rows rows restored, $errors pg_restore errors, ${SECONDS}s."
 [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
 
 if [ -n "$problems" ]; then

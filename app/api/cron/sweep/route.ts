@@ -4,12 +4,15 @@ import { getOrdersByNumbers } from '@/lib/server/orders-store'
 import { readCatalog } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
+import { securityEvent } from '@/lib/server/security-events'
+import { clientIp } from '@/lib/server/client-ip'
 import { sourceText } from '@/lib/localized-text'
 import { reportCriticalError } from '@/lib/telegram'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 import { releaseStaleCouponHolds } from '@/lib/server/promo-codes'
 import { sweepOrphanedReturnPhotos } from '@/lib/server/returns-cleanup'
 import { enforceRetention } from '@/lib/server/retention'
+import { releaseExpiredReservations } from '@/lib/server/reservations'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +48,7 @@ async function runSweep(request: NextRequest) {
   }
 
   if (!hasBearerSecret(request.headers.get('authorization'), secret)) {
+    securityEvent('cron_unauthorized', { route: 'sweep', ip: clientIp(request.headers) })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,6 +59,7 @@ async function runSweep(request: NextRequest) {
     abandonedCarts: 0,
     orphanedReturnPhotos: 0,
     promoUsesReleased: 0,
+    reservationsReleased: 0,
     stripeEventsPruned: 0,
     retention: null as Awaited<ReturnType<typeof enforceRetention>> | null,
     errors: [] as string[],
@@ -122,6 +127,21 @@ async function runSweep(request: NextRequest) {
     if ('sent' in run) result.abandonedCarts = run.sent
   } catch (e) {
     result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+  }
+
+  // ------------------------------------------- lapsed stock reservations --
+  // Normally hourly (app/api/cron/reservations); here too, so unpaid orders
+  // still release their units (up to a day late) without that scheduler.
+  try {
+    const run = await releaseExpiredReservations()
+    if (run.status === 'ok') {
+      result.reservationsReleased = run.released.length
+      if (run.providerError.length > 0) result.errors.push(`reservations: Stripe could not confirm ${run.providerError.length} cancellation(s)`)
+      if (run.failed.length > 0) result.errors.push(`reservations: ${run.failed.length} order(s) could not be released`)
+      if (run.restockFailed.length > 0) result.errors.push(`reservations: ${run.restockFailed.length} order(s) still not restocked`)
+    }
+  } catch (e) {
+    result.errors.push(`reservations: ${(e as Error).message}`)
   }
 
   // ------------------------------------------- promo-code uses that return --

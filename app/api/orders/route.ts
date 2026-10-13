@@ -98,6 +98,10 @@ export async function POST(request: NextRequest) {
   // repriceItems can validate a personal code. A guest simply has none.
   const priced = await repriceItems({ ...result.draft, userId })
   if (!priced.ok) {
+    // A product the admin marked unavailable answers like a sold-out one, so
+    // the cart names the line instead of showing a generic failure.
+    const unavailable = /^Unavailable product: (.+)$/.exec(priced.error)
+    if (unavailable) return NextResponse.json({ error: 'OUT_OF_STOCK', item: unavailable[1] }, { status: 409 })
     return NextResponse.json({ error: priced.error }, { status: 400 })
   }
 

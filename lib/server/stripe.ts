@@ -454,6 +454,21 @@ export type RefundOutcome =
   | { ok: true; refundId: string; amountRefunded: number; fullyRefunded: boolean }
   | { ok: false; message: string }
 
+/**
+ * Whether a failed Stripe call may still have taken effect: no answer
+ * (timeout, connection reset) or a Stripe-side 5xx. A 4xx is a definite
+ * refusal. Idempotency keys make the SAME request safe to repeat; deciding a
+ * new refund on top of an unknown one is not.
+ */
+export function isAmbiguousStripeFailure(error: unknown): boolean {
+  const e = error as { type?: string; statusCode?: number } | null
+  if (!e) return true
+  if (e.type === 'StripeConnectionError' || e.type === 'StripeAPIError') return true
+  if (typeof e.statusCode === 'number') return e.statusCode >= 500
+  // Not a Stripe error object at all (aborted fetch, DNS): unknown outcome.
+  return !(e.type && e.type.startsWith('Stripe'))
+}
+
 /** How long a claimed refund state blocks a duplicate (see refundPayment). */
 const REFUND_LOCK_WINDOW_MS = 10 * 60 * 1000
 
@@ -472,6 +487,30 @@ export function refundIdempotencyKey(
   amount: number,
 ): string {
   return `refund:${paymentIntentId}:${stripeRefunded}:${recordedRefunded}:${amount}`
+}
+
+/**
+ * Whether Stripe has refunded more than the order records: a refund made a
+ * moment ago whose recording has not landed yet (two presses racing — the
+ * second read the order before the first recorded its refund, and Stripe
+ * after the first created it), or one made outside the console that the
+ * charge.refunded webhook has not synced. Either way a new refund must wait:
+ * one decided on top of a ledger that already moved gets a new idempotency
+ * key, i.e. it is paid a second time.
+ *
+ * Stripe's figure is in the charge currency's minor units, the order's in
+ * CHF. A converted payment allows rounding drift (each refund is converted
+ * back to CHF to the cent): 0.1 % of the charge, at least 2 minor units.
+ */
+export function stripeLedgerAhead(
+  stripeRefundedMinor: number,
+  recordedRefundedChf: number,
+  rate: number,
+  amountReceivedMinor: number,
+): boolean {
+  const recordedMinor = toMinorUnits(recordedRefundedChf * rate)
+  const tolerance = rate === 1 ? 0 : Math.max(2, Math.ceil(amountReceivedMinor * 0.001))
+  return stripeRefundedMinor - recordedMinor > tolerance
 }
 
 /**
@@ -513,6 +552,12 @@ export async function refundPayment(
     const remaining = intent.amount_received - alreadyRefunded
 
     if (remaining <= 0) return { ok: false, message: 'This payment is already fully refunded.' }
+    if (stripeLedgerAhead(alreadyRefunded, recordedRefunded, rate, intent.amount_received)) {
+      return {
+        ok: false,
+        message: `Stripe already shows ${fromMinorUnits(alreadyRefunded).toFixed(2)} ${intent.currency.toUpperCase()} refunded, more than this order records: a refund is being recorded or was made in Stripe directly. Refresh the order in a moment (and check Stripe) before refunding again.`,
+      }
+    }
 
     let requested = amount === undefined ? remaining : toMinorUnits(amount * rate)
     if (requested <= 0) return { ok: false, message: 'Refund amount must be greater than zero.' }
@@ -563,7 +608,21 @@ export async function refundPayment(
         { idempotencyKey: key },
       )
     } catch (error) {
-      // Nothing was refunded: the state is free again for a corrected retry.
+      if (isAmbiguousStripeFailure(error)) {
+        // A timeout, a dropped connection or a Stripe-side 5xx: the refund
+        // may or may not have been created. The claim is KEPT, so nobody can
+        // press again for this ledger state until the window passes — a
+        // retry after a refund that did go through would see Stripe's ledger
+        // moved and get a new key, i.e. a second refund. The charge.refunded
+        // webhook records it if it happened; the admin checks Stripe.
+        return {
+          ok: false,
+          message:
+            'Stripe did not confirm the refund (timeout or connection error). It may have gone through: check the payment in Stripe before trying again — the order updates itself when Stripe reports the refund.',
+        }
+      }
+      // A definite refusal (invalid amount, already refunded, card network
+      // rules): nothing was refunded, so the state is free again.
       if (claim === 'claimed') await releaseStripeEvent(lock)
       throw error
     }

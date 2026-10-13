@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Test stand-in for `docker run <image> …` as scripts/backup/common.sh calls it.
+# Emulates the two images the backup scripts use, against local directories:
+#
+#   rclone   copyto / lsjson / lsf / obscure / copy, where "backup:<bucket>/…"
+#            is $FAKE_S3/<bucket>/… and /work is the mounted work directory
+#   postgres pg_dump / pg_restore --list / pg_restore / psql, with a dump that
+#            is a small text file listing tables and their row counts
+#
+# Failure switches (environment): FAKE_PG_DUMP=empty|garbage|no-orders|fail,
+# FAKE_UPLOAD=fail|truncate, FAKE_DOWNLOAD=fail, FAKE_LIST=fail,
+# FAKE_RESTORE=short. Never used outside tests/backup/run.sh.
+set -euo pipefail
+[ "${1:-}" = run ] || { echo "stub docker: only 'run' is emulated" >&2; exit 2; }
+shift
+work='' image='' args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --rm|-i) shift ;;
+    --network|--user|-e) shift 2 ;;
+    -v) case "$2" in *:/work) work=${2%:/work} ;; esac; shift 2 ;;
+    *) image=$1; shift; args=("$@"); break ;;
+  esac
+done
+log() { echo "$*" >> "$FAKE_STATE/calls.log"; }
+
+remote() { # backup:<bucket>/<path> → local path
+  local spec=$1
+  case "$spec" in
+    backup:*) printf '%s/%s' "$FAKE_S3" "${spec#backup:}" ;;
+    /work/*) printf '%s/%s' "$work" "${spec#/work/}" ;;
+    *) printf '%s' "$spec" ;;
+  esac
+}
+
+case "$image" in
+  *rclone*)
+    log "rclone ${args[*]}"
+    case "${args[0]}" in
+      copyto)
+        src=$(remote "${args[1]}") dst=$(remote "${args[2]}")
+        case "${args[2]}" in backup:*)
+          [ "${FAKE_UPLOAD:-}" = fail ] && { echo "ERROR : Failed to copy: AccessDenied" >&2; exit 1; } ;;
+        esac
+        case "${args[1]}" in backup:*)
+          [ "${FAKE_DOWNLOAD:-}" = fail ] && { echo "ERROR : Failed to copy: connection reset" >&2; exit 1; } ;;
+        esac
+        [ -f "$src" ] || { echo "ERROR : $src: not found" >&2; exit 3; }
+        mkdir -p "$(dirname "$dst")"
+        cp "$src" "$dst"
+        case "${args[2]}" in backup:*)
+          [ "${FAKE_UPLOAD:-}" = truncate ] && truncate -s -1 "$dst" ;;
+        esac
+        ;;
+      lsjson)
+        f=$(remote "${args[1]}")
+        if [ -f "$f" ]; then printf '[{"Size":%s}]\n' "$(stat -c %s "$f")"; else echo '[]'; fi
+        ;;
+      lsf)
+        [ "${FAKE_LIST:-}" = fail ] && { echo "ERROR : listing failed" >&2; exit 1; }
+        d=$(remote "${args[1]}")
+        [ -d "$d" ] && (cd "$d" && ls -1 | grep -E '\.manifest\.json$' || true)
+        ;;
+      obscure) echo "obscured-for-test" ;;
+      copy) : ;;
+      *) echo "stub rclone: ${args[0]} not emulated" >&2; exit 2 ;;
+    esac
+    ;;
+  *postgres*)
+    [ "${args[0]}" = sh ] && [ "${args[1]}" = -c ] || { echo "stub postgres: expected sh -c" >&2; exit 2; }
+    cmd=${args[2]}
+    log "postgres $cmd"
+    case "$cmd" in
+      *pg_dump*)
+        case "${FAKE_PG_DUMP:-}" in
+          fail) echo "pg_dump: error: connection to server failed" >&2; exit 1 ;;
+          empty) : > "$work/db.dump" ;;
+          garbage) echo "this is not an archive" > "$work/db.dump" ;;
+          no-orders) printf 'PGDMP-FAKE\nTABLE public products 40\n' > "$work/db.dump" ;;
+          *) printf 'PGDMP-FAKE\nTABLE public orders 120\nTABLE public products 40\nTABLE auth users 5\n' > "$work/db.dump" ;;
+        esac
+        ;;
+      *"pg_restore --list"*)
+        head -n1 "$work/db.dump" | grep -qx 'PGDMP-FAKE' || { echo "pg_restore: error: input file does not appear to be a valid archive" >&2; exit 1; }
+        awk '$1 == "TABLE" { printf "%d; 1259 %d TABLE %s %s postgres\n", NR, 16000 + NR, $2, $3 }' "$work/db.dump"
+        ;;
+      *manifest.sql*)
+        if [ "${PGURL:-}" = "${RESTORE_DB_URL:-unset}" ]; then
+          tables=$(cat "$FAKE_STATE/restored.json" 2>/dev/null || echo '{}')
+        else
+          tables='{"public.orders":120,"public.products":40,"auth.users":5}'
+        fi
+        printf '{"server_version":"17.0","extensions":[{"name":"pg_trgm","schema":"extensions"}],"tables":%s}\n' "$tables"
+        ;;
+      *"pg_restore --no-owner"*)
+        head -n1 "$work/db.dump" | grep -qx 'PGDMP-FAKE' || { echo "pg_restore: error: input file does not appear to be a valid archive"; exit 1; }
+        awk -v short="${FAKE_RESTORE:-}" 'BEGIN { printf "{" } $1 == "TABLE" { n = $4; if (short == "short" && $3 == "orders") n = 10; printf "%s\"%s.%s\":%d", (c++ ? "," : ""), $2, $3, n } END { printf "}" }' "$work/db.dump" > "$FAKE_STATE/restored.json"
+        ;;
+      *psql*) : ;;
+      *) echo "stub postgres: command not emulated: $cmd" >&2; exit 2 ;;
+    esac
+    ;;
+  *) echo "stub docker: image $image not emulated" >&2; exit 2 ;;
+esac
+exit 0

@@ -1642,6 +1642,7 @@ function maybeSendWelcome() {
             code: trimmed,
             subtotal: cart.reduce((sum, i) => sum + i.price * i.qty, 0),
             productSlugs: cart.map((i) => i.productId),
+            items: cart.map((i) => ({ productId: i.productId, qty: i.qty })),
           }),
         })
         const data = await res.json().catch(() => null)

@@ -61,4 +61,29 @@ describe('admin session tokens', () => {
       process.env.ADMIN_SESSION_SECRET = secret
     }
   })
+
+  it('the password check fails closed when the password is missing or blank, and refuses an empty guess', async () => {
+    assert.equal(await auth.verifyAdminPassword(''), false)
+    assert.equal(await auth.verifyAdminPassword('   '), false)
+    assert.equal(await auth.verifyAdminPassword(123 as unknown as string), false)
+    assert.equal(await auth.verifyAdminPassword('unit-test-password'), true)
+    const saved = process.env.ADMIN_PASSWORD
+    try {
+      process.env.ADMIN_PASSWORD = '   '
+      assert.equal(auth.isAdminConfigured(), false)
+      await assert.rejects(auth.verifyAdminPassword('   x'), /empty once trimmed/)
+      delete process.env.ADMIN_PASSWORD
+      assert.equal(auth.isAdminConfigured(), false)
+      await assert.rejects(auth.verifyAdminPassword('anything'), /ADMIN_PASSWORD is not set/)
+    } finally {
+      process.env.ADMIN_PASSWORD = saved
+    }
+  })
+
+  it('the session cookie: HttpOnly, SameSite=Lax, Path=/, Secure in production, lifetime = the signed expiry', () => {
+    const prod = auth.adminSessionCookieOptions('production')
+    assert.deepEqual(prod, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: auth.ADMIN_SESSION_MAX_AGE_SECONDS })
+    assert.equal(auth.adminSessionCookieOptions('development').secure, false, 'plain http://localhost keeps working')
+    assert.equal(auth.ADMIN_SESSION_MAX_AGE_SECONDS, 8 * 60 * 60)
+  })
 })

@@ -40,21 +40,36 @@ export type CouponResult =
  *           before anything was bought.
  *   true  — the order is being created. This is the only call that consumes.
  */
+/** One basket line, as redeem_coupon prices it: the product and how many.
+ *  Never a price — the database reads that from products (migration 0057). */
+export type CouponLine = { slug: string; qty: number }
+
 export async function applyCoupon(
   code: string,
   subtotal: number,
-  options: { userId?: string; productSlugs?: string[]; commit?: boolean } = {},
+  options: { userId?: string; productSlugs?: string[]; lines?: CouponLine[]; commit?: boolean } = {},
 ): Promise<CouponResult> {
   const normalised = code.trim().toUpperCase()
   if (!normalised) return { ok: false, reason: 'NOT_FOUND' }
 
-  const { data, error } = await createAdminClient().rpc('redeem_coupon', {
+  const args = {
     p_code: normalised,
     p_subtotal: subtotal,
     p_user_id: options.userId ?? null,
     p_product_slugs: options.productSlugs ?? [],
     p_commit: options.commit ?? false,
+  }
+  // The lines let a product- or collection-restricted code discount only the
+  // lines it applies to (0057). Against a database still on 0015 the
+  // parameter does not exist yet (PGRST202): ask again without it — the old
+  // function then answers as it always did.
+  let { data, error } = await createAdminClient().rpc('redeem_coupon', {
+    ...args,
+    p_lines: (options.lines ?? []).slice(0, 50),
   })
+  if (error?.code === 'PGRST202') {
+    ;({ data, error } = await createAdminClient().rpc('redeem_coupon', args))
+  }
 
   if (error) {
     // Missing function means migration 0015 has not been applied. Refusing the

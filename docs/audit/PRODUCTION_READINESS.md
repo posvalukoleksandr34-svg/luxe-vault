@@ -1,111 +1,81 @@
-# Production readiness — 2026-10-12
+# Production readiness — 2026-10-13 (after the code-only remediation round)
+
+**Verdict:**
+
+- **The code is ready for staging.** Every repository-level check passes on the final working tree (Part A). Conditions:
+  - commit it;
+  - apply migrations 0056, 0057 and 0058 to the staging database;
+  - use a staging environment with its own Supabase project and Stripe test keys. None was found or verified.
+- **Production readiness is NOT established.**
+  - No production backup exists.
+  - The catalogue has no legal or payment-provider sign-off.
+  - The three migrations and this code are not in production.
+  - Admin MFA, the credential rotation, the dashboards and alerting are unverified (Part B).
+  - None of these can be closed by changing code.
+
+**What production runs today:** `db36302`, the 2026-10-12 fixes. It still carries:
+
+- the refund race (AUD-32): 15 of 30 racing double presses refunded twice, against a build without the fix;
+- the unbounded public search function (AUD-20);
+- indefinite stock holds (AUD-09);
+- whole-basket product coupons (AUD-18).
+
+All four are fixed in the uncommitted working tree.
 
 | Status | Meaning |
 |---|---|
-| **VERIFIED** | Checked today, with the evidence named. |
-| **FAILED** | Checked today and not met. |
-| **NOT VERIFIED** | Could not be checked from here: a dashboard, production secret or live data this audit has no access to, or code that has not run yet. |
-| **NOT APPLICABLE** | Does not apply to this shop. |
+| **VERIFIED** | Checked on 2026-10-13 with the evidence named. |
+| **VERIFIED (isolated)** | Shown on a production build against disposable Postgres (16.13 and 17.11) with PostgREST 12.2.3 and local stand-ins for Stripe, NOWPayments and S3. It has not run in production. |
+| **FAILED** | Checked and not met. |
+| **NOT VERIFIED** | Needs a dashboard, a production secret, live data, a lawyer, or a deploy this work may not do. |
 
-"Locally" means:
+Commands and counts: [TEST_REPORT.md](TEST_REPORT.md) §R3. Findings: [FINDINGS.md](FINDINGS.md). Owner steps: [MANUAL_ACTIONS_REQUIRED.md](MANUAL_ACTIONS_REQUIRED.md).
 
-- the production build (`next build` + `next start`), behind the edge proxy;
-- real Postgres 16 with PostgREST 12.2.3 and all 55 migrations;
-- a Stripe stand-in.
+---
 
-"Live" means `https://www.luxe-vault.store` as checked by the repository's own "Security check (live)" workflow on GitHub.
+# Part A — Repository-level readiness (the code)
 
-## Security
-
-| Item | Status | Evidence / what is missing |
+| Area | Status | Evidence |
 |---|---|---|
-| No secrets in the code or history beyond known, burned ones | VERIFIED | gitleaks 8.28.0: 211 commits and the working tree. The only findings are the 4 known burned-credential lines (AUD-10). |
-| Burned admin credentials not in use in production | NOT VERIFIED | Owner: confirm or rotate `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` (AUD-10). |
-| Admin console: every API handler and page checks the session | VERIFIED | 46/46 handlers call `requireAdmin()`; all admin pages call `isAdminRequest()` (AUD-14). |
-| Admin MFA enforced | NOT VERIFIED | Code verified and deployed: an invalid secret now fails closed (AUD-05). Whether production has a valid `ADMIN_TOTP_SECRET`: owner (sign in once to check). |
-| Admin behind Cloudflare Access | NOT VERIFIED | Dashboard. |
-| CSRF guard | VERIFIED | Locally (security suite 47/47); live (cross-site POST → 403). |
-| Origin lock (no Cloudflare bypass) | VERIFIED | Live, 2026-10-12 15:36 UTC: direct, forged-Host and guessed-secret requests refused. |
-| Security headers / CSP | VERIFIED | Live: CSP without `unsafe-eval`, `frame-ancestors 'none'`, `object-src 'none'`, 2-year HSTS. `'unsafe-inline'` remains in `script-src` outside checkout and admin (known, prerendered pages). |
-| Rate limits fail closed on auth/payment | VERIFIED | Locally (AUD-04). |
-| Rate limits count real client IPs | VERIFIED | Code path verified earlier (`client-ip.ts`); live origin lock is on, so the edge header is trusted. |
-| Customer data isolation (IDOR) | VERIFIED | Code review of every customer route, plus end-to-end checks (another customer's order → 404). |
-| XSS sinks | VERIFIED | Every `dangerouslySetInnerHTML` is JSON-LD through `serializeJsonLd` or a fixed script. |
-| Dependency vulnerabilities | FAILED (low) | 11 build-time advisories (3 moderate, 8 high, 0 critical); none in the runtime bundle; no patched releases (AUD-17). |
-| Supabase Auth protections (CAPTCHA, leaked passwords) | NOT VERIFIED | Dashboard. |
-| MFA on all provider consoles | NOT VERIFIED | Owner. |
+| **Build, types, lint** | VERIFIED | `next build` exit 0; `tsc` 0 errors; lint clean. |
+| **Unit and security tests** | VERIFIED | 133/133 (`npm run test:security`). |
+| **Secrets in code** | VERIFIED | gitleaks: working tree 0; 217 commits 0 beyond the 4 known burned lines (AUD-10). No server-only variable read and no secret shape in the browser bundle (`check-client-bundle.sh`, new CI step, negative-tested). |
+| **Admin authentication** | VERIFIED (isolated) | Sessions HMAC-signed, expiring, password-bound, revocable. Tampered, expired, malformed and secret-less tokens refused. An invalid TOTP secret blocks sign-in. Sign-in rate-limited and failing closed. Cookie `__Host-`, HttpOnly, Secure, SameSite=Lax (unit). Design limits: AUD-31. |
+| **Authorization / IDOR** | VERIFIED | Every `/api/admin` handler calls `requireAdmin()`. Customer routes authorize by owner or constant-time token, with 404 for "not yours" (security and integration suites). |
+| **Database access (RLS, grants)** | VERIFIED (isolated) | 58 migrations on empty Postgres 16 and 17; `check-access.sql` (7 rules); `rls.sql` 20 denials. Browser-callable SECURITY DEFINER functions are down to two, both `auth.uid()`-scoped. Negative tests: a permissive policy, and a re-grant of `search_products` to anon, each fail CI. |
+| **Migrations** | VERIFIED (isolated) | All 58 apply in order; 32 (0027+) re-apply idempotently. 0005 and 0026 are not re-runnable (AUD-19, documented, not changed: applied migrations are not edited). |
+| **Payment verification** | VERIFIED (isolated) | Signature on the raw body, de-duplication, amount and currency checked against the order, state machine in every UPDATE; payments suite 33/33. Webhook errors no longer echo internals (AUD-28). |
+| **Refund safety** | VERIFIED (isolated) | Never above the remainder. One refund per ledger state, with an idempotency key. An unconfirmed refund keeps its claim (AUD-22). No refund while Stripe's ledger is ahead of the order (AUD-32). Stress: 0 of 30 double refunds (15 of 30 without the fix). Not against Stripe test mode. |
+| **Inventory and reservations** | VERIFIED (isolated) | No oversell (race tests). Lapsed unpaid orders released after 48 h, never mid-payment, never paid, settling or shipped (AUD-09). One order's failure never stops the others; a failed restock is repaired exactly once by the next run; database failures turn the job red (AUD-27). |
+| **Coupons** | VERIFIED (isolated) | Line-scoped, priced in the database, collection limits enforced, fail closed, single use under 4 racers (AUD-18; `coupons.sql` 21). |
+| **Rate limiting** | VERIFIED (isolated) | Six guessing surfaces fail closed. Counting is atomic: a limit of 3 allows 3; 10 simultaneous requests against 5 give exactly 5 allowed. Forged or partial edge headers cannot mint buckets (unit). |
+| **Public search and API limits** | VERIFIED (isolated) | `search_products` clamped, bounded and service-role only (AUD-20; `search.sql` 17). Every user-controlled limit, day count and id list is clamped server-side. |
+| **Backup and restore scripts** | VERIFIED (repository tests + isolated) | 41 stub-based tests in CI (14 fail on the deployed scripts). The real tools end to end in isolation: 120/120 orders restored; 7 failure paths named; no secret in logs. Scripts delete nothing; retention is the bucket's Object Lock. |
+| **Scheduled jobs (code)** | VERIFIED (isolated) | Cron routes refuse a missing or wrong secret before any work. The reservation job is idempotent and safe to repeat; failures alert and answer 500. |
+| **Error handling and observability (code)** | VERIFIED | Structured `security_event` lines without raw IPs. Generic error bodies on payment webhooks. Critical paths alert (payment mismatch, stock conflict, restock failure, reservation failures). |
+| **CI** | VERIFIED (locally) / NOT VERIFIED (GitHub) | Typecheck, lint, unit, backup tests, build, bundle check, gitleaks over the full history, dependency audit, migrations and database tests. Actions SHA-pinned, read-only permissions, no `pull_request_target`, no secrets in CI. The new steps have not run on GitHub: nothing pushed. |
+| **Dependencies** | FAILED (low) | 11 build-time advisories (3 moderate, 8 high, 0 critical), none at runtime. No compatible fix exists: a non-force `npm audit fix` changes 66 lockfile entries and fixes none. Needs the Tailwind 4 / ESLint migrations (AUD-17). |
+| **Rollback compatibility** | VERIFIED (isolated, by test) | 0056 and 0058 are additive or permission-only. 0057 refuses (never over-discounts) restricted codes for older callers. Old code works against all three. |
+| **End-to-end tests in CI** | NOT VERIFIED | The HTTP and browser suites (14 suites, about 470 checks) run from a harness outside the repository, not in CI. |
 
-## Database
+# Part B — External infrastructure requirements (not code)
 
-| Item | Status | Evidence |
+None of these can be verified or completed from the repository. Each is the owner's, in MANUAL_ACTIONS_REQUIRED.md.
+
+| Requirement | Status | What closes it |
 |---|---|---|
-| All migrations apply to an empty database, in order | VERIFIED | 55/55 locally (PG16). CI will repeat on PG17 (NOT VERIFIED until it runs). |
-| Migrations re-runnable | VERIFIED (0027–0055) | 0005 and 0026 are not re-runnable on the full set (AUD-19). |
-| RLS on every table | VERIFIED | 35/35 public tables. |
-| SECURITY DEFINER functions safe | VERIFIED | 28/28 pin `search_path`; the 3 the browser may call scope to public data or `auth.uid()`; the rest are revoked from `anon` and `authenticated`. |
-| Protected columns / cross-user writes refused | VERIFIED | Role probes (TEST_REPORT §3). |
-| Production has all 55 migrations applied | NOT VERIFIED | Run `scripts/security/verify-production.sql` in the SQL editor. 0054 and 0055 were confirmed by the owner on 2026-10-11. |
-| No migration in this change | NOT APPLICABLE | Nothing to apply before deploying. |
-
-## Payments
-
-| Item | Status | Evidence |
-|---|---|---|
-| Server-side pricing, integer minor units | VERIFIED | `repriceItems`, `toMinorUnits`; price suite 17/17. |
-| Webhook: signature on raw body, dedup, amount/currency check | VERIFIED | Payments suite 33/33 (forged, stale, replayed, mismatched). |
-| Payment state machine (no un-pay, no refund before pay) | VERIFIED | Unit tests; payments suite; cancel and delete now inside it (AUD-03, AUD-06). |
-| Refunds never exceed the remainder; never paid twice | VERIFIED | Locally (AUD-07). Not against Stripe test mode. |
-| Stripe account in the intended mode (live/test) | NOT VERIFIED | Dashboard. No real money was moved by this audit. |
-| Webhook endpoint subscribed to all 7 handled events | NOT VERIFIED | Dashboard (`docs/security/fraud-and-review-moderation-2026-10-06.md`). |
-| Radar rules | NOT VERIFIED | Dashboard. |
-| Card scheme / PCI SAQ A | NOT VERIFIED | Card data stays in Stripe's iframe (code); the questionnaire is the owner's. |
-| Reconciliation with Stripe | NOT VERIFIED | No automated job compares orders with Stripe's balance; the webhook's "matched no order" alerts are the only signal. Recommended: a weekly reconciliation report. |
-| Payment provider accepts the catalogue | NOT VERIFIED | AUD-02: legal and Stripe confirmation needed. |
-
-## Orders and inventory
-
-| Item | Status | Evidence |
-|---|---|---|
-| Oversell guard (atomic stock) | VERIFIED | `place_order` row lock (earlier suites); integration suite 24/24. |
-| Cancel/delete keep money records and stock true | VERIFIED | AUD-03, AUD-06, AUD-11 (end to end). |
-| Coupon redemption under concurrency | VERIFIED | `redeem_coupon` re-checks under the row lock (code); coupon scoping is latent (AUD-18). |
-| Unpaid orders release their stock | FAILED | No expiry (AUD-09). Owner decision. |
-
-## Operations
-
-| Item | Status | Evidence |
-|---|---|---|
-| Offsite backups | FAILED | Never ran: every run skipped the backup (AUD-01). |
-| Restore tested | FAILED | Never ran (AUD-01). |
-| Supabase's own backups | NOT VERIFIED | Plan and retention: dashboard. |
-| CI on every change | VERIFIED (runs) / NOT VERIFIED (required) | CI green on `main` at `d8a18cf` (all four jobs). Making the checks required (branch protection): owner. |
-| Actions pinned to SHAs, least privilege | VERIFIED | All `uses:` pinned; `permissions` set on every workflow. |
-| Crash and security alerting | VERIFIED (partial) | Telegram alerts in code; no log drain or 5xx-rate alerting (`docs/security/README.md` F7). |
-| Rollback | NOT VERIFIED | Vercel Instant Rollback exists on the platform; not exercised. |
-| Vercel plan suitable for commercial use | NOT VERIFIED | `vercel.json` daily cron only, consistent with Hobby (F8). |
-| Stray Netlify deployment | NOT VERIFIED | `netlify.toml` still in the repo (F11). |
-
-## SEO and accessibility
-
-| Item | Status | Evidence |
-|---|---|---|
-| Missing pages answer 404 | VERIFIED | Status matrix (browser and Googlebot), 404 suite 29/29. |
-| Canonical, hreflang, structured data | VERIFIED | Product page: canonical, 5 hreflang alternates, Product/Offer/BreadcrumbList. |
-| Private pages `noindex` | VERIFIED | `/order/*` and `/admin/login` fixed (AUD-15). |
-| WCAG 2.2 AA | NOT VERIFIED (today) | axe checks run inside the Size Finder suite (106/106); a full-site audit was done on 2026-10-04 (`docs/compliance`), not repeated. |
-| Core Web Vitals (LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1) | NOT VERIFIED | No field data available here; lab measurements in `docs/performance/README.md` predate recent features. |
-
-## Legal and commercial
-
-| Item | Status | Evidence |
-|---|---|---|
-| Replica goods: trade-mark exposure reviewed by counsel | NOT VERIFIED | AUD-02. |
-| Imprint complete | NOT VERIFIED | The admin dashboard warns while `config/business.ts` fields are missing; values are environment variables. |
-| Privacy policy matches processing | NOT VERIFIED (today) | Audited 2026-10-04; cookie list updated for the Size Finder keys. |
-
-## Deployed 2026-10-12 (`d8a18cf`) — what to do now
-
-1. **TOTP:** sign in to the admin console once. If it answers "Вход временно недоступен", `ADMIN_TOTP_SECRET` is set but invalid (AUD-05): fix or remove it and redeploy.
-2. **Expect red runs:** "Offsite backup" (nightly) and "Backup restore test" (weekly) now fail until backups are configured. That is intended (AUD-01).
-3. **Staff:** paid orders can no longer be deleted; refunds on a stale screen ask for a refresh.
-4. **CI:** green on `main`. Make its jobs required (Settings → Branches).
+| **Offsite backups exist, and one restore has been proven** | **FAILED** — none has ever run (AUD-01) | Bucket, keys, `backups` environment; run both workflows (§2) |
+| **Migrations 0056, 0057, 0058 on production** | NOT VERIFIED (not applied) | SQL editor, `?dry=1` preview first (§3) |
+| **Deploy this code** | NOT VERIFIED (uncommitted) | Approve the commit, push and merge (§1) |
+| **Admin MFA in production** | NOT VERIFIED | Sign in once; set `ADMIN_TOTP_SECRET` if not asked for a code (§4, AUD-31) |
+| **Burned admin credentials rotated** | NOT VERIFIED | Confirm or rotate (§5, AUD-10) |
+| **Stripe:** live/test mode, 7 webhook events, Radar, restricted key | NOT VERIFIED | Dashboard (§9) |
+| **Stripe agrees with the orders** | NOT VERIFIED | `/api/admin/reconciliation?days=30` (§6) |
+| **Supabase Auth protections; Cloudflare WAF, rate rules, Access** | NOT VERIFIED | Dashboards (§9) |
+| **Branch protection requiring CI** | NOT VERIFIED | GitHub settings (§9) |
+| **Log drain and alerts on `security_event`** | NOT VERIFIED | Vercel or another log platform (§10) |
+| **Supabase plan backups and retention** | NOT VERIFIED | Dashboard (§2) |
+| **Legal review of the catalogue; provider acceptance** | NOT VERIFIED — the largest business risk (AUD-02) | Counsel; Stripe and NOWPayments in writing (§7, §8) |
+| **Named owners, incident contacts, rehearsal** | NOT VERIFIED | Fill in `docs/security/incident-response.md` |
+| **Vercel plan, previews isolated, Netlify leftover** | NOT VERIFIED | Dashboards (§9) |
+| **Core Web Vitals, full accessibility re-audit** | NOT VERIFIED | Field data; a separate audit |

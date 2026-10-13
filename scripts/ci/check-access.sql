@@ -30,10 +30,11 @@ end $$;
 
 -- 3. SECURITY DEFINER functions bypass RLS. Only these may be called by the
 --    browser's roles, each because it checks the caller itself:
---      search_products      public catalogue search, reads public columns only
 --      set_default_address  acts only on rows where user_id = auth.uid()
 --      review_eligibility   answers for auth.uid() only
 --    Trigger functions are not callable as RPC and are skipped.
+--    search_products was on this list until 0058, which made it service-role
+--    only (its sole caller is /api/search); re-granting it now fails here.
 do $$
 declare bad text;
 begin
@@ -42,7 +43,7 @@ begin
    where n.nspname = 'public' and p.prosecdef
      and p.prorettype <> 'trigger'::regtype
      and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
-     and p.proname not in ('search_products', 'set_default_address', 'review_eligibility');
+     and p.proname not in ('set_default_address', 'review_eligibility');
   if bad is not null then raise exception 'SECURITY DEFINER functions callable by anon/authenticated: % (revoke, or allow-list with a reason)', bad; end if;
 end $$;
 

@@ -39,3 +39,28 @@ describe('rate limiter when it cannot be consulted', () => {
     assert.equal(response?.status, 503)
   })
 })
+
+describe('rate limiter: who is counted', () => {
+  it('callers with no address share ONE bucket — they are throttled together, never exempt', async () => {
+    const { clientKey } = await import('@/lib/server/rate-limit')
+    assert.equal(clientKey(new NextRequest('https://shop.test/api/x')), 'unidentified')
+    assert.equal(clientKey(new NextRequest('https://shop.test/api/x', { headers: { 'x-forwarded-for': '' } })), 'unidentified')
+  })
+
+  it('a forged CF-Connecting-IP without the edge secret cannot mint a fresh bucket per request', async () => {
+    const { clientKey } = await import('@/lib/server/rate-limit')
+    const saved = process.env.EDGE_ORIGIN_SECRET
+    process.env.EDGE_ORIGIN_SECRET = 'e'.repeat(64)
+    try {
+      const keys = new Set(
+        ['1.1.1.1', '2.2.2.2', '3.3.3.3'].map((forged) =>
+          clientKey(new NextRequest('https://shop.test/api/x', { headers: { 'cf-connecting-ip': forged, 'x-forwarded-for': '203.0.113.9' } })),
+        ),
+      )
+      assert.deepEqual(Array.from(keys), ['203.0.113.9'])
+    } finally {
+      if (saved === undefined) delete process.env.EDGE_ORIGIN_SECRET
+      else process.env.EDGE_ORIGIN_SECRET = saved
+    }
+  })
+})

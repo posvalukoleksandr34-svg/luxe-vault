@@ -18,6 +18,30 @@ export const LEGACY_ADMIN_SESSION_COOKIE = 'zenith_admin_session'
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8 // 8 hours
 
 /**
+ * How the session cookie is set. One definition, so the attributes cannot
+ * drift between routes and are pinned by tests (tests/security/admin-session.test.ts).
+ *
+ *   httpOnly  page scripts never see the token (an XSS cannot lift it);
+ *   secure    HTTPS only in production (required by the __Host- prefix);
+ *   sameSite  'lax', not 'strict': a link to the console from a Telegram
+ *             alert or an email must arrive signed in. Cross-site WRITES are
+ *             refused by the CSRF guard in middleware.ts regardless;
+ *   path      '/', because the console's API lives under /api/admin and the
+ *             __Host- prefix requires it;
+ *   maxAge    the expiry signed into the token. The cookie's lifetime is a
+ *             browser convenience; the token's is what the server enforces.
+ */
+export function adminSessionCookieOptions(nodeEnv: string | undefined = process.env.NODE_ENV) {
+  return {
+    httpOnly: true,
+    secure: nodeEnv === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
+  }
+}
+
+/**
  * Credentials. No defaults, deliberately.
  *
  * These used to fall back to string literals committed in this file — an

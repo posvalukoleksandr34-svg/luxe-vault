@@ -64,6 +64,25 @@ jobs:
             exit 1
           fi
 
+      - name: Call /api/cron/reservations
+        # Releases the stock of unpaid orders whose reservation has lapsed
+        # (lib/server/reservations.ts). 503 until migration 0056 is applied.
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          status=$(curl --silent --show-error --max-time 60 --retry 2 --retry-delay 15 \
+            --output reservations.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/reservations")
+          echo "HTTP $status"
+          # Order numbers and counts only — no customer details.
+          cat reservations.json; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::/api/cron/reservations answered HTTP $status (503 with 'Apply migration 0056': the migration is not applied yet; 500: the database failed for the orders listed in 'failed' / 'restockFailed', retried next run)."
+            exit 1
+          fi
+
       - name: Report failure to Telegram
         if: failure()
         env:

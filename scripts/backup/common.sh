@@ -39,6 +39,18 @@ rclone_run() {
     "${env_args[@]}" -v "$work:/work" "$RCLONE_IMAGE" "$@"
 }
 
+# Uploads one file from $work and proves it arrived whole: the object's size
+# in the bucket must equal the local file's. A failed or truncated upload is
+# an error, never a "backup".
+upload_verified() {
+  local work=$1 file=$2 dest=$3 want have
+  want=$(stat -c %s "$work/$file")
+  [ "$want" -gt 0 ] || fail "Refusing to upload $file: it is empty."
+  rclone_run "$work" copyto "/work/$file" "$dest" || fail "Upload of $file to the backup bucket failed."
+  have=$(rclone_run "$work" lsjson "$dest" | jq -r '.[0].Size // empty') || true
+  [ "$have" = "$want" ] || fail "Upload of $file did not verify: $want bytes sent, ${have:-nothing} found in the bucket."
+}
+
 # A command from the Postgres image, with the connection string in $PGURL.
 pg_run() {
   local work=$1; shift
