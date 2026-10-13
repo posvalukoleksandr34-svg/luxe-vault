@@ -53,6 +53,11 @@ jobs:
         run: npx next lint
       - name: Unit and security tests
         run: npm run test:security
+      - name: Support assistant tests (offline)
+        # A scripted model and fixture data: no API key, no network, no
+        # database. The live-model check (npm run test:assistant:live) is
+        # opt-in and never runs here.
+        run: npm run test:assistant
       - name: Backup script tests
         # scripts/backup/* against stubbed docker/age and a temporary
         # directory as the bucket: every failure path must fail the run.

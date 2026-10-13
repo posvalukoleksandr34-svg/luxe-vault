@@ -70,6 +70,10 @@ const LIMITS = {
    *  is a dozen messages, not forty in ten minutes. */
   'support.assistant': { max: 40, windowSeconds: 600 },
 
+  /** "Was this helpful?" on a concierge answer: one tap per answer, so a
+   *  generous ceiling that still keeps a script from filling the log. */
+  'support.feedback': { max: 30, windowSeconds: 600 },
+
   'support.create': { max: 5, windowSeconds: 900 },
 
   /** Newsletter sign-ups. Every accepted address is someone we may email, so
