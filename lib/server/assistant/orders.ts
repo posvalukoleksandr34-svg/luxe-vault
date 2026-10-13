@@ -32,15 +32,31 @@ export function normalizeOrderNumber(raw: string): string | null {
   return match ? `LV-${match[1]}` : null
 }
 
+/** A lookup token as order-drafts.ts issues them (32 characters), with room
+ *  for older formats — but never markup, separators or a kilobyte of junk. */
+const TOKEN_SHAPE = /^[A-Za-z0-9_-]{16,128}$/
+
+/**
+ * The browser's order credentials, checked: an order number and a token of
+ * the right shape, each pair once, at most 50. Whether the token is RIGHT is
+ * decided by getOrdersByCredentials (constant-time compare against the
+ * stored one); this only keeps malformed input out of the query.
+ */
 export function readCredentials(value: unknown): OrderCredential[] {
   if (!Array.isArray(value)) return []
-  return value
-    .slice(0, MAX_CREDENTIALS)
-    .filter(
-      (entry): entry is OrderCredential =>
-        typeof entry?.id === 'string' && typeof entry?.token === 'string' && entry.id.length < 40 && entry.token.length < 200,
-    )
-    .map((entry) => ({ id: entry.id, token: entry.token }))
+  const seen = new Set<string>()
+  const out: OrderCredential[] = []
+  for (const entry of value.slice(0, MAX_CREDENTIALS * 2)) {
+    if (typeof entry?.id !== 'string' || typeof entry?.token !== 'string') continue
+    const id = normalizeOrderNumber(entry.id)
+    if (!id || !TOKEN_SHAPE.test(entry.token)) continue
+    const key = `${id}:${entry.token}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ id, token: entry.token })
+    if (out.length === MAX_CREDENTIALS) break
+  }
+  return out
 }
 
 /** Everything the requester may see, newest first: the signed-in account's
@@ -73,6 +89,9 @@ export function orderForAssistant(order: Order) {
     placedOn: day(order.createdAt),
     status: order.status,
     paymentStatus: order.paymentStatus,
+    // Only what the payment record says — "paid" means the provider
+    // confirmed it (webhook), never that the customer was redirected back.
+    paymentConfirmed: order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded' || order.paymentStatus === 'refunded',
     items: order.items.map((i) => `${i.name} (${i.size}${i.color ? `, ${i.color}` : ''}) ×${i.qty}`),
     total: formatMoney(order.total, 'CHF', true),
     estimatedDelivery:
@@ -86,6 +105,7 @@ export function orderForAssistant(order: Order) {
       ? { number: order.trackingNumber, carrier: tracking?.label ?? order.courierName, url: tracking?.url }
       : undefined,
     returnStatus: order.returnStatus && order.returnStatus !== 'none' ? order.returnStatus : undefined,
+    refunded: order.refundedAmount && order.refundedAmount > 0 ? formatMoney(order.refundedAmount, 'CHF', true) : undefined,
     returnWindowEndsOn: order.deliveredAt ? day(order.deliveredAt + FULFILMENT.returnWindowDays * DAY) : undefined,
   }
 }

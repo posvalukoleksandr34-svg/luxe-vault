@@ -31,6 +31,8 @@ export function SupportWidget() {
       type="button"
       onClick={() => (supportUnread > 0 ? openSupport({ view: 'tickets' }) : openChat())}
       aria-label={label}
+      // The chat returns focus here when it closes (components/support/chat-bot.tsx).
+      data-chat-launcher=""
       className="hide-with-keyboard group fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-[40] md:bottom-5 flex items-center gap-2.5 rounded-xl border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
     >
       <LifeBuoy className="size-[18px]" />

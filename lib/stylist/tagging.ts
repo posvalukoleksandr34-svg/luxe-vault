@@ -68,16 +68,22 @@ export function slotOf(product: Product): Slot {
  * the lowercased name covers both the poetic names and the plain ones, in the
  * languages this catalogue actually uses.
  */
+// Colour names as the admin types them — often Italian ("Nero", "Bianco"),
+// sometimes French or German. Until 2026-10 only English and Russian were
+// recognised here, so a product whose colour is "Nero" belonged to no colour
+// family: "black jacket" in the search box, the stylist and the chat
+// concierge could not find it. Short words are bounded (\b) so "rot" does not
+// match "Carrot" and "blu" does not match "blush".
 const COLOR_PATTERNS: [ColorFamily, RegExp][] = [
-  ['black', /black|onyx|noir|jet|coal|чёрн|черн/i],
-  ['white', /white|bone|ivory|cream|chalk|бел/i],
-  ['grey', /grey|gray|graphite|charcoal|slate|ash|сер/i],
-  ['beige', /beige|sand|taupe|camel|oat|ecru|бежев/i],
-  ['brown', /brown|chocolate|espresso|tan|cognac|корич/i],
-  ['navy', /navy|midnight|indigo|тёмно-син|темно-син/i],
-  ['green', /green|olive|khaki|sage|forest|зелён|зелен|хаки/i],
-  ['red', /red|burgundy|wine|crimson|bordeaux|красн|бордов/i],
-  ['blue', /blue|azure|cobalt|denim|син|голуб/i],
+  ['black', /black|onyx|noir|jet|coal|чёрн|черн|\bner[oaie]\b|schwarz/i],
+  ['white', /white|bone|ivory|cream|chalk|бел|\bbianc[oaie]\b|\bblanc(?:he)?s?\b|wei(?:ß|ss)/i],
+  ['grey', /grey|gray|graphite|charcoal|slate|ash|сер|\bgrigi[oa]?\b|\bgris(?:e)?\b|\bgrau\b/i],
+  ['beige', /beige|sand|taupe|camel|oat|ecru|бежев|cammell[oa]|chameau|\bkamel\b/i],
+  ['brown', /brown|chocolate|espresso|tan|cognac|корич|marrone|\bmarron\b|\bbraun\b/i],
+  ['navy', /navy|midnight|indigo|тёмно-син|темно-син|bleu marine|\bmarine\b|dunkelblau/i],
+  ['green', /green|olive|khaki|sage|forest|зелён|зелен|хаки|\bverd[ei]\b|\bvert(?:e)?s?\b|gr(?:ü|ue)n/i],
+  ['red', /red|burgundy|wine|crimson|bordeaux|красн|бордов|\bross[oaie]\b|\brouge\b|\brot(?:e[rsn]?)?\b/i],
+  ['blue', /blue|azure|cobalt|denim|син|голуб|\bblu\b|\bbleu(?:e)?s?\b|\bblau\b/i],
   ['pastel', /pastel|lilac|mint|blush|powder|пастель/i],
   ['bright', /neon|bright|lime|fuchsia|orange|yellow|жёлт|оранж/i],
 ]

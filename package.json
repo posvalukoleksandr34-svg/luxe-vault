@@ -9,7 +9,9 @@
     "lint": "next lint",
     "pretypecheck": "node scripts/ui-dictionaries.js",
     "typecheck": "tsc --noEmit",
-    "test:security": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/security/*.test.ts\""
+    "test:security": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/security/*.test.ts\"",
+    "test:assistant": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant/*.test.ts\"",
+    "test:assistant:live": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant-live/*.test.ts\""
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
