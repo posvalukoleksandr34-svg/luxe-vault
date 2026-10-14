@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { answer, isAssistantConfigured, type ChatMessage } from '@/lib/server/assistant/chat'
+import { answer, assistantStatus, type ChatMessage } from '@/lib/server/assistant/chat'
 import { productIdFrom } from '@/lib/server/assistant/catalog'
 import { readCredentials } from '@/lib/server/assistant/orders'
 import { readJsonObjectLimited } from '@/lib/server/http'
@@ -36,10 +36,23 @@ const MAX_BODY_BYTES = 64 * 1024
  * the chat was opened on; it is looked up in the catalogue here, never taken
  * on trust. See lib/server/assistant/ and docs/support-assistant.md.
  */
+const OFF_REASON = {
+  no_key: 'GEMINI_API_KEY is not set for this deployment',
+  disabled: 'SUPPORT_ASSISTANT_AI=off',
+} as const
+let loggedOff = ''
+
 /** Whether the concierge is on: the widget asks when it opens, so without a
- *  model it offers the help centre's prepared answers from the first tap. */
+ *  model it offers the help centre's prepared answers from the first tap.
+ *  That path never reaches POST, so it would leave no trace in the log: say
+ *  once per server instance why the chat is answering from templates. */
 export function GET() {
-  return NextResponse.json({ ai: isAssistantConfigured() }, { headers: { 'Cache-Control': 'no-store' } })
+  const status = assistantStatus()
+  if (!status.on && loggedOff !== status.reason) {
+    loggedOff = status.reason
+    console.warn(`[assistant] the chat concierge is OFF (${OFF_REASON[status.reason]}): every chat answer comes from the help centre's prepared answers.`)
+  }
+  return NextResponse.json({ ai: status.on }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 export async function POST(request: NextRequest) {

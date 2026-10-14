@@ -144,7 +144,7 @@ them, and the prompt forbids inventing either.
 | Variable | Meaning |
 | --- | --- |
 | `GEMINI_API_KEY` | Shared with smart search and the stylist. Without it the chat runs on prepared answers. |
-| `GEMINI_MODEL` | Optional override, **shared by every AI feature**. If it is set in the hosting environment it also replaces the concierge's default. An invalid name turns the concierge off rather than failing every call. |
+| `GEMINI_MODEL` | Optional override, **shared by every AI feature**. If it is set in the hosting environment it also replaces the concierge's default. Read forgivingly (`models/…`, quotes and spaces are accepted); a value that still is not a model name is ignored with a warning, and the default is used. |
 | `SUPPORT_ASSISTANT_AI=off` | Turns the concierge off without touching the key (search and stylist keep working). |
 | `GEMINI_BASE_URL` | Optional; route Gemini calls through a gateway or proxy. |
 
@@ -152,7 +152,9 @@ them, and the prompt forbids inventing either.
 
 The concierge defaults to **`gemini-3.8-flash`**, Google's stable (GA) Flash
 model, with function calling. It runs at `thinkingLevel: LOW`, temperature
-0.3, and at most 1 024 output tokens. The previous default,
+0.3, and at most 4 096 output tokens. That cap includes the model's own
+thinking, so it is headroom, not a longer answer (see Limits). The previous
+default,
 `gemini-3.6-flash`, has a published retirement date of 2026-11-19 on Google
 Cloud. 3.8 refuses the `minimal` thinking level, so the code uses `LOW`. The
 switch was decided from Google's model, changelog and deprecation pages. It
@@ -175,7 +177,7 @@ Smart search, the stylist and catalogue translation still default to
 | Tool use | 4 rounds; 4 calls per round; 8 per turn; then the model must answer in words | `chat.ts` |
 | Tool result | 6 000 chars, lists shortened first | `capResponse` |
 | Retries | one, only after a provider 5xx with time left; none for 429, timeouts or refusals. The SDK's own retries stay off | `chat.ts` |
-| Reply | 1 024 output tokens; 1 500 chars after checking, cut at a sentence | `guard.ts` |
+| Reply | 4 096 output tokens, thinking included (at 700–1 024 a longer turn could stop with `MAX_TOKENS` before writing a word); 1 500 chars after checking, cut at a sentence | `chat.ts`, `guard.ts` |
 | Product cards | 3 per reply | `chat.ts` |
 
 ## When there is no answer
@@ -187,13 +189,13 @@ answer"). "Write to the team" stays one tap away:
 
 | Reason | When |
 | --- | --- |
-| `unconfigured` | no key, `SUPPORT_ASSISTANT_AI=off`, or an invalid model name. The widget then stays in help-centre mode. |
+| `unconfigured` | no `GEMINI_API_KEY`, or `SUPPORT_ASSISTANT_AI=off`. The widget then stays in help-centre mode. |
 | `timeout` | the 20 s budget ran out |
 | `cancelled` | the customer closed the chat or left; the model call is aborted |
 | `rate_limited` | the provider answered 429 |
-| `provider_error` | any other provider or network error; the message goes to the server log, never the customer |
-| `invalid_response` | empty, cut off (`MAX_TOKENS`), blocked, or still calling tools after the last round |
-| `wrong_language` | the reply was in another language twice |
+| `provider_error` | any other provider or network error. The HTTP status is in the log line (`providerStatus`); the message goes to the server log, never the customer |
+| `invalid_response` | empty, cut off, blocked, or still calling tools after the last round; which one is in the log line (`finishReason`) |
+| `wrong_language` | the customer clearly wrote in one language and the reply was in another, twice |
 
 Any other failure, such as a network error or a 5xx from the route, shows an
 error message with **Retry** (the same question again) and "Write to the
@@ -202,10 +204,14 @@ the chat to prepared answers for the rest of the visit.
 
 ## Output checks (`guard.ts`)
 
-- **Language.** The answer language is the customer's own when their last
-  message is clearly English, Italian, French or German, otherwise the
-  page's. A reply detected in another language is rewritten once, then falls
-  back (`wrong_language`).
+- **Language.** When the customer's last message is long and clear enough
+  to be classified (English, Italian, French or German), the reply must be in
+  that language: a reply in another one is rewritten once, then falls back
+  (`wrong_language`). A short message ("Any black coats?") cannot be
+  classified, so the model may answer in the page's language or in the
+  customer's, and either is accepted. It used to be held to the page's
+  language, and a correct English answer to an English question on an
+  Italian page was replaced by a template.
 - **Links.** Bare shop paths become full links. A product link must name a
   product in the catalogue. Any other link must be this shop's own page or a
   URL a tool returned (a tracking link). Everything else is removed.
@@ -275,6 +281,8 @@ One JSON line per turn in the platform log, searchable as `assistant_event`
  "rounds":2,"toolCalls":1,"tools":{"search_products":1},"rejectedCalls":0,"removedLinks":0,
  "unverifiedAmounts":0,"languageRetry":false,"handoff":false,"products":1}
 {"assistant_event":"fallback","reason":"timeout", …same counts…}
+{"assistant_event":"fallback","reason":"provider_error","providerStatus":404, …}
+{"assistant_event":"fallback","reason":"invalid_response","finishReason":"MAX_TOKENS", …}
 {"assistant_event":"feedback","rating":"not_helpful","outcome":"products"}
 ```
 
@@ -283,6 +291,42 @@ address, an IP or the turn id. Those lines answer how often the chat falls
 back and why, how slow it is, which tools are used, how often links are
 removed or amounts unverified, and whether people find it helpful. They add
 no new service or vendor.
+
+## Troubleshooting: "the chat only gives prepared answers"
+
+The chat answers from the help centre (prepared, template answers) in three
+situations. They look different, so start with what the chat shows.
+
+**1. No note, from the first message: the concierge is off.** The widget
+asked `GET /api/support/assistant`, got `{"ai": false}`, and never calls the
+model. The server logs this once per instance:
+`[assistant] the chat concierge is OFF (GEMINI_API_KEY is not set for this
+deployment)` or `(SUPPORT_ASSISTANT_AI=off)`.
+
+- Set `GEMINI_API_KEY` for that environment. On Vercel, Production, Preview
+  and Development are separate. Then redeploy.
+- Locally, put it in `.env.local`. `.env.example` leaves it empty.
+
+**2. "The concierge is unavailable right now — here is the help centre's
+answer": the model was asked and the turn failed.** The log has one
+`assistant_event` line with `"reason"`:
+
+| Log | Meaning | What to do |
+| --- | --- | --- |
+| `provider_error`, `providerStatus: 404` | the model (`GEMINI_MODEL`, or the default `gemini-3.8-flash`) is not available to this key | set `GEMINI_MODEL` to a model the key can use, e.g. `gemini-3.6-flash` until it retires |
+| `provider_error`, `400` / `403` | the key is wrong, restricted, or for another project | check the key in Google AI Studio |
+| `rate_limited` | the key's quota is spent | raise the quota, or wait |
+| `invalid_response`, `finishReason` | cut off (`MAX_TOKENS`), blocked (`SAFETY`), empty | `MAX_TOKENS` should be rare at 4 096; report others |
+| `timeout` | the provider took more than 20 s | provider status; repeated cases mean the region or model is slow |
+| `wrong_language` | a clear-language question answered twice in another language | report it, with the locale |
+
+**3. "That does not look like an order number": the widget is waiting for
+one.** After "Where is my order?" or "Returns", only something that looks
+like a number attempt ("LV12", "#123") gets this reply, without a model call.
+Anything else goes to the concierge.
+
+The topic buttons and their prepared questions answer instantly from the help
+centre **by design**. Free text typed into the chat goes to the model.
 
 ## Knowledge: why the whole base, not a vector search
 
@@ -349,7 +393,7 @@ npm run test:assistant        # offline: scripted model, fixture catalogue and o
 GEMINI_API_KEY=… ASSISTANT_LIVE_TESTS=1 npm run test:assistant:live   # optional, real model
 ```
 
-The offline suite (`tests/assistant/`, 92 tests) needs no key, no network and
+The offline suite (`tests/assistant/`, 101 tests) needs no key, no network and
 no database. It covers:
 
 - **Catalogue:** stock states, search by words, colour in four languages,

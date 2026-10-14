@@ -324,10 +324,17 @@ export function ChatBot() {
     window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50)
     if (ai !== null) return
     let cancelled = false
+    // Only the server's own answer can switch the concierge off. A failed
+    // check (a network blip, an edge challenge, a cold start) leaves it
+    // unknown, so questions still go to the concierge — which says
+    // 'unconfigured' itself if it really is off. It used to switch the chat
+    // to prepared answers for the whole visit, without asking the model once.
     fetch('/api/support/assistant')
-      .then((r) => (r.ok ? r.json() : { ai: false }))
-      .then((d: { ai?: boolean }) => !cancelled && setAi(Boolean(d.ai)))
-      .catch(() => !cancelled && setAi(false))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { ai?: unknown } | null) => {
+        if (!cancelled && typeof d?.ai === 'boolean') setAi(d.ai)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -384,13 +391,15 @@ export function ChatBot() {
    *  miss is offered as questions, a total miss offers a person with the
    *  question kept. `note` says the concierge was unavailable this time. */
   function answerFromHelpCentre(text: string, note = false) {
+    // Every reply in this mode says so when the concierge was meant to
+    // answer: a prepared answer must never pass for the model's.
     const prefix = note ? `${t('chat.fallbackNote')}\n\n` : ''
     const hits = searchFaq(FAQ, locale, text, answerOf)
     if (hits.length > 0) return reply({ text: prefix + answerOf(hits[0]) }, () => setSuggestions(hits.slice(1, 4)))
     const near = relatedQuestions(locale, text, answerOf)
-    if (near.length > 0) return reply({ text: t('chat.maybe') }, () => setSuggestions(near))
+    if (near.length > 0) return reply({ text: prefix + t('chat.maybe') }, () => setSuggestions(near))
     reply(
-      { text: t('chat.noAnswer'), handoff: { category: topic ? TOPIC_CATEGORY[topic] : 'other', summary: text.slice(0, 600) } },
+      { text: prefix + t('chat.noAnswer'), handoff: { category: topic ? TOPIC_CATEGORY[topic] : 'other', summary: text.slice(0, 600) } },
       () => setSuggestions([]),
     )
   }
@@ -527,9 +536,11 @@ export function ChatBot() {
     if (slot) {
       const number = orderNumber(text)
       if (number) return fillSlot(slot, number)
-      // A sentence rather than a number: the customer has moved on — let the
-      // concierge read it. A short miss is a mistyped number: ask again.
-      if (text.split(/\s+/).length < 3) {
+      // Something that looks like an attempt at a number ("LV12", "7K2M") is a
+      // typo: ask again without a model call. Anything else ("Non so", "I
+      // don't have it") is the customer talking: the concierge reads it.
+      const compact = text.replace(/\s+/g, '')
+      if (/^#?(?:lv-?)?[a-z0-9]{1,12}$/i.test(compact) && /\d|^#?lv/i.test(compact)) {
         push({ from: 'user', text })
         return reply({ text: t('chat.badOrder') })
       }
