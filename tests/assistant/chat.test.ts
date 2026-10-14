@@ -78,7 +78,9 @@ describe('answers from the knowledge', () => {
       const g = scripted(say('OK.'))
       const r = await turn(g, { locale, messages: ['LV?'] })
       assert.ok(r.ok, locale)
-      assert.match(g.requests[0].system, new RegExp(`Write the whole reply in ${expected[locale]}\\.`), locale)
+      // A two-character message says nothing about its language: the page's,
+      // unless the customer clearly writes in another of the four.
+      assert.match(g.requests[0].system, new RegExp(`Write the whole reply in ${expected[locale]}, the page's language, unless`), locale)
     }
   })
 })
@@ -223,7 +225,7 @@ describe('the reply itself', () => {
     assert.ok(r.ok)
     assert.equal(r.metrics.languageRetry, true)
     assert.match(r.reply.text, /Ihre Bestellung/)
-    assert.match(g.requests[0].system, /Write the whole reply in German\./)
+    assert.match(g.requests[0].system, /Write the whole reply in German, the language the customer is writing in\./)
     assert.match(JSON.stringify(g.requests[1].contents), /rewrite your previous reply in German/)
   })
   it('still the wrong language after the rewrite → the prepared answers, not a reply they may not read', async () => {

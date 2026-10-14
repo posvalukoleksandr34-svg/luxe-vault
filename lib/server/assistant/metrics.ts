@@ -36,6 +36,13 @@ export type TurnMetrics = {
   languageRetry: boolean
   handoff: boolean
   products: number
+  /** Why a model reply could not be used (fallback 'invalid_response' or
+   *  'wrong_language'): MAX_TOKENS, SAFETY, EMPTY, TOOL_CALL, NO_CONTENT,
+   *  EMPTY_AFTER_CHECK. An enum, never text. */
+  finishReason?: string
+  /** The provider's HTTP status on 'provider_error' / 'rate_limited': 404 = the
+   *  model is not available to this key, 400/403 = the key or the request. */
+  providerStatus?: number
 }
 
 export function emptyMetrics(): TurnMetrics {

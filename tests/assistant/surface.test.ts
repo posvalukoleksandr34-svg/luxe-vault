@@ -71,7 +71,13 @@ describe('POST /api/support/assistant', () => {
     assert.equal(json.mode, 'fallback')
     assert.equal(json.reason, 'unconfigured')
     assert.match(json.turnId, /^[0-9a-f-]{36}$/)
+    logged = []
     assert.deepEqual(await GET().json(), { ai: false })
+    // Off is never silent: the reason (not a value) is logged once.
+    assert.ok(logged.some((l) => l.includes('[assistant] the chat concierge is OFF (GEMINI_API_KEY is not set')), logged.join('\n'))
+    logged = []
+    await GET()
+    assert.equal(logged.filter((l) => l.includes('concierge is OFF')).length, 0, 'logged once, not on every open')
   })
 })
 

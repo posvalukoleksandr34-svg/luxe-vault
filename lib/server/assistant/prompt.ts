@@ -30,6 +30,9 @@ export function systemPrompt(opts: {
   locale: StorefrontLocale
   /** The language to answer in (the customer's, else the page's). */
   answerIn: StorefrontLocale
+  /** Whether the customer's message was long and clear enough to tell its
+   *  language. When it was not, the model may follow the customer's. */
+  languageSure?: boolean
   today: string
   signedIn: boolean
   replyWithin: string
@@ -51,8 +54,10 @@ VOICE
 - Plain text only: no Markdown, no bold, no headings. Write links out in full.
 
 LANGUAGE
-- Write the whole reply in ${lang}. Do not mix languages. Product names may stay as the catalogue gives them.
-- The page's language is ${LANGUAGE_NAME[opts.locale]}; the customer's last message decides when it is in English, Italian, French or German.
+${opts.languageSure
+    ? `- Write the whole reply in ${lang}, the language the customer is writing in.`
+    : `- Write the whole reply in ${lang}, the page's language, unless the customer's message is clearly in English, Italian, French or German: then answer in that language.`}
+- Do not mix languages. Product names may stay as the catalogue gives them.
 
 EVIDENCE
 - Answer only from the KNOWLEDGE below and from what your tools return in this conversation. That is the shop's real, current policy, catalogue and the customer's real orders.

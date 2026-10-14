@@ -80,19 +80,47 @@ export const LIMITS = {
   maxRounds: 4,
   maxCallsPerRound: 4,
   maxCalls: 8,
-  maxOutputTokens: 1024,
+  /** 3.x Flash spends part of this on its thinking (see the measurement in
+   *  lib/server/stylist/rationale.ts). At 700–1 024 a longer turn could stop
+   *  with MAX_TOKENS before writing anything, and the customer got a
+   *  template. The reply's own length is bounded by the prompt and by
+   *  REPLY_MAX_CHARS, so this is headroom, not a longer answer. */
+  maxOutputTokens: 4096,
   toolResponseChars: 6000,
   maxCards: 3,
 } as const
 
-export function modelName(): string | null {
-  const name = (process.env.GEMINI_MODEL ?? '').trim() || DEFAULT_MODEL
-  // A typo here would fail every call silently; refuse obviously bad names.
-  return /^[a-z0-9][a-z0-9.\-]{2,60}$/i.test(name) ? name : null
+let warnedModel = ''
+
+/**
+ * The model to call. GEMINI_MODEL is shared with search, the stylist and
+ * translation, which pass it to the SDK as written, so it is read the same
+ * forgiving way here: "models/…", quotes and spaces are accepted. A value
+ * that still cannot be a model name is IGNORED with a warning — it used to
+ * switch the concierge off, silently, while the other features kept working.
+ */
+export function modelName(): string {
+  const raw = (process.env.GEMINI_MODEL ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim().replace(/^models\//, '')
+  if (!raw) return DEFAULT_MODEL
+  if (/^[a-z0-9][a-z0-9.\-]{2,60}$/i.test(raw)) return raw
+  if (warnedModel !== raw) {
+    warnedModel = raw
+    console.warn(`[assistant] GEMINI_MODEL is not a model name; using ${DEFAULT_MODEL} instead.`)
+  }
+  return DEFAULT_MODEL
+}
+
+/** Whether the concierge is on, and if not, why — reasons only, no values. */
+export type AssistantStatus = { on: true } | { on: false; reason: 'no_key' | 'disabled' }
+
+export function assistantStatus(): AssistantStatus {
+  if (!process.env.GEMINI_API_KEY?.trim()) return { on: false, reason: 'no_key' }
+  if (process.env.SUPPORT_ASSISTANT_AI === 'off') return { on: false, reason: 'disabled' }
+  return { on: true }
 }
 
 export function isAssistantConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY?.trim()) && process.env.SUPPORT_ASSISTANT_AI !== 'off' && modelName() !== null
+  return assistantStatus().on
 }
 
 // ------------------------------------------------------------ the model --
@@ -162,7 +190,7 @@ async function postgresKeywordSearch(query: string): Promise<string[]> {
 function defaultDeps(): AnswerDeps | null {
   const key = process.env.GEMINI_API_KEY?.trim()
   const model = modelName()
-  if (!key || process.env.SUPPORT_ASSISTANT_AI === 'off' || !model) return null
+  if (!key || !isAssistantConfigured()) return null
   return {
     generate: geminiGenerate(key, model),
     userId: () =>
@@ -212,7 +240,7 @@ export async function answer(
   const started = Date.now()
   const metrics = emptyMetrics()
   const base = defaultDeps()
-  const model = injected?.model ?? base?.model ?? modelName() ?? DEFAULT_MODEL
+  const model = injected?.model ?? base?.model ?? modelName()
 
   function finish(outcome: AnswerOutcome): AnswerOutcome {
     outcome.metrics.ms = Date.now() - started
@@ -351,9 +379,15 @@ export async function answer(
     const knowledge = knowledgeFor(opts.locale, shipping)
     for (const a of amountsIn(knowledge)) evidence.amounts.add(a)
     const language = expectedLanguage(lastUser, opts.locale)
+    // Only a message long and clear enough to classify fixes the language.
+    // A short one ("Any black coats?") leaves the model free to answer in the
+    // customer's own language — which used to be rejected as "wrong" and
+    // replaced by the help centre's prepared answer.
+    const languageSure = detectLanguage(lastUser) === language
     const system = systemPrompt({
       locale: opts.locale,
       answerIn: language,
+      languageSure,
       today: deps.now().toISOString().slice(0, 10),
       signedIn,
       replyWithin: describeBusinessDays(FULFILMENT.supportReply, opts.locale, { genitive: true }),
@@ -386,7 +420,10 @@ export async function answer(
       // After the last allowed round the model must answer in words.
       res = await generate(round < LIMITS.maxRounds && metrics.toolCalls < LIMITS.maxCalls)
       if (res.calls.length === 0) break
-      if (!res.content) return finish({ ok: false, reason: 'invalid_response', metrics })
+      if (!res.content) {
+        metrics.finishReason = 'NO_CONTENT'
+        return finish({ ok: false, reason: 'invalid_response', metrics })
+      }
 
       contents.push(res.content)
       const parts: Content['parts'] = []
@@ -427,12 +464,20 @@ export async function answer(
     }
 
     const done = (r: ModelResponse | null) => Boolean(r && r.calls.length === 0 && r.text.trim() && (!r.finishReason || r.finishReason === FinishReason.STOP))
-    if (!done(res)) return finish({ ok: false, reason: 'invalid_response', metrics })
+    // Why a reply could not be used, for the log: MAX_TOKENS, SAFETY, an
+    // empty text, or tools still being called after the last round.
+    const why = (r: ModelResponse | null) =>
+      !r ? 'NONE' : r.calls.length ? 'TOOL_CALL' : r.finishReason && r.finishReason !== FinishReason.STOP ? String(r.finishReason) : 'EMPTY'
+    if (!done(res)) {
+      metrics.finishReason = why(res)
+      return finish({ ok: false, reason: 'invalid_response', metrics })
+    }
     let text = res!.text
 
     // The language the customer wrote in (or the page's). One rewrite, then
     // the prepared answers rather than a reply they may not read.
     const wrong = (t: string) => {
+      if (!languageSure) return false
       const lang = detectLanguage(t)
       return lang !== null && lang !== language
     }
@@ -444,7 +489,10 @@ export async function answer(
         parts: [{ text: `(Note from the shop's system, not the customer: rewrite your previous reply in ${LANGUAGE_NAME[language]}, with the same content.)` }],
       })
       const again = await generate(false)
-      if (!done(again) || wrong(again.text)) return finish({ ok: false, reason: 'wrong_language', metrics })
+      if (!done(again) || wrong(again.text)) {
+        if (!done(again)) metrics.finishReason = why(again)
+        return finish({ ok: false, reason: 'wrong_language', metrics })
+      }
       text = again.text
     }
 
@@ -458,7 +506,10 @@ export async function answer(
       }
     }
     const checked = checkReply(text, evidence)
-    if (!checked) return finish({ ok: false, reason: 'invalid_response', metrics })
+    if (!checked) {
+      metrics.finishReason = 'EMPTY_AFTER_CHECK'
+      return finish({ ok: false, reason: 'invalid_response', metrics })
+    }
     metrics.removedLinks = checked.removedLinks
     metrics.unverifiedAmounts = checked.unverifiedAmounts
 
@@ -473,6 +524,9 @@ export async function answer(
   } catch (e) {
     if (stopped) return finish({ ok: false, reason: stopped, metrics })
     const status = statusOf(e)
+    // The HTTP status goes into the structured log line: 404 means the model
+    // name is not available to this key, 400/403 the key or the request.
+    if (status !== null) metrics.providerStatus = status
     if (status === 429) return finish({ ok: false, reason: 'rate_limited', metrics })
     // The provider's message stays in the log, never in the answer.
     console.warn('[assistant] answer skipped:', status ?? '', (e as Error).message?.slice(0, 200))
