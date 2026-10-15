@@ -4,17 +4,18 @@ import type { ShapeLevel } from '@/lib/fit-advisor'
  * The silhouettes for the hips and abdomen questions: a front view for hips,
  * a side view for the abdomen, each drawn from one parameter so the three
  * answers are visibly the same body with one thing changed. Line art in the
- * shop's sand and gold, deliberately without a face or skin tone — it is a
+ * site's greys and black, deliberately without a face or skin tone — it is a
  * diagram of a shape, not a model.
  *
  * Decorative for assistive technology: the radio buttons under it carry the
  * question and the answer.
  */
 
-const SAND_TOP = '#f1ebe1'
-const SAND_BOTTOM = '#e2d7c6'
-const LINE = '#b5a68f'
-const GOLD = '#b8924a'
+// Monochrome: a pale grey figure, a mid-grey outline and black guides.
+const SAND_TOP = '#f5f5f5'
+const SAND_BOTTOM = '#e0e0e0'
+const LINE = '#8c8c8c'
+const GOLD = '#000000'
 
 function Frame({ id, children }: { id: string; children: React.ReactNode }) {
   return (

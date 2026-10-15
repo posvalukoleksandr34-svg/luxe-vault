@@ -103,8 +103,8 @@ export function ProductCard({
             )}
           </div>
 
-          {/* The discount, in the top-right corner — gold on the dark ground,
-              never red: here red means an error, and a discount is not one. */}
+          {/* The discount, in the top-right corner — black on white, never
+              red: a discount is not an error. */}
           <DiscountBadge
             price={product.price}
             oldPrice={product.oldPrice}

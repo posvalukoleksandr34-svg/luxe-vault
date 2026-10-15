@@ -103,7 +103,7 @@ export default function UpdatePasswordPage() {
   if (done) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-        <CheckCircle2 className="h-8 w-8 text-emerald-700" strokeWidth={1.25} />
+        <CheckCircle2 className="h-8 w-8 text-foreground" strokeWidth={1.25} />
         <h1 className="font-serif text-2xl font-bold text-foreground">{t('account.passwordChanged')}</h1>
         <p className="text-sm font-light text-muted-foreground">
           {t('pw.returningToShop')}

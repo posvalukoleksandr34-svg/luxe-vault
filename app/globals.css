@@ -132,58 +132,99 @@
 
 @layer base {
   :root {
-    /* Light Luxury Gold. An ivory ground (#FAF8F5), white surfaces for the
-       things a customer reads and fills in, and near-black text (#1A1A1A,
-       16:1 on the ground). Every neutral carries a little warm hue (~38deg):
-       a true grey beside gold looks cold and cheap.
+    /* Monochrome. Pure white ground, pure black type, and neutral greys
+       between #111111 and #F5F5F5 for depth — nothing with a hue. Contrast:
+       black on white 21:1; the secondary grey (#595959) 7:1 on white and
+       still 5:1 at the /85 the lightest secondary text uses.
 
-       TWO GOLDS, on purpose. Gold as a FILL, border or icon glow (--gold,
-       #C5A059; --gold-light #D4AF37; --gold-dark #B8912F) is bright, and what
-       sits on it is dark (#1A1A1A reads 7:1 on --gold). Gold as TEXT
-       (--gold-ink, #8A6A1C) is deeper, because bright gold on ivory is 2:1 —
-       unreadable at label sizes. tailwind.config.ts routes text-gold* to the
-       ink and bg-/border-/fill-gold* to the fill, so components keep writing
-       "gold" and get the legible one for each job. */
-    --background: 36 33% 97%;
-    --foreground: 0 0% 10%;
+       THE ACCENT ROLE. Components were written against a "gold" accent
+       (bg-gold, text-gold, border-gold/40, bg-gold-gradient, shadow-gold —
+       about 1 150 uses). Those names are kept, so every component follows
+       without being rewritten, but the role is now ink: --gold is black,
+       --gold-foreground (what sits on it) is white, tints such as bg-gold/10
+       are black at that alpha, i.e. neutral greys. Read "gold" as "accent". */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 36 33% 97%;
-    --secondary: 38 37% 92%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 38 30% 94%;
-    /* #5E574D — 6.7:1 on the ground, 7.1:1 on white; still 4.8:1 at the
-       /85 the lightest secondary text now uses. */
-    --muted-foreground: 35 10% 33%;
-    --accent: 38 35% 93%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 62% 44%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    /* #F5F5F5: the one surface grey — secondary panels, muted fills. */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    /* #595959 — 7:1 on white. */
+    --muted-foreground: 0 0% 35%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
+    /* Errors and destructive actions are black too; they are told apart by
+       their wording, icon and weight (see .text-destructive below), never by
+       colour alone. */
+    --destructive: 0 0% 0%;
     --destructive-foreground: 0 0% 100%;
-    /* Soft warm hairlines (#E8E1D5): edges that separate without drawing a
-       hard line; depth comes from shadow (--shadow-soft) instead. */
-    --border: 38 29% 87%;
-    --input: 38 22% 82%;
-    --gold-hairline: 39 45% 72%;
-    --ring: 39 48% 56%;
-    --gold: 39 48% 56%;
-    --gold-foreground: 0 0% 10%;
-    --gold-light: 46 65% 52%;
-    --gold-dark: 43 59% 45%;
-    /* Gold for text and small icons: #8A6A1C, 4.7:1 on the ground. */
-    --gold-ink: 43 66% 33%;
-    --chart-1: 39 48% 56%;
-    --chart-2: 160 50% 36%;
-    --chart-3: 197 45% 40%;
-    --chart-4: 280 45% 48%;
-    --chart-5: 340 60% 46%;
-    /* Soft, rounded geometry: fields and buttons at 12px, cards and panels at
-       16px (rounded-2xl), and a shadow instead of a hard frame. */
-    --radius: 12px;
-    --shadow-soft: 0 4px 12px rgba(26, 20, 10, 0.05);
-    --shadow-lift: 0 10px 30px -12px rgba(26, 20, 10, 0.14);
+    /* Hairlines #E5E5E5; field edges #BFBFBF. */
+    --border: 0 0% 90%;
+    --input: 0 0% 75%;
+    --gold-hairline: 0 0% 80%;
+    /* Focus is black: the strongest indicator there is on white. */
+    --ring: 0 0% 0%;
+    --gold: 0 0% 0%;
+    --gold-foreground: 0 0% 100%;
+    --gold-light: 0 0% 0%;
+    --gold-dark: 0 0% 0%;
+    --gold-ink: 0 0% 0%;
+    /* Hover on a black control: one step up, to #262626. */
+    --gold-hover: 0 0% 15%;
+    --chart-1: 0 0% 0%;
+    --chart-2: 0 0% 25%;
+    --chart-3: 0 0% 45%;
+    --chart-4: 0 0% 62%;
+    --chart-5: 0 0% 78%;
+    /* Crisp geometry: 2px on fields, buttons, cards and panels. Pills, dots
+       and avatars keep rounded-full. */
+    --radius: 2px;
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-lift: 0 14px 34px -18px rgba(0, 0, 0, 0.22);
+  }
+
+  /* The same system in reverse: black ground, white ink, greys from #111 to
+     #333 for surfaces and hairlines. Every token-drawn thing inside — text,
+     borders, the accent, black-fill buttons (white here, with black type),
+     focus rings — flips with it, so a section is set in reverse without its
+     components knowing. The footer uses it. Contrast: white on black 21:1;
+     the secondary grey (#B3B3B3) 10:1. */
+  .theme-inverse {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 0 0% 20%;
+    --input: 0 0% 35%;
+    --gold-hairline: 0 0% 30%;
+    --ring: 0 0% 100%;
+    --gold: 0 0% 100%;
+    --gold-foreground: 0 0% 0%;
+    --gold-light: 0 0% 100%;
+    --gold-dark: 0 0% 100%;
+    --gold-ink: 0 0% 100%;
+    --gold-hover: 0 0% 85%;
+    color-scheme: dark;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
@@ -197,8 +238,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   ::selection {
-    background: hsl(var(--gold) / 0.3);
-    color: hsl(var(--foreground));
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
   }
 }
 
@@ -212,37 +253,50 @@
   .bg-gold\/20 { background-color: hsl(var(--gold) / 0.2); }
   .bg-gold\/40 { background-color: hsl(var(--gold) / 0.4); }
   .bg-gold\/50 { background-color: hsl(var(--gold) / 0.5); }
-  .border-gold\/30 { border-color: hsl(var(--gold) / 0.3); }
-  .border-gold\/50 { border-color: hsl(var(--gold) / 0.5); }
-  .border-gold\/60 { border-color: hsl(var(--gold) / 0.6); }
-  /* Gold text is never faded: the ink is already as light as legibility
-     allows (4.8:1), and any opacity drops it below AA. */
+  /* Half alpha, like the theme's accent borders (tailwind.config.ts). */
+  .border-gold\/30 { border-color: hsl(var(--gold) / 0.15); }
+  .border-gold\/50 { border-color: hsl(var(--gold) / 0.25); }
+  .border-gold\/60 { border-color: hsl(var(--gold) / 0.3); }
+  /* Accent text is never faded: it is the ink itself, and the opacity
+     variants were written when the ink was as light as AA allowed. */
   .text-gold\/70,
   .text-gold\/80 { color: hsl(var(--gold-ink)); }
   .ring-gold\/40 { --tw-ring-color: hsl(var(--gold) / 0.4); }
-  .shadow-gold { box-shadow: 0 8px 24px -8px hsl(var(--gold) / 0.45); }
+  /* Was a gold glow under gold buttons; on black it would be a smudge. A
+     hairline lift is all a monochrome control needs. */
+  .shadow-gold { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+  /* Black fills step up to #262626 on hover. The gradient utility is solid
+     black now (tailwind.config.ts); text on it stays white. */
+  .bg-gold-gradient { transition-property: background-color, background-image, filter, box-shadow, color, border-color; }
+  .bg-gold-gradient:hover:not(:disabled):not([aria-disabled='true']),
+  .btn-primary-lv:hover {
+    background-image: none;
+    background-color: hsl(var(--gold-hover));
+    filter: none;
+  }
+  /* An error is black like everything else, so it carries weight instead. */
+  .text-destructive { font-weight: 500; }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
-  /* Frosted editorial header ground. Semi-transparent + blurred so the ambient
-     gold pools behind it bleed through the bar instead of stopping at it. */
+  /* Frosted editorial header ground: white, semi-transparent and blurred.
+     No saturate(): it would push any colour in a photo behind the bar. */
   .glass {
-    background: hsl(var(--background) / 0.72);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: hsl(var(--background) / 0.86);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 }
 
-/* Soft geometry. This used to force `border-radius: 0 !important` on every
-   element — square corners as the house style. Now the controls a customer
-   touches are rounded by default (12px), and cards and panels carry 16px
-   (.card-gold, .panel-gold, .product-card). Rounded-* utilities still win,
-   since they come later than this base layer. */
+/* Crisp geometry. Controls a customer touches carry the same 2px as cards
+   and panels (--radius; tailwind.config.ts maps rounded-lg…rounded-3xl to it).
+   Rounded-* utilities still win, since they come later than this base layer,
+   and rounded-full stays round for pills, dots and avatars. */
 @layer base {
   input:not([type='checkbox']):not([type='radio']):not([type='range']),
   select,
   textarea,
   button {
-    border-radius: 12px;
+    border-radius: var(--radius);
   }
 
   /* ...except where the button is a ROW, not a control: an item in a list
@@ -304,7 +358,7 @@ html {
 
   /* The site is light only: native scrollbars, form controls, date pickers
      and autofill render in their light variants, never a dark one that
-     would flash inside the ivory page on a phone set to dark mode. */
+     would flash inside the white page on a phone set to dark mode. */
   color-scheme: light;
 
   /* Reserves the scrollbar's width whether or not a scrollbar is present, so
@@ -379,12 +433,11 @@ input[type='password']::-webkit-textfield-decoration-container {
 /* ---------------------------------------------------------------------------
    Ambient atmosphere
    ---------------------------------------------------------------------------
-   Four very wide, very low-opacity pools behind everything: three gold, one
-   cool, and a faint vertical wash. They give the page depth without lifting any
-   surface out of its ivory — the ground still reads as one warm tone, but lit
-   rather than flat. The cool pool is what makes the gold ones read as *light*
-   rather than as a stain; without a cooler neighbour the eye normalises the
-   warmth away and the page looks flat brown again.
+   Three very wide, very low-opacity grey pools behind everything, over a
+   white-to-#F5F5F5 vertical wash. They give the page depth without lifting
+   any surface out of the white ground — it still reads as one tone, lit
+   rather than flat, like paper under a gallery spot. Kept faint: at any
+   strength they read as a smudge rather than as light.
 
    Attached to body::before as a single fixed layer: painting these per-section
    would multiply the compositing cost on a long page for no visual gain.
@@ -396,14 +449,14 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 55% at 18% 0%, hsl(var(--gold) / 0.10) 0%, transparent 62%),
-    radial-gradient(60% 50% at 88% 22%, hsl(var(--gold-light) / 0.07) 0%, transparent 60%),
-    radial-gradient(80% 60% at 50% 100%, hsl(38 45% 80% / 0.35) 0%, transparent 65%),
-    linear-gradient(180deg, hsl(40 60% 98.5%) 0%, hsl(36 33% 97%) 45%, hsl(38 35% 95%) 100%);
+    radial-gradient(70% 55% at 18% 0%, hsl(0 0% 0% / 0.03) 0%, transparent 62%),
+    radial-gradient(60% 50% at 88% 22%, hsl(0 0% 0% / 0.02) 0%, transparent 60%),
+    radial-gradient(80% 60% at 50% 100%, hsl(0 0% 80% / 0.25) 0%, transparent 65%),
+    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 98.5%) 45%, hsl(0 0% 96%) 100%);
 }
 
 /* ---------------------------------------------------------------------------
-   Live atmosphere — golden smoke waves + floating dust
+   Live atmosphere — grey smoke waves + floating dust
    ---------------------------------------------------------------------------
    Paired with <AmbientBackground /> (rendered once, in the root layout).
 
@@ -432,11 +485,9 @@ body::before {
 
 .ambient__wave {
   position: absolute;
-  /* `screen` makes overlapping gold accumulate into brighter cores the way
-     backlit smoke does; plain alpha compositing just muddies it. */
-  /* multiply, on the light ground: warm gold pools tint the ivory the way
-     light through amber glass does. (It was `screen` on the dark theme,
-     which on a light ground brightens toward white and shows nothing.) */
+  /* multiply, on the light ground: overlapping grey pools deepen into soft
+     cores the way smoke does in front of a lit wall. (`screen` would brighten
+     toward white and show nothing on a white page.) */
   mix-blend-mode: multiply;
   will-change: transform;
   /* Softens the gradient's own banding, which is very visible at these low
@@ -453,8 +504,8 @@ body::before {
   height: 78vh;
   background: radial-gradient(
     closest-side,
-    hsl(43 70% 62% / 0.16) 0%,
-    hsl(40 60% 72% / 0.08) 45%,
+    hsl(0 0% 62% / 0.16) 0%,
+    hsl(0 0% 72% / 0.08) 45%,
     transparent 74%
   );
   animation: smoke-a 92s ease-in-out infinite alternate;
@@ -467,16 +518,15 @@ body::before {
   height: 88vh;
   background: radial-gradient(
     closest-side,
-    hsl(46 70% 62% / 0.13) 0%,
-    hsl(38 55% 72% / 0.07) 48%,
+    hsl(0 0% 62% / 0.13) 0%,
+    hsl(0 0% 72% / 0.07) 48%,
     transparent 72%
   );
   animation: smoke-b 116s ease-in-out infinite alternate;
 }
 
-/* The cool body. Counterintuitive on a gold palette, but without a cooler
-   neighbour the eye normalises the warmth away and the whole page settles back
-   into flat brown. It is what makes the gold read as *light*. */
+/* The low body: the lightest of the three, so the bottom of the viewport
+   never darkens behind the footer. */
 .ambient__wave--c {
   bottom: -30%;
   left: 22%;
@@ -484,8 +534,8 @@ body::before {
   height: 72vh;
   background: radial-gradient(
     closest-side,
-    hsl(200 30% 72% / 0.06) 0%,
-    hsl(38 50% 74% / 0.07) 52%,
+    hsl(0 0% 72% / 0.06) 0%,
+    hsl(0 0% 74% / 0.07) 52%,
     transparent 76%
   );
   animation: smoke-c 136s ease-in-out infinite alternate;
@@ -504,7 +554,7 @@ body::before {
   background: linear-gradient(
     103deg,
     transparent 38%,
-    hsl(48 90% 88% / 0.22) 50%,
+    hsl(0 0% 88% / 0.22) 50%,
     transparent 62%
   );
   animation: sheen-sweep 180s ease-in-out infinite;
@@ -528,8 +578,8 @@ body::before {
      rounded dot. This also gives each mote a soft halo for free. */
   background: radial-gradient(
     circle,
-    hsl(43 70% 52% / 0.75) 0%,
-    hsl(41 60% 55% / 0.3) 42%,
+    hsl(0 0% 52% / 0.75) 0%,
+    hsl(0 0% 55% / 0.3) 42%,
     transparent 70%
   );
   animation: mote-rise calc(var(--d) * 2) linear var(--delay) infinite;
@@ -614,14 +664,14 @@ body::before {
   }
 }
 
-/* Corners warm slightly toward cream. Also hides the point where a mote loops. */
+/* Corners fall off slightly toward grey. Also hides the point where a mote loops. */
 .ambient__vignette {
   position: absolute;
   inset: 0;
   background: radial-gradient(
     ellipse 120% 90% at 50% 45%,
     transparent 48%,
-    hsl(38 40% 88% / 0.45) 100%
+    hsl(0 0% 88% / 0.45) 100%
   );
 }
 
@@ -660,7 +710,7 @@ body::before {
 /* ---------------------------------------------------------------------------
    Interaction — quiet by default
    ---------------------------------------------------------------------------
-   Links and buttons used to grow 5%, turn gold and glow on hover, site-wide,
+   Links and buttons used to grow 5%, change colour and glow on hover, site-wide,
    at a specificity no component could override. A fashion house does the
    opposite: the pointer's arrival is acknowledged, not celebrated.
 
@@ -743,7 +793,7 @@ body::before {
   }
 
   /* Buttons for the content pages and homepage sections — one primary (the
-     gold fill the checkout already uses) and one quiet outline, so a page
+     black fill the checkout already uses) and one quiet outline, so a page
      never has to choose between eight hand-tuned variants. 48px tall: an
      easy thumb target. */
   .btn-primary-lv,
@@ -753,35 +803,32 @@ body::before {
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius);
     padding: 0 1.75rem;
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    transition: filter 300ms ease, border-color 300ms ease, color 300ms ease;
+    transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
   }
+  /* Solid black, white type; hover steps the black up to #262626 (the
+     .bg-gold-gradient rule above) rather than inverting. */
   .btn-primary-lv {
     border: 1px solid transparent;
-    background-image: linear-gradient(135deg, hsl(var(--gold-light)) 0%, hsl(var(--gold)) 52%, hsl(var(--gold-dark)) 100%);
     background-color: hsl(var(--gold));
     color: hsl(var(--gold-foreground));
-    box-shadow: 0 6px 20px -10px hsl(var(--gold) / 0.55);
-  }
-  .btn-primary-lv:hover {
-    filter: brightness(1.05);
   }
   .btn-secondary-lv {
-    border: 1px solid hsl(var(--foreground) / 0.22);
-    color: hsl(var(--foreground) / 0.9);
+    border: 1px solid hsl(var(--foreground) / 0.3);
+    color: hsl(var(--foreground));
   }
   .btn-secondary-lv:hover {
-    border-color: hsl(var(--gold) / 0.7);
+    border-color: hsl(var(--foreground));
     color: hsl(var(--foreground));
   }
 
-  /* Navigation. Neutral at rest; on hover the ink steps up and a gold hairline
-     draws in beneath — the only gold the nav shows. */
+  /* Navigation. Grey at rest; on hover the ink steps up to black and a black
+     hairline draws in beneath. */
   .nav-link {
     position: relative;
     color: hsl(var(--foreground) / 0.7);
@@ -789,7 +836,7 @@ body::before {
   }
   /* ::before, not ::after: `.tap-safe` uses ::after as a 44px invisible touch
      target, and sharing the pseudo-element turned the hairline into a solid
-     gold block on phones. */
+     block on phones. */
   .nav-link::before {
     content: '';
     position: absolute;
@@ -797,7 +844,7 @@ body::before {
     right: 0;
     bottom: -6px;
     height: 1px;
-    background: hsl(var(--gold) / 0.7);
+    background: hsl(var(--foreground));
     transform: scaleX(0);
     transform-origin: right center;
     transition: transform 500ms cubic-bezier(0.2, 0, 0, 1);
@@ -813,9 +860,8 @@ body::before {
     transform: scaleX(1);
     transform-origin: left center;
   }
-  /* Keyboard focus gets a heavier, darker line than hover: the 1px gold
-     hairline is ~2.6:1 on the ivory ground, under the 3:1 a focus indicator
-     needs (WCAG 1.4.11). Hover keeps the gold. */
+  /* Keyboard focus gets a heavier line than hover, so the two states stay
+     distinguishable without colour (WCAG 1.4.11). */
   .nav-link:focus-visible::before {
     height: 2px;
     background: hsl(var(--foreground));
@@ -823,16 +869,16 @@ body::before {
 
   /* Surfaces: flat and quiet.
 
-     Cards used to be frosted glass that lifted 2px and pulsed a gold glow for
+     Cards used to be frosted glass that lifted 2px and pulsed a glow for
      as long as the pointer rested on them — the vocabulary of a dashboard, not
-     of a fashion house. A card is now a white plane with a soft edge;
-     hover warms the edge and deepens the ground a step, and the photograph
+     of a fashion house. A card is now a white plane with a hairline edge;
+     hover darkens the edge a step and lifts the shadow, and the photograph
      inside does the rest. */
   .card-gold {
     @apply border;
-    /* A white plane on the ivory ground, 16px corners, and a soft shadow
-       doing the separating that a hard frame used to. */
-    border-radius: 16px;
+    /* A white plane, near-square corners, and a hairline border doing the
+       separating. */
+    border-radius: var(--radius);
     border-color: hsl(var(--border) / 0.8);
     background-color: hsl(var(--card));
     box-shadow: var(--shadow-soft);
@@ -848,14 +894,14 @@ body::before {
   }
 
   .card-gold:focus-visible {
-    outline: 1px solid hsl(var(--gold) / 0.55);
+    outline: 2px solid hsl(var(--foreground));
     outline-offset: 3px;
   }
 
   /* The same plane for containers inside drawers and modals. */
   .panel-gold {
     @apply border;
-    border-radius: 16px;
+    border-radius: var(--radius);
     border-color: hsl(var(--border) / 0.8);
     background-color: hsl(var(--card));
     box-shadow: var(--shadow-soft);
@@ -907,7 +953,7 @@ body::before {
   .glow-breathe {
     animation: none;
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.35),
+      0 0 0 1px hsl(var(--gold) / 0.18),
       var(--shadow-lift);
   }
 }
@@ -932,7 +978,7 @@ body::before {
    .panel-gold comment above already says a card must never do.
 
    So without a hovering pointer, cards keep their resting geometry and blur.
-   The border and ground still warm on focus — that is the part that tells the
+   The border still darkens on focus — that is the part that tells the
    customer which card is active — and the glow is the static halo the
    reduced-motion block uses, not a pulse.
 --------------------------------------------------------------------------- */
@@ -942,10 +988,10 @@ body::before {
   .card-gold:focus-within {
     transform: none;
     animation: none;
-    backdrop-filter: blur(3px) saturate(115%);
-    -webkit-backdrop-filter: blur(3px) saturate(115%);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.35),
+      0 0 0 1px hsl(var(--gold) / 0.18),
       var(--shadow-lift);
   }
 
@@ -953,7 +999,7 @@ body::before {
   .panel-gold:focus-within {
     animation: none;
     box-shadow:
-      0 0 0 1px hsl(var(--gold) / 0.35),
+      0 0 0 1px hsl(var(--gold) / 0.18),
       var(--shadow-lift);
   }
 }
@@ -997,7 +1043,7 @@ iframe[src*="elements-inner-easel"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Pointer atmosphere — liquid gold that follows the cursor
+   Pointer atmosphere — soft grey light that follows the cursor
    ---------------------------------------------------------------------------
    Paired with <PointerAtmosphere />. Read that file first: it explains the
    three-rate chase that produces the stretch-and-pour, and why one rAF loop
@@ -1059,15 +1105,15 @@ iframe[src*="elements-inner-easel"] {
 
 /* The far pool: broad, dim, and slow enough to read as the room lighting
    changing rather than as an object. This is the layer doing the "cinematic"
-   work — most of the gold you notice is this one. */
+   work — most of the shading you notice is this one. */
 .pa__blob--far {
   width: 1100px;
   height: 780px;
   background: radial-gradient(
     ellipse at center,
-    hsl(43 68% 60% / 0.14) 0%,
-    hsl(40 55% 68% / 0.08) 34%,
-    hsl(38 40% 75% / 0.04) 58%,
+    hsl(0 0% 60% / 0.14) 0%,
+    hsl(0 0% 68% / 0.08) 34%,
+    hsl(0 0% 75% / 0.04) 58%,
     transparent 74%
   );
   filter: blur(46px);
@@ -1081,15 +1127,15 @@ iframe[src*="elements-inner-easel"] {
   height: 380px;
   background: radial-gradient(
     ellipse at center,
-    hsl(45 70% 58% / 0.16) 0%,
-    hsl(41 60% 64% / 0.08) 40%,
+    hsl(0 0% 58% / 0.16) 0%,
+    hsl(0 0% 64% / 0.08) 40%,
     transparent 72%
   );
   filter: blur(34px);
   animation: pa-churn-b 28s ease-in-out infinite;
 }
 
-/* The core: small, warm, and nearly on the cursor. Kept dim on purpose — a
+/* The core: small, dense, and nearly on the cursor. Kept dim on purpose — a
    bright point under the mouse is a torch beam, which is the cheap version of
    this effect. */
 .pa__blob--core {
@@ -1097,8 +1143,8 @@ iframe[src*="elements-inner-easel"] {
   height: 200px;
   background: radial-gradient(
     ellipse at center,
-    hsl(46 75% 55% / 0.14) 0%,
-    hsl(43 60% 66% / 0.07) 45%,
+    hsl(0 0% 55% / 0.14) 0%,
+    hsl(0 0% 66% / 0.07) 45%,
     transparent 70%
   );
   filter: blur(22px);
@@ -1141,7 +1187,7 @@ iframe[src*="elements-inner-easel"] {
 /* ---------------------------------------------------------------------------
    Cursor halo
    ---------------------------------------------------------------------------
-   A thin gold ring trailing the native cursor. The native cursor is NOT
+   A thin grey ring trailing the native cursor. The native cursor is NOT
    hidden: replacing it costs real usability over text fields, resize handles
    and links, and gains a flourish. This rides alongside it.
 --------------------------------------------------------------------------- */
@@ -1152,10 +1198,10 @@ iframe[src*="elements-inner-easel"] {
   width: 34px;
   height: 34px;
   transform: translate(-50%, -50%) scale(1);
-  border: 1px solid hsl(var(--gold) / 0.34);
+  border: 1px solid hsl(var(--foreground) / 0.3);
   box-shadow:
-    0 0 12px hsl(var(--gold) / 0.14),
-    inset 0 0 10px hsl(var(--gold) / 0.06);
+    0 0 12px hsl(var(--foreground) / 0.06),
+    inset 0 0 10px hsl(var(--foreground) / 0.03);
   /* The one deliberate exception to the site's square geometry: a square ring
      tracking the mouse reads as a selection marquee, not as light. */
   border-radius: 50% !important;
@@ -1166,15 +1212,15 @@ iframe[src*="elements-inner-easel"] {
     box-shadow 420ms ease;
 }
 
-/* Over anything clickable the ring opens up and warms — the whole feedback
+/* Over anything clickable the ring opens up and darkens — the whole feedback
    vocabulary of the effect, in one state change. */
 .pa[data-hot='true'] .pa__ring-mark {
   width: 58px;
   height: 58px;
-  border-color: hsl(var(--gold) / 0.55);
+  border-color: hsl(var(--foreground) / 0.55);
   box-shadow:
-    0 0 22px hsl(var(--gold) / 0.22),
-    inset 0 0 16px hsl(var(--gold) / 0.09);
+    0 0 22px hsl(var(--foreground) / 0.08),
+    inset 0 0 16px hsl(var(--foreground) / 0.04);
 }
 
 /* Narrow screens are touch screens in practice, and the script already
@@ -1210,13 +1256,13 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
 }
 
-/* A cream floor across the lower two-thirds: the light ground the gold
-   stands on, a shade deeper than the page so the hero has depth. */
+/* A pale grey floor across the lower two-thirds, a shade deeper than the
+   page so the hero has depth. */
 .hero__floor {
   background: radial-gradient(
     ellipse 120% 70% at 50% 118%,
-    hsl(38 42% 88% / 0.75) 0%,
-    hsl(38 36% 92% / 0.4) 38%,
+    hsl(0 0% 88% / 0.75) 0%,
+    hsl(0 0% 92% / 0.4) 38%,
     transparent 70%
   );
 }
@@ -1243,7 +1289,7 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
 }
 
-/* Keeps the centre of the frame calm: an ivory wash behind the wordmark,
+/* Keeps the centre of the frame calm: a white wash behind the wordmark,
    subtitle and buttons, fading out toward the edges where the ribbons play. */
 .hero__veil {
   position: absolute;
@@ -1260,8 +1306,8 @@ iframe[src*="elements-inner-easel"] {
 /* Key light, from above and slightly behind. */
 .hero__key {
   background:
-    radial-gradient(ellipse 90% 46% at 50% -8%, hsl(43 70% 60% / 0.16) 0%, transparent 62%),
-    radial-gradient(ellipse 40% 30% at 78% 12%, hsl(40 65% 62% / 0.1) 0%, transparent 70%);
+    radial-gradient(ellipse 90% 46% at 50% -8%, hsl(0 0% 60% / 0.16) 0%, transparent 62%),
+    radial-gradient(ellipse 40% 30% at 78% 12%, hsl(0 0% 62% / 0.1) 0%, transparent 70%);
 }
 
 /* The lit surface the wordmark stands on. Deliberately a thin, wide band
@@ -1269,8 +1315,8 @@ iframe[src*="elements-inner-easel"] {
 .hero__horizon {
   background: radial-gradient(
     ellipse 62% 12% at 50% 62%,
-    hsl(45 72% 56% / 0.16) 0%,
-    hsl(40 60% 66% / 0.07) 45%,
+    hsl(0 0% 56% / 0.16) 0%,
+    hsl(0 0% 66% / 0.07) 45%,
     transparent 72%
   );
 }
@@ -1279,7 +1325,7 @@ iframe[src*="elements-inner-easel"] {
   background: radial-gradient(
     ellipse 92% 78% at 50% 50%,
     transparent 50%,
-    hsl(38 38% 90% / 0.55) 100%
+    hsl(0 0% 90% / 0.55) 100%
   );
 }
 
@@ -1308,18 +1354,19 @@ iframe[src*="elements-inner-easel"] {
   }
 }
 
-/* --- The gold word --------------------------------------------------------
-   A metallic gradient, set once and held still. It used to sweep a highlight
-   across the word every eleven seconds; a loop that never ends is a shop
-   window display, and the brand should not need to wave. */
+/* --- The second word -----------------------------------------------------
+   Graphite: black at the edges, a soft #4D4D4D light across the middle — a
+   metallic sheen in the monochrome palette, set once and held still (6.9:1
+   at its lightest on white). It used to sweep a highlight every eleven
+   seconds; a loop that never ends is a shop window display. */
 .hero__sheen {
   background: linear-gradient(
     100deg,
-    hsl(38 66% 30%) 0%,
-    hsl(42 64% 40%) 26%,
-    hsl(46 72% 54%) 42%,
-    hsl(42 64% 40%) 58%,
-    hsl(38 66% 30%) 100%
+    hsl(0 0% 0%) 0%,
+    hsl(0 0% 14%) 26%,
+    hsl(0 0% 30%) 42%,
+    hsl(0 0% 14%) 58%,
+    hsl(0 0% 0%) 100%
   );
   background-size: 260% 100%;
   background-position: 100% 0;
@@ -1355,7 +1402,7 @@ iframe[src*="elements-inner-easel"] {
 
 .hero__cta:hover,
 .hero__cta:focus-visible {
-  border-color: hsl(var(--gold) / 0.45);
+  border-color: hsl(var(--foreground));
   color: hsl(var(--foreground));
 }
 
@@ -1385,7 +1432,7 @@ iframe[src*="elements-inner-easel"] {
   top: -40%;
   width: 1px;
   height: 40%;
-  background: linear-gradient(transparent, hsl(var(--gold) / 0.7));
+  background: linear-gradient(transparent, hsl(var(--foreground) / 0.7));
   animation: hero-scroll-line 2.8s cubic-bezier(0.45, 0, 0.3, 1) infinite;
 }
 
@@ -1416,9 +1463,9 @@ iframe[src*="elements-inner-easel"] {
    ---------------------------------------------------------------------------
    The card already cross-fades its photograph on hover. What it lacked was
    DEPTH AT REST: with no shadow, every card sat flat on the page ground and
-   the grid read as a contact sheet. A soft, warm, offset shadow lifts each one
-   just enough to cast — which is also what lets the cursor's gold pool appear
-   to pass *behind* the grid.
+   the grid read as a contact sheet. A soft, neutral, offset shadow lifts each
+   one just enough to cast — which is also what lets the cursor's grey pool
+   appear to pass *behind* the grid.
 
    The sweep is a single diagonal band of light crossing the image once per
    hover. It is a transform on a pseudo-element sitting above the photograph,
@@ -1428,9 +1475,9 @@ iframe[src*="elements-inner-easel"] {
 .product-card {
   position: relative;
   isolation: isolate;
-  /* Rounded, and lifted off the ivory by a soft warm shadow. overflow:
+  /* Near-square, and lifted off the white by a soft shadow. overflow:
      hidden clips the photograph and the specular pass to the corners. */
-  border-radius: 16px;
+  border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
   transition:
@@ -1441,12 +1488,12 @@ iframe[src*="elements-inner-easel"] {
 
 .group:hover .product-card,
 .group:focus-visible .product-card {
-  /* Depth only. The gold ring and its pulse come from `.card-gold`, which
-     this class sits alongside — adding a second ring here made the hover
-     read as an outline rather than as light. */
+  /* Depth only. The edge change comes from `.card-gold`, which this class
+     sits alongside — adding a second ring here made the hover read as an
+     outline rather than as light. */
   box-shadow:
-    0 22px 44px -24px rgba(26, 20, 10, 0.22),
-    0 8px 28px -16px hsl(var(--gold) / 0.35);
+    0 22px 44px -24px rgba(0, 0, 0, 0.22),
+    0 8px 28px -16px rgba(0, 0, 0, 0.12);
 }
 
 /* The pass. Skewed, so it crosses as a raking highlight rather than as a
@@ -1486,7 +1533,7 @@ iframe[src*="elements-inner-easel"] {
 .product-card-name {
   position: relative;
   display: inline;
-  background-image: linear-gradient(hsl(var(--gold) / 0.7), hsl(var(--gold) / 0.7));
+  background-image: linear-gradient(hsl(var(--foreground)), hsl(var(--foreground)));
   background-repeat: no-repeat;
   background-position: 0 100%;
   background-size: 0% 1px;
@@ -1577,7 +1624,7 @@ iframe[src*="elements-inner-easel"] {
 --------------------------------------------------------------------------- */
 
 .site-header {
-  /* A frosted ivory band from the first paint, edge to edge of the viewport.
+  /* A frosted white band from the first paint, edge to edge of the viewport.
      It used to be transparent at rest, so over the hero only the row of
      controls — the 1400px container — read as "the header", sitting off to
      one side of a pale page; dark content scrolling beneath then showed
@@ -1585,8 +1632,8 @@ iframe[src*="elements-inner-easel"] {
   width: 100%;
   border-color: hsl(var(--border) / 0.45);
   background-color: hsl(var(--background) / 0.86);
-  backdrop-filter: blur(12px) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition:
     background-color 600ms cubic-bezier(0.2, 0, 0, 1),
     border-color 600ms cubic-bezier(0.2, 0, 0, 1),
@@ -1609,7 +1656,7 @@ iframe[src*="elements-inner-easel"] {
   }
 }
 
-/* The gold gradient hairline that used to fade in here is retired: the bar's
+/* The gradient hairline that used to fade in here is retired: the bar's
    edge is the neutral border above. */
 .site-header::after {
   content: none;
@@ -1628,7 +1675,8 @@ iframe[src*="elements-inner-easel"] {
    One inline SVG turbulence, tiled. Generated by the browser at load and then
    composited like any other image — no canvas, no animation, no per-frame
    cost. Its job is to keep the large gradients from banding on a wide display
-   and to give the flat ivory a paper-like surface.
+   and to give the flat white a paper-like surface. Desaturated in the filter
+   itself: fractal noise is generated per channel, i.e. in colour.
 --------------------------------------------------------------------------- */
 
 .ambient__grain {
@@ -1637,7 +1685,7 @@ iframe[src*="elements-inner-easel"] {
   pointer-events: none;
   opacity: 0.02;
   mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
 }
 
@@ -1647,8 +1695,8 @@ iframe[src*="elements-inner-easel"] {
 .product-card.group:hover,
 .product-card.group:focus-visible {
   box-shadow:
-    0 22px 44px -24px rgba(26, 20, 10, 0.22),
-    0 8px 28px -16px hsl(var(--gold) / 0.35);
+    0 22px 44px -24px rgba(0, 0, 0, 0.22),
+    0 8px 28px -16px rgba(0, 0, 0, 0.12);
 }
 
 .product-card.group:hover::after,
@@ -1680,7 +1728,7 @@ iframe[src*="elements-inner-easel"] {
 
    3. TEXT FIELDS KEEP THE NATIVE CARET. The I-beam is the one cursor people
       aim BETWEEN characters with, and the native one is tuned per platform
-      for that. A gold hand over a text input would be a downgrade wearing a
+      for that. A styled hand over a text input would be a downgrade wearing a
       nicer coat.
 
    Only for a device with a real hovering pointer. A touchscreen has no cursor
@@ -1760,7 +1808,7 @@ iframe[src*="elements-inner-easel"] {
   }
 
   /* A dead control must not offer a hand. Native `not-allowed` on purpose:
-     a gold "no entry" cursor would be styling a refusal, and the system one
+     a branded "no entry" cursor would be styling a refusal, and the system one
      is what people already recognise. Last, so it beats both blocks above. */
   a[aria-disabled='true'],
   button:disabled,
@@ -1774,8 +1822,8 @@ iframe[src*="elements-inner-easel"] {
 }
 
 /* Someone running the OS at high contrast has usually also enlarged or
-   recoloured their pointer, and replacing it with a 32px gold arrow takes
-   that away. The system cursor wins there — the gold ring from the pointer
+   recoloured their pointer, and replacing it with a 32px custom arrow takes
+   that away. The system cursor wins there — the ring from the pointer
    atmosphere still marks where the cursor is. */
 @media (prefers-contrast: more) {
   html,
@@ -1802,9 +1850,9 @@ iframe[src*="elements-inner-easel"] {
 /* ---------------------------------------------------------------------------
    Skeletons
    ---------------------------------------------------------------------------
-   A warm cream bar with a slow gold sheen crossing it, rather than the grey
-   pulse a default skeleton uses — a flat grey block reads as a failed image,
-   not as loading.
+   A pale grey bar with a slow, slightly deeper sheen crossing it, rather
+   than the on/off pulse a default skeleton uses — a static grey block reads
+   as a failed image, not as loading.
 
    The sheen is a background-position animation on a small element, which
    repaints only that element. Skeletons are on screen for a second or two at
@@ -1815,14 +1863,14 @@ iframe[src*="elements-inner-easel"] {
 .skeleton {
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background-color: hsl(var(--muted));
   background-image: linear-gradient(
     100deg,
     transparent 20%,
-    hsl(var(--gold) / 0.1) 42%,
-    hsl(var(--gold) / 0.18) 50%,
-    hsl(var(--gold) / 0.1) 58%,
+    hsl(var(--foreground) / 0.03) 42%,
+    hsl(var(--foreground) / 0.06) 50%,
+    hsl(var(--foreground) / 0.03) 58%,
     transparent 80%
   );
   background-size: 220% 100%;
@@ -2011,10 +2059,10 @@ html[data-keyboard='open'] .hide-with-keyboard {
   transition: none !important;
 }
 
-/* Keyboard focus on form fields: a gold ring, only for keyboard navigation
+/* Keyboard focus on form fields: a black ring, only for keyboard navigation
    (focus-visible), matching the ring buttons and links already have. */
 :where(input, select, textarea):focus-visible {
-  outline: 1px solid hsl(var(--gold) / 0.7);
+  outline: 2px solid hsl(var(--foreground));
   outline-offset: 1px;
 }
 
@@ -2023,8 +2071,8 @@ html[data-keyboard='open'] .hide-with-keyboard {
    ---------------------------------------------------------------------------
    The strip scrolls natively with no visible scrollbar; the numbers' scale
    and opacity are written per frame by the component. Here: colour only.
-   The chosen number is metallic gold — #D4AF37 at its heart, deepening
-   toward the base so a 28px figure stays legible on white.
+   The chosen number is solid black, weight 600 — the one mark on the dial
+   with full ink.
 --------------------------------------------------------------------------- */
 .scroll-picker {
   scrollbar-width: none;
@@ -2049,11 +2097,7 @@ html[data-keyboard='open'] .hide-with-keyboard {
 }
 .scroll-picker.is-set .scroll-picker__item[data-centre='true'] .scroll-picker__num {
   font-weight: 600;
-  background: linear-gradient(180deg, #e3c355 0%, #d4af37 42%, #a8842c 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: hsl(var(--foreground));
 }
 .scroll-picker.is-set .scroll-picker__item[data-centre='true'] > span:last-child {
   background: hsl(var(--gold));
@@ -2127,7 +2171,7 @@ main[tabindex='-1']:focus {
 
 /* ---------------------------------------------------------------------------
    Size finder: the preferred-fit slider (components/products/size-finder).
-   A hairline track and a charcoal thumb ringed in gold, as the reference.
+   A hairline track and a black thumb with a white collar and a hairline ring.
 --------------------------------------------------------------------------- */
 .finder-range {
   -webkit-appearance: none;
@@ -2155,7 +2199,7 @@ main[tabindex='-1']:focus {
   border-radius: 9999px;
   background: hsl(var(--foreground));
   border: 3px solid hsl(var(--background));
-  box-shadow: 0 0 0 1px hsl(var(--gold) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
   transition: transform 150ms ease;
 }
 .finder-range::-moz-range-thumb {
@@ -2164,9 +2208,9 @@ main[tabindex='-1']:focus {
   border-radius: 9999px;
   background: hsl(var(--foreground));
   border: 3px solid hsl(var(--background));
-  box-shadow: 0 0 0 1px hsl(var(--gold) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.7), 0 6px 16px -6px rgb(0 0 0 / 0.35);
 }
 .finder-range:active::-webkit-slider-thumb { transform: scale(1.08); }
 .finder-range:focus { outline: none; }
-.finder-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
-.finder-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
+.finder-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--foreground)); }
+.finder-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--foreground)); }

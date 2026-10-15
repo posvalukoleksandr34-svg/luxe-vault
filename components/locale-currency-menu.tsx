@@ -18,7 +18,7 @@ const LANGUAGE_ORDER: StorefrontLocale[] = ['it', 'en', 'de', 'fr']
  *
  * Built from the header's own vocabulary: the popover surface and border the
  * old language list used, small spaced capitals for the two headings, one
- * hairline between them, and a gold dot for the active choice. It stays open
+ * hairline between them, and a black dot for the active choice. It stays open
  * after a selection, because there are two to make; outside click and Escape
  * close it.
  */

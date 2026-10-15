@@ -30,16 +30,50 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'gold-gradient': 'linear-gradient(135deg, hsl(var(--gold-light)) 0%, hsl(var(--gold)) 52%, hsl(var(--gold-dark)) 100%)',
+        // The accent fill, kept under its old name: solid black now (see the
+        // accent-role note on :root in app/globals.css).
+        'gold-gradient': 'linear-gradient(hsl(var(--gold)), hsl(var(--gold)))',
       },
+      // One crisp radius (2px, --radius) from rounded to rounded-3xl — the
+      // soft 12–24px corners read as a template, not a fashion house.
+      // rounded-full is untouched: pills, dots and avatars stay round.
       borderRadius: {
+        DEFAULT: 'var(--radius)',
+        sm: 'var(--radius)',
+        md: 'var(--radius)',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        xl: 'var(--radius)',
+        '2xl': 'var(--radius)',
+        '3xl': 'var(--radius)',
       },
-      // Gold TEXT is the deep ink, gold fills and borders the bright gold —
-      // see the two-golds note on :root in app/globals.css. textColor wins
-      // over colors for text-* utilities only.
+      // Preflight's own defaults, which are not neutral: a bare `ring` was
+      // blue (#3b82f6), a bare `border` cool grey (#e5e7eb), and the
+      // placeholder text gray-400 (#9ca3af, set under colors below). The ring
+      // is a literal black, not hsl(var(--ring)): Tailwind cannot apply the
+      // default ring opacity to a variable and silently falls back to blue-300.
+      ringColor: {
+        DEFAULT: '#000000',
+      },
+      borderColor: {
+        DEFAULT: 'hsl(var(--border))',
+        // Accent hairlines. `border-gold/40` and its kin were soft tan lines
+        // on the old ivory; black at the same alpha is a hard mid-grey frame
+        // (#999). A translucent accent border therefore takes half its
+        // alpha — /40 draws like the #CCC hairline it used to resemble —
+        // while the full-strength `border-gold` (selected and focus states)
+        // stays crisp black.
+        // (A literal fraction is halved; the full-strength class passes a CSS
+        // variable, which is not a number, and is left as it is.)
+        gold: (({ opacityValue }: { opacityValue?: string }) => {
+          const alpha = Number(opacityValue)
+          return Number.isFinite(alpha) && alpha < 1
+            ? `hsl(var(--gold) / ${+(alpha / 2).toFixed(3)})`
+            : `hsl(var(--gold) / ${opacityValue ?? 1})`
+        }) as unknown as string,
+      },
+      // The accent as TEXT (--gold-ink) and as a fill (--gold) are both black
+      // in the monochrome system; the split is kept so either can change
+      // alone. textColor wins over colors for text-* utilities only.
       textColor: {
         gold: {
           DEFAULT: 'hsl(var(--gold-ink))',
@@ -88,6 +122,9 @@ const config: Config = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        // Only so preflight's placeholder colour (it reads gray-400) is a
+        // neutral grey, 4.7:1 on white. Nothing uses the gray scale itself.
+        gray: { 400: '#737373' },
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',

@@ -221,7 +221,7 @@ export function PasswordResetModal({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {step === 'done' ? (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" strokeWidth={1.5} />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-foreground" strokeWidth={1.5} />
             ) : (
               <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-gold" strokeWidth={1.5} />
             )}

@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Boxes, Download, Grid3x3, List, Loader2, Search, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { TONE } from '@/components/ui/tone'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -411,8 +412,8 @@ export function InventoryManager() {
                             className={cn(
                               'min-w-11 rounded border px-2 py-1.5 text-[11px] tabular-nums transition disabled:opacity-50',
                               inStock
-                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:border-emerald-500/60'
-                                : 'border-red-500/30 bg-red-500/10 text-red-700 line-through hover:border-red-500/60',
+                                ? 'border-foreground/40 bg-background text-foreground hover:border-foreground'
+                                : 'border-dashed border-foreground/40 bg-muted text-muted-foreground line-through hover:border-foreground',
                             )}
                           >
                             {savingId === v.id ? '…' : inStock ? v.stock : 0}
@@ -507,14 +508,14 @@ export function InventoryManager() {
 function StateBadge({ state, lowAt }: { state: Variant['state']; lowAt: number }) {
   if (state === 'out') {
     return (
-      <span className="inline-flex items-center gap-1 rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-700">
+      <span className={cn('inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] uppercase tracking-wider', TONE.stopped)}>
         Нет
       </span>
     )
   }
   if (state === 'low') {
     return (
-      <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-700">
+      <span className={cn('inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] uppercase tracking-wider', TONE.active)}>
         <AlertTriangle className="size-3" />
         ≤ {lowAt}
       </span>
@@ -538,7 +539,8 @@ function Stat({
       <p
         className={cn(
           'text-lg',
-          tone === 'bad' ? 'text-red-700' : tone === 'warn' ? 'text-amber-700' : 'text-foreground',
+          'text-foreground',
+          tone === 'bad' ? 'font-semibold' : tone === 'warn' ? 'font-medium' : undefined,
         )}
       >
         {value}

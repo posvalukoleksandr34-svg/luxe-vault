@@ -22,7 +22,7 @@ import { useListing } from './listing-context'
  * department's own categories (admin → Разделы), in the admin's order. The
  * photograph is the cover the admin chose for the subcategory, else its best
  * product (lib/subcategory-cover.ts). A subcategory with neither still gets a
- * card, with an initial on the shop's sand ground and "Coming soon" instead of
+ * card, with an initial on the shop's pale grey ground and "Coming soon" instead of
  * a count: it is a real page that says so.
  *
  * LAYOUT. Phones and tablets: one row that scrolls sideways, bleeding to the
@@ -41,7 +41,7 @@ type Card = {
   label: string
   count: number
   image?: string
-  /** A product shot (usually on white): multiplied onto the ivory. A cover
+  /** A product shot (usually on white): multiplied onto the pale grey. A cover
    *  the admin chose is shown as it is. */
   blend: boolean
 }
@@ -120,7 +120,7 @@ function SubcategoryCard({
       href={href}
       className={cn(
         'group relative flex h-[92px] items-center overflow-hidden rounded-2xl sm:h-[104px]',
-        // Opaque ivory: the photograph is multiplied onto it (below), and over
+        // Opaque pale grey: the photograph is multiplied onto it (below), and over
         // a see-through ground the page's background would show in the blend.
         'border border-border/70 bg-secondary transition-[border-color,box-shadow] duration-300',
         'hover:border-gold/45 hover:shadow-[0_10px_30px_-18px_hsl(var(--foreground)/0.35)]',
@@ -155,10 +155,10 @@ function SubcategoryCard({
           />
         ) : (
           // Nothing to photograph yet: the initial, in the heading face, on
-          // the shop's sand — intentional rather than a broken frame.
+          // the shop's pale grey — intentional rather than a broken frame.
           <span
             className="flex h-full w-full items-center justify-center"
-            style={{ background: 'radial-gradient(120% 100% at 70% 30%, #f3ece0 0%, #e2d6c2 80%)' }}
+            style={{ background: 'radial-gradient(120% 100% at 70% 30%, #f5f5f5 0%, #e0e0e0 80%)' }}
           >
             <span className="font-serif text-[44px] italic leading-none text-gold/70 sm:text-[52px]">
               {card.label.trim().charAt(0).toUpperCase()}

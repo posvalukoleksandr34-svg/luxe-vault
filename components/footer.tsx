@@ -49,7 +49,7 @@ export function Footer() {
   const { t } = useStore()
 
   return (
-    <footer className="border-t border-border bg-card/20">
+    <footer className="theme-inverse border-t border-border bg-background">
       <div className="section-y mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         <FooterNewsletter />
 
