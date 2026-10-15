@@ -1,5 +1,4 @@
-# TEMPORARY diagnostic (deleted after use): one question to the live chat,
-# to see what the browser gets back. No secrets, read-only.
+# TEMPORARY diagnostic (deleted after use). No secrets, read-only.
 name: Chat probe (temporary)
 on:
   push:
@@ -9,22 +8,23 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Probe the live chat
+      - name: Probe
         run: |
           set +e
           S=https://www.luxe-vault.store
           UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36'
-          echo "== GET status"
-          H=$(curl -sS -m 30 -A "$UA" -D - "$S/api/support/assistant" -o get.txt | grep -iE '^HTTP|^server|^cf-mitigated|^x-vercel-id|^content-type' | tr -d '\r' | tr '\n' ' ')
-          echo "::notice title=GET::$H || body: $(head -c 300 get.txt | tr -d '\r\n')"
-          for Q in 'Who are you?' 'Ты хто?'; do
-            echo; echo "== POST: $Q"
-            BODY=$(jq -cn --arg q "$Q" '{locale:"en",messages:[{role:"assistant",text:"Good day. How may I help?"},{role:"user",text:$q}],orders:[]}')
+          # Smart search: same key, gemini-3.6-flash (or GEMINI_MODEL)
+          for Q in "black jacket for an elegant evening dinner $RANDOM" "warm outfit for a winter walk in the mountains $RANDOM"; do
             T0=$(date +%s.%N)
-            H=$(curl -sS -m 60 -A "$UA" -X POST -H 'content-type: application/json' \
-              -H "origin: $S" -H 'sec-fetch-site: same-origin' -H 'sec-fetch-mode: cors' -H 'sec-fetch-dest: empty' \
-              -D - "$S/api/support/assistant" --data "$BODY" -o post.txt 2>&1 | grep -iE '^HTTP|^server|^cf-mitigated|^x-vercel-id|^content-type|curl' | tr -d '\r' | tr '\n' ' ')
-            echo "::notice title=POST $Q::$H || time=$(echo "$(date +%s.%N) - $T0" | bc)s || body: $(head -c 600 post.txt | tr -d '\r\n')"
+            B=$(curl -sS -m 40 -A "$UA" -G "$S/api/search" --data-urlencode "q=$Q" --data-urlencode "ai=1" --data-urlencode "locale=en")
+            echo "::notice title=SEARCH ai=1::time=$(echo "$(date +%s.%N) - $T0" | bc)s || ai used: $(echo "$B" | jq -c '.interpretation.ai') || filters: $(echo "$B" | jq -c '[.interpretation.filters[]?.kind]')"
+          done
+          # Chat: gemini-3.8-flash (or GEMINI_MODEL)
+          for Q in 'How much is shipping?' 'Hello'; do
+            BODY=$(jq -cn --arg q "$Q" '{locale:"en",messages:[{role:"user",text:$q}],orders:[]}')
+            T0=$(date +%s.%N)
+            B=$(curl -sS -m 60 -A "$UA" -X POST -H 'content-type: application/json' -H "origin: $S" -H 'sec-fetch-site: same-origin' "$S/api/support/assistant" --data "$BODY")
+            echo "::notice title=CHAT $Q::time=$(echo "$(date +%s.%N) - $T0" | bc)s || $(echo "$B" | head -c 400)"
           done
