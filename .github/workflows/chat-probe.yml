@@ -8,7 +8,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Probe
         run: |
@@ -22,7 +22,7 @@ jobs:
             echo "::notice title=SEARCH ai=1::time=$(echo "$(date +%s.%N) - $T0" | bc)s || ai used: $(echo "$B" | jq -c '.interpretation.ai') || filters: $(echo "$B" | jq -c '[.interpretation.filters[]?.kind]')"
           done
           # Chat: gemini-3.8-flash (or GEMINI_MODEL)
-          for Q in 'How much is shipping?' 'Hello'; do
+          for Q in 'How much is shipping?' 'Hello' 'Ты хто?' 'Do you have a black coat?'; do
             BODY=$(jq -cn --arg q "$Q" '{locale:"en",messages:[{role:"user",text:$q}],orders:[]}')
             T0=$(date +%s.%N)
             B=$(curl -sS -m 60 -A "$UA" -X POST -H 'content-type: application/json' -H "origin: $S" -H 'sec-fetch-site: same-origin' "$S/api/support/assistant" --data "$BODY")
