@@ -1,0 +1,31 @@
+# TEMPORARY diagnostic (deleted after use): one question to the live chat,
+# to see what the browser gets back. No secrets, read-only.
+name: Chat probe (temporary)
+on:
+  push:
+    branches: [claude/chat-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the live chat
+        run: |
+          set +e
+          S=https://www.luxe-vault.store
+          UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36'
+          echo "== GET status"
+          curl -sS -m 30 -A "$UA" -D - "$S/api/support/assistant" -o get.txt | grep -iE '^HTTP|^server|^cf-|^x-vercel|^content-type'
+          echo "body: $(head -c 300 get.txt)"
+          for Q in 'Who are you?' 'Ты хто?'; do
+            echo; echo "== POST: $Q"
+            BODY=$(jq -cn --arg q "$Q" '{locale:"en",messages:[{role:"assistant",text:"Good day. How may I help?"},{role:"user",text:$q}],orders:[]}')
+            T0=$(date +%s.%N)
+            curl -sS -m 60 -A "$UA" -X POST -H 'content-type: application/json' \
+              -H "origin: $S" -H 'sec-fetch-site: same-origin' -H 'sec-fetch-mode: cors' -H 'sec-fetch-dest: empty' \
+              -D - "$S/api/support/assistant" --data "$BODY" -o post.txt | grep -iE '^HTTP|^server|^cf-|^x-vercel|^content-type'
+            echo "curl exit=$? time=$(echo "$(date +%s.%N) - $T0" | bc)s"
+            echo "body: $(head -c 700 post.txt | tr '\n' ' ')"
+          done
