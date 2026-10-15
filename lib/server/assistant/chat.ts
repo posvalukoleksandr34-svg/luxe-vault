@@ -90,6 +90,18 @@ export const LIMITS = {
   maxCards: 3,
 } as const
 
+/**
+ * When the main model is overloaded (Google answers 503 "high demand") or
+ * does not answer in time, the turn moves to this one instead of failing:
+ * seen in production on 2026-10-15, where every turn of gemini-3.8-flash got
+ * 503 or ran out of time and the customer only saw a fallback.
+ * GEMINI_FALLBACK_MODEL overrides it; "off" disables the fallback.
+ */
+export const FALLBACK_MODEL = 'gemini-3.6-flash'
+/** A main-model call that has not answered by then is presumed overloaded
+ *  and handed to the fallback model, leaving it the rest of the budget. */
+export const PRIMARY_CALL_MS = 10_000
+
 let warnedModel = ''
 
 /**
@@ -99,8 +111,21 @@ let warnedModel = ''
  * that still cannot be a model name is IGNORED with a warning — it used to
  * switch the concierge off, silently, while the other features kept working.
  */
+function cleanModel(value: string | undefined): string {
+  return (value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim().replace(/^models\//, '')
+}
+
+/** The model a turn moves to when the main one is overloaded, or null when
+ *  there is none (switched off, or the same as the main model). */
+export function fallbackModelName(): string | null {
+  const raw = cleanModel(process.env.GEMINI_FALLBACK_MODEL)
+  if (raw.toLowerCase() === 'off') return null
+  const name = raw && /^[a-z0-9][a-z0-9.\-]{2,60}$/i.test(raw) ? raw : FALLBACK_MODEL
+  return name === modelName() ? null : name
+}
+
 export function modelName(): string {
-  const raw = (process.env.GEMINI_MODEL ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim().replace(/^models\//, '')
+  const raw = cleanModel(process.env.GEMINI_MODEL)
   if (!raw) return DEFAULT_MODEL
   if (/^[a-z0-9][a-z0-9.\-]{2,60}$/i.test(raw)) return raw
   if (warnedModel !== raw) {
@@ -170,6 +195,12 @@ function statusOf(e: unknown): number | null {
 
 export type AnswerDeps = {
   generate: Generate
+  /** The fallback model, used when the main one is overloaded or slow. */
+  fallback?: Generate
+  fallbackModel?: string
+  /** How long a main-model call may take before the fallback answers
+   *  instead; PRIMARY_CALL_MS unless a test shortens it. */
+  primaryCallMs?: number
   userId: () => Promise<string | null>
   orders: (credentials: OrderCredential[], userId: string | null) => Promise<Order[]>
   catalog: () => Promise<Catalog>
@@ -191,8 +222,10 @@ function defaultDeps(): AnswerDeps | null {
   const key = process.env.GEMINI_API_KEY?.trim()
   const model = modelName()
   if (!key || !isAssistantConfigured()) return null
+  const fallbackModel = fallbackModelName()
   return {
     generate: geminiGenerate(key, model),
+    ...(fallbackModel ? { fallback: geminiGenerate(key, fallbackModel), fallbackModel } : {}),
     userId: () =>
       getCurrentUser()
         .then((user) => user?.id ?? null)
@@ -241,15 +274,17 @@ export async function answer(
   const metrics = emptyMetrics()
   const base = defaultDeps()
   const model = injected?.model ?? base?.model ?? modelName()
+  /** The model that actually answered: the fallback's, once it took over. */
+  let usedModel = model
 
   function finish(outcome: AnswerOutcome): AnswerOutcome {
     outcome.metrics.ms = Date.now() - started
     if (outcome.ok) {
       outcome.metrics.handoff = Boolean(outcome.reply.handoff)
       outcome.metrics.products = outcome.reply.products.length
-      assistantEvent({ event: 'answered', locale: opts.locale, model, metrics: outcome.metrics })
+      assistantEvent({ event: 'answered', locale: opts.locale, model: usedModel, metrics: outcome.metrics })
     } else {
-      assistantEvent({ event: 'fallback', locale: opts.locale, model, reason: outcome.reason, metrics: outcome.metrics })
+      assistantEvent({ event: 'fallback', locale: opts.locale, model: usedModel, reason: outcome.reason, metrics: outcome.metrics })
     }
     return outcome
   }
@@ -400,17 +435,47 @@ export async function answer(
       parts: [{ text: m.role === 'user' ? redactPersonalData(m.text) : m.text }],
     }))
 
+    // Once the main model has failed this turn, every later call goes
+    // straight to the fallback: it is overloaded now, not in a second.
+    let onFallback = false
     const generate = async (tools: boolean): Promise<ModelResponse> => {
+      const request = (signal: AbortSignal) => ({ system, contents, tools, signal })
+      if (onFallback && deps.fallback) return deps.fallback(request(controller.signal))
+      // The main model gets its own deadline when there is a fallback to
+      // turn to, so a slow model leaves time for an answer.
+      const attempt = new AbortController()
+      const relay = () => attempt.abort()
+      controller.signal.addEventListener('abort', relay, { once: true })
+      let slow = false
+      const deadline = deps.fallback
+        ? setTimeout(() => {
+            slow = true
+            attempt.abort()
+          }, deps.primaryCallMs ?? PRIMARY_CALL_MS)
+        : undefined
       try {
-        return await deps.generate({ system, contents, tools, signal: controller.signal })
+        return await deps.generate(request(attempt.signal))
       } catch (e) {
+        if (stopped) throw e
         const status = statusOf(e)
-        // One retry, for a provider-side failure, when the budget allows.
-        if (!stopped && status !== null && status >= 500 && Date.now() - started < budget - Math.min(8000, budget / 2)) {
+        if (status !== null) metrics.providerStatus = status
+        const overloaded = slow || status === 429 || (status !== null && status >= 500)
+        if (overloaded && deps.fallback) {
+          onFallback = true
+          metrics.modelFallback = true
+          if (deps.fallbackModel) usedModel = deps.fallbackModel
+          return deps.fallback(request(controller.signal))
+        }
+        // No fallback: one retry, for a provider-side failure, when the
+        // budget allows.
+        if (status !== null && status >= 500 && Date.now() - started < budget - Math.min(8000, budget / 2)) {
           await new Promise((r) => setTimeout(r, 400))
-          return deps.generate({ system, contents, tools, signal: controller.signal })
+          return deps.generate(request(controller.signal))
         }
         throw e
+      } finally {
+        if (deadline) clearTimeout(deadline)
+        controller.signal.removeEventListener('abort', relay)
       }
     }
 

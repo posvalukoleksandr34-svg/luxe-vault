@@ -3,14 +3,14 @@
 // question that never reached the model — into a prepared help-centre reply.
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { answer, assistantStatus, isAssistantConfigured, DEFAULT_MODEL, LIMITS, modelName } from '@/lib/server/assistant/chat'
+import { answer, assistantStatus, isAssistantConfigured, DEFAULT_MODEL, FALLBACK_MODEL, LIMITS, fallbackModelName, modelName } from '@/lib/server/assistant/chat'
 import { CATALOG, SHIPPING, say, scripted } from './fixtures'
-import type { Generate } from '@/lib/server/assistant/chat'
+import type { AnswerDeps, Generate } from '@/lib/server/assistant/chat'
 import type { StorefrontLocale } from '@/lib/types'
 
 let logged: string[] = []
 const original = { info: console.info, warn: console.warn }
-const env = { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL, off: process.env.SUPPORT_ASSISTANT_AI }
+const env = { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL, off: process.env.SUPPORT_ASSISTANT_AI, fb: process.env.GEMINI_FALLBACK_MODEL }
 beforeEach(() => {
   logged = []
   console.info = (...a: unknown[]) => void logged.push(a.map(String).join(' '))
@@ -19,13 +19,13 @@ beforeEach(() => {
 afterEach(() => {
   console.info = original.info
   console.warn = original.warn
-  for (const [k, v] of [['GEMINI_API_KEY', env.key], ['GEMINI_MODEL', env.model], ['SUPPORT_ASSISTANT_AI', env.off]] as const) {
+  for (const [k, v] of [['GEMINI_API_KEY', env.key], ['GEMINI_MODEL', env.model], ['SUPPORT_ASSISTANT_AI', env.off], ['GEMINI_FALLBACK_MODEL', env.fb]] as const) {
     if (v === undefined) delete process.env[k]
     else process.env[k] = v
   }
 })
 
-const turn = (generate: Generate, text: string, locale: StorefrontLocale = 'it') =>
+const turn = (generate: Generate, text: string, locale: StorefrontLocale = 'it', extra: Partial<AnswerDeps> = {}) =>
   answer(
     { locale, messages: [{ role: 'user', text }], credentials: [] },
     {
@@ -33,6 +33,7 @@ const turn = (generate: Generate, text: string, locale: StorefrontLocale = 'it')
       catalog: async () => CATALOG,
       shipping: async () => ({ ...SHIPPING, deliveryTimeframe: { ...SHIPPING.deliveryTimeframe } }),
       model: 'test-model',
+      ...extra,
     },
   )
 const event = () => JSON.parse(logged.find((l) => l.includes('"assistant_event"'))!)
@@ -114,5 +115,60 @@ describe('a template answer always says why, in the log', () => {
     assert.equal(e.reason, 'provider_error')
     assert.equal(e.providerStatus, 404)
     assert.ok(!logged.find((l) => l.includes('"assistant_event"'))!.includes('AIza'))
+  })
+})
+
+describe('an overloaded model hands the turn to the fallback model, not to a template', () => {
+  // Production, 2026-10-15: every gemini-3.8-flash turn got 503 "This model is
+  // currently experiencing high demand" or ran out of time.
+  const overloaded = () => {
+    let calls = 0
+    const fn = (async () => {
+      calls++
+      throw Object.assign(new Error('This model is currently experiencing high demand.'), { status: 503 })
+    }) as unknown as Generate & { calls: () => number }
+    fn.calls = () => calls
+    return fn
+  }
+  it('503 from the main model: the fallback answers, and keeps answering for the rest of the turn', async () => {
+    const main = overloaded()
+    const fallback = scripted(
+      { text: '', calls: [{ id: 'c0', name: 'search_products', args: { query: 'cappotto' } }], finishReason: 'STOP', content: { role: 'model', parts: [{ functionCall: { name: 'search_products', args: { query: 'cappotto' } } }] } },
+      say('Sì, abbiamo un cappotto in cashmere.'),
+    )
+    const r = await turn(main, 'Avete cappotti?', 'it', { fallback, fallbackModel: 'fallback-model' })
+    assert.ok(r.ok, !r.ok ? r.reason : '')
+    assert.equal(main.calls(), 1, 'the overloaded model is not asked again in the same turn')
+    assert.equal(fallback.calls, 2)
+    assert.equal(r.metrics.modelFallback, true)
+    const e = event()
+    assert.equal(e.model, 'fallback-model')
+    assert.equal(e.providerStatus, 503)
+  })
+  it('a main model that does not answer in time: the fallback answers within the turn', async () => {
+    const hang: Generate = (req) => new Promise((_, reject) => req.signal.addEventListener('abort', () => reject(new Error('aborted'))))
+    const r = await turn(hang, 'Avete cappotti?', 'it', { fallback: scripted(say('Sì, certo.')), fallbackModel: 'fallback-model', primaryCallMs: 50 })
+    assert.ok(r.ok, !r.ok ? r.reason : '')
+    assert.equal(r.metrics.modelFallback, true)
+  })
+  it('a key problem (400/403) is not an overload: no fallback, the error is reported', async () => {
+    const fallback = scripted(say('never'))
+    const r = await turn(async () => {
+      throw Object.assign(new Error('API key not valid'), { status: 400 })
+    }, 'Ciao', 'it', { fallback })
+    assert.equal(!r.ok && r.reason, 'provider_error')
+    assert.equal(fallback.calls, 0)
+  })
+  it('the fallback model: gemini-3.6-flash by default, configurable, never the main model itself', () => {
+    delete process.env.GEMINI_FALLBACK_MODEL
+    delete process.env.GEMINI_MODEL
+    assert.equal(fallbackModelName(), FALLBACK_MODEL)
+    process.env.GEMINI_FALLBACK_MODEL = 'models/gemini-x-flash'
+    assert.equal(fallbackModelName(), 'gemini-x-flash')
+    process.env.GEMINI_FALLBACK_MODEL = 'off'
+    assert.equal(fallbackModelName(), null)
+    delete process.env.GEMINI_FALLBACK_MODEL
+    process.env.GEMINI_MODEL = FALLBACK_MODEL
+    assert.equal(fallbackModelName(), null)
   })
 })

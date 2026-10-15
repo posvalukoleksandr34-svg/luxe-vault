@@ -43,6 +43,8 @@ export type TurnMetrics = {
   /** The provider's HTTP status on 'provider_error' / 'rate_limited': 404 = the
    *  model is not available to this key, 400/403 = the key or the request. */
   providerStatus?: number
+  /** The main model was overloaded or slow and the fallback model answered. */
+  modelFallback?: boolean
 }
 
 export function emptyMetrics(): TurnMetrics {
