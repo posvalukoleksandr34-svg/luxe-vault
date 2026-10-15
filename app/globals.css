@@ -736,6 +736,37 @@ body::before {
     transition-duration: 300ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
+
+  /* Keyboard focus on anything without its own focus style: a 2px ring in
+     the ink (white inside .theme-inverse). The browser default is the OS
+     accent — blue in Safari, Firefox and Chrome on macOS. Zero specificity:
+     a component's focus-visible:ring / outline-none still wins. */
+  :where(a, button, [role='button'], summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--foreground));
+    outline-offset: 2px;
+  }
+
+  /* Native checkboxes, radios and range thumbs fill in the ink, not the
+     browser's blue. */
+  :root {
+    accent-color: hsl(var(--foreground));
+  }
+  .theme-inverse {
+    accent-color: hsl(var(--foreground));
+  }
+
+  /* Autofilled fields keep their own ground and ink. Chrome paints them
+     light blue (or yellow) with a background no stylesheet can override; an
+     inset shadow covers it, and the transition delay keeps it from
+     flashing. */
+  input:-webkit-autofill,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-out 0s;
+  }
 }
 
 :where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .nav-link, .hero__cta, .btn-primary-lv, .btn-secondary-lv, [class*='hover:'])):hover {

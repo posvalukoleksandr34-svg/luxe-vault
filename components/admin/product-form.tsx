@@ -1228,7 +1228,7 @@ export function ProductForm({
                 type="checkbox"
                 checked={form.isNew}
                 onChange={(e) => setForm({ ...form, isNew: e.target.checked })}
-                className="size-4 accent-[var(--gold)]"
+                className="size-4 accent-gold"
               />
               Новинка
             </label>
@@ -1239,7 +1239,7 @@ export function ProductForm({
                 onChange={(e) =>
                   setForm({ ...form, limited: e.target.checked })
                 }
-                className="size-4 accent-[var(--gold)]"
+                className="size-4 accent-gold"
               />
               Лимит. тираж
             </label>
