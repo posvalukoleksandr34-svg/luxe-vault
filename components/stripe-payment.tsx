@@ -39,35 +39,43 @@ import type { Order } from '@/lib/types'
  * either.
  */
 const appearance: Appearance = {
-  // The light theme's colours (app/globals.css :root): white fields on the
-  // ivory page, near-black text, gold for focus and the selected state.
+  // The site's monochrome tokens (app/globals.css :root): white fields,
+  // black text, black for focus and the selected state, and errors in black
+  // too — Stripe pairs every invalid field with a written message.
   theme: 'stripe',
   variables: {
-    colorPrimary: '#b8912f',
+    colorPrimary: '#000000',
     colorBackground: '#ffffff',
-    colorText: '#1a1a1a',
-    colorTextSecondary: '#5e574d',
-    colorDanger: '#b52a2a',
+    colorText: '#000000',
+    colorTextSecondary: '#595959',
+    colorDanger: '#000000',
     fontFamily: 'Inter, system-ui, sans-serif',
     fontSizeBase: '13px',
     spacingUnit: '4px',
-    // Matches the site's rounded fields (12px).
-    borderRadius: '12px',
+    // Matches the site's near-square fields (--radius).
+    borderRadius: '2px',
   },
   rules: {
     '.Input': {
-      border: '1px solid #ddd5c6',
+      border: '1px solid #bfbfbf',
       boxShadow: 'none',
     },
     '.Input:focus': {
-      border: '1px solid #c5a059',
-      boxShadow: '0 0 0 4px rgba(197, 160, 89, 0.15)',
+      border: '1px solid #000000',
+      boxShadow: '0 0 0 1px #000000',
+    },
+    '.Input--invalid': {
+      border: '1px solid #000000',
+      boxShadow: '0 0 0 1px #000000',
+    },
+    '.Error': {
+      fontWeight: '500',
     },
     '.Label': {
       fontSize: '11px',
       textTransform: 'uppercase',
       letterSpacing: '0.15em',
-      color: '#1a1a1a',
+      color: '#000000',
     },
   },
 }
@@ -375,7 +383,7 @@ function CheckoutForm({
         />
       </div>
 
-      {/* In the shop's own tones — gold rule, quiet text — not a red alarm:
+      {/* In the shop's own tones — a black rule, quiet text — not a red alarm:
           a declined card is information, and the order is safe either way. */}
       {error && (
         <div role="alert" className="border-l-2 border-gold/50 bg-gold/[0.04] py-2.5 pl-3 pr-2">

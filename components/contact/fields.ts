@@ -1,6 +1,6 @@
 // The contact system's field treatment, shared by the request form and the
 // newsletter block: square, a 1px white/10 hairline that brightens on hover
-// and focus, monochrome text. No gold here — the page is deliberately plain.
+// and focus, monochrome text. No accent fills here — the page is deliberately plain.
 
 export const FIELD =
   'min-h-[48px] w-full rounded-xl border border-foreground/25 bg-card px-4 py-3 text-[14px] font-light text-foreground outline-none transition-colors duration-200 placeholder:text-foreground/45 hover:border-foreground/40 focus:border-gold focus:ring-4 focus:ring-gold/15 focus-visible:outline-none aria-[invalid=true]:border-destructive'

@@ -22,7 +22,7 @@ import { useStore } from '@/lib/store'
  *   yanked off the top of the screen. Driven by one rAF-throttled scroll
  *   listener writing a transform, and it stops entirely once the hero is past.
  *
- *   THE SWEEP — a single slow specular pass across the gold word, on an
+ *   THE SWEEP — a single slow specular pass across the graphite word, on an
  *   11-second cycle. Long enough that it reads as light moving over metal
  *   rather than as a shimmer effect.
  */
@@ -92,7 +92,7 @@ export function Hero() {
       {/* The ribbon glow shows through here from the page layer behind the
           whole site (components/hero-ribbons.tsx, from the root layout). */}
 
-      {/* A soft ivory veil behind the wordmark and the buttons, so the
+      {/* A soft white veil behind the wordmark and the buttons, so the
           ribbons pass BEHIND the text rather than through it. */}
       <div className="hero__veil" />
 

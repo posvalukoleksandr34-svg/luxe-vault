@@ -1120,7 +1120,7 @@ export function ProductForm({
                   {derivedStatus && (
                     <>
                       {' '}· статус товара:{' '}
-                      <span className={derivedStatus === 'in_stock' ? 'text-emerald-700' : 'text-destructive'}>
+                      <span className={derivedStatus === 'in_stock' ? 'text-foreground' : 'text-destructive'}>
                         {derivedStatus === 'in_stock' ? 'В наличии' : 'Нет в наличии'}
                       </span>{' '}
                       (авто)

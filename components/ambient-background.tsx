@@ -1,5 +1,5 @@
 /**
- * Live atmospheric backdrop — golden smoke waves + floating dust motes.
+ * Live atmospheric backdrop — grey smoke waves + floating dust motes.
  *
  * Deliberately a *server* component: it renders once, ships zero JavaScript,
  * and every pixel of motion is handled by the compositor via CSS keyframes.

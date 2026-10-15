@@ -123,7 +123,9 @@ export function CryptoPayment({
       QRCode.toDataURL(createdOrder.paymentAddress || '', {
         margin: 1,
         width: 240,
-        color: { dark: '#f5f3ef', light: '#00000000' },
+        // Black on an opaque white quiet zone: the modules used to be
+        // near-white on a transparent ground — invisible on the white card.
+        color: { dark: '#000000', light: '#ffffff' },
       })
         .then(setQrDataUrl)
         .catch(() => setQrDataUrl(null))
@@ -185,7 +187,7 @@ export function CryptoPayment({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.15em] text-gold transition hover:text-gold-light"
+          className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.15em] text-gold transition hover:text-foreground/70"
         >
           <ArrowLeft className="size-3.5" />
           {t('crypto.back')}
@@ -243,7 +245,7 @@ export function CryptoPayment({
           <button
             type="button"
             onClick={() => setStage('select')}
-            className="text-[12px] uppercase tracking-[0.15em] text-gold transition hover:text-gold-light"
+            className="text-[12px] uppercase tracking-[0.15em] text-gold transition hover:text-foreground/70"
           >
             {t('crypto.tryAgain')}
           </button>
@@ -336,13 +338,13 @@ function StatusIndicator({ status }: { status: PaymentStatus }) {
   const config: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
     pending_payment: { label: t('crypto.waiting'), dot: 'bg-gold animate-pulse', text: 'text-gold' },
     confirming: { label: t('crypto.confirming'), dot: 'bg-gold animate-pulse', text: 'text-gold' },
-    paid: { label: t('crypto.paid'), dot: 'bg-emerald-500', text: 'text-emerald-700' },
+    paid: { label: t('crypto.paid'), dot: 'bg-foreground', text: 'font-medium text-foreground' },
     failed: { label: t('crypto.failed'), dot: 'bg-destructive', text: 'text-destructive' },
     expired: { label: t('crypto.expired'), dot: 'bg-destructive', text: 'text-destructive' },
     // Unreachable in the crypto flow today, but the map must stay total or
     // an added status becomes a runtime crash instead of a type error.
-    refunded: { label: t('orders.refunded'), dot: 'bg-violet-300', text: 'text-violet-300' },
-    partially_refunded: { label: t('orders.partiallyRefunded'), dot: 'bg-violet-300', text: 'text-violet-300' },
+    refunded: { label: t('orders.refunded'), dot: 'bg-muted-foreground', text: 'text-muted-foreground' },
+    partially_refunded: { label: t('orders.partiallyRefunded'), dot: 'bg-muted-foreground', text: 'text-muted-foreground' },
   }
   const c = config[status]
 

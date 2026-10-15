@@ -106,7 +106,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   // The browser chrome on mobile in the storefront's background colour.
-  themeColor: '#FAF8F5',
+  themeColor: '#FFFFFF',
 };
 
 export const metadata: Metadata = {

@@ -192,7 +192,7 @@ export function CartPanel() {
     window.location.assign(asGuest ? '/checkout?guest=1' : '/checkout')
   }
 
-  // "Add CHF 120 more for Free Shipping", with the amount set in gold.
+  // "Add CHF 120 more for Free Shipping", with the amount set in the accent.
   const [addBefore, addAfter = ''] = t('cart.freeShippingAddMore').split('{amount}')
 
   return (
@@ -266,13 +266,13 @@ export function CartPanel() {
           <>
             {/* Free-shipping progress, against the admin's threshold. Shown at
                 the top, where it is read before the lines, and kept once it is
-                earned — in green, with a tick — so the customer sees the
+                earned — in full ink, with a tick — so the customer sees the
                 reward rather than a bar that silently disappears. */}
             <div className="border-b border-border/40 px-6 py-4" aria-live="polite">
               <p
                 className={cn(
                   'mb-2.5 flex items-center gap-2 text-[12px] font-light',
-                  shippingGap ? 'text-muted-foreground' : 'text-emerald-700/90',
+                  shippingGap ? 'text-muted-foreground' : 'text-foreground',
                 )}
               >
                 {shippingGap ? (
@@ -283,8 +283,8 @@ export function CartPanel() {
                   </span>
                 ) : (
                   <>
-                    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                      <Check className="size-3 text-emerald-700" strokeWidth={2.5} />
+                    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground">
+                      <Check className="size-3 text-background" strokeWidth={2.5} />
                     </span>
                     {t('cart.freeShippingCongrats')}
                   </>
@@ -301,7 +301,7 @@ export function CartPanel() {
                 <div
                   className={cn(
                     'h-full rounded-full transition-[width,background-color] duration-500 ease-out',
-                    shippingGap ? 'bg-gold' : 'bg-emerald-500/80',
+                    shippingGap ? 'bg-foreground/60' : 'bg-foreground',
                   )}
                   style={{ width: `${shippingProgress}%` }}
                 />
@@ -417,7 +417,7 @@ export function CartPanel() {
                   entered later can still push the basket over the threshold. */}
               <div className="mb-4 flex items-center justify-between text-[12px] font-light">
                 <span className="text-muted-foreground">{t('cart.shipping')}</span>
-                <span className={estimatedShipping === 0 ? 'text-emerald-700/90' : 'text-muted-foreground'}>
+                <span className={estimatedShipping === 0 ? 'font-normal text-foreground' : 'text-muted-foreground'}>
                   {estimatedShipping === 0 ? t('cart.free') : formatPrice(estimatedShipping, true)}
                 </span>
               </div>

@@ -45,13 +45,13 @@ const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string
     labelKey: 'sections.women',
     image:
       'https://images.unsplash.com/photo-1759873911531-f6ea6a178378?w=1400&q=80&auto=format&fit=crop',
-    fallback: 'radial-gradient(120% 90% at 20% 0%, #f3ece0 0%, #e4d8c4 75%)',
+    fallback: 'radial-gradient(120% 90% at 20% 0%, #f5f5f5 0%, #e0e0e0 75%)',
   },
   men: {
     labelKey: 'sections.men',
     image:
       'https://images.unsplash.com/photo-1764698072732-ea0230fc5d8e?w=1400&q=80&auto=format&fit=crop',
-    fallback: 'radial-gradient(120% 90% at 80% 10%, #f1eadf 0%, #e1d5c1 75%)',
+    fallback: 'radial-gradient(120% 90% at 80% 10%, #f5f5f5 0%, #e0e0e0 75%)',
   },
   kids: {
     labelKey: 'sections.kids',
@@ -60,15 +60,15 @@ const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string
       // black and white like the other two — it is the only colour shot of the
       // three, and side by side the difference read as a mistake.
       'https://images.unsplash.com/photo-1775322124421-19ba223a107c?w=1400&q=80&auto=format&fit=crop&sat=-100',
-    fallback: 'radial-gradient(120% 90% at 30% 100%, #f2ebdf 0%, #e2d6c2 75%)',
+    fallback: 'radial-gradient(120% 90% at 30% 100%, #f5f5f5 0%, #e0e0e0 75%)',
   },
 }
 
-// Light sand, the page's own tone: what a card shows while its photograph
+// Pale grey, the page's own tone: what a card shows while its photograph
 // loads, or if none can be loaded. It was near-black, so a slow or failed
 // photo left three dark slabs reading DONNA / UOMO / BAMBINI — which looked
 // like a separate, cheaper row of buttons rather than this section.
-const FALLBACK_GRADIENT = 'radial-gradient(120% 90% at 50% 0%, #f2ebdf 0%, #e2d6c2 75%)'
+const FALLBACK_GRADIENT = 'radial-gradient(120% 90% at 50% 0%, #f5f5f5 0%, #e0e0e0 75%)'
 
 export function SectionsGrid() {
   const { t, localize, collections, categoryImages } = useStore()

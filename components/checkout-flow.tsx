@@ -1057,11 +1057,11 @@ export function CheckoutFlow({
 }
 
 /**
- * Minimal switch in the dark-gold aesthetic.
+ * Minimal switch in the site's black-and-white aesthetic.
  *
  * A real <input type="checkbox"> underneath, visually hidden rather than
  * replaced: that keeps it focusable, announced correctly by screen readers,
- * and togglable with the spacebar. The gold track is decoration drawn on top.
+ * and togglable with the spacebar. The track is decoration drawn on top.
  */
 function SaveToggle({
   checked,

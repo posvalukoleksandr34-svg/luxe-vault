@@ -133,7 +133,7 @@ export function PasswordRecoveryModal() {
       >
         {done ? (
           <div className="flex flex-col items-center gap-4 py-4 text-center">
-            <CheckCircle2 className="h-8 w-8 text-emerald-700" strokeWidth={1.25} />
+            <CheckCircle2 className="h-8 w-8 text-foreground" strokeWidth={1.25} />
             <h2 id="recovery-title" className="font-serif text-xl font-bold text-foreground">
               {t('account.passwordChanged')}
             </h2>

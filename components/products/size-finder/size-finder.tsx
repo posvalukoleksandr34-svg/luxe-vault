@@ -346,8 +346,8 @@ export function SizeFinder({
       <DialogContent
         className={cn(
           'flex h-[100dvh] max-h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-background p-0',
-          'md:grid md:h-[640px] md:max-h-[92vh] md:w-[min(940px,94vw)] md:grid-cols-[300px_1fr] md:rounded-[28px] md:border md:border-border/70',
-          'md:shadow-[0_40px_120px_-40px_rgba(28,24,18,0.45)]',
+          'md:grid md:h-[640px] md:max-h-[92vh] md:w-[min(940px,94vw)] md:grid-cols-[300px_1fr] md:rounded-lg md:border md:border-border/70',
+          'md:shadow-[0_40px_120px_-40px_rgba(0,0,0,0.45)]',
         )}
       >
         <DialogTitle className="sr-only">{t('finder.open')}</DialogTitle>
@@ -355,7 +355,7 @@ export function SizeFinder({
 
         {/* ---------------------------------------------------- left panel -- */}
         <aside className="flex shrink-0 items-center gap-3.5 bg-secondary px-4 py-3.5 pr-14 md:flex-col md:items-stretch md:gap-0 md:border-r md:border-border/60 md:bg-[linear-gradient(180deg,hsl(var(--secondary))_0%,hsl(var(--secondary)/0.55)_100%)] md:p-6">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-white shadow-[0_6px_18px_-10px_rgba(28,24,18,0.35)] md:h-[236px] md:w-full md:rounded-2xl">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-white shadow-[0_6px_18px_-10px_rgba(0,0,0,0.35)] md:h-[236px] md:w-full md:rounded-2xl">
             <Image src={productImage(image)} alt={name} fill sizes="(min-width: 768px) 252px, 56px" className="object-cover" />
           </div>
           <div aria-live="polite" className="min-w-0 flex-1 md:mt-4 md:flex-none">
@@ -410,7 +410,7 @@ export function SizeFinder({
         <form
           onSubmit={next}
           noValidate
-          className="relative flex min-h-0 flex-1 flex-col bg-[radial-gradient(110%_70%_at_100%_0%,hsl(var(--gold)/0.09)_0%,transparent_60%)]"
+          className="relative flex min-h-0 flex-1 flex-col bg-[radial-gradient(110%_70%_at_100%_0%,hsl(var(--foreground)/0.03)_0%,transparent_60%)]"
         >
           <div className="h-[3px] w-full bg-border/50" aria-hidden>
             <div className="h-full bg-gold transition-all duration-500" style={{ width: `${((index + 1) / STEPS.length) * 100}%` }} />
@@ -498,15 +498,15 @@ export function SizeFinder({
 }
 
 const PRIMARY =
-  'min-h-[52px] w-full max-w-[420px] rounded-full bg-foreground px-6 py-3 text-[12px] font-semibold uppercase leading-snug tracking-[0.12em] text-background shadow-[0_14px_30px_-16px_rgba(28,24,18,0.6)] transition sm:tracking-[0.2em] [@media(hover:hover)]:hover:text-[hsl(var(--gold-light))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-foreground/15 disabled:text-background disabled:shadow-none'
+  'min-h-[52px] w-full max-w-[420px] rounded-full bg-foreground px-6 py-3 text-[12px] font-semibold uppercase leading-snug tracking-[0.12em] text-background shadow-[0_14px_30px_-16px_rgba(0,0,0,0.6)] transition sm:tracking-[0.2em] [@media(hover:hover)]:hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-foreground/15 disabled:text-background disabled:shadow-none'
 
 /** No placeholder and no unit inside: the label above says what and in what. */
 const FIELD =
-  'h-14 w-full rounded-2xl border border-border bg-card px-5 text-[19px] tabular-nums text-foreground shadow-[inset_0_1px_2px_rgba(28,24,18,0.04)] outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25'
+  'h-14 w-full rounded-2xl border border-border bg-card px-5 text-[19px] tabular-nums text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25'
 
 const LABEL = 'mb-2.5 block text-[11px] uppercase tracking-[0.16em] text-foreground/70'
 
-/** A soft card with a gold icon: the "why" beside a question. */
+/** A soft card with a black icon: the "why" beside a question. */
 function Note({ icon: Icon, children }: { icon: typeof Info; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-4 rounded-2xl border border-gold/20 bg-card/70 p-5">
@@ -636,7 +636,7 @@ function ShapeStep({
           // so a choice shows at once. The card takes the photos' own shape
           // and ground. Decorative: the radios below carry the meaning.
           <div
-            className="relative w-full max-w-[calc(200px*var(--a))] overflow-hidden rounded-[22px] border border-border/50 shadow-[0_18px_40px_-28px_rgba(28,24,18,0.55)] sm:max-w-[calc(230px*var(--a))]"
+            className="relative w-full max-w-[calc(200px*var(--a))] overflow-hidden rounded-lg border border-border/50 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.55)] sm:max-w-[calc(230px*var(--a))]"
             style={{ aspectRatio: `${photo[0].width} / ${photo[0].height}`, ['--a' as string]: photo[0].width / photo[0].height }}
           >
             {photo.map((src, n) => (
@@ -652,10 +652,10 @@ function ShapeStep({
             ))}
           </div>
         ) : (
-          // A single photo sits on the card's warm ground: multiplied, its own
+          // A single photo sits on the card's pale grey ground: multiplied, its own
           // near-white background disappears into it. Decorative — the radios
           // below carry the question and the answer.
-          <div className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-[22px] border border-border/50 bg-[linear-gradient(180deg,#f6f2eb_0%,#eee7dc_100%)] sm:h-[230px]">
+          <div className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-lg border border-border/50 bg-[linear-gradient(180deg,#f5f5f5_0%,#ebebeb_100%)] sm:h-[230px]">
             {photo ? (
               <Image src={photo} alt="" fill sizes="300px" loading="eager" className="object-contain object-bottom mix-blend-multiply" />
             ) : (
@@ -689,7 +689,7 @@ function ShapeStep({
               <span
                 className={cn(
                   'flex size-12 items-center justify-center rounded-full border transition',
-                  on ? 'border-foreground bg-foreground text-background shadow-[0_10px_22px_-12px_rgba(28,24,18,0.7)]' : 'border-foreground/25 bg-card group-hover:border-foreground/55',
+                  on ? 'border-foreground bg-foreground text-background shadow-[0_10px_22px_-12px_rgba(0,0,0,0.7)]' : 'border-foreground/25 bg-card group-hover:border-foreground/55',
                 )}
               >
                 {on && <Check aria-hidden className="size-5" strokeWidth={2} />}
