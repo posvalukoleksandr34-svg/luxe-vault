@@ -145,6 +145,7 @@ them, and the prompt forbids inventing either.
 | --- | --- |
 | `GEMINI_API_KEY` | Shared with smart search and the stylist. Without it the chat runs on prepared answers. |
 | `GEMINI_MODEL` | Optional override, **shared by every AI feature**. If it is set in the hosting environment it also replaces the concierge's default. Read forgivingly (`models/…`, quotes and spaces are accepted); a value that still is not a model name is ignored with a warning, and the default is used. |
+| `GEMINI_FALLBACK_MODEL` | Optional. The model a turn moves to when the main one is overloaded (5xx, 429) or has not answered in 10 s. Default `gemini-3.6-flash`; `off` disables it. |
 | `SUPPORT_ASSISTANT_AI=off` | Turns the concierge off without touching the key (search and stylist keep working). |
 | `GEMINI_BASE_URL` | Optional; route Gemini calls through a gateway or proxy. |
 
@@ -176,7 +177,7 @@ Smart search, the stylist and catalogue translation still default to
 | Turn time | 20 s for everything (model calls and tools); the route's `maxDuration` is 30 s | `chat.ts` `LIMITS` |
 | Tool use | 4 rounds; 4 calls per round; 8 per turn; then the model must answer in words | `chat.ts` |
 | Tool result | 6 000 chars, lists shortened first | `capResponse` |
-| Retries | one, only after a provider 5xx with time left; none for 429, timeouts or refusals. The SDK's own retries stay off | `chat.ts` |
+| Retries | an overloaded or slow main model (5xx, 429, no answer in 10 s) hands the turn to the fallback model, which answers the rest of it; without a fallback, one retry after a 5xx. Never for a 4xx (key) error. The SDK's own retries stay off | `chat.ts` |
 | Reply | 4 096 output tokens, thinking included (at 700–1 024 a longer turn could stop with `MAX_TOKENS` before writing a word); 1 500 chars after checking, cut at a sentence | `chat.ts`, `guard.ts` |
 | Product cards | 3 per reply | `chat.ts` |
 
@@ -314,6 +315,7 @@ answer": the model was asked and the turn failed.** The log has one
 | Log | Meaning | What to do |
 | --- | --- | --- |
 | `provider_error`, `providerStatus: 404` | the model (`GEMINI_MODEL`, or the default `gemini-3.8-flash`) is not available to this key | set `GEMINI_MODEL` to a model the key can use, e.g. `gemini-3.6-flash` until it retires |
+| `provider_error`, `503` "high demand" / `timeout` | the model is overloaded at Google; since 2026-10-15 the fallback model takes over (`"modelFallback":true` in the log) — if the fallback is overloaded too, set `GEMINI_MODEL` to another model | wait, or change the model |
 | `provider_error`, `400` / `403` | the key is wrong, restricted, or for another project | check the key in Google AI Studio |
 | `rate_limited` | the key's quota is spent | raise the quota, or wait |
 | `invalid_response`, `finishReason` | cut off (`MAX_TOKENS`), blocked (`SAFETY`), empty | `MAX_TOKENS` should be rare at 4 096; report others |
