@@ -948,8 +948,8 @@ function maybeSendWelcome() {
   }, [loadCatalog])
 
   // ------------------------------------------------------ products by id ----
-  // The cart, the checkout, the wishlist, the recently-viewed rail and the
-  // saved looks each show a handful of products. They are looked up by id
+  // The cart, the checkout, the wishlist and the recently-viewed rail each
+  // show a handful of products. They are looked up by id
   // (/api/search?ids=, cached at the edge) instead of downloading every
   // product to find them.
 

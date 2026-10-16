@@ -431,283 +431,6 @@ input[type='password']::-webkit-textfield-decoration-container {
 /* Firefox has no reveal button of its own, so nothing to hide there. */
 
 /* ---------------------------------------------------------------------------
-   Ambient atmosphere
-   ---------------------------------------------------------------------------
-   Three very wide, very low-opacity grey pools behind everything, over a
-   white-to-#F5F5F5 vertical wash. They give the page depth without lifting
-   any surface out of the white ground — it still reads as one tone, lit
-   rather than flat, like paper under a gallery spot. Kept faint: at any
-   strength they read as a smudge rather than as light.
-
-   Attached to body::before as a single fixed layer: painting these per-section
-   would multiply the compositing cost on a long page for no visual gain.
---------------------------------------------------------------------------- */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(70% 55% at 18% 0%, hsl(0 0% 0% / 0.03) 0%, transparent 62%),
-    radial-gradient(60% 50% at 88% 22%, hsl(0 0% 0% / 0.02) 0%, transparent 60%),
-    radial-gradient(80% 60% at 50% 100%, hsl(0 0% 80% / 0.25) 0%, transparent 65%),
-    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 98.5%) 45%, hsl(0 0% 96%) 100%);
-}
-
-/* ---------------------------------------------------------------------------
-   Live atmosphere — grey smoke waves + floating dust
-   ---------------------------------------------------------------------------
-   Paired with <AmbientBackground /> (rendered once, in the root layout).
-
-   PERFORMANCE IS THE WHOLE DESIGN HERE. Every animation below touches only
-   `transform` and `opacity`, the two properties a browser can animate entirely
-   on the compositor — no layout, no paint, no main-thread work per frame. That
-   is why the smoke is a handful of pre-blurred gradient bodies being moved
-   around rather than an animated `filter`, `background-position`, or a canvas
-   loop: those all force a repaint every frame, on a page whose actual job is
-   scrolling a grid of photographs.
-
-   The blur is rasterised once per layer and thereafter merely transformed, so
-   its cost is paid at load, not at 60fps.
---------------------------------------------------------------------------- */
-
-.ambient {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  /* Contains the `screen` blending below, so the waves brighten each other but
-     never reach through to page content. */
-  isolation: isolate;
-}
-
-.ambient__wave {
-  position: absolute;
-  /* multiply, on the light ground: overlapping grey pools deepen into soft
-     cores the way smoke does in front of a lit wall. (`screen` would brighten
-     toward white and show nothing on a white page.) */
-  mix-blend-mode: multiply;
-  will-change: transform;
-  /* Softens the gradient's own banding, which is very visible at these low
-     alphas on a plain ground. */
-  filter: blur(28px);
-  /* Half strength: atmosphere, never an effect. */
-  opacity: 0.5;
-}
-
-.ambient__wave--a {
-  top: -22%;
-  left: -18%;
-  width: 88vw;
-  height: 78vh;
-  background: radial-gradient(
-    closest-side,
-    hsl(0 0% 62% / 0.16) 0%,
-    hsl(0 0% 72% / 0.08) 45%,
-    transparent 74%
-  );
-  animation: smoke-a 92s ease-in-out infinite alternate;
-}
-
-.ambient__wave--b {
-  top: 8%;
-  right: -24%;
-  width: 76vw;
-  height: 88vh;
-  background: radial-gradient(
-    closest-side,
-    hsl(0 0% 62% / 0.13) 0%,
-    hsl(0 0% 72% / 0.07) 48%,
-    transparent 72%
-  );
-  animation: smoke-b 116s ease-in-out infinite alternate;
-}
-
-/* The low body: the lightest of the three, so the bottom of the viewport
-   never darkens behind the footer. */
-.ambient__wave--c {
-  bottom: -30%;
-  left: 22%;
-  width: 82vw;
-  height: 72vh;
-  background: radial-gradient(
-    closest-side,
-    hsl(0 0% 72% / 0.06) 0%,
-    hsl(0 0% 74% / 0.07) 52%,
-    transparent 76%
-  );
-  animation: smoke-c 136s ease-in-out infinite alternate;
-}
-
-/* The "breath": one very wide, very slow diagonal sheen crossing the viewport.
-   At 90s it sits below the threshold where the eye tracks it as movement — it
-   registers as the room's light changing, which is the intended effect. */
-.ambient__sheen {
-  position: absolute;
-  top: -40%;
-  left: -60%;
-  width: 120vw;
-  height: 180vh;
-  will-change: transform, opacity;
-  background: linear-gradient(
-    103deg,
-    transparent 38%,
-    hsl(0 0% 88% / 0.22) 50%,
-    transparent 62%
-  );
-  animation: sheen-sweep 180s ease-in-out infinite;
-}
-
-.ambient__dust {
-  position: absolute;
-  inset: 0;
-  opacity: 0.5;
-}
-
-.ambient__mote {
-  position: absolute;
-  bottom: -12px;
-  left: var(--x);
-  width: var(--s);
-  height: var(--s);
-  opacity: 0;
-  /* A radial gradient rather than a background-color plus border-radius: the
-     global `* { border-radius: 0 !important }` rule would square off any
-     rounded dot. This also gives each mote a soft halo for free. */
-  background: radial-gradient(
-    circle,
-    hsl(0 0% 52% / 0.75) 0%,
-    hsl(0 0% 55% / 0.3) 42%,
-    transparent 70%
-  );
-  animation: mote-rise calc(var(--d) * 2) linear var(--delay) infinite;
-}
-
-@keyframes smoke-a {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(7vw, 5vh, 0) scale(1.18) rotate(8deg);
-  }
-  100% {
-    transform: translate3d(-4vw, 9vh, 0) scale(1.06) rotate(-6deg);
-  }
-}
-
-@keyframes smoke-b {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1.08) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(-9vw, -6vh, 0) scale(0.92) rotate(-10deg);
-  }
-  100% {
-    transform: translate3d(-3vw, 7vh, 0) scale(1.14) rotate(5deg);
-  }
-}
-
-@keyframes smoke-c {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(-8vw, -7vh, 0) scale(1.2) rotate(9deg);
-  }
-  100% {
-    transform: translate3d(6vw, -3vh, 0) scale(0.95) rotate(-4deg);
-  }
-}
-
-@keyframes sheen-sweep {
-  0% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  50% {
-    transform: translate3d(60vw, 0, 0);
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
-  }
-}
-
-/* Motes rise the full height of the viewport and a little past it, swaying as
-   they go and fading at both ends so they never pop in or clip at an edge. */
-@keyframes mote-rise {
-  0% {
-    transform: translate3d(0, 0, 0) scale(0.55);
-    opacity: 0;
-  }
-  10% {
-    opacity: var(--o);
-  }
-  50% {
-    transform: translate3d(var(--sway), -58vh, 0) scale(1);
-  }
-  90% {
-    opacity: var(--o);
-  }
-  100% {
-    transform: translate3d(calc(var(--sway) * -0.55), -116vh, 0) scale(0.7);
-    opacity: 0;
-  }
-}
-
-/* Corners fall off slightly toward grey. Also hides the point where a mote loops. */
-.ambient__vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 120% 90% at 50% 45%,
-    transparent 48%,
-    hsl(0 0% 88% / 0.45) 100%
-  );
-}
-
-/* Phones: the blurred wave layers are the expensive part (large textures, and
-   `screen` blending forces an offscreen buffer). Two instead of three, with a
-   lighter blur, and roughly half the dust. */
-@media (max-width: 640px) {
-  .ambient__wave {
-    filter: blur(18px);
-  }
-  .ambient__wave--c,
-  .ambient__mote:nth-child(2n) {
-    display: none;
-  }
-}
-
-/* Someone who asked the OS to stop animations gets the composition, frozen —
-   still atmospheric, nothing moving. */
-@media (prefers-reduced-motion: reduce) {
-  .ambient__wave,
-  .ambient__sheen,
-  .ambient__mote {
-    animation: none;
-  }
-  .ambient__mote {
-    /* Without the animation they would all sit at opacity 0 below the fold. */
-    opacity: calc(var(--o) * 0.7);
-    bottom: auto;
-    top: var(--x);
-  }
-  .ambient__sheen {
-    opacity: 1;
-  }
-}
-
-/* ---------------------------------------------------------------------------
    Interaction — quiet by default
    ---------------------------------------------------------------------------
    Links and buttons used to grow 5%, change colour and glow on hover, site-wide,
@@ -1046,10 +769,9 @@ iframe[src*="elements-inner-easel"] {
    The script writes `transform` on the wrappers and nothing else, so a frame
    is a matrix multiply on an existing texture.
 
-   The whole thing sits at z-index -1, above `.ambient` in paint order because
-   it comes later in the DOM, and below every scrap of page content because
-   content paints above negative z-index. Nothing here can ever cover text or
-   intercept a click.
+   The whole thing sits at z-index -1, on the plain white ground and below
+   every scrap of page content, because content paints above negative
+   z-index. Nothing here can ever cover text or intercept a click.
 --------------------------------------------------------------------------- */
 
 .pa {
@@ -1058,8 +780,8 @@ iframe[src*="elements-inner-easel"] {
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  /* Contains the `screen` blending so the pools brighten one another and the
-     ambient waves behind them, but never reach through to the page. */
+  /* Contains the pools' blending, so they mix with one another but never
+     reach through to the page. */
   isolation: isolate;
   /* Hidden until the effect script decides this device should have it. A
      touch device, or someone with reduced motion, gets nothing rendered at
@@ -1069,7 +791,7 @@ iframe[src*="elements-inner-easel"] {
 }
 
 .pa[data-active='true'][data-seen='true'] {
-  /* Half strength, like the ambient layer beneath it. */
+  /* Half strength: a light on the page, never an effect. */
   opacity: 0.5;
 }
 
@@ -1143,8 +865,7 @@ iframe[src*="elements-inner-easel"] {
 }
 
 /* Slow, unequal churn. Different periods and different axes, so the three
-   pools drift in and out of alignment forever without repeating — the same
-   trick the ambient smoke uses, at a smaller scale. */
+   pools drift in and out of alignment forever without repeating. */
 @keyframes pa-churn-a {
   0%,
   100% {
@@ -1265,18 +986,6 @@ iframe[src*="elements-inner-easel"] {
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
-}
-
-/* The same canvas as the site-wide layer (SiteRibbonsLazy in the root
-   layout): fixed to the window, just above the ambient smoke, below all
-   content. */
-.site-ribbons {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
   pointer-events: none;
 }
 
@@ -1450,13 +1159,14 @@ iframe[src*="elements-inner-easel"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Product card — depth and a single specular pass
+   Product card — a flat tile and a single specular pass
    ---------------------------------------------------------------------------
-   The card already cross-fades its photograph on hover. What it lacked was
-   DEPTH AT REST: with no shadow, every card sat flat on the page ground and
-   the grid read as a contact sheet. A soft, neutral, offset shadow lifts each
-   one just enough to cast — which is also what lets the cursor's grey pool
-   appear to pass *behind* the grid.
+   The photograph IS the card: no border, no shadow, no frame. Each tile sits
+   on the one surface grey (#F5F5F5, set by the component), so the grid reads
+   as a set of matching plates on white, the way a lookbook page does — the
+   structure comes from the tiles and the white between them, not from lines
+   drawn round them. Hover cross-fades to the second photograph, a slow zoom,
+   and the sweep below.
 
    The sweep is a single diagonal band of light crossing the image once per
    hover. It is a transform on a pseudo-element sitting above the photograph,
@@ -1465,26 +1175,12 @@ iframe[src*="elements-inner-easel"] {
 
 .product-card {
   position: relative;
+  /* Also what keeps the photographs' mix-blend-multiply inside the tile. */
   isolation: isolate;
-  /* Near-square, and lifted off the white by a soft shadow. overflow:
-     hidden clips the photograph and the specular pass to the corners. */
+  /* Near-square. overflow: hidden clips the photograph and the specular
+     pass to the corners. */
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: var(--shadow-soft);
-  transition:
-    box-shadow 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 500ms ease;
-}
-
-.group:hover .product-card,
-.group:focus-visible .product-card {
-  /* Depth only. The edge change comes from `.card-gold`, which this class
-     sits alongside — adding a second ring here made the hover read as an
-     outline rather than as light. */
-  box-shadow:
-    0 22px 44px -24px rgba(0, 0, 0, 0.22),
-    0 8px 28px -16px rgba(0, 0, 0, 0.12);
 }
 
 /* The pass. Skewed, so it crosses as a raking highlight rather than as a
@@ -1515,6 +1211,15 @@ iframe[src*="elements-inner-easel"] {
 
 .group:hover .product-card::after,
 .group:focus-visible .product-card::after {
+  transform: translateX(360%) skewX(-14deg);
+  opacity: 1;
+}
+
+/* The collection cards ARE the `.group` themselves (the card is the link),
+   where a product card is a child of one. Both spellings are needed so the
+   sweep fires in either arrangement. */
+.product-card.group:hover::after,
+.product-card.group:focus-visible::after {
   transform: translateX(360%) skewX(-14deg);
   opacity: 1;
 }
@@ -1647,6 +1352,115 @@ iframe[src*="elements-inner-easel"] {
   }
 }
 
+/* Icons in the bar at a finer weight than the library's 2px: drawn lines,
+   not glyphs, beside a medium-weight wordmark. */
+.site-header svg {
+  stroke-width: 1.5;
+}
+
+/* ---------------------------------------------------------------------------
+   The wordmark (components/header.tsx; the menu's top row repeats it)
+   ---------------------------------------------------------------------------
+   LUXE VAULT in Bodoni at a medium weight (500, not 700) and widely
+   tracked, so it reads as a set name rather than a solid black block; the
+   only pure-black element in the bar, which is what makes it the first
+   thing read. It grows by steps with the room the bar has, and the tracking
+   with it.
+
+   Optically centred: letter-spacing is added after every letter, the last
+   included, so a tracked word sits half a space left of its own box. The
+   last word gives that space back (margin-right: -tracking); the tracking
+   lives in --track so the two always agree.
+--------------------------------------------------------------------------- */
+.site-wordmark {
+  --track: 0.1em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.22em;
+  white-space: nowrap;
+  user-select: none;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--track);
+  color: hsl(var(--foreground));
+}
+
+.site-wordmark > span:last-child {
+  margin-right: calc(var(--track) * -1);
+}
+
+@media (min-width: 380px) {
+  .site-wordmark { --track: 0.2em; font-size: 1.125rem; }
+}
+
+@media (min-width: 640px) {
+  .site-wordmark { --track: 0.32em; font-size: 1.3125rem; }
+}
+
+@media (min-width: 1024px) {
+  .site-wordmark { --track: 0.38em; font-size: 1.5rem; }
+}
+
+/* The footer's copy: one size at every width, and inline so its link is
+   only as wide as the word. Two classes, so it outranks the steps above. */
+.site-wordmark.site-wordmark--compact {
+  --track: 0.3em;
+  display: inline-flex;
+  font-size: 1.125rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Announcement bar (components/announcement-bar.tsx)
+   ---------------------------------------------------------------------------
+   The black band at the top of every page: small tracked capitals in white,
+   facts separated by hairlines. Black ground and white ink come from
+   .theme-inverse. One fact on a phone, two from sm, three from lg.
+--------------------------------------------------------------------------- */
+.announcement-bar__list {
+  display: flex;
+  height: 2.125rem;
+  max-width: 1400px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding-inline: 1rem;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.announcement-bar__item {
+  display: none;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.announcement-bar__item:first-child {
+  display: flex;
+}
+
+.announcement-bar__item + .announcement-bar__item::before {
+  content: '';
+  width: 1px;
+  height: 10px;
+  margin-inline: 1.75rem;
+  background: hsl(var(--foreground) / 0.3);
+}
+
+@media (min-width: 640px) {
+  .announcement-bar__item:nth-child(-n + 2) { display: flex; }
+}
+
+@media (min-width: 1024px) {
+  .announcement-bar__item { display: flex; }
+}
+
 /* The gradient hairline that used to fade in here is retired: the bar's
    edge is the neutral border above. */
 .site-header::after {
@@ -1761,12 +1575,10 @@ iframe[src*="elements-inner-easel"] {
     opacity 300ms cubic-bezier(0.4, 0, 1, 1) 80ms;
 }
 
+/* No edge line or shadow: the dimmed page beside it already says where the
+   panel ends. */
 @media (min-width: 640px) {
-  .site-menu__panel {
-    width: 440px;
-    border-right: 1px solid hsl(var(--border));
-    box-shadow: 0 0 80px rgb(0 0 0 / 0.16);
-  }
+  .site-menu__panel { width: 440px; }
 }
 
 .site-menu[data-state='open'] > .site-menu__panel {
@@ -1777,16 +1589,18 @@ iframe[src*="elements-inner-easel"] {
     opacity 360ms cubic-bezier(0, 0, 0.2, 1);
 }
 
-/* The header's row, repeated: same height, same inset as the menu button, so
-   on a phone (where the panel covers the bar) the X sits exactly where the
+/* The header's row, repeated: same height, same inset as the menu button,
+   and the same hairline under it, so the X sits in line with where the
    three lines were. */
 .site-menu__top {
   position: relative;
   display: flex;
-  height: 4rem;
+  /* The header's 4rem row plus its 1px border. */
+  height: calc(4rem + 1px);
   flex-shrink: 0;
   align-items: center;
   padding-inline: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 @media (min-width: 640px) {
@@ -1811,28 +1625,16 @@ iframe[src*="elements-inner-easel"] {
   margin-left: auto;
 }
 
-/* The header's wordmark, same sizes and the same optical correction, at the
-   same centre (phones only: from sm up the page's own header is in view). */
+/* The header's wordmark (.site-wordmark: same sizes, same optical
+   correction), at the same centre. Phones only: from sm up the page's own
+   header is in view beside the panel. */
 .site-menu__brand {
-  --track: 0.08em;
   position: absolute;
   left: 50%;
-  display: flex;
-  gap: 0.2em;
   transform: translateX(-50%);
-  white-space: nowrap;
   /* A touch target taller than the line (not .tap-safe, whose
      position: relative would undo the centring). */
   padding-block: 0.625rem;
-  font-size: 1rem;
-  letter-spacing: var(--track);
-  color: hsl(var(--foreground));
-}
-
-.site-menu__brand > span:last-child { margin-right: calc(var(--track) * -1); }
-
-@media (min-width: 380px) {
-  .site-menu__brand { --track: 0.14em; font-size: 1.125rem; }
 }
 
 @media (min-width: 640px) {
@@ -2058,42 +1860,6 @@ iframe[src*="elements-inner-easel"] {
   font-size: 1.75rem;
   line-height: 1.15;
   color: hsl(var(--foreground));
-}
-
-/* ---------------------------------------------------------------------------
-   Film grain
-   ---------------------------------------------------------------------------
-   One inline SVG turbulence, tiled. Generated by the browser at load and then
-   composited like any other image — no canvas, no animation, no per-frame
-   cost. Its job is to keep the large gradients from banding on a wide display
-   and to give the flat white a paper-like surface. Desaturated in the filter
-   itself: fractal noise is generated per channel, i.e. in colour.
---------------------------------------------------------------------------- */
-
-.ambient__grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.02;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-}
-
-/* The collection cards ARE the `.group` themselves (the card is the link),
-   where a product card is a child of one. Both spellings are needed so the
-   sweep and the lift fire in either arrangement. */
-.product-card.group:hover,
-.product-card.group:focus-visible {
-  box-shadow:
-    0 22px 44px -24px rgba(0, 0, 0, 0.22),
-    0 8px 28px -16px rgba(0, 0, 0, 0.12);
-}
-
-.product-card.group:hover::after,
-.product-card.group:focus-visible::after {
-  transform: translateX(360%) skewX(-14deg);
-  opacity: 1;
 }
 
 /* ---------------------------------------------------------------------------

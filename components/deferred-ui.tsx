@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { usePathname } from 'next/navigation'
 
 /**
  * Root-layout pieces nothing on the first paint depends on, loaded after
@@ -45,16 +44,15 @@ export function CookieConsentLazy() {
   return <CookieConsent />
 }
 
-// The ribbon glow behind every storefront page (components/hero-ribbons.tsx).
-// Purely decorative, so it can arrive after hydration; the admin console is a
-// work tool with its own chrome and does not get it.
+// The ribbon glow inside the homepage hero (components/hero-ribbons.tsx).
+// Purely decorative, so it can arrive after hydration. It used to run behind
+// every page as a fixed layer, which laid grey bands over product grids and
+// text; the rest of the site now sits on clean white.
 const HeroRibbons = dynamic(
   () => import('@/components/hero-ribbons').then((m) => m.HeroRibbons),
   { ssr: false },
 )
 
-export function SiteRibbonsLazy() {
-  const pathname = usePathname()
-  if (pathname?.startsWith('/admin')) return null
-  return <HeroRibbons layer="page" />
+export function HeroRibbonsLazy() {
+  return <HeroRibbons />
 }

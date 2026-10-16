@@ -139,7 +139,7 @@ pass.
   ~5 KB per product). The grid and sidebar still render complete in the
   server HTML, so the layout shift the old snapshot fixed does not come back.
 - **The product page** chooses its related rail on the server.
-- **The cart, checkout, wishlist, recently viewed and saved looks** look up
+- **The cart, checkout, wishlist and recently viewed** look up
   only the products they show, through `/api/search?ids=` (CDN-cached, with
   its own rate-limit bucket).
 - **The store's `products`** is now the whole catalogue or nothing, loaded
@@ -254,9 +254,10 @@ is fine.
   Lab numbers like the ones above do not replace field data.
 - **Resize on upload (P9).** Downscale to ≤ 2560 px and re-encode as WebP in
   the admin before upload. Smaller zoom images and faster optimiser misses.
-- **Low-end device check.** Profile the ambient background (`blur` +
-  `mix-blend-mode: screen` on full-viewport layers is the most expensive paint
-  on the site) on a mid-range Android. If INP suffers, turn the waves off
-  when `navigator.hardwareConcurrency <= 4`.
+- **Low-end device check.** Profile the cursor light
+  (components/pointer-atmosphere.tsx: blurred, blended full-viewport pools,
+  now the most expensive paint on the site since the ambient background was
+  removed) on a mid-range laptop. If INP suffers, leave it off when
+  `navigator.hardwareConcurrency <= 4`.
 - **Next.js 15 upgrade** (security Phase 1c) also brings smaller client
   runtime and better cache controls.

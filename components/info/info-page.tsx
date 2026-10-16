@@ -86,7 +86,9 @@ export function InfoCallout({
   secondary?: { href: string; label: string }
 }) {
   return (
-    <section className="mt-12 rounded-xl border border-border bg-card/40 p-6 sm:p-8">
+    // The surface grey, no outline: the page's one closing panel, set apart
+    // by tone rather than by a box drawn round it.
+    <section className="mt-12 rounded-xl bg-secondary p-6 sm:p-8">
       <h2 className="font-serif text-[24px] font-normal leading-tight tracking-tight text-foreground">{title}</h2>
       <p className="mt-3 max-w-xl text-[15px] font-light leading-relaxed text-foreground/75">{body}</p>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
