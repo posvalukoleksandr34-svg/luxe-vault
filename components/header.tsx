@@ -1,67 +1,27 @@
 'use client'
 
-import { Link, useLocaleRouter } from '@/components/locale-link'
-import { usePathname } from 'next/navigation'
-import { Heart, LifeBuoy, Menu, Search, ShoppingBag, X } from 'lucide-react'
+import { Link } from '@/components/locale-link'
+import { Heart, LifeBuoy, Search, ShoppingBag } from 'lucide-react'
 import { AccountMenu } from '@/components/account/account-menu'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { LocaleCurrencyMenu } from '@/components/locale-currency-menu'
+import { MenuIcon } from '@/components/menu-icon'
+import { setSiteMenuOpen, useSiteMenuOpen } from '@/lib/site-menu'
 import { useStore } from '@/lib/store'
-import { cn } from '@/lib/utils'
-
-const PRIMARY_NAV = [
-  { href: '/catalog', label: 'nav.shop' },
-  { href: '/about', label: 'nav.about' },
-  { href: '/shipping', label: 'footer.shipping' },
-  { href: '/legal/refunds', label: 'nav.returns' },
-  // The questions the homepage used to answer in place (2026-10).
-  { href: '/faq', label: 'nav.faq' },
-  { href: '/contact', label: 'nav.contact' },
-] as const
-
-const MOBILE_ITEM =
-  'flex min-h-[48px] items-center px-3 text-left text-[15px] font-light tracking-wide text-foreground/85 transition-colors hover:text-foreground aria-[current=page]:text-gold'
 
 export function Header() {
-  const {
-    cartCount,
-    setPanel,
-    t,
-    query,
-    setQuery,
-    setFilter,
-    filter,
-    openSupport,
-    supportUnread,
-    wishlistCount,
-  } = useStore()
-
-  const router = useLocaleRouter()
-  const pathname = usePathname()
-
-  const [mobileOpen, setMobileOpen] = useState(false)
-  // Escape closes the phone menu (a disclosure, not a dialog), and focus goes
-  // back to its button.
-  useEffect(() => {
-    if (!mobileOpen) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== 'Escape') return
-      setMobileOpen(false)
-      document.querySelector<HTMLButtonElement>('[aria-controls="mobile-menu"]')?.focus()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [mobileOpen])
+  const { cartCount, setPanel, t, openSupport, supportUnread, wishlistCount } = useStore()
+  const menuOpen = useSiteMenuOpen()
 
   /**
    * Has the page scrolled off the top?
    *
    * At rest the bar is nearly transparent, so the hero runs edge to edge and
    * the wordmark is not sitting under a grey strip. Once content passes
-   * beneath it, the ground becomes solid charcoal with a neutral hairline —
-   * the bar becomes a surface only when it has something to separate.
+   * beneath it, the ground becomes solid with a neutral hairline — the bar
+   * becomes a surface only when it has something to separate.
    *
    * A boolean, not a scroll position: the listener writes state at most twice
    * per page, when the threshold is crossed in either direction.
@@ -78,137 +38,108 @@ export function Header() {
   }, [])
   const [searchOpen, setSearchOpen] = useState(false)
 
-
-  /** The current page, for aria-current: the bare path, language prefix
-   *  stripped (/it/shipping is the Shipping page). */
-  const barePath = pathname.replace(/^\/(it|fr|de)(?=\/|$)/, '') || '/'
-  const isCurrent = (href: string) => barePath === href || barePath.startsWith(`${href}/`)
-
-  /**
-   * New and Sale are views of the CATALOGUE now that the homepage carries no
-   * grid. The filter is set first — it is store state the grid reads on
-   * arrival — and the query string says the same thing, so the link also
-   * works when pasted, shared or opened in a new tab.
-   */
-  function goView(view: 'new' | 'sale') {
-    setFilter({ ...filter, sale: view === 'sale', group: null, category: null })
-    setMobileOpen(false)
-    router.push(`/catalog?view=${view}`)
-  }
-
-  const goSale = () => goView('sale')
-  const goNew = () => goView('new')
-
   return (
     <header
       data-scrolled={scrolled}
       className="site-header sticky top-0 z-50 border-b"
     >
-      {/* On a phone the row did not fit: menu, wordmark and five controls
-          came to ~372px (414px signed in, with the bell), so the page
-          scrolled sideways on 360–390px screens, the checkout included. Below
-          md the cart and profile icons are left out, exactly as the wishlist
-          already was — the bottom tab bar (components/bottom-nav.tsx, phones
-          only) carries all three, badges included — and below 380px the gaps
-          and the wordmark tighten as well.
+      {/* Three columns: the menu, the wordmark, the customer's own controls.
+          The outer two are `minmax(0, 1fr)` each, so they are always exactly
+          as wide as each other and the wordmark sits at the exact centre of
+          the bar whatever either side holds — a signed-in bell, a cart badge,
+          a longer language label.
+
+          The right-hand row has to clear the wordmark down to a 320px phone,
+          signed in: below md the cart, profile and wishlist are left out of
+          it — the bottom tab bar (components/bottom-nav.tsx, phones only)
+          carries all three, badges included — below lg the language and
+          currency switcher is in the menu's top row, and below xl so is the
+          support button (in the menu's list).
 
           overflow-x: clip — the icons' invisible 44px tap areas (.tap-safe)
           reach past the last icon, and at the screen edge that alone widened
           the page by a few pixels. `clip`, not `hidden`: it cuts one axis
           only and makes no scroll container, so the menus that open below
           the row are untouched. */}
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-2 overflow-x-clip px-4 min-[380px]:gap-4 sm:px-6 lg:px-10">
-        <button
-          type="button"
-          onClick={() => setMobileOpen((v) => !v)}
-          className="tap-safe relative lg:hidden text-muted-foreground transition hover:text-foreground"
-          aria-label={t('nav.menu')}
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-menu"
-        >
-          {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          {!mobileOpen && supportUnread > 0 && (
-            <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-gold sm:hidden" aria-hidden />
-          )}
-        </button>
+      <div className="mx-auto grid h-16 max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-x-clip px-4 sm:gap-4 sm:px-6 lg:px-10">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => setSiteMenuOpen(!menuOpen)}
+            className="tap-safe relative flex h-9 shrink-0 items-center gap-3 text-foreground transition-opacity hover:opacity-70"
+            aria-label={menuOpen ? t('nav.closeMenu') : t('nav.menu')}
+            aria-expanded={menuOpen}
+            aria-controls="site-menu"
+            aria-haspopup="dialog"
+          >
+            <MenuIcon open={menuOpen} />
+            {/* The word as well from lg up, where there is room for it. */}
+            <span aria-hidden className="t-label hidden lg:inline">
+              {t('nav.menu')}
+            </span>
+            {/* A reply from the team is waiting: below xl the support button
+                lives in the menu, so the menu button carries the dot. */}
+            {!menuOpen && supportUnread > 0 && (
+              <span className="absolute -right-1.5 top-1 size-1.5 rounded-full bg-gold xl:hidden" aria-hidden />
+            )}
+          </button>
+        </div>
 
         {/* A Link, not a scroll-to-top button.
             The header is global, so on /product/[slug], /checkout, /order/[id]
             and the legal pages the old handler scrolled a page the visitor was
             already at the top of and went nowhere — the wordmark looked dead.
             An <a href="/"> also gets middle-click, "open in new tab", keyboard
-            focus and crawlable internal linking, none of which a button has. */}
+            focus and crawlable internal linking, none of which a button has.
+
+            Optically centred too: letter-spacing is added AFTER every letter,
+            the last one included, so a tracked word sits half a space left of
+            its box's centre. The last word gives that space back
+            (margin-right: -tracking), with the tracking held in --track so the
+            two always match at each size. */}
         <Link
           href="/"
           aria-label="LUXE VAULT — home"
-          className="tap-safe flex select-none items-baseline gap-0.5"
+          className="tap-safe flex select-none items-baseline gap-[0.2em] justify-self-center whitespace-nowrap font-serif text-base font-bold tracking-[var(--track)] text-foreground [--track:0.08em] min-[380px]:text-lg min-[380px]:[--track:0.14em] sm:text-xl sm:[--track:0.24em] lg:text-[22px] lg:[--track:0.28em]"
         >
-          {/* Tighter below sm. The action bar gained a sixth control and the
-              row overflowed by ~35px on a 375px screen, which scrolled the
-              whole PAGE sideways — the wordmark's 0.22em tracking was the
-              cheapest 40px to reclaim, and shrinking it costs less than
-              hiding a control the customer came to use. */}
-          <span className="font-serif text-base font-bold tracking-[0.06em] text-foreground min-[380px]:text-lg min-[380px]:tracking-[0.1em] sm:text-xl sm:tracking-[0.22em]">
-            LUXE
-          </span>
-          <span className="font-serif text-base font-bold tracking-[0.06em] text-gold min-[380px]:text-lg min-[380px]:tracking-[0.1em] sm:text-xl sm:tracking-[0.22em]">
-            VAULT
-          </span>
+          <span>LUXE</span>
+          <span className="mr-[calc(var(--track)*-1)]">VAULT</span>
         </Link>
 
-        {/* Quiet links, generous spacing: the space between them does the
-            separating, not ornament. */}
-        {/* What a first-time customer looks for, as real links: the shop,
-            who runs it, delivery, returns, answers, and how to reach a
-            person. */}
-        <nav aria-label="Main" className="ml-5 hidden items-center gap-3.5 lg:flex xl:ml-12 xl:gap-8">
-          {PRIMARY_NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isCurrent(item.href) ? 'page' : undefined}
-              className="nav-link t-label whitespace-nowrap"
-            >
-              {t(item.label)}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
+        <div className="flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
+          {/* Search, at every width: it opens the search row under the bar.
+              (An inline field here would grow toward the wordmark on focus.) */}
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            className="tap-safe flex size-8 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9 xl:hidden"
+            className="tap-safe flex size-8 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
             aria-label="Search"
+            aria-expanded={searchOpen}
           >
             <Search className="size-[18px]" />
           </button>
 
-          {/* The inline search field from xl up. Below it the row has no
-              room for six menu items AND the field (it overflowed at
-              1024px), so the icon above opens the search row instead. */}
-          <div className="hidden xl:block">
-            <SearchBox variant="desktop" />
+          {/* Language and currency — "IT · CHF". From lg up; below it, in
+              the menu. */}
+          <div className="hidden lg:block">
+            <LocaleCurrencyMenu />
           </div>
-
-          {/* Language and currency — "IT · CHF". */}
-          <LocaleCurrencyMenu />
 
           {/* Renders nothing for signed-out visitors, so the header keeps its
               shape rather than showing a bell that could only ever be empty. */}
           <NotificationCenter />
 
           {/* Support messages, on every page. The count is replies from the
-              team the customer has not read yet. From sm up — a phone's row
-              is full, so there it lives in the menu (with a dot on the menu
-              button when a reply is waiting). */}
+              team the customer has not read yet. From xl up — below it the
+              row is full, so there it lives in the menu (with a dot on the
+              menu button when a reply is waiting). */}
           <button
             type="button"
             // The support centre's own front page — the topics, then the
             // request form for whoever needs it. The bot is the other entry
             // point, on the floating button to the left.
             onClick={() => openSupport()}
-            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground sm:flex"
+            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground xl:flex"
             aria-label={supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')}
           >
             <LifeBuoy className="size-[18px]" />
@@ -235,7 +166,7 @@ export function Header() {
               ever shows both routes to the same page. */}
           <Link
             href="/wishlist"
-            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
+            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
             aria-label={
               wishlistCount > 0 ? `${t('wishlist.title')} (${wishlistCount})` : t('wishlist.title')
             }
@@ -256,7 +187,7 @@ export function Header() {
             onClick={() => setPanel('cart')}
             // Desktop only, like the wishlist: on a phone the bottom tab bar's
             // Cart tab, with the same badge, is the way in.
-            className="tap-safe relative hidden size-9 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
+            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
             aria-label={t('cart.title')}
           >
             <ShoppingBag className="size-[18px]" />
@@ -270,49 +201,10 @@ export function Header() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-border px-4 py-3 xl:hidden">
-          <SearchBox variant="mobile" onNavigate={() => setSearchOpen(false)} />
-        </div>
-      )}
-
-      {mobileOpen && (
-        <div id="mobile-menu" className="animate-fade-in border-t border-border lg:hidden">
-          <nav aria-label="Main" className="flex flex-col divide-y divide-border/40 px-4 py-2">
-            {PRIMARY_NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                aria-current={isCurrent(item.href) ? 'page' : undefined}
-                className={MOBILE_ITEM}
-              >
-                {t(item.label)}
-              </Link>
-            ))}
-            <button onClick={goNew} className={MOBILE_ITEM}>
-              {t('nav.newIn')}
-            </button>
-            <button onClick={goSale} className={MOBILE_ITEM}>
-              {t('filter.sale')}
-            </button>
-            <Link href="/stylist" onClick={() => setMobileOpen(false)} className={MOBILE_ITEM}>
-              {t('stylist.cta')}
-            </Link>
-            <button
-              onClick={() => {
-                setMobileOpen(false)
-                openSupport()
-              }}
-              className={cn(MOBILE_ITEM, 'justify-between sm:hidden')}
-            >
-              {t('support.title')}
-              {supportUnread > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
-                  {supportUnread}
-                </span>
-              )}
-            </button>
-          </nav>
+        <div className="border-t border-border px-4 py-3">
+          <div className="mx-auto w-full max-w-xl">
+            <SearchBox variant="mobile" autoFocus onNavigate={() => setSearchOpen(false)} />
+          </div>
         </div>
       )}
     </header>

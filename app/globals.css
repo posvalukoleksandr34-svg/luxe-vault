@@ -769,7 +769,7 @@ body::before {
   }
 }
 
-:where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .nav-link, .hero__cta, .btn-primary-lv, .btn-secondary-lv, [class*='hover:'])):hover {
+:where(a, button, [role='button'], summary):where(:not(:disabled, [aria-disabled='true'], .group, .card-gold, .hero__cta, .btn-primary-lv, .btn-secondary-lv, [class*='hover:'])):hover {
   opacity: 0.72;
 }
 
@@ -856,46 +856,6 @@ body::before {
   .btn-secondary-lv:hover {
     border-color: hsl(var(--foreground));
     color: hsl(var(--foreground));
-  }
-
-  /* Navigation. Grey at rest; on hover the ink steps up to black and a black
-     hairline draws in beneath. */
-  .nav-link {
-    position: relative;
-    color: hsl(var(--foreground) / 0.7);
-    transition: color 300ms cubic-bezier(0.2, 0, 0, 1);
-  }
-  /* ::before, not ::after: `.tap-safe` uses ::after as a 44px invisible touch
-     target, and sharing the pseudo-element turned the hairline into a solid
-     block on phones. */
-  .nav-link::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -6px;
-    height: 1px;
-    background: hsl(var(--foreground));
-    transform: scaleX(0);
-    transform-origin: right center;
-    transition: transform 500ms cubic-bezier(0.2, 0, 0, 1);
-  }
-  .nav-link:hover,
-  .nav-link:focus-visible {
-    color: hsl(var(--foreground));
-    outline: none;
-  }
-  .nav-link:hover::before,
-  .nav-link:focus-visible::before,
-  .nav-link[aria-current='page']::before {
-    transform: scaleX(1);
-    transform-origin: left center;
-  }
-  /* Keyboard focus gets a heavier line than hover, so the two states stay
-     distinguishable without colour (WCAG 1.4.11). */
-  .nav-link:focus-visible::before {
-    height: 2px;
-    background: hsl(var(--foreground));
   }
 
   /* Surfaces: flat and quiet.
@@ -1694,10 +1654,410 @@ iframe[src*="elements-inner-easel"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-header,
-  .nav-link::before {
+  .site-header {
     transition: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Menu icon (components/menu-icon.tsx)
+   ---------------------------------------------------------------------------
+   Three hairlines that fold into an X: the outer two meet at the centre and
+   turn, the middle one draws away. Transform and opacity only.
+--------------------------------------------------------------------------- */
+.menu-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 14px;
+}
+
+.menu-icon > span {
+  position: absolute;
+  left: 0;
+  top: 6.25px;
+  width: 100%;
+  height: 1.5px;
+  background: currentColor;
+  transition:
+    transform 420ms cubic-bezier(0.65, 0, 0.35, 1),
+    opacity 240ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.menu-icon > span:nth-child(1) { transform: translateY(-6.25px); }
+.menu-icon > span:nth-child(3) { transform: translateY(6.25px); }
+
+.menu-icon[data-open='true'] > span:nth-child(1) { transform: rotate(45deg); }
+.menu-icon[data-open='true'] > span:nth-child(2) { opacity: 0; transform: scaleX(0.2); }
+.menu-icon[data-open='true'] > span:nth-child(3) { transform: rotate(-45deg); }
+
+/* ---------------------------------------------------------------------------
+   Site menu (components/site-menu.tsx)
+   ---------------------------------------------------------------------------
+   A white panel from the left over a dimmed page: full width on a phone,
+   440px from sm up, so a desktop keeps the page in view beside it.
+
+   THE TIMING. In: the panel travels on the site's own ease-out (the curve
+   the reveals and product cards already use) for 620ms — it arrives quickly
+   and settles, which is what reads as "deliberate" rather than slow — while
+   it fades up over the first 360ms and the page dims under it. The links
+   follow 140ms behind, 32ms apart, so the list draws in from the top as the
+   panel comes to rest. Out: quicker (380ms) and accelerating, everything at
+   once, because a customer who has chosen a destination is not waiting to
+   watch the menu leave.
+
+   Transform and opacity only, so all of it composites. The whole layer stays
+   visible until the close has finished (the visibility delay), then leaves
+   the page completely: no hit area, no tab stops (the panel is also inert).
+   Under "reduce animations" or the system setting, the global rule near the
+   end of this file collapses every duration here to an instant change.
+--------------------------------------------------------------------------- */
+.site-menu {
+  position: fixed;
+  inset: 0;
+  /* Above the header (50), the drawers (90/100) and the floating buttons. */
+  z-index: 105;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear 420ms;
+}
+
+.site-menu[data-state='open'] {
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.site-menu__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.35);
+  opacity: 0;
+  /* A drag on the dimmed page must not scroll it on a touch screen. */
+  touch-action: none;
+  transition: opacity 340ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.site-menu[data-state='open'] > .site-menu__overlay {
+  opacity: 1;
+  transition-duration: 480ms;
+}
+
+.site-menu__panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  background: hsl(var(--background));
+  outline: none;
+  opacity: 0;
+  transform: translate3d(-100%, 0, 0);
+  transition:
+    transform 380ms cubic-bezier(0.7, 0, 0.84, 0),
+    opacity 300ms cubic-bezier(0.4, 0, 1, 1) 80ms;
+}
+
+@media (min-width: 640px) {
+  .site-menu__panel {
+    width: 440px;
+    border-right: 1px solid hsl(var(--border));
+    box-shadow: 0 0 80px rgb(0 0 0 / 0.16);
+  }
+}
+
+.site-menu[data-state='open'] > .site-menu__panel {
+  opacity: 1;
+  transform: none;
+  transition:
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 360ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* The header's row, repeated: same height, same inset as the menu button, so
+   on a phone (where the panel covers the bar) the X sits exactly where the
+   three lines were. */
+.site-menu__top {
+  position: relative;
+  display: flex;
+  height: 4rem;
+  flex-shrink: 0;
+  align-items: center;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .site-menu__top { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .site-menu__top { padding-inline: 2.5rem; }
+}
+
+.site-menu__close {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  color: hsl(var(--foreground));
+}
+
+/* Above the levels below, so the language menu's popover opens over them. */
+.site-menu__tools {
+  position: relative;
+  z-index: 2;
+  margin-left: auto;
+}
+
+/* The header's wordmark, same sizes and the same optical correction, at the
+   same centre (phones only: from sm up the page's own header is in view). */
+.site-menu__brand {
+  --track: 0.08em;
+  position: absolute;
+  left: 50%;
+  display: flex;
+  gap: 0.2em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  /* A touch target taller than the line (not .tap-safe, whose
+     position: relative would undo the centring). */
+  padding-block: 0.625rem;
+  font-size: 1rem;
+  letter-spacing: var(--track);
+  color: hsl(var(--foreground));
+}
+
+.site-menu__brand > span:last-child { margin-right: calc(var(--track) * -1); }
+
+@media (min-width: 380px) {
+  .site-menu__brand { --track: 0.14em; font-size: 1.125rem; }
+}
+
+@media (min-width: 640px) {
+  .site-menu__brand { display: none; }
+}
+
+/* Two levels side by side in one frame: the list, and a department's
+   categories. Each scrolls on its own and never hands the scroll to the page. */
+.site-menu__levels {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.site-menu__level {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.5rem 1.5rem calc(2.5rem + env(safe-area-inset-bottom));
+  transition:
+    transform 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 640px) {
+  .site-menu__level { padding-inline: 2.5rem; }
+}
+
+/* Into a department: its level slides in from the right while the list
+   eases a little way left and fades — a step forward, not a page swap. */
+.site-menu__level[data-level='sub'] {
+  opacity: 0;
+  transform: translate3d(100%, 0, 0);
+}
+
+.site-menu[data-sub='true'] .site-menu__level[data-level='root'] {
+  opacity: 0;
+  transform: translate3d(-22%, 0, 0);
+}
+
+.site-menu[data-sub='true'] .site-menu__level[data-level='sub'] {
+  opacity: 1;
+  transform: none;
+}
+
+.site-menu__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The links draw in one after another as the panel settles (see the timing
+   note above); on the way out they all go at once. */
+.site-menu__item {
+  opacity: 0;
+  transform: translate3d(-14px, 0, 0);
+  transition:
+    opacity 200ms cubic-bezier(0.4, 0, 1, 1),
+    transform 200ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.site-menu[data-state='open'] .site-menu__item {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(140ms + var(--i, 0) * 32ms);
+}
+
+/* A department's categories draw in the same way each time its level
+   arrives, from the right. */
+.site-menu__item--sub,
+.site-menu[data-state='open'] .site-menu__item--sub {
+  opacity: 0;
+  transform: translate3d(18px, 0, 0);
+  transition:
+    opacity 160ms cubic-bezier(0.4, 0, 1, 1),
+    transform 160ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.site-menu[data-state='open'][data-sub='true'] .site-menu__item--sub {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 480ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(120ms + var(--i, 0) * 30ms);
+}
+
+/* A destination: uppercase and tracked, a generous row, the whole width
+   clickable. Hover draws a hairline under the label. */
+.site-menu__link {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--foreground));
+}
+
+@media (min-width: 640px) {
+  .site-menu__link { font-size: 14px; }
+}
+
+.site-menu__link:hover {
+  /* Not the global "dim on hover": the hairline is the response here. */
+  opacity: 1;
+}
+
+.site-menu__label {
+  position: relative;
+}
+
+.site-menu__label::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.site-menu__link:hover .site-menu__label::after,
+.site-menu__link:focus-visible .site-menu__label::after,
+.site-menu__link[aria-current] .site-menu__label::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+.site-menu__chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1), color 320ms ease;
+}
+
+.site-menu__link:hover .site-menu__chevron,
+.site-menu__link:focus-visible .site-menu__chevron {
+  color: hsl(var(--foreground));
+  transform: translateX(3px);
+}
+
+/* The quieter list: customer care, in sentence case. */
+.site-menu__eyebrow {
+  margin: 2rem 0 0.5rem;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 1.75rem;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.site-menu__link--secondary {
+  min-height: 2.5rem;
+  justify-content: flex-start;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: hsl(var(--muted-foreground));
+}
+
+.site-menu__link--secondary:hover,
+.site-menu__link--secondary:focus-visible,
+.site-menu__link--secondary[aria-current] {
+  color: hsl(var(--foreground));
+}
+
+.site-menu__count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding-inline: 5px;
+  background: hsl(var(--foreground));
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--background));
+}
+
+.site-menu__back {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: -0.25rem;
+  padding-right: 0.5rem;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  transition: color 300ms ease;
+}
+
+.site-menu__back:hover,
+.site-menu__back:focus-visible {
+  opacity: 1;
+  color: hsl(var(--foreground));
+}
+
+.site-menu__title {
+  margin: 0.75rem 0 1rem;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1.15;
+  color: hsl(var(--foreground));
 }
 
 /* ---------------------------------------------------------------------------
