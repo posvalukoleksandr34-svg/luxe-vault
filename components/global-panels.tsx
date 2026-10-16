@@ -3,7 +3,9 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { PasswordRecoveryModal } from '@/components/password-recovery-modal'
+import { SiteMenu } from '@/components/site-menu'
 import { SupportUnreadWatcher } from '@/components/support/support-unread'
+import { useSiteMenuOpen } from '@/lib/site-menu'
 import { useStore } from '@/lib/store'
 
 /**
@@ -52,6 +54,7 @@ function warmDrawers() {
 
 export function GlobalPanels() {
   const { panel } = useStore()
+  const menuOpen = useSiteMenuOpen()
 
   // Mounted on first open, then KEPT mounted — each renders nothing while
   // closed. The cart holds "sign in, then continue to checkout" in its own
@@ -61,10 +64,12 @@ export function GlobalPanels() {
   const [userMounted, setUserMounted] = useState(false)
   const [supportMounted, setSupportMounted] = useState(false)
   const [chatMounted, setChatMounted] = useState(false)
+  const [menuMounted, setMenuMounted] = useState(false)
   if (panel === 'cart' && !cartMounted) setCartMounted(true)
   if (panel === 'user' && !userMounted) setUserMounted(true)
   if (panel === 'support' && !supportMounted) setSupportMounted(true)
   if (panel === 'chat' && !chatMounted) setChatMounted(true)
+  if (menuOpen && !menuMounted) setMenuMounted(true)
 
   useEffect(() => {
     if ('requestIdleCallback' in window) {
@@ -85,6 +90,13 @@ export function GlobalPanels() {
           One `panel` value means it and the support drawer can never be open
           at once. */}
       {chatMounted && <ChatBot />}
+      {/* The header's menu (lib/site-menu.ts holds open/closed). Here rather
+          than in the header, which every page renders for itself: a link
+          chosen in the menu lets the panel slide out while the next page
+          renders. NOT lazy, unlike the drawers: it is the site's navigation,
+          and the first tap — often the first thing a visitor does — must
+          not wait on a download (~4 KB). Mounted on first open. */}
+      {menuMounted && <SiteMenu />}
       {/* Tiny and not lazy: it keeps the unread count on the support buttons. */}
       <SupportUnreadWatcher />
       {/* Listens for Supabase's PASSWORD_RECOVERY event, which can fire on any

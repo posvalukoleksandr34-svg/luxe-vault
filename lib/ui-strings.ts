@@ -15,6 +15,9 @@
  */
 export const UI = {
   'nav.menu': { ru: 'Меню', en: 'Menu', it: 'Menu', fr: 'Menu', de: 'Menü' },
+  'nav.closeMenu': { ru: 'Закрыть меню', en: 'Close menu', it: 'Chiudi il menu', fr: 'Fermer le menu', de: 'Menü schließen' },
+  // The first link inside a department's submenu: the department page itself.
+  'nav.viewAll': { ru: 'Смотреть все', en: 'View all', it: 'Vedi tutto', fr: 'Tout voir', de: 'Alle ansehen' },
   'nav.shop': { ru: 'Магазин', en: 'Shop', it: 'Negozio', fr: 'Boutique', de: 'Shop' },
   // The storefront's top level is the department now (lib/departments.ts).
   'nav.collections': { ru: 'Разделы', en: 'Departments', it: 'Reparti', fr: 'Rayons', de: 'Bereiche' },

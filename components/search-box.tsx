@@ -64,10 +64,14 @@ const NOTHING: Found = { results: [], total: 0, fuzzy: false, reading: null }
 export function SearchBox({
   variant = 'desktop',
   onNavigate,
+  autoFocus = false,
 }: {
   variant?: 'desktop' | 'mobile'
   /** Lets the header close its mobile panel when a result is clicked. */
   onNavigate?: () => void
+  /** Focus the field on mount: the header's search row opens from a button,
+   *  and the field is what the customer came for. */
+  autoFocus?: boolean
 }) {
   const {
     query,
@@ -91,6 +95,10 @@ export function SearchBox({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus({ preventScroll: true })
+  }, [autoFocus])
 
   useEffect(() => {
     setRecent(readRecentSearches())
