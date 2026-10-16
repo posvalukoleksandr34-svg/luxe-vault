@@ -38,7 +38,7 @@ import {
   type ProductFit,
   type ShoeFit,
 } from '@/lib/fit-advisor'
-import { STYLIST_FIT_LABELS } from '@/lib/i18n'
+import { FIT_LABELS } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
 import type { SizeMeasurement } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -647,8 +647,8 @@ export function FitAdvisorModal({
 
           <fieldset>
             <legend className={labelClass}>{t('fit.preference')}</legend>
-            {/* The same labels the stylist uses for fit, so "Оверсайз" means one
-                thing across the whole shop. */}
+            {/* The same fit labels search and the product tags use, so
+                "Оверсайз" means one thing across the whole shop. */}
             <div className="grid grid-cols-3 gap-2">
               {PREFERENCES.map((p) => (
                 <button
@@ -663,7 +663,7 @@ export function FitAdvisorModal({
                       : 'border-border text-foreground/70 hover:border-foreground/30 hover:text-foreground',
                   )}
                 >
-                  {localize(STYLIST_FIT_LABELS[p])}
+                  {localize(FIT_LABELS[p])}
                 </button>
               ))}
             </div>
@@ -744,7 +744,7 @@ export function FitAdvisorModal({
 
             {productCut && productCut !== 'regular' && (
               <p className="mt-3 text-[12px] font-light text-muted-foreground">
-                {tf('fit.cutNote', { cut: localize(STYLIST_FIT_LABELS[productCut]).toLowerCase() })}
+                {tf('fit.cutNote', { cut: localize(FIT_LABELS[productCut]).toLowerCase() })}
               </p>
             )}
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { detail, productIdFrom, searchCatalog, sizeState, stockState, summarize } from '@/lib/server/assistant/catalog'
 import { TOOLS, TOOL_NAMES, validateCall } from '@/lib/server/assistant/tools'
 import { formatMoney } from '@/lib/currency'
-import { colorFamily } from '@/lib/stylist/tagging'
+import { colorFamily } from '@/lib/style-tags/tagging'
 import { CATALOG, PRODUCTS } from './fixtures'
 
 const product = (id: string) => PRODUCTS.find((p) => p.id === id)!
@@ -182,7 +182,7 @@ describe('tool arguments are validated, never trusted', () => {
   })
 })
 
-describe('colour names as the admin types them (lib/stylist/tagging.ts)', () => {
+describe('colour names as the admin types them (lib/style-tags/tagging.ts)', () => {
   it('Italian, French and German names belong to their family', () => {
     const cases: [string, string][] = [
       ['Nero', 'black'], ['Nera', 'black'], ['Noir', 'black'], ['Schwarz', 'black'],

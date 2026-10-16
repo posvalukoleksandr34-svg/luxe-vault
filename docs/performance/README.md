@@ -143,7 +143,7 @@ pass.
   only the products they show, through `/api/search?ids=` (CDN-cached, with
   its own rate-limit bucket).
 - **The store's `products`** is now the whole catalogue or nothing, loaded
-  on demand by the stylist's fallback and the admin console only. A cart line
+  on demand by the admin console only. A cart line
   is dropped only once the server has **confirmed** its product is gone. A
   pending or failed lookup drops nothing; both cases are tested.
 - **Search results** are listings in the visitor's language.
@@ -228,8 +228,6 @@ other requests. Every page after that has it cached.
 
 - **P8, the phone library.** Lazy-load `PhoneInput` and `CountrySelect` with
   `next/dynamic` (~27 kB gzipped on pages with no phone field).
-- **`/stylist` static.** It is dynamic only because it reads `searchParams`;
-  read `?product=` with `useSearchParams` inside a Suspense boundary instead.
 - **`/catalog` pagination.** It is the one page that carries every product
   (as listings). Past a few hundred products, paginate it on the server and
   move its filters into the query.

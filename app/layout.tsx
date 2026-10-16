@@ -149,7 +149,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     // No `url` here. This object is inherited by every page that does not
-    // declare its own openGraph (/stylist, the legal pages, …), and a
+    // declare its own openGraph (the legal pages, …), and a
     // site-wide og:url told Facebook, WhatsApp and Telegram that each of those
     // pages WAS the homepage. Pages that need one (products, categories) set
     // their own; without one, scrapers use the shared URL — which is correct.

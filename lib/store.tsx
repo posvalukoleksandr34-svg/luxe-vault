@@ -104,7 +104,7 @@ export type AddToCartResult = { added: number; limit: number | null; inCart: num
 /** Which section the account drawer shows. Lifted out of the drawer so a
  *  caller can open it on a specific tab rather than on whatever was open
  *  last. */
-export type AccountTab = 'orders' | 'profile' | 'looks'
+export type AccountTab = 'orders' | 'profile'
 
 export type SortKey =
   | 'default'
@@ -153,7 +153,7 @@ export const CATEGORY_IMAGES_STORAGE_KEY = 'luxe-vault-category-images'
 type StoreContextValue = {
   /**
    * The WHOLE catalogue — or nothing. Empty until something asks for it
-   * (useFullCatalog: the stylist, the admin console); no storefront page
+   * (useFullCatalog: the admin console); no storefront page
    * loads it any more. Never a subset: see ensureCatalog.
    */
   products: Product[]
@@ -326,8 +326,8 @@ export function useStore() {
 /**
  * The whole catalogue, fetched when the first screen that needs it mounts.
  *
- * For screens that genuinely work over every product: the stylist's fallback
- * picks and the admin console. A storefront page wants useProductsById (a few
+ * For screens that genuinely work over every product: the admin console. A
+ * storefront page wants useProductsById (a few
  * products) or its listing (ListingProvider) instead.
  */
 export function useFullCatalog(
@@ -902,8 +902,8 @@ function maybeSendWelcome() {
   //
   // ON DEMAND. Nothing loads it on mount any more: the storefront's pages get
   // their products from the server (listings) or by id (useProductsById).
-  // Only screens that genuinely work over every product — the stylist's
-  // fallback picks, the admin console — call ensureCatalog (useFullCatalog).
+  // Only screens that genuinely work over every product — the admin console
+  // — call ensureCatalog (useFullCatalog).
   const loadCatalog = useCallback(async () => {
     // A reload keeps showing the list it has rather than flipping to "loading".
     setCatalogStatus((status) => (status === 'ready' ? status : 'loading'))
@@ -1211,7 +1211,7 @@ function maybeSendWelcome() {
    * Opens the account drawer on sign-in or on registration, in one call.
    * Registration is the default: most people meeting this drawer do not have
    * an account yet, and the form carries a one-tap switch to sign in. A caller
-   * that knows better — the basket's "Sign in" choice, the stylist's prompt —
+   * that knows better — the basket's "Sign in" choice —
    * passes the mode explicitly and still gets it.
    */
   const openAuth = useCallback((mode: 'login' | 'register' = 'register') => {

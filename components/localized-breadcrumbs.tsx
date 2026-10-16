@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store'
 
 /**
  * A breadcrumb trail named by dictionary keys, rendered in the visitor's
- * language — for server pages whose trail is fixed words ("Shop", "Stylist")
+ * language — for server pages whose trail is fixed words ("Shop", "Support")
  * that would otherwise be hardcoded English on every locale. The page's
  * BreadcrumbList JSON-LD, where it has one, stays on the server.
  */

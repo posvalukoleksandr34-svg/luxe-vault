@@ -9,7 +9,6 @@ export type AccountSectionKey =
   | 'details'
   | 'settings'
   | 'addresses'
-  | 'looks'
 
 export type AccountSection = {
   key: AccountSectionKey
@@ -28,9 +27,6 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
   { key: 'details', labelKey: 'acct.details', inMenu: true, card: { titleKey: 'acct.details', descKey: 'acct.detailsDesc' } },
   { key: 'settings', labelKey: 'acct.settings', inMenu: true },
   { key: 'addresses', labelKey: 'acct.addresses', inMenu: false, card: { titleKey: 'acct.addresses', descKey: 'acct.addressesDesc' } },
-  // Saved capsules from the stylist. Not in the brief's menu, but an existing
-  // part of the account — reachable from the section rail.
-  { key: 'looks', labelKey: 'acct.savedLooks', inMenu: false },
 ]
 
 /** Dashboard card order, as the brief lists them. */

@@ -1,5 +1,5 @@
 import type { CategoryKey, Locale, LocalizedText, StatusKey, StorefrontLocale } from './types'
-import type { ColorFamily, Fit, Occasion, StyleKey } from './stylist/types'
+import type { ColorFamily, Fit, Occasion, StyleKey } from './style-tags/types'
 import type { UI } from './ui-strings'
 
 /**
@@ -90,8 +90,7 @@ export function translate(
 export const CATEGORY_LABELS: Record<CategoryKey, LocalizedText> = {
   // The product types, which are CATEGORIES under a department since 0040.
   // The fine-grained entries below them are kept: they are still what a
-  // product is tagged with today, and they are what the stylist and the
-  // search read.
+  // product is tagged with today, and they are what search reads.
   clothing: { ru: 'Одежда', en: 'Clothing', it: 'Abbigliamento', fr: 'Vêtements', de: 'Kleidung' },
   shoes: { ru: 'Обувь', en: 'Shoes', it: 'Scarpe', fr: 'Chaussures', de: 'Schuhe' },
   accessories: { ru: 'Аксессуары', en: 'Accessories', it: 'Accessori', fr: 'Accessoires', de: 'Accessoires' },
@@ -123,20 +122,18 @@ export const STATUS_LABELS: Record<StatusKey, LocalizedText> = {
 }
 
 /**
- * AI Stylist option labels, keyed by the SYSTEM keys the engine filters on.
- *
- * The consultation used to carry these as English-only string maps inside the
- * component, so a Russian visitor answered "Everyday / Streetwear / Black" and
- * the result cards printed the raw keys back at them. The keys never change —
- * they are what goes over the wire and what the engine matches — only the
- * label shown for each one does.
+ * Style-tag labels, keyed by the SYSTEM keys (lib/style-tags/types.ts) that
+ * products are tagged with and search filters on — shown in the search
+ * box's readings, the admin's product form and the fit advisor. The keys
+ * never change — they are what goes over the wire and what search matches —
+ * only the label shown for each one does.
  *
  * Typed as Record<Key, ...> on purpose: adding an occasion, style, colour or
- * fit to lib/stylist/types.ts without a label here in all five locales is now
+ * fit to lib/style-tags/types.ts without a label here in all five locales is now
  * a compile error, instead of a blank card in production.
  */
 
-export const STYLIST_OCCASION_LABELS: Record<Occasion, LocalizedText> = {
+export const OCCASION_LABELS: Record<Occasion, LocalizedText> = {
   everyday: { ru: "На каждый день", en: "Everyday", it: "Tutti i giorni", fr: "Au quotidien", de: "Alltag" },
   date: { ru: "Свидание", en: "Date", it: "Appuntamento", fr: "Rendez-vous", de: "Date" },
   party: { ru: "Вечеринка", en: "Party", it: "Festa", fr: "Soirée", de: "Party" },
@@ -147,7 +144,7 @@ export const STYLIST_OCCASION_LABELS: Record<Occasion, LocalizedText> = {
   browsing: { ru: "Просто смотрю", en: "Just looking", it: "Sto solo guardando", fr: "Je regarde juste", de: "Nur schauen" },
 }
 
-export const STYLIST_STYLE_LABELS: Record<StyleKey, LocalizedText> = {
+export const STYLE_LABELS: Record<StyleKey, LocalizedText> = {
   streetwear: { ru: "Стритвир", en: "Streetwear", it: "Streetwear", fr: "Streetwear", de: "Streetwear" },
   minimal: { ru: "Минимализм", en: "Minimal", it: "Minimal", fr: "Minimaliste", de: "Minimalistisch" },
   casual: { ru: "Кэжуал", en: "Casual", it: "Casual", fr: "Décontracté", de: "Casual" },
@@ -160,7 +157,7 @@ export const STYLIST_STYLE_LABELS: Record<StyleKey, LocalizedText> = {
   open: { ru: "Без предпочтений", en: "Let me decide", it: "Nessuna preferenza", fr: "Sans préférence", de: "Keine Präferenz" },
 }
 
-export const STYLIST_COLOR_LABELS: Record<ColorFamily, LocalizedText> = {
+export const COLOR_FAMILY_LABELS: Record<ColorFamily, LocalizedText> = {
   black: { ru: "Чёрный", en: "Black", it: "Nero", fr: "Noir", de: "Schwarz" },
   white: { ru: "Белый", en: "White", it: "Bianco", fr: "Blanc", de: "Weiß" },
   grey: { ru: "Серый", en: "Grey", it: "Grigio", fr: "Gris", de: "Grau" },
@@ -174,7 +171,7 @@ export const STYLIST_COLOR_LABELS: Record<ColorFamily, LocalizedText> = {
   bright: { ru: "Яркие", en: "Bright", it: "Accesi", fr: "Vifs", de: "Knallig" },
 }
 
-export const STYLIST_FIT_LABELS: Record<Fit, LocalizedText> = {
+export const FIT_LABELS: Record<Fit, LocalizedText> = {
   oversized: { ru: "Оверсайз", en: "Oversized", it: "Oversize", fr: "Oversize", de: "Oversized" },
   regular: { ru: "Прямой крой", en: "Regular fit", it: "Vestibilità regolare", fr: "Coupe droite", de: "Regular Fit" },
   slim: { ru: "Приталенный", en: "Slim fit", it: "Slim", fr: "Coupe ajustée", de: "Slim Fit" },

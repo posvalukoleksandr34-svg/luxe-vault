@@ -7,7 +7,6 @@ import { ProductDetail } from '@/components/products/product-detail'
 import { RecentlyViewed, RelatedProducts } from '@/components/products/product-rail'
 import { ProductReviews } from '@/components/products/product-reviews'
 import { ProductTrail } from '@/components/products/product-trail'
-import { StyleThisPiece } from '@/components/products/style-this-piece'
 import type { ShippingSettings } from '@/config/shipping'
 import { FULFILMENT, businessToCalendarDays, deliveryDaysFor, quoteShipping } from '@/lib/fulfilment'
 import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
@@ -225,8 +224,6 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
         <ProductTrail product={product} />
 
         <ProductDetail product={product} />
-
-        <StyleThisPiece product={product} />
 
         {/* Everything below the fold. The related rail arrives with the page;
             recently viewed looks its few products up after mount. */}

@@ -4,8 +4,8 @@ import { GoogleGenAI } from '@google/genai'
 
 /**
  * One Gemini client per API key, created on first use and shared by every
- * feature that calls the model (smart search, the stylist's rationale,
- * catalogue translation) — not one per request, and not one per module.
+ * feature that calls the model (smart search, the chat concierge, catalogue
+ * translation) — not one per request, and not one per module.
  * A rotated key simply gets a new client.
  */
 let client: { key: string; ai: GoogleGenAI } | null = null

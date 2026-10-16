@@ -4,8 +4,8 @@ import { ImagePlus, Languages, Loader2, Lock, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { AVAILABILITY_STATUSES, withDerivedAvailability } from '@/lib/availability'
-import { STYLIST_FIT_LABELS, STYLIST_OCCASION_LABELS, STYLIST_STYLE_LABELS } from '@/lib/i18n'
-import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags } from '@/lib/stylist/types'
+import { FIT_LABELS, OCCASION_LABELS, STYLE_LABELS } from '@/lib/i18n'
+import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags } from '@/lib/style-tags/types'
 import { DEFAULT_DELIVERY_DAYS, isDeliveryDays } from '@/lib/fulfilment'
 import { byDepartmentOrder } from '@/lib/departments'
 import { useStore } from '@/lib/store'
@@ -53,12 +53,12 @@ function parseDeliveryDays(
 const FALLBACK_IMAGE = '/images/hoodie.png'
 
 /** The choosable style and occasion tags — "no preference" / "just looking"
- *  are answers in the stylist's questionnaire, not properties of a product. */
+ *  (`open`, `browsing`) are not properties of a product. */
 const STYLE_OPTIONS = STYLES.filter((s) => s !== 'open')
 const OCCASION_OPTIONS = OCCASIONS.filter((o) => o !== 'browsing')
 
 /** Only what is set, so an unset field stays "derived from the product"
- *  (lib/stylist/tagging.ts) rather than becoming an empty list. */
+ *  (lib/style-tags/tagging.ts) rather than becoming an empty list. */
 function cleanStyleTags(tags: StyleTags): StyleTags | undefined {
   const out: StyleTags = {}
   if (tags.fit) out.fit = tags.fit
@@ -143,8 +143,8 @@ export function ProductForm({
   )
 
   /**
-   * Fit, style and occasion, read by the size finder, smart search and the AI
-   * Stylist. The form used to have no field for them and never sent them, so
+   * Fit, style and occasion, read by the size finder and smart search. The
+   * form used to have no field for them and never sent them, so
    * saving a product wiped whatever tags it had; they are kept now, and
    * editable.
    */
@@ -978,7 +978,7 @@ export function ProductForm({
           </div>
 
           {/* Fit, style and occasion. Left unset, each is worked out from the
-              product's name and category (lib/stylist/tagging.ts); set here,
+              product's name and category (lib/style-tags/tagging.ts); set here,
               the admin's word wins. */}
           <div>
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
@@ -1006,7 +1006,7 @@ export function ProductForm({
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >
-                        {f ? STYLIST_FIT_LABELS[f].ru : 'Авто'}
+                        {f ? FIT_LABELS[f].ru : 'Авто'}
                       </button>
                     )
                   })}
@@ -1029,7 +1029,7 @@ export function ProductForm({
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >
-                        {STYLIST_STYLE_LABELS[s].ru}
+                        {STYLE_LABELS[s].ru}
                       </button>
                     )
                   })}
@@ -1052,7 +1052,7 @@ export function ProductForm({
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >
-                        {STYLIST_OCCASION_LABELS[o].ru}
+                        {OCCASION_LABELS[o].ru}
                       </button>
                     )
                   })}

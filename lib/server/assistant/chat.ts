@@ -80,8 +80,9 @@ export const LIMITS = {
   maxRounds: 4,
   maxCallsPerRound: 4,
   maxCalls: 8,
-  /** 3.x Flash spends part of this on its thinking (see the measurement in
-   *  lib/server/stylist/rationale.ts). At 700–1 024 a longer turn could stop
+  /** 3.x Flash spends part of this on its thinking (measured: at default
+   *  thinking, a 160-token cap went 149 tokens on reasoning and stopped
+   *  mid-sentence). At 700–1 024 a longer turn could stop
    *  with MAX_TOKENS before writing anything, and the customer got a
    *  template. The reply's own length is bounded by the prompt and by
    *  REPLY_MAX_CHARS, so this is headroom, not a longer answer. */
@@ -105,8 +106,8 @@ export const PRIMARY_CALL_MS = 10_000
 let warnedModel = ''
 
 /**
- * The model to call. GEMINI_MODEL is shared with search, the stylist and
- * translation, which pass it to the SDK as written, so it is read the same
+ * The model to call. GEMINI_MODEL is shared with search and translation,
+ * which pass it to the SDK as written, so it is read the same
  * forgiving way here: "models/…", quotes and spaces are accepted. A value
  * that still cannot be a model name is IGNORED with a warning — it used to
  * switch the concierge off, silently, while the other features kept working.

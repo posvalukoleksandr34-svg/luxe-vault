@@ -149,10 +149,10 @@ function rowToProduct(row: Record<string, unknown>): Product {
     // collapse to undefined here and the label is omitted downstream rather
     // than rendered empty.
     brand: ((row.brand as string | null | undefined) ?? '').trim() || undefined,
-    // Absent (pre-0023) and null both mean "not tagged"; the stylist derives a
-    // fallback rather than dropping the product.
+    // Absent (pre-0023) and null both mean "not tagged"; tagging derives a
+    // fallback (lib/style-tags/tagging.ts) rather than dropping the product.
     styleTags:
-      (row.style_tags as import('@/lib/stylist/types').StyleTags | null | undefined) ?? undefined,
+      (row.style_tags as import('@/lib/style-tags/types').StyleTags | null | undefined) ?? undefined,
     // See deliveryDaysFor(): undefined falls back to the store default.
     deliveryDays: toDeliveryDays(row.delivery_days_min, row.delivery_days_max),
     isNew: Boolean(row.is_new),

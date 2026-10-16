@@ -42,7 +42,7 @@ export type FitInput = {
   usualSize?: LetterSize
   preference: FitPreference
   /** How THIS product is cut — the admin's fit tag, or read from its name
-   *  (lib/stylist/tagging.ts). Regular when unknown. */
+   *  (lib/style-tags/tagging.ts). Regular when unknown. */
   productCut?: FitPreference
 
   // --- optional, and worth more than height and weight when present -------

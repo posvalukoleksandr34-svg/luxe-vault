@@ -9,10 +9,10 @@ import { isProductBuyable } from '@/lib/availability'
 import { formatMoney } from '@/lib/currency'
 import {
   STATUS_LABELS,
-  STYLIST_COLOR_LABELS,
-  STYLIST_FIT_LABELS,
-  STYLIST_OCCASION_LABELS,
-  STYLIST_STYLE_LABELS,
+  COLOR_FAMILY_LABELS,
+  FIT_LABELS,
+  OCCASION_LABELS,
+  STYLE_LABELS,
 } from '@/lib/i18n'
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches'
 import { productImage } from '@/lib/product-image'
@@ -124,7 +124,7 @@ export function SearchBox({
 
   /** The same search, run on whatever catalogue this browser already holds —
    *  only when the server cannot be reached, and empty unless something on
-   *  this visit loaded the full catalogue (the stylist, the admin). */
+   *  this visit loaded the full catalogue (the admin console). */
   function searchLocally(term: string): Found {
     const reading = interpretQuery(
       term,
@@ -256,13 +256,13 @@ export function SearchBox({
   function chipLabel(f: SearchFilter): string {
     switch (f.kind) {
       case 'color':
-        return localize(STYLIST_COLOR_LABELS[f.value])
+        return localize(COLOR_FAMILY_LABELS[f.value])
       case 'fit':
-        return localize(STYLIST_FIT_LABELS[f.value])
+        return localize(FIT_LABELS[f.value])
       case 'style':
-        return localize(STYLIST_STYLE_LABELS[f.value])
+        return localize(STYLE_LABELS[f.value])
       case 'occasion':
-        return localize(STYLIST_OCCASION_LABELS[f.value])
+        return localize(OCCASION_LABELS[f.value])
       case 'category':
         return localize(categoryLabels[f.value[0]] ?? {}) || f.value[0]
       case 'group':

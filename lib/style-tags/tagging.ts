@@ -2,12 +2,12 @@ import type { Product } from '@/lib/types'
 import type { ColorFamily, Fit, Occasion, Season, Slot, StyleKey, StyleTags } from './types'
 
 /**
- * Turning a catalogue row into something styleable.
+ * Turning a catalogue row into style tags.
  *
- * The stylist needs to know a product's register, fit, occasion and season.
- * `products.style_tags` holds those once an admin fills them in — but a shop
- * that has just installed this feature has tagged nothing, and a stylist that
- * returns "no matches" on day one is a stylist nobody switches on.
+ * Search ("a black coat for dinner") needs to know a product's register, fit,
+ * occasion and season. `products.style_tags` holds those once an admin fills
+ * them in — but most products are never tagged by hand, and a search that
+ * finds nothing for "dinner" because nobody tagged a blazer is no search.
  *
  * So every product gets a DERIVED tag set from what the catalogue already
  * knows — its category, colours, name and price — and the admin's explicit
@@ -71,7 +71,7 @@ export function slotOf(product: Product): Slot {
 // Colour names as the admin types them — often Italian ("Nero", "Bianco"),
 // sometimes French or German. Until 2026-10 only English and Russian were
 // recognised here, so a product whose colour is "Nero" belonged to no colour
-// family: "black jacket" in the search box, the stylist and the chat
+// family: "black jacket" in the search box and the chat
 // concierge could not find it. Short words are bounded (\b) so "rot" does not
 // match "Carrot" and "blu" does not match "blush".
 const COLOR_PATTERNS: [ColorFamily, RegExp][] = [
