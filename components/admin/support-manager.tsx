@@ -2,7 +2,6 @@
 
 import { ArrowLeft, FileText, Loader2, Mail, Paperclip, Search, Send, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { ACCEPTED_TYPES, MAX_FILES, MAX_TOTAL_BYTES, formatBytes, prepareAttachment } from '@/lib/support/client'
 import { useStore } from '@/lib/store'
 import {
@@ -36,11 +35,10 @@ const CATEGORY_RU: Record<SupportCategory, string> = {
 }
 
 const STATUS_STYLE: Record<SupportTicketStatus, string> = {
-  // Open is the one the team has to act on, so it is the only solid tag.
-  open: TONE.done,
-  in_progress: TONE.active,
-  waiting_user: TONE.active,
-  resolved: TONE.muted,
+  open: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  in_progress: 'text-sky-700 bg-sky-500/10 border-sky-500/30',
+  waiting_user: 'text-gold bg-gold/10 border-gold/30',
+  resolved: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
   closed: 'text-muted-foreground bg-muted/30 border-border',
 }
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { ORDER_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { formatCharged, orderCharge, orderChargeRate } from '@/lib/currency'
 import { COURIER_NAMES } from '@/lib/fulfilment'
@@ -17,21 +16,21 @@ import { cn } from '@/lib/utils'
 
 export const STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'text-muted-foreground bg-muted/40 border-border',
-  processing: TONE.active,
-  shipped: TONE.active,
-  delivered: TONE.done,
-  cancelled: TONE.stopped,
-  refunded: TONE.muted,
+  processing: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  shipped: 'text-blue-700 bg-blue-500/10 border-blue-500/30',
+  delivered: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  cancelled: 'text-red-700 bg-red-500/10 border-red-500/30',
+  refunded: 'text-violet-700 bg-violet-500/10 border-violet-500/30',
 }
 
 export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
-  pending_payment: TONE.active,
-  confirming: TONE.active,
-  paid: TONE.done,
-  failed: TONE.stopped,
-  expired: TONE.stopped,
-  refunded: TONE.muted,
-  partially_refunded: TONE.muted,
+  pending_payment: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  confirming: 'text-blue-700 bg-blue-500/10 border-blue-500/30',
+  paid: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  failed: 'text-red-700 bg-red-500/10 border-red-500/30',
+  expired: 'text-red-700 bg-red-500/10 border-red-500/30',
+  refunded: 'text-violet-700 bg-violet-500/10 border-violet-500/30',
+  partially_refunded: 'text-violet-700 bg-violet-500/10 border-violet-500/30',
 }
 
 const STATUS_LABELS_RU = ORDER_STATUS_LABELS_RU
@@ -76,7 +75,7 @@ export function RefundControl({
     // Still show what has already been returned, so a fully refunded order
     // does not look identical to one that was never paid.
     return refunded > 0 ? (
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs text-violet-700/80">
         Возвращено: {formatChf(refunded)}
         {order.stripeRefundId && (
           <span className="ml-2 font-mono text-[10px] text-muted-foreground/85">

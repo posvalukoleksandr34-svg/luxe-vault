@@ -4,7 +4,6 @@ import { ArrowLeft, Check, Loader2, Plus, Tag, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import {
   PROMO_LIMITS,
   promoState,
@@ -35,9 +34,9 @@ const INPUT =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold'
 
 const STATE_BADGE: Record<PromoState, { label: string; className: string }> = {
-  active: { label: 'Действует', className: TONE.done },
-  exhausted: { label: 'Лимит исчерпан', className: TONE.active },
-  expired: { label: 'Истёк', className: TONE.stopped },
+  active: { label: 'Действует', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' },
+  exhausted: { label: 'Лимит исчерпан', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700' },
+  expired: { label: 'Истёк', className: 'border-red-500/30 bg-red-500/10 text-red-700' },
   inactive: { label: 'Выключен', className: 'border-border text-muted-foreground' },
 }
 
@@ -357,7 +356,7 @@ function CreateForm() {
           Создать промокод
         </button>
         {error && (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="text-xs text-red-700">
             {error}
           </p>
         )}
@@ -492,7 +491,7 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
             className="h-1.5 overflow-hidden rounded-full bg-muted"
           >
             <div
-              className={cn('h-full rounded-full transition-all', pct >= 100 ? 'bg-foreground' : pct >= 80 ? 'bg-foreground/70' : 'bg-foreground/40')}
+              className={cn('h-full rounded-full transition-all', pct >= 100 ? 'bg-amber-500' : pct >= 80 ? 'bg-gold' : 'bg-emerald-500')}
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -527,13 +526,13 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
             Сохранить
           </button>
           {promo.maxUses !== null && Number(maxUses) > 0 && Number(maxUses) < promo.used && (
-            <span className="text-[11px] font-medium text-foreground">Меньше уже использованного — код сразу станет исчерпан</span>
+            <span className="text-[11px] text-amber-700">Меньше уже использованного — код сразу станет исчерпан</span>
           )}
         </div>
       )}
 
       {error && (
-        <p role="alert" className="mt-3 text-xs text-destructive">
+        <p role="alert" className="mt-3 text-xs text-red-700">
           {error}
         </p>
       )}

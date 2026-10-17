@@ -228,7 +228,7 @@ export function SiteMenu() {
             className="site-menu__brand font-serif font-bold"
           >
             <span>LUXE</span>
-            <span>VAULT</span>
+            <span className="text-gold">VAULT</span>
           </Link>
           <div className="site-menu__tools lg:hidden">
             <LocaleCurrencyMenu />

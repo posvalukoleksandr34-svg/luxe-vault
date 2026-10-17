@@ -319,7 +319,7 @@ export function SearchBox({
         onFocus={() => setOpen(true)}
         placeholder={t('filter.search')}
         className={cn(
-          // outline-none is replaced, not dropped: focus draws a black border.
+          // outline-none is replaced, not dropped: focus draws a gold border.
           'text-foreground outline-none transition-[width,border-color] duration-300 placeholder:text-muted-foreground/55',
           variant === 'desktop'
             ? 'w-36 rounded-xl border border-transparent bg-transparent py-2 pl-9 pr-8 text-[13px] focus:w-56 focus:border-gold focus:ring-4 focus:ring-gold/15'

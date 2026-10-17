@@ -103,7 +103,8 @@ export function Header() {
           className="tap-safe flex select-none items-baseline gap-[0.2em] justify-self-center whitespace-nowrap font-serif text-base font-bold tracking-[var(--track)] text-foreground [--track:0.08em] min-[380px]:text-lg min-[380px]:[--track:0.14em] sm:text-xl sm:[--track:0.24em] lg:text-[22px] lg:[--track:0.28em]"
         >
           <span>LUXE</span>
-          <span className="mr-[calc(var(--track)*-1)]">VAULT</span>
+          {/* VAULT in the accent, as in the footer. */}
+          <span className="mr-[calc(var(--track)*-1)] text-gold">VAULT</span>
         </Link>
 
         <div className="flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">

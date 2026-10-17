@@ -12,10 +12,10 @@ import { useEffect, useRef } from 'react'
  * — sits on the same drifting silk. Not in the admin console. Layer "hero"
  * draws it inside a single section instead.
  *
- * Tuned for the monochrome theme: the ribbons are greys, from graphite to
- * silver, at very low opacity with white highlights along one edge. No
- * colour at all — on the white ground they read as a sheen on silk, not as
- * graphics.
+ * Tuned for the light theme: the ribbons are champagne and soft gold at very
+ * low opacity with pearl-white highlights along one edge, and a single faint
+ * rose-gold band for warmth. No saturated colour, no neon — on the ivory
+ * ground they read as a sheen, not as graphics.
  *
  * COST. A 2D canvas, drawn at a fraction of the hero's size (RENDER_SCALE)
  * and stretched by CSS — the upscale is what makes the edges soft, so no blur
@@ -51,16 +51,16 @@ type Ribbon = {
 }
 
 const RIBBONS: Ribbon[] = [
-  // Silver — the main sweep.
-  { y: 0.36, width: 0.2, amp: 0.1, freq: 1.1, speed: 0.1, phase: 0, color: [170, 170, 170], alpha: 0.11 },
-  // Graphite, lower and slower.
-  { y: 0.62, width: 0.16, amp: 0.08, freq: 0.8, speed: -0.07, phase: 1.9, color: [120, 120, 120], alpha: 0.07 },
-  // Pale grey, faint — depth, not tone.
-  { y: 0.5, width: 0.24, amp: 0.12, freq: 0.6, speed: 0.05, phase: 3.4, color: [200, 200, 200], alpha: 0.08 },
-  // A thin silver thread near the top.
-  { y: 0.2, width: 0.08, amp: 0.06, freq: 1.4, speed: -0.09, phase: 4.6, color: [185, 185, 185], alpha: 0.09 },
+  // Champagne — the main sweep.
+  { y: 0.36, width: 0.2, amp: 0.1, freq: 1.1, speed: 0.1, phase: 0, color: [214, 186, 120], alpha: 0.22 },
+  // Soft gold, lower and slower.
+  { y: 0.62, width: 0.16, amp: 0.08, freq: 0.8, speed: -0.07, phase: 1.9, color: [197, 160, 89], alpha: 0.16 },
+  // Rose-gold, faint — warmth, not colour.
+  { y: 0.5, width: 0.24, amp: 0.12, freq: 0.6, speed: 0.05, phase: 3.4, color: [222, 176, 150], alpha: 0.1 },
+  // A thin pale-gold thread near the top.
+  { y: 0.2, width: 0.08, amp: 0.06, freq: 1.4, speed: -0.09, phase: 4.6, color: [226, 200, 140], alpha: 0.16 },
   // A thin one low down.
-  { y: 0.8, width: 0.09, amp: 0.05, freq: 1.2, speed: 0.08, phase: 2.7, color: [150, 150, 150], alpha: 0.07 },
+  { y: 0.8, width: 0.09, amp: 0.05, freq: 1.2, speed: 0.08, phase: 2.7, color: [205, 172, 110], alpha: 0.13 },
 ]
 
 /** Canvas pixels per CSS pixel. Low on purpose: the stretch is the blur. */

@@ -29,10 +29,10 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: 'ltr',
     prefer_related_applications: false,
     orientation: 'portrait',
-    // The storefront's white ground, so the splash screen and the status bar
-    // match the site rather than flashing another tone.
-    background_color: '#FFFFFF',
-    theme_color: '#FFFFFF',
+    // The storefront's black, so the splash screen and the status bar match
+    // the site rather than flashing white.
+    background_color: '#FAF8F5',
+    theme_color: '#FAF8F5',
     categories: ['shopping', 'lifestyle'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
