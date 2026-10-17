@@ -430,10 +430,8 @@ export function ProductDetail({ product }: { product: Product }) {
           corners, a full-bleed photo would round off against the screen
           edge. */}
       <div>
-        {/* On the surface grey with no frame or shadow, like the product
-            tiles in the grid; `isolate` keeps the photo's multiply inside. */}
         <div
-          className="group relative isolate aspect-[3/4] overflow-hidden rounded bg-secondary"
+          className="card-gold group relative aspect-[3/4] overflow-hidden"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -459,7 +457,7 @@ export function ProductDetail({ product }: { product: Product }) {
             sizes={MAIN_PHOTO_SIZES}
             quality={MAIN_PHOTO_QUALITY}
             priority
-            className={cn('size-full object-cover mix-blend-multiply', outOfStock && 'opacity-40 grayscale')}
+            className={cn('size-full object-cover', outOfStock && 'opacity-40 grayscale')}
           />
 
           {allImages.length > 1 && (

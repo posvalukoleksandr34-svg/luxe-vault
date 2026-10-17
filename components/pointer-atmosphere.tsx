@@ -56,7 +56,8 @@ export function PointerAtmosphere() {
 
     // A coarse pointer is a finger, and `hover: none` means the pointer cannot
     // rest anywhere — both make a cursor-following light meaningless. Reduced
-    // motion opts out entirely.
+    // motion opts out entirely; the static ambient layer still carries the
+    // atmosphere for those visitors.
     const fine = window.matchMedia?.('(hover: hover) and (pointer: fine)')
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     if (!fine?.matches || still?.matches) return

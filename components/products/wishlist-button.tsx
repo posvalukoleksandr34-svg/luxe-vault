@@ -36,26 +36,20 @@ export function WishlistButton({
       onClick={() => toggleWishlist(productId)}
       aria-pressed={saved}
       aria-label={tf(saved ? 'wishlist.remove' : 'wishlist.add', { name: productName })}
-      // A white disc, no border: legible over any photograph without boxing
-      // it in. Saved is the heart filled black; the disc stays the same.
       className={cn(
-        'no-juice group/wish flex items-center justify-center rounded-full transition-colors duration-300',
+        'no-juice group/wish flex items-center justify-center rounded-xl border transition-colors duration-300',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         size === 'sm' ? 'size-9' : 'size-10',
         saved
-          ? 'bg-background text-foreground'
-          : 'bg-background/75 text-foreground/70 hover:bg-background hover:text-foreground',
+          ? 'border-gold/60 bg-background/80 text-gold'
+          : 'border-border bg-background/60 text-foreground/85 backdrop-blur-sm hover:border-gold/50 hover:text-gold',
         className,
       )}
     >
       <Heart
         aria-hidden
         strokeWidth={1.5}
-        className={cn(
-          'transition-transform duration-300 group-hover/wish:scale-110',
-          size === 'sm' ? 'size-4' : 'size-[18px]',
-          saved && 'fill-current',
-        )}
+        className={cn('size-[18px] transition-transform duration-300 group-hover/wish:scale-110', saved && 'fill-gold')}
       />
     </button>
   )

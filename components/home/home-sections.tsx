@@ -26,16 +26,12 @@ function useHomeCopy() {
 
 const TRUST_ICONS = [CreditCard, Truck, MapPin, Headphones]
 
-/**
- * Four facts directly under the hero: the questions a first visit asks.
- * On white, with one hairline under the row: the hero's own grey ends above
- * it, so a rule there (or a grey band) would only repeat that edge.
- */
+/** Four facts directly under the hero: the questions a first visit asks. */
 export function TrustBar() {
   const { c, f } = useHomeCopy()
   return (
-    <section aria-label={c.trustLabel} className="border-b border-border bg-background">
-      <ul className="mx-auto grid max-w-[1400px] grid-cols-1 divide-y divide-border px-4 sm:grid-cols-2 sm:divide-y-0 sm:px-6 lg:grid-cols-4 lg:divide-x lg:px-10">
+    <section aria-label={c.trustLabel} className="border-y border-border bg-card/30">
+      <ul className="mx-auto grid max-w-[1400px] grid-cols-1 divide-y divide-border/60 px-4 sm:grid-cols-2 sm:divide-y-0 sm:px-6 lg:grid-cols-4 lg:divide-x lg:px-10">
         {c.trust.map((item, i) => {
           const Icon = TRUST_ICONS[i]
           return (

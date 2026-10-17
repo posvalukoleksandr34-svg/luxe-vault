@@ -14,10 +14,9 @@ export function discountPercent(price: number, oldPrice: number | undefined | nu
 }
 
 /**
- * `−40%` — white figures on a solid black chip, tabular. Never red: a
- * discount is not an error, and the palette is black and white; black is
- * kept for exactly this kind of emphasis. Renders nothing (not an empty box)
- * when there is no discount.
+ * `−40%` — black on a translucent white ground, a hairline border, tabular
+ * figures. Never red: a discount is not an error, and the palette is black
+ * and white. Renders nothing (not an empty box) when there is no discount.
  */
 export function DiscountBadge({
   price,
@@ -33,7 +32,7 @@ export function DiscountBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded bg-foreground px-1.5 py-1 text-[10px] font-medium leading-none tracking-[0.06em] text-background tabular-nums',
+        'inline-flex shrink-0 items-center rounded-xl border border-gold/45 bg-background/85 px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-[0.06em] text-gold tabular-nums',
         className,
       )}
     >

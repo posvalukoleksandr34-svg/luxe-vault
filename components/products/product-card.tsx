@@ -57,10 +57,7 @@ export function ProductCard({
         onMouseEnter={playHoverSound}
         className="block"
       >
-        {/* The photograph sits on the one surface grey, borderless and flat;
-            `mix-blend-multiply` lets a studio shot's white backdrop take that
-            grey, so every tile in the grid reads as the same paper. */}
-        <div className="product-card relative aspect-[3/4] overflow-hidden bg-secondary">
+        <div className="card-gold product-card relative aspect-[3/4] overflow-hidden">
           <Image
             src={imageFailed ? PRODUCT_PLACEHOLDER : productImage(product.image)}
             onError={() => setImageFailed(true)}
@@ -71,7 +68,7 @@ export function ProductCard({
             // xl (1280px), then 4 in a 1400px container (~320px a card).
             sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 320px"
             className={cn(
-              'size-full object-cover mix-blend-multiply transition-[transform,opacity] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.045]',
+              'size-full object-cover transition-[transform,opacity] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.045]',
               outOfStock && 'opacity-40 grayscale',
               secondaryImage && 'group-hover:opacity-0',
             )}
@@ -85,11 +82,13 @@ export function ProductCard({
               sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 320px"
               aria-hidden
               className={cn(
-                'absolute inset-0 size-full scale-[1.045] object-cover opacity-0 mix-blend-multiply transition-opacity duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100',
+                'absolute inset-0 size-full scale-[1.045] object-cover opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100',
                 outOfStock && 'grayscale',
               )}
             />
           )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
           <div className="absolute left-3 top-3 flex flex-col gap-1.5">
             {outOfStock && (
@@ -118,12 +117,9 @@ export function ProductCard({
             </span>
           )}
 
-          {/* On hover, a black bar rises inside the bottom edge — the one
-              solid black on the card, so the call to action is unmistakable
-              without a frame or a shadow around the photograph. */}
           {!outOfStock && (
-            <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
-              <span className="block rounded bg-foreground py-2.5 text-center text-[10px] font-medium uppercase tracking-[0.24em] text-background">
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-4 opacity-0 transition-all duration-500 group-hover:opacity-100">
+              <span className="rounded-xl border border-gold/40 bg-background/85 px-5 py-2 text-[11px] uppercase tracking-[0.2em] text-gold backdrop-blur-md">
                 {t('product.addToCart')}
               </span>
             </div>
@@ -163,7 +159,7 @@ export function ProductCard({
               {tf('stock.hurry', { n: hurryCount })}
             </p>
           )}
-        </div>
+          </div>
       </Link>
 
       {/* Top-right of the photograph, and below the discount badge when there

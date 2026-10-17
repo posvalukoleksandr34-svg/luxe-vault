@@ -225,7 +225,7 @@ export function SiteMenu() {
             href="/"
             onClick={closeSiteMenu}
             aria-label="LUXE VAULT — home"
-            className="site-wordmark site-menu__brand"
+            className="site-menu__brand font-serif font-bold"
           >
             <span>LUXE</span>
             <span>VAULT</span>

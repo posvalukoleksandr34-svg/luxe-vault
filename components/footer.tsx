@@ -55,11 +55,9 @@ export function Footer() {
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:grid-cols-5">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            {/* The header's wordmark (.site-wordmark), smaller — white
-                here, since the footer is set in reverse. */}
-            <Link href="/" aria-label="LUXE VAULT — home" className="site-wordmark site-wordmark--compact">
-              <span>LUXE</span>
-              <span>VAULT</span>
+            <Link href="/" aria-label="LUXE VAULT — home" className="inline-flex items-baseline gap-0.5">
+              <span className="font-serif text-lg font-bold tracking-[0.22em] text-foreground">LUXE</span>
+              <span className="font-serif text-lg font-bold tracking-[0.22em] text-gold">VAULT</span>
             </Link>
             <p className="mt-4 max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground">
               {t('footer.tagline')}

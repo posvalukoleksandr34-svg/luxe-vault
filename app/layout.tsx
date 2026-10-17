@@ -3,7 +3,8 @@ import type { Metadata, Viewport } from 'next';
 import { StoreProvider } from '@/lib/store';
 import { readTaxonomyLists } from '@/lib/server/catalog-store';
 import { getShippingSettings } from '@/lib/server/store-settings';
-import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy } from '@/components/deferred-ui';
+import { AmbientBackground } from '@/components/ambient-background';
+import { AnalyticsManagerLazy, AudioFeedbackLazy, CookieConsentLazy, SiteRibbonsLazy } from '@/components/deferred-ui';
 import { PageTransition } from '@/components/page-transition';
 import { PointerAtmosphereLazy } from '@/components/pointer-atmosphere-lazy';
 import { GlobalPanels } from '@/components/global-panels';
@@ -238,13 +239,20 @@ export default async function RootLayout({
         {/* The motion preference and the on-screen-keyboard flag, mirrored
             onto <html> for the CSS. Stateless, renders nothing. */}
         <UiEnvironment />
-        {/* The page ground is plain white: the grey wash and drifting smoke
-            that used to sit behind every page are gone, so a white section
-            reads white and the product tiles' grey reads as a surface.
+        {/* Outside StoreProvider on purpose: it is decorative, has no state,
+            and sits at z-index -1 so it never participates in the app's own
+            stacking or event handling. */}
+        <AmbientBackground />
 
-            The cursor light, at z-index -1 under all content. Outside
-            StoreProvider: decorative, stateless, and it must never re-render
-            when the cart does. */}
+        {/* The ribbon glow, behind every storefront page: above the smoke,
+            below the cursor light and all content. Outside StoreProvider for
+            the same reasons as the layers around it. */}
+        <SiteRibbonsLazy />
+
+        {/* Rendered AFTER the ambient layer and at the same negative z-index,
+            so the cursor light pools on top of the drifting smoke rather than
+            under it. Also outside StoreProvider: decorative, stateless, and
+            it must never re-render when the cart does. */}
         <PointerAtmosphereLazy />
 
         {/* UI sound, delegated from the document — one listener set for the
