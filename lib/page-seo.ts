@@ -96,19 +96,6 @@ export function supportMetadata(locale: StorefrontLocale): Metadata {
   })
 }
 
-/** Noindex: an interactive tool whose output differs per visitor, so there is
- *  no stable content to rank. It still gets a URL per language, because a link
- *  to it from an Italian page should stay Italian. */
-export function stylistMetadata(locale: StorefrontLocale): Metadata {
-  return pageMetadata({
-    path: '/stylist',
-    locale,
-    titleKey: 'seo.stylist.title',
-    descriptionKey: 'seo.stylist.description',
-    noindex: true,
-  })
-}
-
 /** Noindex: the contents live in one browser's localStorage, so there is
  *  nothing here that would be the same for two people. */
 export function wishlistMetadata(locale: StorefrontLocale): Metadata {

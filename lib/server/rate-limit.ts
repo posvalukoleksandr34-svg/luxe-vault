@@ -121,22 +121,11 @@ const LIMITS = {
    *  browsing never eats the search budget. */
   'catalog.lookup': { max: 120, windowSeconds: 300 },
 
-  /** AI Stylist. Each call reads the whole catalogue and may spend a model
-   *  token budget, so it is bounded — but generously, because pressing "try
-   *  another" repeatedly is the intended way to use the feature. */
-  'stylist': { max: 40, windowSeconds: 300 },
-
   /** Starting or re-pricing a payment (Stripe intent, crypto invoice). Each
    *  call reaches a paid provider API and is gated only by the order's lookup
    *  token, so it is bounded — generously, since switching currency or coin
    *  re-prices the same order. */
   'payment.start': { max: 30, windowSeconds: 600, failClosed: true },
-
-  /** Saved looks / share links. Guests can create them (a link has to work for
-   *  whoever receives it), so this is what keeps an anonymous script from
-   *  filling the table. Generous for a person: nobody saves twenty looks in
-   *  ten minutes by hand. */
-  'looks.save': { max: 20, windowSeconds: 600 },
 
   /** Coupon validation. An oracle: without a limit a script can discover every
    *  valid code by trying strings. */

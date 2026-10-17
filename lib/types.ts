@@ -148,13 +148,14 @@ export type Product = {
   deliveryDays?: { min: number; max: number }
 
   /**
-   * AI Stylist metadata: style register, fit, occasion, season.
+   * Style tags: register, fit, occasion, season — read by search and the
+   * fit advisor.
    *
-   * Undefined means "not tagged", which is NOT the same as "no style" — the
-   * stylist derives a fallback from the product's category, colours, name and
-   * price rather than excluding it. See lib/stylist/tagging.ts.
+   * Undefined means "not tagged", which is NOT the same as "no style" —
+   * tagging derives a fallback from the product's category, colours, name and
+   * price rather than excluding it. See lib/style-tags/tagging.ts.
    */
-  styleTags?: import('@/lib/stylist/types').StyleTags
+  styleTags?: import('@/lib/style-tags/types').StyleTags
 
   /** Specification rows shown on the product page: composition, care,
    *  dimensions. Plain strings rather than localised text — an admin will not

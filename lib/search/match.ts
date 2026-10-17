@@ -6,7 +6,7 @@
 // first and then let go one at a time when nothing matches, and the result
 // says which were let go so the search box can say so.
 import { isProductBuyable } from '@/lib/availability'
-import { colorFamiliesOf, resolveTags } from '@/lib/stylist/tagging'
+import { colorFamiliesOf, resolveTags } from '@/lib/style-tags/tagging'
 import type { Product } from '@/lib/types'
 import { normalizeText, type Interpretation } from './interpret'
 

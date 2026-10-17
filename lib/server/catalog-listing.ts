@@ -12,7 +12,7 @@ import type { Locale, LocalizedText, Product, StorefrontLocale } from '@/lib/typ
  * most of it is data no card shows: the description in five languages (37%),
  * variant ids and SKUs, the size chart, every gallery image. A listing keeps
  * what cards, filters and the smart search read (lib/search/match.ts,
- * lib/search/interpret.ts, lib/stylist/tagging.ts) and drops the rest:
+ * lib/search/interpret.ts, lib/style-tags/tagging.ts) and drops the rest:
  *
  *  - description: the one language being read, already resolved with the
  *    same fallback the client's localize() applies (translate()), so the

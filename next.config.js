@@ -45,10 +45,11 @@ const nextConfig = {
   // Server Actions (actions/*.ts) are stable from Next 14 and need no flag.
   //
   // Loaded by Node at runtime instead of bundled by webpack. @google/genai
-  // (the AI stylist's copy) pulls in `ws` for its Live API, and `ws` probes
-  // for two OPTIONAL native add-ons — bufferutil and utf-8-validate — inside
-  // a try/catch. Node handles that; webpack cannot, and printed a pair of
-  // "Module not found" warnings on every compile of /api/stylist. Harmless,
+  // (smart search, the concierge, translation) pulls in `ws` for its Live
+  // API, and `ws` probes for two OPTIONAL native add-ons — bufferutil and
+  // utf-8-validate — inside a try/catch. Node handles that; webpack cannot,
+  // and printed a pair of "Module not found" warnings on every compile of a
+  // route that used it. Harmless,
   // but noise like that is how a real build warning gets scrolled past.
   // pdfkit (the admin's PDF invoices) finds its own files at runtime
   // relative to where it is installed; bundled by webpack, those paths point
@@ -105,6 +106,13 @@ const nextConfig = {
       { source: '/imprint', destination: '/legal/imprint', permanent: false },
       { source: '/impressum', destination: '/legal/imprint', permanent: false },
       { source: '/returns', destination: '/legal/refunds', permanent: false },
+      // The outfit finder ("Find Your Style") and its shared looks were
+      // retired in 2026-10. Bookmarks and links customers already sent land
+      // in the catalogue instead of a 404.
+      { source: '/stylist', destination: '/catalog', permanent: false },
+      { source: '/stylist/:path*', destination: '/catalog', permanent: false },
+      { source: '/:locale(it|fr|de)/stylist', destination: '/:locale/catalog', permanent: false },
+      { source: '/:locale(it|fr|de)/stylist/:path*', destination: '/:locale/catalog', permanent: false },
     ]
   },
 

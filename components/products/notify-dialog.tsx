@@ -31,8 +31,8 @@ import { PrivacyNotice } from '@/components/privacy-notice'
  * Two shapes:
  *  - `full` replaces the add-to-cart button on the product page, at the exact
  *    moment the chosen size turns out to be gone;
- *  - `compact` is a quiet link on stylist and capsule cards, where the piece
- *    is shown but the customer's size is not in stock.
+ *  - `compact` is a quiet link under the size picker, for the sizes that are
+ *    sold out (and so cannot be chosen at all).
  */
 export function NotifyWhenAvailable({
   productId,

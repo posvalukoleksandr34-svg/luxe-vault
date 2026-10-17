@@ -125,7 +125,9 @@ export function SectionsGrid() {
                   href={href}
                   aria-label={label}
                   className={cn(
-                    'card-gold product-card group relative block w-full overflow-hidden text-left',
+                    // A photograph edge to edge — no border or shadow, like
+                    // the product tiles (.product-card in globals.css).
+                    'product-card group relative block w-full overflow-hidden text-left',
                     // Tall editorial portrait only once the cards sit three to
                     // a row; while they are stacked full-width, a landscape
                     // crop keeps each one from running past a screen height.

@@ -5,7 +5,6 @@ import { Link } from '@/components/locale-link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { AccountOrders } from '@/components/account-orders'
-import { CuratedVaults } from '@/components/account/curated-vaults'
 import { DeleteAccount } from '@/components/account/delete-account'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
@@ -53,7 +52,6 @@ const LEGACY_TABS: Record<string, AccountSectionKey> = {
   profile: 'details',
   settings: 'details',
   orders: 'orders',
-  vaults: 'looks',
   addresses: 'addresses',
 }
 
@@ -192,7 +190,7 @@ function Overview() {
 
       {/* The sections without a card, and sign-out: quiet, below the grid. */}
       <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-border pt-6">
-        {(['settings', 'credits', 'looks'] as AccountSectionKey[]).map((key) => (
+        {(['settings', 'credits'] as AccountSectionKey[]).map((key) => (
           <Link
             key={key}
             href={accountHref(key)}
@@ -282,7 +280,6 @@ function SectionView({ section }: { section: AccountSectionKey }) {
               <SavedCards />
             </div>
           )}
-          {section === 'looks' && <CuratedVaults />}
           {section === 'settings' && <SettingsSection />}
           {section === 'credits' && <CreditsSection />}
         </div>

@@ -10,7 +10,7 @@ import { geminiClient } from '@/lib/server/gemini'
  * The admin form used to take one name and one description and write that same
  * text into all five languages, so an Italian visitor read Russian. Products
  * now carry real translations, and this module is where they come from:
- * Google Gemini (GEMINI_API_KEY, the key the AI stylist already uses),
+ * Google Gemini (GEMINI_API_KEY, the key smart search and the concierge use),
  * translating from whichever language the admin wrote in.
  *
  * Nothing here is on the storefront's request path. Translation happens when
@@ -31,8 +31,11 @@ const LANGUAGE_NAMES: Record<Locale, string> = {
   de: 'German',
 }
 
-/** Same default as the stylist's copy pass — see rationale.ts for why it is
- *  not 2.0 Flash. GEMINI_MODEL overrides both. */
+/** NOT gemini-2.0-flash: 2.0 Flash is retired for generation. Its metadata
+ *  endpoint still answers 200, which makes it look alive, but generateContent
+ *  returns 404 "no longer available" (measured 2026-09-13 with this project's
+ *  key) — and a pass that fails soft would have been silently disabled.
+ *  GEMINI_MODEL overrides this without a code change. */
 const DEFAULT_MODEL = 'gemini-3.6-flash'
 
 /** A product description into four languages is a few seconds; this bounds a

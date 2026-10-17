@@ -8,10 +8,10 @@
 //
 // Nothing here can invent anything: a category filter names a category the
 // catalogue has, a brand filter a brand a product carries, a colour one of the
-// families the stylist already maps the catalogue's colour names onto
-// (lib/stylist/tagging.ts), and a price only one the query states.
+// families the catalogue's colour names are already mapped onto
+// (lib/style-tags/tagging.ts), and a price only one the query states.
 import { getRates, type CurrencyCode } from '@/lib/currency'
-import type { ColorFamily, Fit, Occasion, StyleKey } from '@/lib/stylist/types'
+import type { ColorFamily, Fit, Occasion, StyleKey } from '@/lib/style-tags/types'
 import type { LocalizedText, Product } from '@/lib/types'
 
 type Named = { slug: string; names: string[] }

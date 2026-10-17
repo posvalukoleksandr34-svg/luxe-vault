@@ -21,7 +21,7 @@ import { armAudio, playClickSound, playFocusSound, playHoverSound } from '@/lib/
  *    listeners are passive and never call preventDefault or stopPropagation.
  *
  * Components may still wire the hook directly where the intent is worth
- * stating in the code (the stylist's cards, the primary CTAs). Both layers
+ * stating in the code (the primary CTAs). Both layers
  * report the same press, and playClickSound is idempotent within 40 ms, so it
  * is heard once.
  *

@@ -1,5 +1,6 @@
 'use client'
 
+import { AnnouncementBar } from '@/components/announcement-bar'
 import { Link } from '@/components/locale-link'
 import { Heart, LifeBuoy, Search, ShoppingBag } from 'lucide-react'
 import { AccountMenu } from '@/components/account/account-menu'
@@ -39,174 +40,177 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
 
   return (
-    <header
-      data-scrolled={scrolled}
-      className="site-header sticky top-0 z-50 border-b"
-    >
-      {/* Three columns: the menu, the wordmark, the customer's own controls.
-          The outer two are `minmax(0, 1fr)` each, so they are always exactly
-          as wide as each other and the wordmark sits at the exact centre of
-          the bar whatever either side holds — a signed-in bell, a cart badge,
-          a longer language label.
+    <>
+      {/* Black, above the white bar: the page's one strong band at the top,
+          answering the black footer at the bottom. It scrolls away; the
+          header below it is what stays. */}
+      <AnnouncementBar />
+      <header
+        data-scrolled={scrolled}
+        className="site-header sticky top-0 z-50 border-b"
+      >
+        {/* Three columns: the menu, the wordmark, the customer's own controls.
+            The outer two are `minmax(0, 1fr)` each, so they are always exactly
+            as wide as each other and the wordmark sits at the exact centre of
+            the bar whatever either side holds — a signed-in bell, a cart badge,
+            a longer language label.
 
-          The right-hand row has to clear the wordmark down to a 320px phone,
-          signed in: below md the cart, profile and wishlist are left out of
-          it — the bottom tab bar (components/bottom-nav.tsx, phones only)
-          carries all three, badges included — below lg the language and
-          currency switcher is in the menu's top row, and below xl so is the
-          support button (in the menu's list).
+            The right-hand row has to clear the wordmark down to a 320px phone,
+            signed in: below md the cart, profile and wishlist are left out of
+            it — the bottom tab bar (components/bottom-nav.tsx, phones only)
+            carries all three, badges included — below lg the language and
+            currency switcher is in the menu's top row, and below xl so is the
+            support button (in the menu's list).
 
-          overflow-x: clip — the icons' invisible 44px tap areas (.tap-safe)
-          reach past the last icon, and at the screen edge that alone widened
-          the page by a few pixels. `clip`, not `hidden`: it cuts one axis
-          only and makes no scroll container, so the menus that open below
-          the row are untouched. */}
-      <div className="mx-auto grid h-16 max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-x-clip px-4 sm:gap-4 sm:px-6 lg:px-10">
-        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => setSiteMenuOpen(!menuOpen)}
-            className="tap-safe relative flex h-9 shrink-0 items-center gap-3 text-foreground transition-opacity hover:opacity-70"
-            aria-label={menuOpen ? t('nav.closeMenu') : t('nav.menu')}
-            aria-expanded={menuOpen}
-            aria-controls="site-menu"
-            aria-haspopup="dialog"
-          >
-            <MenuIcon open={menuOpen} />
-            {/* The word as well from lg up, where there is room for it. */}
-            <span aria-hidden className="t-label hidden lg:inline">
-              {t('nav.menu')}
-            </span>
-            {/* A reply from the team is waiting: below xl the support button
-                lives in the menu, so the menu button carries the dot. */}
-            {!menuOpen && supportUnread > 0 && (
-              <span className="absolute -right-1.5 top-1 size-1.5 rounded-full bg-gold xl:hidden" aria-hidden />
-            )}
-          </button>
-        </div>
-
-        {/* A Link, not a scroll-to-top button.
-            The header is global, so on /product/[slug], /checkout, /order/[id]
-            and the legal pages the old handler scrolled a page the visitor was
-            already at the top of and went nowhere — the wordmark looked dead.
-            An <a href="/"> also gets middle-click, "open in new tab", keyboard
-            focus and crawlable internal linking, none of which a button has.
-
-            Optically centred too: letter-spacing is added AFTER every letter,
-            the last one included, so a tracked word sits half a space left of
-            its box's centre. The last word gives that space back
-            (margin-right: -tracking), with the tracking held in --track so the
-            two always match at each size. */}
-        <Link
-          href="/"
-          aria-label="LUXE VAULT — home"
-          className="tap-safe flex select-none items-baseline gap-[0.2em] justify-self-center whitespace-nowrap font-serif text-base font-bold tracking-[var(--track)] text-foreground [--track:0.08em] min-[380px]:text-lg min-[380px]:[--track:0.14em] sm:text-xl sm:[--track:0.24em] lg:text-[22px] lg:[--track:0.28em]"
-        >
-          <span>LUXE</span>
-          <span className="mr-[calc(var(--track)*-1)]">VAULT</span>
-        </Link>
-
-        <div className="flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
-          {/* Search, at every width: it opens the search row under the bar.
-              (An inline field here would grow toward the wordmark on focus.) */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen((v) => !v)}
-            className="tap-safe flex size-8 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
-            aria-label="Search"
-            aria-expanded={searchOpen}
-          >
-            <Search className="size-[18px]" />
-          </button>
-
-          {/* Language and currency — "IT · CHF". From lg up; below it, in
-              the menu. */}
-          <div className="hidden lg:block">
-            <LocaleCurrencyMenu />
+            overflow-x: clip — the icons' invisible 44px tap areas (.tap-safe)
+            reach past the last icon, and at the screen edge that alone widened
+            the page by a few pixels. `clip`, not `hidden`: it cuts one axis
+            only and makes no scroll container, so the menus that open below
+            the row are untouched. */}
+        <div className="mx-auto grid h-16 max-w-[1400px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 overflow-x-clip px-4 sm:gap-4 sm:px-6 lg:px-10">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setSiteMenuOpen(!menuOpen)}
+              className="tap-safe relative flex h-9 shrink-0 items-center gap-3 text-muted-foreground transition hover:text-foreground"
+              aria-label={menuOpen ? t('nav.closeMenu') : t('nav.menu')}
+              aria-expanded={menuOpen}
+              aria-controls="site-menu"
+              aria-haspopup="dialog"
+            >
+              <MenuIcon open={menuOpen} />
+              {/* The word as well from lg up, where there is room for it. */}
+              <span aria-hidden className="t-label hidden lg:inline">
+                {t('nav.menu')}
+              </span>
+              {/* A reply from the team is waiting: below xl the support button
+                  lives in the menu, so the menu button carries the dot. */}
+              {!menuOpen && supportUnread > 0 && (
+                <span className="absolute -right-1.5 top-1 size-1.5 rounded-full bg-gold xl:hidden" aria-hidden />
+              )}
+            </button>
           </div>
 
-          {/* Renders nothing for signed-out visitors, so the header keeps its
-              shape rather than showing a bell that could only ever be empty. */}
-          <NotificationCenter />
+          {/* A Link, not a scroll-to-top button.
+              The header is global, so on /product/[slug], /checkout, /order/[id]
+              and the legal pages the old handler scrolled a page the visitor was
+              already at the top of and went nowhere — the wordmark looked dead.
+              An <a href="/"> also gets middle-click, "open in new tab", keyboard
+              focus and crawlable internal linking, none of which a button has.
 
-          {/* Support messages, on every page. The count is replies from the
-              team the customer has not read yet. From xl up — below it the
-              row is full, so there it lives in the menu (with a dot on the
-              menu button when a reply is waiting). */}
-          <button
-            type="button"
-            // The support centre's own front page — the topics, then the
-            // request form for whoever needs it. The bot is the other entry
-            // point, on the floating button to the left.
-            onClick={() => openSupport()}
-            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground xl:flex"
-            aria-label={supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')}
-          >
-            <LifeBuoy className="size-[18px]" />
-            {supportUnread > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
-                {supportUnread}
-              </span>
-            )}
-          </button>
-
-          {/* Signed in: the account menu. Signed out: the drawer's sign-in.
-              Desktop only, like the wishlist below: on a phone the bottom tab
-              bar's Profile tab is the way in. */}
-          <div className="hidden md:contents">
-            <AccountMenu />
-          </div>
-
-          {/* Saved items. A real link, not a drawer: the wishlist is a page
-              with its own address, which is also what the bottom bar's tab
-              points at.
-
-              `hidden md:flex` complements that bar exactly — it is `md:hidden`,
-              so a phone gets the tab and a desktop gets this, and no screen
-              ever shows both routes to the same page. */}
-          <Link
-            href="/wishlist"
-            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
-            aria-label={
-              wishlistCount > 0 ? `${t('wishlist.title')} (${wishlistCount})` : t('wishlist.title')
-            }
-          >
-            <Heart className="size-[18px]" />
-            {wishlistCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold tabular-nums text-gold-foreground">
-                {/* lib/wishlist.ts caps the list at 200, so three digits is
-                    reachable by design and would burst a size-4 circle. Same
-                    treatment as the bottom bar's badge. */}
-                {wishlistCount > 99 ? '99+' : wishlistCount}
-              </span>
-            )}
+              The wordmark itself (.site-wordmark in app/globals.css): Bodoni at a
+              medium weight rather than bold, opened up with wide tracking, so
+              it reads as a set name, not a black block. Optically centred too:
+              letter-spacing is added AFTER every letter, the last one
+              included, so a tracked word sits half a space left of its box's
+              centre; the last word gives that space back. */}
+          <Link href="/" aria-label="LUXE VAULT — home" className="site-wordmark tap-safe justify-self-center">
+            <span>LUXE</span>
+            <span>VAULT</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => setPanel('cart')}
-            // Desktop only, like the wishlist: on a phone the bottom tab bar's
-            // Cart tab, with the same badge, is the way in.
-            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
-            aria-label={t('cart.title')}
-          >
-            <ShoppingBag className="size-[18px]" />
-            {cartCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+          <div className="flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
+            {/* Search, at every width: it opens the search row under the bar.
+                (An inline field here would grow toward the wordmark on focus.) */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen((v) => !v)}
+              className="tap-safe flex size-8 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
+              aria-label="Search"
+              aria-expanded={searchOpen}
+            >
+              <Search className="size-[18px]" />
+            </button>
 
-      {searchOpen && (
-        <div className="border-t border-border px-4 py-3">
-          <div className="mx-auto w-full max-w-xl">
-            <SearchBox variant="mobile" autoFocus onNavigate={() => setSearchOpen(false)} />
+            {/* Language and currency — "IT · CHF". From lg up; below it, in
+                the menu. */}
+            <div className="hidden lg:block">
+              <LocaleCurrencyMenu />
+            </div>
+
+            {/* Renders nothing for signed-out visitors, so the header keeps its
+                shape rather than showing a bell that could only ever be empty. */}
+            <NotificationCenter />
+
+            {/* Support messages, on every page. The count is replies from the
+                team the customer has not read yet. From xl up — below it the
+                row is full, so there it lives in the menu (with a dot on the
+                menu button when a reply is waiting). */}
+            <button
+              type="button"
+              // The support centre's own front page — the topics, then the
+              // request form for whoever needs it. The bot is the other entry
+              // point, on the floating button to the left.
+              onClick={() => openSupport()}
+              className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground xl:flex"
+              aria-label={supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')}
+            >
+              <LifeBuoy className="size-[18px]" />
+              {supportUnread > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
+                  {supportUnread}
+                </span>
+              )}
+            </button>
+
+            {/* Signed in: the account menu. Signed out: the drawer's sign-in.
+                Desktop only, like the wishlist below: on a phone the bottom tab
+                bar's Profile tab is the way in. */}
+            <div className="hidden md:contents">
+              <AccountMenu />
+            </div>
+
+            {/* Saved items. A real link, not a drawer: the wishlist is a page
+                with its own address, which is also what the bottom bar's tab
+                points at.
+
+                `hidden md:flex` complements that bar exactly — it is `md:hidden`,
+                so a phone gets the tab and a desktop gets this, and no screen
+                ever shows both routes to the same page. */}
+            <Link
+              href="/wishlist"
+              className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
+              aria-label={
+                wishlistCount > 0 ? `${t('wishlist.title')} (${wishlistCount})` : t('wishlist.title')
+              }
+            >
+              <Heart className="size-[18px]" />
+              {wishlistCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold tabular-nums text-gold-foreground">
+                  {/* lib/wishlist.ts caps the list at 200, so three digits is
+                      reachable by design and would burst a size-4 circle. Same
+                      treatment as the bottom bar's badge. */}
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setPanel('cart')}
+              // Desktop only, like the wishlist: on a phone the bottom tab bar's
+              // Cart tab, with the same badge, is the way in.
+              className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
+              aria-label={t('cart.title')}
+            >
+              <ShoppingBag className="size-[18px]" />
+              {cartCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-foreground">
+                  {cartCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
-      )}
-    </header>
+
+        {searchOpen && (
+          <div className="border-t border-border px-4 py-3">
+            <div className="mx-auto w-full max-w-xl">
+              <SearchBox variant="mobile" autoFocus onNavigate={() => setSearchOpen(false)} />
+            </div>
+          </div>
+        )}
+      </header>
+    </>
   )
 }

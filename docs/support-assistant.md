@@ -1,7 +1,7 @@
 # Chat concierge (AI support assistant)
 
-The chat (the "Support" launcher, bottom right on the home, category and
-stylist pages) answers customers with a language model. The model reads the
+The chat (the "Support" launcher, bottom right on the home and category
+pages) answers customers with a language model. The model reads the
 shop's own policies, searches the real catalogue and looks up the customer's
 own orders, and it hands over to a person when it cannot help. Without a model
 the chat falls back to the help centre's prepared answers, which is what the
@@ -143,10 +143,10 @@ them, and the prompt forbids inventing either.
 
 | Variable | Meaning |
 | --- | --- |
-| `GEMINI_API_KEY` | Shared with smart search and the stylist. Without it the chat runs on prepared answers. |
+| `GEMINI_API_KEY` | Shared with smart search and catalogue translation. Without it the chat runs on prepared answers. |
 | `GEMINI_MODEL` | Optional override, **shared by every AI feature**. If it is set in the hosting environment it also replaces the concierge's default. Read forgivingly (`models/…`, quotes and spaces are accepted); a value that still is not a model name is ignored with a warning, and the default is used. |
 | `GEMINI_FALLBACK_MODEL` | Optional. The model a turn moves to when the main one is overloaded (5xx, 429) or has not answered in 10 s. Default `gemini-3.6-flash`; `off` disables it. |
-| `SUPPORT_ASSISTANT_AI=off` | Turns the concierge off without touching the key (search and stylist keep working). |
+| `SUPPORT_ASSISTANT_AI=off` | Turns the concierge off without touching the key (search and translation keep working). |
 | `GEMINI_BASE_URL` | Optional; route Gemini calls through a gateway or proxy. |
 
 ### The model
@@ -162,9 +162,9 @@ switch was decided from Google's model, changelog and deprecation pages. It
 has **not** been checked against the live API from this repository (no key
 here). Run the live checks below before relying on it.
 
-Smart search, the stylist and catalogue translation still default to
-`gemini-3.6-flash` (`lib/server/search-ai.ts`, `stylist/rationale.ts`,
-`translate.ts`); they need the same move before the retirement date.
+Smart search and catalogue translation still default to
+`gemini-3.6-flash` (`lib/server/search-ai.ts`, `lib/server/translate.ts`);
+they need the same move before the retirement date.
 
 ## Limits
 

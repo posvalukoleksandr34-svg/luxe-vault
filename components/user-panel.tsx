@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Bookmark,
   Loader2,
   LogOut,
   MailCheck,
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AccountOrders, isUnpaid } from '@/components/account-orders'
-import { CuratedVaults } from '@/components/account/curated-vaults'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
 import { SavedAddresses } from '@/components/saved-addresses'
@@ -560,9 +558,6 @@ export function UserPanel() {
               <TabButton active={tab === 'profile'} onClick={() => setTab('profile')} icon={<UserIcon className="size-4" />}>
                 {t('user.profile')}
               </TabButton>
-              <TabButton active={tab === 'looks'} onClick={() => setTab('looks')} icon={<Bookmark className="size-4" />}>
-                {t('vault.title')}
-              </TabButton>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -574,11 +569,6 @@ export function UserPanel() {
                   onReload={() => void loadOrders()}
                 />
               )}
-
-              {/* The same list the /account page shows, in its drawer form —
-                  one implementation, so the two can never disagree about
-                  what has been saved. */}
-              {tab === 'looks' && <CuratedVaults compact />}
 
               {tab === 'profile' && (
                 <div className="space-y-4">

@@ -56,8 +56,8 @@ type AdminTab =
 const STATUS_LABELS_RU = ORDER_STATUS_LABELS_RU
 
 export function AdminPanel() {
-  // The console works over every product, so it is the one place (with the
-  // stylist's fallback) that fetches the whole catalogue. The storefront no
+  // The console works over every product, so it is the one place that
+  // fetches the whole catalogue. The storefront no
   // longer holds it; see useFullCatalog.
   const { products } = useFullCatalog()
   const {

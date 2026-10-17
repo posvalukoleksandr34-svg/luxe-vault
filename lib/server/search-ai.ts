@@ -19,14 +19,14 @@ import {
   type Fit,
   type Occasion,
   type StyleKey,
-} from '@/lib/stylist/types'
+} from '@/lib/style-tags/types'
 import { geminiClient } from '@/lib/server/gemini'
 
 /** The rules' results are already on screen when this is asked (the client
  *  sends ai=1 only once typing has settled), so it can take a little longer
  *  than a keystroke — but not long enough to matter if it never answers. */
 const TIMEOUT_MS = 4000
-/** Same default as the translation and stylist passes; GEMINI_MODEL overrides. */
+/** Same default as the translation pass (see translate.ts); GEMINI_MODEL overrides. */
 const DEFAULT_MODEL = 'gemini-3.6-flash'
 const CACHE_MAX = 300
 

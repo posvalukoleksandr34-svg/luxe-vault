@@ -37,7 +37,7 @@ export const INDEXED_LOCALES: StorefrontLocale[] = STOREFRONT_LOCALES.map((l) =>
  * alone. Everything else under `/` is a storefront path and gets a language.
  *
  * Whole subtrees, deliberately: a segment that is localised at its root and
- * not at a child (a localised /stylist over a bare /stylist/share) would have
+ * not at a child (a localised /support over a bare /support/x) would have
  * middleware rewrite the child into a route that does not exist, and the page
  * would 404 for no visible reason.
  */
@@ -76,7 +76,6 @@ export const LOCALIZED_PATHS = [
   '/product',
   '/contact',
   '/support',
-  '/stylist',
   '/wishlist',
   '/legal',
   '/about',

@@ -25,7 +25,7 @@ import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
 import { SizeFinder, finderAudience } from '@/components/products/size-finder/size-finder'
 import { finderRunFor, isLetterSizeRun } from '@/lib/fit-advisor'
 import { HurryDot } from '@/components/products/hurry-dot'
-import { resolveTags } from '@/lib/stylist/tagging'
+import { resolveTags } from '@/lib/style-tags/tagging'
 import { NotifyWhenAvailable } from '@/components/products/notify-dialog'
 import { WaitlistForm } from '@/components/products/waitlist-form'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
@@ -430,8 +430,10 @@ export function ProductDetail({ product }: { product: Product }) {
           corners, a full-bleed photo would round off against the screen
           edge. */}
       <div>
+        {/* On the surface grey with no frame or shadow, like the product
+            tiles in the grid; `isolate` keeps the photo's multiply inside. */}
         <div
-          className="card-gold group relative aspect-[3/4] overflow-hidden"
+          className="group relative isolate aspect-[3/4] overflow-hidden rounded bg-secondary"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -457,7 +459,7 @@ export function ProductDetail({ product }: { product: Product }) {
             sizes={MAIN_PHOTO_SIZES}
             quality={MAIN_PHOTO_QUALITY}
             priority
-            className={cn('size-full object-cover', outOfStock && 'opacity-40 grayscale')}
+            className={cn('size-full object-cover mix-blend-multiply', outOfStock && 'opacity-40 grayscale')}
           />
 
           {allImages.length > 1 && (

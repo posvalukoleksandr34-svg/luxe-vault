@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
  * opened by the menu button in the header (components/header.tsx).
  *
  * Everything in it already existed — the header's links, the phone menu's
- * New in / Sale / Find Your Style / Support, and the departments with their
+ * New in / Sale / Support, and the departments with their
  * categories from the live taxonomy (the same tree the catalogue sidebar
  * reads). Nothing here is a new destination.
  *
@@ -225,7 +225,7 @@ export function SiteMenu() {
             href="/"
             onClick={closeSiteMenu}
             aria-label="LUXE VAULT — home"
-            className="site-menu__brand font-serif font-bold"
+            className="site-wordmark site-menu__brand"
           >
             <span>LUXE</span>
             <span>VAULT</span>
@@ -283,11 +283,6 @@ export function SiteMenu() {
                   onClick={view('sale')}
                 >
                   {t('footer.sale')}
-                </MenuLink>
-              </Item>
-              <Item index={nextIndex()}>
-                <MenuLink href="/stylist" current={isCurrent('/stylist')}>
-                  {t('stylist.cta')}
                 </MenuLink>
               </Item>
             </ul>
