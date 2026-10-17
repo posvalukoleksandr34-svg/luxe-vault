@@ -602,7 +602,7 @@ const STATUS_STYLE: Record<SupportTicketStatus, string> = {
   open: 'border-gold/40 text-gold',
   in_progress: 'border-foreground/25 text-foreground/80',
   waiting_user: 'border-gold bg-gold/10 text-gold',
-  resolved: 'border-border bg-muted text-foreground/80',
+  resolved: 'border-emerald-500/30 text-emerald-700/90',
   closed: 'border-border text-muted-foreground',
 }
 
@@ -801,9 +801,9 @@ function MessageAttachments({ items }: { items: SupportAttachment[] }) {
 
 // ------------------------------------------------------------------ form --
 
-// Readable in the drawer: black text, grey placeholders, a hairline border
-// that turns black on focus. The border change is the focus indicator, so the
-// global focus outline is off here.
+// Readable on the drawer's near-black: neutral-300 text, neutral-400
+// placeholders, a crisp white/15 hairline and a quiet amber edge on focus. The
+// border change is the focus indicator, so the global gold outline is off here.
 const FIELD =
   'w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] font-light text-foreground/85 outline-none transition-colors placeholder:text-muted-foreground/55 focus:border-gold focus:ring-4 focus:ring-gold/15 focus:ring-0 focus-visible:outline-none'
 const LABEL = 'mb-2 block text-[10px] uppercase tracking-[0.2em] text-foreground/85'
@@ -904,7 +904,7 @@ function NewTicketForm({
               className={cn(
                 'rounded-xl border px-3.5 py-2 text-xs uppercase tracking-wider transition-[color,border-color,background-color,box-shadow] duration-200',
                 category === cat
-                  ? 'border-foreground bg-foreground text-background'
+                  ? 'border-amber-500/60 bg-amber-500/10 text-amber-700 shadow-[0_0_16px_-6px_rgba(245,158,11,0.55)]'
                   : 'border-border bg-card text-foreground/85 hover:border-gold/60 hover:text-foreground',
               )}
             >

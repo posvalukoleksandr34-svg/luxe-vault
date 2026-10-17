@@ -18,8 +18,9 @@ export type ErrorBoundaryProps = {
  * practice, the catalogue's database (Supabase) unreachable or timing out.
  *
  * Shared by app/error.tsx and app/catalog/error.tsx so the two cannot drift.
- * Drawn in the theme tokens like every other page: white ground, black ink,
- * and the black accent for the icon, the rule and the retry button.
+ * The Dark Luxury palette is pinned to its exact values (#000000 ground,
+ * #D4AF37 gold, #CCCCCC text) rather than the theme tokens, per the design
+ * spec for this screen.
  *
  * "Try again" refreshes the router BEFORE calling reset(). reset() alone only
  * re-renders the segment from the client's cached server payload — the one
@@ -59,8 +60,8 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
         <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
           {t('state.catalogUnavailableHint')}
         </p>
-        {/* no-juice: keeps the global hover dimming (globals.css) off this
-            button, whose own hover is a fill. */}
+        {/* no-juice: the global hover rule (globals.css) forces gold ink, which
+            would sink the label into this button's own gold hover fill. */}
         <button
           type="button"
           onClick={retry}

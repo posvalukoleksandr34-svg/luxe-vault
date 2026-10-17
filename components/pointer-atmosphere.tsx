@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Soft grey light that follows the cursor.
+ * Liquid gold that follows the cursor.
  *
  * Three pools of light chase the pointer at three different rates. The fast
  * one arrives almost with the cursor, the slow one lags well behind, and the

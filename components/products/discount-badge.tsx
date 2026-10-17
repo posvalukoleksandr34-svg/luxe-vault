@@ -14,9 +14,9 @@ export function discountPercent(price: number, oldPrice: number | undefined | nu
 }
 
 /**
- * `−40%` — black on a translucent white ground, a hairline border, tabular
- * figures. Never red: a discount is not an error, and the palette is black
- * and white. Renders nothing (not an empty box) when there is no discount.
+ * `−40%` — gold on the near-black ground, a hairline gold border, tabular
+ * figures. Never red: in this palette red means an error, and a discount is
+ * not one. Renders nothing (not an empty box) when there is no discount.
  */
 export function DiscountBadge({
   price,

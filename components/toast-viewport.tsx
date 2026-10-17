@@ -16,13 +16,13 @@ export function ToastViewport() {
           className={cn(
             'animate-fade-up pointer-events-auto flex items-start gap-3 rounded-xl border bg-popover/95 p-4 shadow-2xl backdrop-blur-md',
             toast.variant === 'gold' && 'border-gold/40 shadow-gold',
-            toast.variant === 'success' && 'border-foreground/60',
+            toast.variant === 'success' && 'border-emerald-500/40',
             toast.variant === 'default' && 'border-border',
           )}
         >
           {toast.variant === 'success' && (
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground">
-              <Check className="size-3.5 text-background" />
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+              <Check className="size-3.5 text-emerald-700" />
             </div>
           )}
           {toast.variant === 'gold' && (

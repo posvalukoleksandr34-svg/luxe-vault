@@ -23,7 +23,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { ORDER_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { STATUS_LABELS } from '@/lib/i18n'
@@ -409,7 +408,7 @@ export function AdminPanel() {
                     aria-pressed={gapsOnly}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
                       gapsOnly
-                        ? 'border-foreground bg-foreground text-background'
+                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-700'
                         : 'border-border text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -452,7 +451,7 @@ export function AdminPanel() {
                                   {productGaps(p).map((g) => (
                                     <span
                                       key={g}
-                                      className={cn('rounded border px-1.5 py-0.5 text-[10px]', TONE.stopped)}
+                                      className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700"
                                     >
                                       {GAP_LABELS[g]}
                                     </span>

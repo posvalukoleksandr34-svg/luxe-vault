@@ -2,7 +2,6 @@
 
 import { Check, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Review, ReviewStatus } from '@/lib/types'
@@ -14,9 +13,9 @@ const STATUS_LABELS: Record<ReviewStatus, string> = {
 }
 
 const STATUS_COLORS: Record<ReviewStatus, string> = {
-  pending: TONE.active,
-  approved: TONE.done,
-  rejected: TONE.stopped,
+  pending: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  approved: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  rejected: 'text-red-700 bg-red-500/10 border-red-500/30',
 }
 
 /** Lightweight review moderation queue — submissions land here as `pending`
@@ -133,7 +132,7 @@ export function ReviewsManager() {
                   type="button"
                   onClick={() => updateStatus(review.id, 'approved')}
                   disabled={review.status === 'approved'}
-                  className="flex items-center gap-1.5 rounded-lg border border-foreground bg-foreground px-3 py-1.5 text-[11px] font-medium text-background transition hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Check className="size-3.5" />
                   Одобрить

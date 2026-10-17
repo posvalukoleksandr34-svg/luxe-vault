@@ -186,7 +186,7 @@ export function ShippingSettingsForm({
             {status && (
               <p
                 role={status.kind === 'error' ? 'alert' : 'status'}
-                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-foreground' : 'text-destructive')}
+                className={cn('text-xs leading-relaxed', status.kind === 'ok' ? 'text-gold' : 'text-red-700')}
               >
                 {status.text}
               </p>

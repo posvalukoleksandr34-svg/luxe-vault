@@ -572,7 +572,7 @@ export function ProductDetail({ product }: { product: Product }) {
             that brand's product. Our own label needs no such line. */}
         <section
           aria-labelledby="product-authenticity"
-          className="mt-5 rounded-xl border border-foreground/15 bg-foreground/[0.03] px-4 py-3.5"
+          className="mt-5 rounded-xl border border-gold/35 bg-gold/[0.05] px-4 py-3.5"
         >
           <h2 id="product-authenticity" className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em] text-foreground">
             <Info className="size-3.5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />

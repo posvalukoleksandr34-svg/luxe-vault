@@ -4,7 +4,6 @@ import { ArrowLeft, Check, Loader2, RotateCcw, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { adminT as t } from '@/lib/admin-i18n'
 import type { UIKey } from '@/lib/i18n'
 import { formatChf, useStore } from '@/lib/store'
@@ -59,13 +58,12 @@ const FILTERS: { key: Filter; label: string }[] = [
 ]
 
 const STATUS_BADGE: Record<ReturnRequestStatus, { label: string; className: string }> = {
-  pending: { label: 'Ожидает решения', className: TONE.active },
+  pending: { label: 'Ожидает решения', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700' },
   // Approved and not yet completed means the money has NOT moved — the one
-  // state a manager must notice, so it is the loudest of the four: the only
-  // solid tag.
-  approved: { label: 'Одобрена · деньги не возвращены', className: TONE.done },
-  rejected: { label: 'Отклонена', className: TONE.stopped },
-  completed: { label: 'Деньги возвращены', className: TONE.muted },
+  // state a manager must notice, so it is the loudest of the four.
+  approved: { label: 'Одобрена · деньги не возвращены', className: 'border-sky-500/40 bg-sky-500/10 text-sky-700' },
+  rejected: { label: 'Отклонена', className: 'border-red-500/30 bg-red-500/10 text-red-700' },
+  completed: { label: 'Деньги возвращены', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700' },
 }
 
 const REASON_LABEL: Record<ReturnReason, UIKey> = {
@@ -300,7 +298,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                 <span className="tabular-nums text-foreground">{formatChf(order.total)}</span>
               </div>
               {order.refundedAmount > 0 && (
-                <div className="mt-1 flex justify-between text-xs font-medium text-foreground">
+                <div className="mt-1 flex justify-between text-xs text-emerald-700">
                   <span>Уже возвращено</span>
                   <span className="tabular-nums">{formatChf(order.refundedAmount)}</span>
                 </div>
@@ -335,7 +333,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => void decide('reject')}
                   disabled={busy !== null || note.trim().length === 0}
-                  className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/85 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-red-500 disabled:opacity-40"
                 >
                   {busy === 'reject' ? <Loader2 className="size-4 animate-spin" /> : <X className="size-4" />}
                   Подтвердить отказ
@@ -377,7 +375,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => void decide('complete')}
                   disabled={busy !== null}
-                  className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/85 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-emerald-500 disabled:opacity-40"
                 >
                   {busy === 'complete' ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   Деньги возвращены вручную
@@ -391,7 +389,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
                   type="button"
                   onClick={() => setRejecting(true)}
                   disabled={busy !== null}
-                  className="inline-flex items-center gap-2 rounded-lg border border-foreground/40 px-4 py-2 text-sm text-foreground transition hover:border-foreground hover:bg-foreground/5 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-700 transition hover:bg-red-500/10 disabled:opacity-40"
                 >
                   <X className="size-4" />
                   Отклонить
@@ -400,7 +398,7 @@ function ReturnCard({ row }: { row: ReturnRow }) {
             </div>
           )}
 
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+          {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         </footer>
       )}
     </article>

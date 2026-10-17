@@ -2,7 +2,6 @@
 
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldAlert, Star, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -39,14 +38,13 @@ const FLAG_LABELS: Record<Flag, string> = {
   gibberish: 'Бессмысленный текст',
 }
 
-/** Rating alone is an outline (usually fine to publish); content problems
- *  are solid, so they stand out. */
+/** Rating alone is amber (usually fine to publish); content problems are red. */
 const FLAG_TONE: Record<Flag, string> = {
-  low_rating: TONE.active,
-  profanity: TONE.done,
-  contact_or_link: TONE.done,
-  spam: TONE.done,
-  gibberish: TONE.done,
+  low_rating: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  profanity: 'border-red-500/30 bg-red-500/10 text-red-700',
+  contact_or_link: 'border-red-500/30 bg-red-500/10 text-red-700',
+  spam: 'border-red-500/30 bg-red-500/10 text-red-700',
+  gibberish: 'border-red-500/30 bg-red-500/10 text-red-700',
 }
 
 type Action = 'approved' | 'rejected' | 'delete'
@@ -196,7 +194,7 @@ export function ProductReviewsQueue() {
                   type="button"
                   onClick={() => void act(review, 'approved')}
                   disabled={busy === review.id}
-                  className="flex items-center gap-1.5 rounded-lg border border-foreground bg-foreground px-3 py-1.5 text-[12px] font-medium text-background transition hover:bg-foreground/85 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[12px] font-medium text-emerald-700 transition hover:bg-emerald-500/20 disabled:opacity-50"
                 >
                   {busy === review.id ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                   Опубликовать

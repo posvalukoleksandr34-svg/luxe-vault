@@ -9,7 +9,6 @@ import { LoadError } from '@/components/load-error'
 import { EmptyState } from '@/components/state-view'
 import { OrderListSkeleton } from '@/components/skeletons'
 import { TrackingDetails } from '@/components/tracking-details'
-import { TONE } from '@/components/ui/tone'
 import { CARD_PAYMENT_METHOD } from '@/lib/data'
 import { paymentMethodLabel } from '@/lib/payment-labels'
 import { hasReceivedMoney } from '@/lib/payment-state'
@@ -45,11 +44,11 @@ const StripePayment = dynamic(
 
 const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'text-muted-foreground bg-muted/40 border-border',
-  processing: TONE.active,
-  shipped: TONE.active,
-  delivered: TONE.done,
-  cancelled: TONE.stopped,
-  refunded: TONE.muted,
+  processing: 'text-amber-700 bg-amber-500/10 border-amber-500/30',
+  shipped: 'text-blue-700 bg-blue-500/10 border-blue-500/30',
+  delivered: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30',
+  cancelled: 'text-red-700 bg-red-500/10 border-red-500/30',
+  refunded: 'text-violet-300 bg-violet-400/10 border-violet-400/30',
 }
 
 /** Terminal states. An order here is finished — nothing about it is actionable
@@ -433,7 +432,7 @@ export function AccountOrders({
                       {t('rma.approved')}
                     </span>
                   ) : order.returnStatus === 'refunded' ? (
-                    <span className={cn('rounded-xl border px-3 py-2 text-[10px] uppercase tracking-[0.12em]', TONE.muted)}>
+                    <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-emerald-700/90">
                       {t('orders.refunded')}
                     </span>
                   ) : undefined
@@ -566,13 +565,13 @@ function CancelDialog({
 function PaymentBadge({ status }: { status: PaymentStatus }) {
   const { t } = useStore()
   const map: Record<PaymentStatus, { label: string; className: string }> = {
-    pending_payment: { label: t('orders.awaitingPayment'), className: TONE.active },
-    confirming: { label: t('crypto.confirming'), className: TONE.active },
-    paid: { label: t('crypto.paid'), className: TONE.done },
-    failed: { label: t('crypto.failed'), className: TONE.stopped },
-    expired: { label: t('crypto.expired'), className: TONE.stopped },
-    refunded: { label: t('orders.refunded'), className: TONE.muted },
-    partially_refunded: { label: t('orders.partiallyRefunded'), className: TONE.muted },
+    pending_payment: { label: t('orders.awaitingPayment'), className: 'text-gold border-gold/40 bg-gold/10' },
+    confirming: { label: t('crypto.confirming'), className: 'text-blue-700 border-blue-500/30 bg-blue-500/10' },
+    paid: { label: t('crypto.paid'), className: 'text-emerald-700 border-emerald-500/30 bg-emerald-500/10' },
+    failed: { label: t('crypto.failed'), className: 'text-red-700 border-red-500/30 bg-red-500/10' },
+    expired: { label: t('crypto.expired'), className: 'text-red-700 border-red-500/30 bg-red-500/10' },
+    refunded: { label: t('orders.refunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
+    partially_refunded: { label: t('orders.partiallyRefunded'), className: 'text-violet-300 border-violet-400/30 bg-violet-400/10' },
   }
   const c = map[status]
   return (
@@ -645,7 +644,7 @@ function OrderCard({
             {order.paymentStatus && !muted && <PaymentBadge status={order.paymentStatus} />}
           </div>
           {order.refundedAmount != null && order.refundedAmount > 0 && (
-            <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="text-[10px] uppercase tracking-[0.1em] text-violet-300/80">
               {t('orders.refundedAmount')} {formatChf(order.refundedAmount)}
             </span>
           )}

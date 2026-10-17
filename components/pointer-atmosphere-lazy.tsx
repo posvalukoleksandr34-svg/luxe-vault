@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 
 /**
- * Loads the cursor-following light off the critical path.
+ * Loads the cursor-following gold light off the critical path.
  *
  * A CLIENT wrapper, because the root layout is a Server Component and
  * `dynamic(..., { ssr: false })` cannot be used from one — nor can a server

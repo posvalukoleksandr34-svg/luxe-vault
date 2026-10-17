@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * A horizontal wheel picker — a ruler of numbers the customer swipes, with
- * the value under the black marker in the middle.
+ * the value under the gold marker in the middle.
  *
  * NATIVE SCROLLING DOES THE PHYSICS. The strip is an ordinary horizontal
  * scroller with CSS scroll-snap (mandatory, centred), so the flick, the
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
  * UNSET UNTIL TOUCHED. With `value` empty the strip rests on `restAt`, drawn
  * muted, and reports nothing: the finder asks the shopper for their own
  * numbers, so a resting position must never be mistaken for an answer. The
- * first swipe, tap or key press sets it (and turns the centre black).
+ * first swipe, tap or key press sets it (and turns the centre gold).
  *
  * Accessible as a slider: focusable, arrow keys ±1, Page keys ±10,
  * Home/End, and announced with its value and unit.
@@ -222,7 +222,7 @@ export const ScrollPicker = forwardRef<HTMLDivElement, Props>(function ScrollPic
 
   return (
     <div className="relative select-none">
-      {/* The marker: a black hairline and caret under the chosen number. */}
+      {/* The marker: a gold hairline and caret under the chosen number. */}
       <div
         aria-hidden
         className={cn(

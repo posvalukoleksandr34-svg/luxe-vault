@@ -3,7 +3,6 @@
 import { ArrowLeft, ChevronDown, ClipboardList, FileDown, Search, ShieldAlert, Trash2, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useMemo, useState } from 'react'
-import { TONE } from '@/components/ui/tone'
 import { ORDER_STATUS_LABELS_RU, PAYMENT_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { formatCharged, orderCharge } from '@/lib/currency'
 import { formatChf, useStore } from '@/lib/store'
@@ -589,7 +588,7 @@ function RiskBadges({ risk, onUnlock }: { risk?: OrderRisk; onUnlock: () => void
   return (
     <div className="mt-1 flex flex-col items-start gap-1">
       {risk.fraudFlag && (
-        <Badge className={TONE.done}>
+        <Badge className="border-red-500/40 bg-red-500/10 text-red-700">
           <span className="inline-flex items-center gap-1">
             <ShieldAlert className="size-3" aria-hidden />
             {FRAUD_FLAG_LABELS[risk.fraudFlag]}
@@ -598,7 +597,7 @@ function RiskBadges({ risk, onUnlock }: { risk?: OrderRisk; onUnlock: () => void
       )}
       {risk.lockedAt && (
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          <Badge className={TONE.done}>Карта заблокирована</Badge>
+          <Badge className="border-red-500/40 bg-red-500/10 text-red-700">Карта заблокирована</Badge>
           <button
             type="button"
             title={risk.lockReason}

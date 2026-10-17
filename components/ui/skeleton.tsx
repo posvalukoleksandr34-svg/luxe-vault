@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils';
  * Replaces `animate-pulse rounded-md bg-muted`, which had two problems here:
  * the radius was dead (globals.css collapses every corner to 0) and a pulsing
  * grey block on a near-black ground reads as a broken image rather than as
- * loading. This is a pale grey bar with a slow, slightly deeper sheen
- * crossing it — the same light vocabulary the rest of the site uses.
+ * loading. This is a warm charcoal bar with a slow gold sheen crossing it —
+ * the same light vocabulary the rest of the site uses.
  *
  * A skeleton earns its place over a spinner only when it MATCHES THE LAYOUT
  * that replaces it. A centred spinner tells you nothing is here yet and then

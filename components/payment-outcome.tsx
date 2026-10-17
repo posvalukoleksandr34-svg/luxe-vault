@@ -13,7 +13,7 @@ export type PaymentOutcomeState = 'succeeded' | 'processing' | 'declined' | 'inc
  *
  * In the visitor's language — this page used to be hardcoded Russian — and in
  * the shop's own tones: a declined card is news, not an alarm, so the icon is
- * black like everything else, never red. Every outcome offers the next step: pay again (from
+ * gold rather than red. Every outcome offers the next step: pay again (from
  * the account drawer, where unpaid orders live — guests' included), or see
  * the order, or go back to the catalogue.
  *

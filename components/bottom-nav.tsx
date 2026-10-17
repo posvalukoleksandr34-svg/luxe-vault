@@ -57,7 +57,7 @@ export function BottomNav() {
     cn(
       'no-juice relative flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-[10px] tracking-[0.06em] transition-colors duration-200',
       'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-gold',
-      // The active tab: black, with a short black bar above its icon.
+      // The active tab: gold, with a short gold bar above its icon.
       on
         ? "font-medium text-gold before:absolute before:left-1/2 before:top-0 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-gold-gradient before:content-['']"
         : 'text-muted-foreground hover:text-foreground',
@@ -73,7 +73,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t('tab.nav')}
-      className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-border/70 bg-background/95 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
+      className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-border/70 bg-background/95 shadow-[0_-4px_16px_rgba(26,20,10,0.06)] backdrop-blur-md md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <ul className="grid h-16 grid-cols-5">
