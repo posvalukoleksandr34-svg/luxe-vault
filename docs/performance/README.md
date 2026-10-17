@@ -254,10 +254,9 @@ is fine.
   Lab numbers like the ones above do not replace field data.
 - **Resize on upload (P9).** Downscale to ≤ 2560 px and re-encode as WebP in
   the admin before upload. Smaller zoom images and faster optimiser misses.
-- **Low-end device check.** Profile the cursor light
-  (components/pointer-atmosphere.tsx: blurred, blended full-viewport pools,
-  now the most expensive paint on the site since the ambient background was
-  removed) on a mid-range laptop. If INP suffers, leave it off when
-  `navigator.hardwareConcurrency <= 4`.
+- **Low-end device check.** Profile the ambient background (`blur` +
+  `mix-blend-mode: screen` on full-viewport layers is the most expensive paint
+  on the site) on a mid-range Android. If INP suffers, turn the waves off
+  when `navigator.hardwareConcurrency <= 4`.
 - **Next.js 15 upgrade** (security Phase 1c) also brings smaller client
   runtime and better cache controls.

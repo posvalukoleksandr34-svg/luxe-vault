@@ -1,7 +1,6 @@
 'use client'
 
 import { ArrowRight } from 'lucide-react'
-import { HeroRibbonsLazy } from '@/components/deferred-ui'
 import { Link } from '@/components/locale-link'
 import { useEffect, useRef } from 'react'
 import { HOME } from '@/lib/content/home'
@@ -90,8 +89,8 @@ export function Hero() {
       {/* 2. Key light from above. */}
       <div className="hero__key" />
 
-      {/* The ribbon glow (components/hero-ribbons.tsx), in the hero only. */}
-      <HeroRibbonsLazy />
+      {/* The ribbon glow shows through here from the page layer behind the
+          whole site (components/hero-ribbons.tsx, from the root layout). */}
 
       {/* A soft white veil behind the wordmark and the buttons, so the
           ribbons pass BEHIND the text rather than through it. */}
