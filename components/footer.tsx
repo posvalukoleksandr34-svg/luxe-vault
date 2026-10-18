@@ -71,7 +71,6 @@ export function Footer() {
               <li><Link href="/catalog" className={LINK}>{t('footer.allProducts')}</Link></li>
               <li><Link href="/catalog?view=new" className={LINK}>{t('footer.new')}</Link></li>
               <li><Link href="/catalog?view=sale" className={LINK}>{t('footer.sale')}</Link></li>
-              <li><Link href="/wishlist" className={LINK}>{t('wishlist.title')}</Link></li>
             </ul>
           </nav>
 

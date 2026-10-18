@@ -5,7 +5,6 @@ import { Link } from '@/components/locale-link'
 import { useState } from 'react'
 import { DiscountBadge, discountPercent } from '@/components/products/discount-badge'
 import { HurryDot } from '@/components/products/hurry-dot'
-import { WishlistButton } from '@/components/products/wishlist-button'
 import { useAudioFeedback } from '@/hooks/use-audio-feedback'
 import { PRODUCT_PLACEHOLDER, productImage } from '@/lib/product-image'
 import { formatPrice, useStore } from '@/lib/store'
@@ -44,9 +43,8 @@ export function ProductCard({
   const [imageFailed, setImageFailed] = useState(false)
 
   return (
-    // `group` moves to this wrapper so the link and the save button can both
-    // react to a hover over the card, and so the button can be positioned over
-    // the photograph while staying OUTSIDE the <a> (see WishlistButton).
+    // `group` on the wrapper: everything in the card reacts to a hover over
+    // any part of it.
     <div className="group relative">
       {/* A real <a href>, not an onClick. A div with a click handler is
           invisible to crawlers, cannot be opened in a new tab, middle-clicked,
@@ -161,15 +159,6 @@ export function ProductCard({
           )}
           </div>
       </Link>
-
-      {/* Top-right of the photograph, and below the discount badge when there
-          is one, so the two never sit on top of each other. */}
-      <WishlistButton
-        productId={product.id}
-        productName={localize(product.name)}
-        size="sm"
-        className={cn('absolute right-3 z-10', discount > 0 ? 'top-14' : 'top-3')}
-      />
     </div>
   )
 }

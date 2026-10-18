@@ -18,7 +18,7 @@ export const COOKIES: LegalDocSet = {
   ru: {
     title: 'Политика cookie',
     description: 'Какие cookie и записи в хранилище браузера использует Luxe Vault, зачем и как долго.',
-    effective: 'Действует с 10 октября 2026 года',
+    effective: 'Действует с 18 октября 2026 года',
     sections: [
       {
         h: '1. Коротко',
@@ -61,7 +61,6 @@ export const COOKIES: LegalDocSet = {
           { ul: [
             '**lv.cookie-consent.v1** — ваш выбор по cookie (12 месяцев).',
             '**lv.cart.v1** — корзина (30 дней после последнего изменения).',
-            '**lv.wishlist.v1** — избранное без входа в аккаунт.',
             '**luxe-vault-orders** — номера и ключи доступа к заказам, оформленным на этом устройстве без аккаунта.',
             '**lv.checkout.profile.v1** — данные для оформления заказа; только если вы включили «Сохранить данные». Номер карты не сохраняется никогда.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — недавно просмотренные товары и поиски.',
@@ -87,7 +86,7 @@ export const COOKIES: LegalDocSet = {
   en: {
     title: 'Cookie Policy',
     description: 'Which cookies and browser-storage entries Luxe Vault uses, why, and for how long.',
-    effective: 'In force since 10 October 2026',
+    effective: 'In force since 18 October 2026',
     sections: [
       {
         h: '1. In short',
@@ -130,7 +129,6 @@ export const COOKIES: LegalDocSet = {
           { ul: [
             '**lv.cookie-consent.v1** — your cookie choice (12 months).',
             '**lv.cart.v1** — your cart (30 days after the last change).',
-            '**lv.wishlist.v1** — your wishlist when not signed in.',
             '**luxe-vault-orders** — numbers and access keys of orders placed on this device without an account.',
             '**lv.checkout.profile.v1** — your checkout details, only if you switched on "Save my details". A card number is never saved.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — recently viewed products and searches.',
@@ -156,7 +154,7 @@ export const COOKIES: LegalDocSet = {
   it: {
     title: 'Cookie Policy',
     description: 'Quali cookie e dati nella memoria del browser usa Luxe Vault, perché e per quanto tempo.',
-    effective: 'In vigore dal 10 ottobre 2026',
+    effective: 'In vigore dal 18 ottobre 2026',
     sections: [
       {
         h: '1. In breve',
@@ -199,7 +197,6 @@ export const COOKIES: LegalDocSet = {
           { ul: [
             '**lv.cookie-consent.v1** — la tua scelta sui cookie (12 mesi).',
             '**lv.cart.v1** — il carrello (30 giorni dall\'ultima modifica).',
-            '**lv.wishlist.v1** — i preferiti senza accesso.',
             '**luxe-vault-orders** — numeri e chiavi di accesso degli ordini fatti da questo dispositivo senza account.',
             '**lv.checkout.profile.v1** — i dati per il checkout, solo se hai attivato «Salva i miei dati». Il numero di carta non viene mai salvato.',
             '**lv.recently-viewed.v1**, **lv.recent-searches.v1** — prodotti visti e ricerche recenti.',

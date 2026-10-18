@@ -1,7 +1,7 @@
 'use client'
 
 import { Link } from '@/components/locale-link'
-import { Heart, LifeBuoy, Search, ShoppingBag } from 'lucide-react'
+import { LifeBuoy, Search, ShoppingBag } from 'lucide-react'
 import { AccountMenu } from '@/components/account/account-menu'
 import { SearchBox } from '@/components/search-box'
 import { useEffect, useState } from 'react'
@@ -12,7 +12,7 @@ import { setSiteMenuOpen, useSiteMenuOpen } from '@/lib/site-menu'
 import { useStore } from '@/lib/store'
 
 export function Header() {
-  const { cartCount, setPanel, t, openSupport, supportUnread, wishlistCount } = useStore()
+  const { cartCount, setPanel, t, openSupport, supportUnread } = useStore()
   const menuOpen = useSiteMenuOpen()
 
   /**
@@ -50,9 +50,9 @@ export function Header() {
           a longer language label.
 
           The right-hand row has to clear the wordmark down to a 320px phone,
-          signed in: below md the cart, profile and wishlist are left out of
-          it — the bottom tab bar (components/bottom-nav.tsx, phones only)
-          carries all three, badges included — below lg the language and
+          signed in: below md the cart and profile are left out of it — the
+          bottom tab bar (components/bottom-nav.tsx, phones only) carries
+          both, badges included — below lg the language and
           currency switcher is in the menu's top row, and below xl so is the
           support button (in the menu's list).
 
@@ -152,42 +152,17 @@ export function Header() {
           </button>
 
           {/* Signed in: the account menu. Signed out: the drawer's sign-in.
-              Desktop only, like the wishlist below: on a phone the bottom tab
+              Desktop only, like the cart below: on a phone the bottom tab
               bar's Profile tab is the way in. */}
           <div className="hidden md:contents">
             <AccountMenu />
           </div>
 
-          {/* Saved items. A real link, not a drawer: the wishlist is a page
-              with its own address, which is also what the bottom bar's tab
-              points at.
-
-              `hidden md:flex` complements that bar exactly — it is `md:hidden`,
-              so a phone gets the tab and a desktop gets this, and no screen
-              ever shows both routes to the same page. */}
-          <Link
-            href="/wishlist"
-            className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
-            aria-label={
-              wishlistCount > 0 ? `${t('wishlist.title')} (${wishlistCount})` : t('wishlist.title')
-            }
-          >
-            <Heart className="size-[18px]" />
-            {wishlistCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold tabular-nums text-gold-foreground">
-                {/* lib/wishlist.ts caps the list at 200, so three digits is
-                    reachable by design and would burst a size-4 circle. Same
-                    treatment as the bottom bar's badge. */}
-                {wishlistCount > 99 ? '99+' : wishlistCount}
-              </span>
-            )}
-          </Link>
-
           <button
             type="button"
             onClick={() => setPanel('cart')}
-            // Desktop only, like the wishlist: on a phone the bottom tab bar's
-            // Cart tab, with the same badge, is the way in.
+            // Desktop only: on a phone the bottom tab bar's Cart tab, with
+            // the same badge, is the way in.
             className="tap-safe relative hidden size-9 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground md:flex"
             aria-label={t('cart.title')}
           >

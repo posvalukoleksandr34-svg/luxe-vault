@@ -43,7 +43,7 @@ const CACHED = { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-r
  * reading stands. Every result is a real product from the catalogue.
  *
  * And a third job, catalogue retrieval: `?ids=a,b,c` answers those products.
- * The browser no longer holds the catalogue, so the cart, the wishlist and the
+ * The browser no longer holds the catalogue, so the cart and the
  * recently-viewed rail look up the few products they show here instead.
  *
  * Every product in an answer is a LISTING (lib/server/catalog-listing.ts):

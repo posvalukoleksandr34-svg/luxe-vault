@@ -15,7 +15,7 @@ export const PRIVACY: LegalDocSet = {
   ru: {
     title: 'Политика конфиденциальности',
     description: 'Какие персональные данные собирает Luxe Vault, зачем, кому передаёт, как долго хранит и как их удалить.',
-    effective: 'Действует с 6 октября 2026 года',
+    effective: 'Действует с 18 октября 2026 года',
     sections: [
       {
         h: '1. Кто отвечает за ваши данные',
@@ -43,7 +43,7 @@ export const PRIVACY: LegalDocSet = {
             '**Уведомления о поступлении и лист ожидания:** email, товар, размер и цвет.',
             '**Реферальная программа (завершена в октябре 2026 года):** если вы в ней участвовали — ваш код, количество переходов по ссылке (без данных о посетителях), приглашённые заказы и начисленные бонусы. Новые данные не собираются; записи хранятся для бухгалтерского учёта выплат и удаляются вместе с аккаунтом.',
             '**Технические данные:** IP-адрес (для ограничения числа запросов — хранится не дольше суток), журналы сервера, отчёты об ошибках и нарушениях политики безопасности (адреса страниц в них очищаются от ключей доступа).',
-            '**На вашем устройстве:** корзина, избранное, настройки, по вашему выбору — данные для оформления заказа. Подробно — в [Политике cookie](/legal/cookies).',
+            '**На вашем устройстве:** корзина, настройки, по вашему выбору — данные для оформления заказа. Подробно — в [Политике cookie](/legal/cookies).',
           ] },
           { p: 'Мы **не** собираем дату рождения, документы, удостоверяющие личность, и данные о местоположении устройства. Мерки из помощника по размеру (рост, вес) остаются только на вашем устройстве.' },
         ],
@@ -140,7 +140,7 @@ export const PRIVACY: LegalDocSet = {
   en: {
     title: 'Privacy Policy',
     description: 'What personal data Luxe Vault collects, why, who receives it, how long it is kept and how to delete it.',
-    effective: 'In force since 6 October 2026',
+    effective: 'In force since 18 October 2026',
     sections: [
       {
         h: '1. Who is responsible for your data',
@@ -168,7 +168,7 @@ export const PRIVACY: LegalDocSet = {
             '**Stock alerts and waitlist:** email, product, size and colour.',
             '**Referral programme (ended October 2026):** if you took part — your code, how many visits came through your link (nothing about the visitors), referred orders and the bonus earned. Nothing new is collected; the records are kept to account for rewards paid and are deleted with your account.',
             '**Technical data:** IP address (for rate limiting — kept no longer than one day), server logs, error and security-policy reports (page addresses in them are stripped of access keys).',
-            '**On your device:** cart, wishlist, preferences and, if you choose, your checkout details. Details in the [Cookie Policy](/legal/cookies).',
+            '**On your device:** cart, preferences and, if you choose, your checkout details. Details in the [Cookie Policy](/legal/cookies).',
           ] },
           { p: 'We do **not** collect dates of birth, identity documents or device location. Measurements entered in the size advisor (height, weight) stay on your device.' },
         ],
@@ -265,7 +265,7 @@ export const PRIVACY: LegalDocSet = {
   it: {
     title: 'Informativa sulla privacy',
     description: 'Quali dati personali raccoglie Luxe Vault, perché, chi li riceve, per quanto tempo li conserva e come cancellarli.',
-    effective: 'In vigore dal 6 ottobre 2026',
+    effective: 'In vigore dal 18 ottobre 2026',
     sections: [
       {
         h: '1. Chi è responsabile dei tuoi dati',
@@ -293,7 +293,7 @@ export const PRIVACY: LegalDocSet = {
             '**Avvisi di disponibilità e lista d\'attesa:** email, prodotto, taglia e colore.',
             '**Programma referral (concluso a ottobre 2026):** se vi hai partecipato — il tuo codice, quante visite sono arrivate dal tuo link (nulla sui visitatori), gli ordini segnalati e il bonus maturato. Non raccogliamo nuovi dati; i record sono conservati per la contabilità dei premi pagati e vengono cancellati insieme all’account.',
             '**Dati tecnici:** indirizzo IP (per limitare le richieste — conservato al massimo un giorno), log del server, segnalazioni di errori e di violazioni della politica di sicurezza (gli indirizzi delle pagine vengono ripuliti dalle chiavi di accesso).',
-            '**Sul tuo dispositivo:** carrello, preferiti, impostazioni e, se lo scegli, i dati per il checkout. Dettagli nella [Cookie Policy](/legal/cookies).',
+            '**Sul tuo dispositivo:** carrello, impostazioni e, se lo scegli, i dati per il checkout. Dettagli nella [Cookie Policy](/legal/cookies).',
           ] },
           { p: '**Non** raccogliamo date di nascita, documenti d\'identità né la posizione del dispositivo. Le misure inserite nel consulente taglie (altezza, peso) restano sul tuo dispositivo.' },
         ],

@@ -458,9 +458,6 @@ export const UI = {
   'rma.pending': { ru: 'Заявка на рассмотрении', en: 'Return pending approval', it: 'Reso in attesa di approvazione', fr: 'Retour en attente d’approbation', de: 'Rückgabe wird geprüft' },
   'rma.approved': { ru: 'Возврат одобрен · деньги в пути', en: 'Return approved · refund on its way', it: 'Reso approvato · rimborso in arrivo', fr: 'Retour approuvé · remboursement en cours', de: 'Rückgabe genehmigt · Erstattung unterwegs' },
   'rma.alreadyOpen': { ru: 'По этому заказу уже есть открытая заявка.', en: 'This order already has an open return request.', it: 'Questo ordine ha già una richiesta di reso aperta.', fr: 'Cette commande a déjà une demande de retour en cours.', de: 'Für diese Bestellung läuft bereits eine Rückgabeanfrage.' },
-  'toast.savedToWishlist': { ru: 'Сохранено в избранное', en: 'Saved to wishlist', it: 'Salvato nei preferiti', fr: 'Ajouté aux favoris', de: 'Zur Merkliste hinzugefügt' },
-  'toast.removedFromWishlist': { ru: 'Удалено из избранного', en: 'Removed from wishlist', it: 'Rimosso dai preferiti', fr: 'Retiré des favoris', de: 'Von der Merkliste entfernt' },
-  'toast.wishlistFailed': { ru: 'Не удалось сохранить. Попробуйте ещё раз.', en: 'Could not save. Please try again.', it: 'Impossibile salvare. Riprova.', fr: 'Enregistrement impossible. Réessayez.', de: 'Konnte nicht gespeichert werden. Bitte erneut versuchen.' },
   'state.contactSupport': { ru: 'Написать в поддержку', en: 'Contact support', it: 'Contatta l’assistenza', fr: 'Contacter le support', de: 'Support kontaktieren' },
   'state.loadingCatalog': { ru: 'Загрузка каталога', en: 'Loading the catalogue', it: 'Caricamento del catalogo', fr: 'Chargement du catalogue', de: 'Katalog wird geladen' },
   'toast.addedToCart': { ru: 'Добавлено в корзину', en: 'Added to cart', it: 'Aggiunto al carrello', fr: 'Ajouté au panier', de: 'Zum Warenkorb hinzugefügt' },
@@ -510,20 +507,9 @@ export const UI = {
   'collections.title': { ru: 'Коллекции', en: 'Collections', it: 'Collezioni', fr: 'Collections', de: 'Kollektionen' },
   // Homepage departments (components/sections-grid.tsx). Rendered uppercase by
   // the card, so the labels are stored in their natural case.
-  // Wishlist (lib/wishlist.ts, components/products/wishlist-button.tsx).
-  'wishlist.title': { ru: 'Избранное', en: 'Wishlist', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
-  'wishlist.add': { ru: 'Добавить «{name}» в избранное', en: 'Add “{name}” to your wishlist', it: 'Aggiungi «{name}» ai preferiti', fr: 'Ajouter « {name} » aux favoris', de: '„{name}" zur Merkliste hinzufügen' },
-  'wishlist.remove': { ru: 'Убрать «{name}» из избранного', en: 'Remove “{name}” from your wishlist', it: 'Rimuovi «{name}» dai preferiti', fr: 'Retirer « {name} » des favoris', de: '„{name}" von der Merkliste entfernen' },
-  'wishlist.empty': { ru: 'В избранном пока пусто', en: 'Your wishlist is empty', it: 'I tuoi preferiti sono vuoti', fr: 'Vos favoris sont vides', de: 'Ihre Merkliste ist leer' },
-  'wishlist.emptyHint': { ru: 'Нажмите на сердечко на любой карточке товара — он сохранится здесь, на этом устройстве.', en: 'Tap the heart on any product and it is kept here, on this device.', it: 'Tocca il cuore su un prodotto: resterà qui, su questo dispositivo.', fr: 'Touchez le cœur sur un produit : il sera conservé ici, sur cet appareil.', de: 'Tippen Sie bei einem Produkt auf das Herz — es bleibt hier auf diesem Gerät.' },
-  'wishlist.browse': { ru: 'Перейти в каталог', en: 'Browse the shop', it: 'Vai al negozio', fr: 'Voir la boutique', de: 'Zum Shop' },
-  'wishlist.count': { ru: '{n} в избранном', en: '{n} saved', it: '{n} salvati', fr: '{n} enregistrés', de: '{n} gemerkt' },
-  'wishlist.loadFailed': { ru: 'Не удалось загрузить избранное. Сохранённое никуда не делось.', en: 'Your wishlist could not be loaded. Nothing you saved is lost.', it: 'Impossibile caricare i preferiti. Nulla di ciò che hai salvato è andato perso.', fr: 'Impossible de charger vos favoris. Rien de ce que vous avez enregistré n’est perdu.', de: 'Ihre Merkliste konnte nicht geladen werden. Nichts Gemerktes ist verloren.' },
-  'wishlist.gone': { ru: 'Часть сохранённого больше не продаётся и не показана.', en: 'Some saved items are no longer available and are not shown.', it: 'Alcuni articoli salvati non sono più disponibili e non sono mostrati.', fr: 'Certains articles enregistrés ne sont plus disponibles et ne sont pas affichés.', de: 'Einige gemerkte Artikel sind nicht mehr verfügbar und werden nicht angezeigt.' },
   // Mobile bottom bar (components/bottom-nav.tsx).
   'tab.home': { ru: 'Главная', en: 'Home', it: 'Home', fr: 'Accueil', de: 'Start' },
   'tab.catalog': { ru: 'Каталог', en: 'Catalog', it: 'Catalogo', fr: 'Catalogue', de: 'Katalog' },
-  'tab.wishlist': { ru: 'Избранное', en: 'Saved', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
   'tab.cart': { ru: 'Корзина', en: 'Cart', it: 'Carrello', fr: 'Panier', de: 'Warenkorb' },
   'tab.profile': { ru: 'Профиль', en: 'Profile', it: 'Profilo', fr: 'Profil', de: 'Profil' },
   'tab.nav': { ru: 'Основная навигация', en: 'Main navigation', it: 'Navigazione principale', fr: 'Navigation principale', de: 'Hauptnavigation' },
@@ -919,7 +905,6 @@ export const UI = {
     fr: 'Aide sur les commandes, le paiement, la livraison, les retours et les tailles — et une ligne directe avec l’équipe Luxe Vault.',
     de: 'Hilfe zu Bestellungen, Zahlung, Versand, Rückgabe und Größen — und ein direkter Draht zum Luxe-Vault-Team.',
   },
-  'seo.wishlist.title': { ru: 'Избранное', en: 'Wishlist', it: 'Preferiti', fr: 'Favoris', de: 'Merkliste' },
   'seo.category.description': {
     ru: '{name} — {items}. Доставка из Швейцарии.',
     en: '{name} — {items}. Shipped from Switzerland.',
