@@ -15,16 +15,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
 import { authCallbackUrl } from './site-url'
-import { fetchWishlist, mergeWishlist, toggleWishlist as toggleWishlistOnServer } from '@/app/actions/wishlist'
-import {
-  clearWishlist,
-  forgetAccountWishlists,
-  readAccountWishlist,
-  readWishlist,
-  subscribeToWishlist,
-  toggleWishlistItem,
-  writeAccountWishlist,
-} from '@/lib/wishlist'
+import { forgetSavedProducts } from '@/lib/wishlist'
 import {
   BASE_CURRENCY,
   CURRENCY_STORAGE_KEY,
@@ -258,16 +249,6 @@ type StoreContextValue = {
   setSupportUnread: (n: number) => void
   removeFromCart: (key: string) => void
   clearCart: () => void
-  /** Saved product ids, newest first (lib/wishlist.ts). */
-  wishlist: string[]
-  wishlistCount: number
-  /** 'loading' while a signed-in customer's list is on its way — the
-   *  wishlist page shows that, not "empty". 'error' when it could not be
-   *  loaded; reloadWishlist() tries again. */
-  wishlistStatus: 'loading' | 'ready' | 'error'
-  reloadWishlist: () => void
-  isWishlisted: (productId: string) => boolean
-  toggleWishlist: (productId: string) => void
   cartCount: number
   cartSubtotal: number
   applyPromo: (code: string) => Promise<Promo | null>
@@ -753,133 +734,10 @@ function maybeSendWelcome() {
     }
   }, [])
 
-  /**
-   * Saved products. Hydrated after mount (the server has no localStorage, and
-   * reading it during render would mismatch the first paint) and kept in step
-   * with every other tab.
-   */
-  const [wishlist, setWishlist] = useState<string[]>([])
-
-  // Whose list is in `wishlist` — the account's, or this browser's. It decides
-  // where a toggle is written, and it must not be inferred from currentUser
-  // alone: between signing in and the merge finishing, the account is known
-  // and its list is not yet loaded.
-  const [wishlistOwner, setWishlistOwner] = useState<'guest' | 'account'>('guest')
-
-  // The guest list: this browser's, hydrated after mount (the server has no
-  // localStorage) and kept in step with every other tab.
+  // The retired wishlist's leftovers in this browser (lib/wishlist.ts).
   useEffect(() => {
-    if (wishlistOwner === 'account') return
-    setWishlist(readWishlist())
-    return subscribeToWishlist(setWishlist)
-  }, [wishlistOwner])
-
-  /** Where the list stands: see StoreContextValue.wishlistStatus. */
-  const [wishlistStatus, setWishlistStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  /** Bumped by reloadWishlist() to run the account load again. */
-  const [wishlistAttempt, setWishlistAttempt] = useState(0)
-  const reloadWishlist = useCallback(() => setWishlistAttempt((n) => n + 1), [])
-  /** The account last signed in here, so signing out can forget its cache. */
-  const lastUserId = useRef<string | null>(null)
-  /** Counts the account toggles sent, so a load that started before one of
-   *  them knows its answer may be older than that tap (see below). */
-  const accountToggles = useRef(0)
-
-  // A guest's list is ready as soon as it has been read — once it is known
-  // that nobody is signed in (a session being restored would replace it).
-  useEffect(() => {
-    if (wishlistOwner === 'guest' && !authLoading && !currentUserId) setWishlistStatus('ready')
-  }, [wishlistOwner, authLoading, currentUserId])
-
-  // The account's list, kept for the next page load (readAccountWishlist).
-  useEffect(() => {
-    if (wishlistOwner === 'account' && currentUserId) writeAccountWishlist(currentUserId, wishlist)
-  }, [wishlistOwner, currentUserId, wishlist])
-
-  /**
-   * Sign-in folds this browser's saved items into the account, once, and
-   * every page load of a signed-in customer loads the account's list.
-   *
-   * ADDITIVE: the coat saved on a phone last week and the bag saved on this
-   * laptop five minutes ago both survive — see mergeWishlist. The local list
-   * is then CLEARED, deliberately. It has been copied to the account, so
-   * keeping it would only matter on the next sign-out, and the thing it would
-   * do there is show a stranger on a shared computer what the previous person
-   * had been saving.
-   *
-   * NEVER "EMPTY" WHILE LOADING. The account's list is shown at once from this
-   * browser's copy of it (readAccountWishlist) and then replaced with the
-   * server's; without a copy the status is 'loading', which the wishlist page
-   * shows as such. Before, the page rendered the empty guest list until the
-   * server answered, and kept it if the server did not — the list looked
-   * wiped on every full page load.
-   *
-   * A failure is retried (RETRY_MS) and then reported as 'error', leaving the
-   * local list exactly as it was and the owner as 'guest', so nothing saved is
-   * lost and the next attempt merges it. A wishlist must never be the reason a
-   * sign-in looks broken.
-   */
-  useEffect(() => {
-    if (!currentUserId) {
-      // Signed out (not merely "not restored yet"): forget the account's copy.
-      if (lastUserId.current) forgetAccountWishlists()
-      lastUserId.current = null
-      setWishlistOwner('guest')
-      return
-    }
-    lastUserId.current = currentUserId
-    if (wishlistOwner === 'account') return
-
-    const cached = readAccountWishlist(currentUserId)
-    if (cached) setWishlist(cached)
-    setWishlistStatus(cached ? 'ready' : 'loading')
-
-    const RETRY_MS = [1500, 4000]
-    let active = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const attempt = async (n: number) => {
-      const local = readWishlist()
-      const togglesAtStart = accountToggles.current
-      let result: Awaited<ReturnType<typeof fetchWishlist>>
-      try {
-        result = local.length > 0 ? await mergeWishlist({ ids: local }) : await fetchWishlist()
-        // A heart tapped while this was in flight went straight to the
-        // account (toggleWishlist), and this answer may have been read before
-        // that write: showing it would un-fill the heart the customer just
-        // filled. Read the list again — it now includes the tap.
-        if (result.ok && accountToggles.current !== togglesAtStart) {
-          const fresh = await fetchWishlist()
-          if (fresh.ok) result = fresh
-        }
-      } catch {
-        // A server action that never answered (offline, a deploy mid-request).
-        result = { ok: false, reason: 'failed' }
-      }
-      if (!active) return
-      if (!result.ok) {
-        if (n < RETRY_MS.length) {
-          timer = setTimeout(() => void attempt(n + 1), RETRY_MS[n])
-          return
-        }
-        console.warn(`[wishlist] could not load the account's list (${result.reason})`)
-        setWishlistStatus('error')
-        return
-      }
-      if (local.length > 0) clearWishlist()
-      setWishlist(result.wishlist)
-      setWishlistOwner('account')
-      setWishlistStatus('ready')
-    }
-    void attempt(0)
-
-    return () => {
-      active = false
-      if (timer) clearTimeout(timer)
-    }
-  }, [currentUserId, wishlistOwner, wishlistAttempt])
-
-
-  const isWishlisted = useCallback((productId: string) => wishlist.indexOf(productId) !== -1, [wishlist])
+    forgetSavedProducts()
+  }, [])
 
   const setCurrency = useCallback((next: CurrencyCode) => {
     // The module value first, so every formatPrice() in the re-render this
@@ -948,8 +806,8 @@ function maybeSendWelcome() {
   }, [loadCatalog])
 
   // ------------------------------------------------------ products by id ----
-  // The cart, the checkout, the wishlist and the recently-viewed rail each
-  // show a handful of products. They are looked up by id
+  // The cart, the checkout and the recently-viewed rail each show a handful
+  // of products. They are looked up by id
   // (/api/search?ids=, cached at the edge) instead of downloading every
   // product to find them.
 
@@ -1009,28 +867,6 @@ function maybeSendWelcome() {
     [catalogStatus, catalogById, productCache],
   )
 
-  /**
-   * How many saved items there actually are to look at.
-   *
-   * NOT `wishlist.length`. That counts saved IDS, and an id outlives the
-   * product it points at: withdraw something from the catalogue and every
-   * customer who saved it keeps a badge that will never correspond to
-   * anything. The page has always resolved ids against the catalogue and
-   * rendered what survives, so the badge counting the other thing meant a
-   * header reading "2" above a page reading "Your wishlist is empty".
-   *
-   * WHILE ANY SAVED ID IS UNRESOLVED, THE RAW COUNT STANDS. Counting against
-   * products not looked up yet would answer nought, so every navigation would
-   * blink the badge out and back, and a failed lookup would quietly claim the
-   * wishlist is empty when it is only unreadable. The ids are resolved when the
-   * wishlist page opens (useProductsById), and the badge settles then.
-   *
-   * The ids themselves are deliberately NOT pruned. A product can leave the
-   * catalogue and come back — unpublished for a photoshoot, out of stock for a
-   * season — and deleting the row or the local entry would throw away the
-   * customer's intent permanently to tidy a number. The page already says how
-   * many are no longer available.
-   */
   /** After an admin write: the next lookup of this id asks the server again. */
   const forgetCachedProduct = useCallback((productId: string) => {
     setProductCache((prev) => {
@@ -1040,16 +876,6 @@ function maybeSendWelcome() {
       return next
     })
   }, [])
-
-  const wishlistCount = useMemo(() => {
-    let live = 0
-    for (const id of wishlist) {
-      const product = lookupProduct(id)
-      if (product === undefined) return wishlist.length
-      if (product) live++
-    }
-    return live
-  }, [wishlist, lookupProduct])
 
   // Preview images now live on the collection row; this keeps the old
   // `categoryImages[group]` shape so consuming components did not change.
@@ -1244,71 +1070,6 @@ function maybeSendWelcome() {
       setTimeout(() => dismissToast(id), 3200)
     },
     [dismissToast],
-  )
-
-  // Declared here, below pushToast and t, because it announces what it did
-  // and both are block-scoped: moving the message into the toggle meant
-  // moving the toggle to where the message could be built.
-  /**
-   * Optimistic either way: the heart fills on the tap, not on the round trip.
-   *
-   * For a guest the local module writes and broadcasts, and the subscription
-   * above puts the new list into state so every open tab agrees. For an
-   * account the state moves first and the server's answer replaces it — which
-   * also reconciles a double tap, or the same product saved on another device
-   * a moment earlier. A failure puts the previous list back rather than
-   * leaving a heart that lies about what was saved.
-   */
-  const toggleWishlist = useCallback(
-    (productId: string) => {
-      if (!productId) return
-
-      // Which way this tap goes, decided before anything moves, so the
-      // message matches the action even when the server later disagrees and
-      // the list is rolled back.
-      const saving = wishlist.indexOf(productId) === -1
-      const announce = () =>
-        pushToast({
-          title: saving ? t('toast.savedToWishlist') : t('toast.removedFromWishlist'),
-          variant: saving ? 'gold' : 'default',
-        })
-
-      // Only a visitor who is not signed in keeps the list in this browser.
-      // A signed-in customer's tap goes to the account even while their list
-      // is still loading: written to the local list instead, it was replaced
-      // by the account's list a moment later — the heart un-filled itself
-      // right after the tap, and if the browser held earlier local items the
-      // tap was cleared along with them and lost for good.
-      if (!currentUserId) {
-        setWishlist(toggleWishlistItem(productId))
-        announce()
-        return
-      }
-      accountToggles.current += 1
-
-      const previous = wishlist
-      const optimistic =
-        previous.indexOf(productId) === -1
-          ? [productId, ...previous]
-          : previous.filter((id) => id !== productId)
-      setWishlist(optimistic)
-
-      announce()
-
-      void toggleWishlistOnServer({ productId }).then((result) => {
-        if (result.ok) {
-          setWishlist(result.wishlist)
-          return
-        }
-        // The optimistic change is undone, so the message that went with it
-        // has to be corrected too — a "Saved" toast above an unfilled heart
-        // is worse than no toast at all.
-        console.warn(`[wishlist] could not save (${result.reason})`)
-        setWishlist(previous)
-        pushToast({ title: t('toast.wishlistFailed'), variant: 'default' })
-      })
-    },
-    [currentUserId, wishlist, pushToast, t],
   )
 
   const setCategoryImage = useCallback(
@@ -2085,12 +1846,6 @@ function maybeSendWelcome() {
       updateCartQty,
       removeFromCart,
       clearCart,
-      wishlist,
-      wishlistCount,
-      isWishlisted,
-      wishlistStatus,
-      reloadWishlist,
-      toggleWishlist,
       cartCount,
       cartSubtotal,
       applyPromo,
@@ -2116,7 +1871,7 @@ function maybeSendWelcome() {
       setCurrency, exchangeRates, t, tf, localize, colorName, cartLineName, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
-      addToCart, updateCartQty, removeFromCart, clearCart, wishlist, wishlistCount, wishlistStatus, reloadWishlist, isWishlisted, toggleWishlist,
+      addToCart, updateCartQty, removeFromCart, clearCart,
       cartCount, cartSubtotal, applyPromo,
       login, register, resendConfirmation, verifySignupCode, signInWithGoogle,
       requestRecoveryCode, verifyRecoveryCode, updatePassword, logout, addProduct,

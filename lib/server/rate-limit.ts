@@ -115,10 +115,10 @@ const LIMITS = {
    *  an unthrottled search endpoint is a cheap way to make the database work. */
   'search': { max: 60, windowSeconds: 300 },
 
-  /** Products by id (/api/search?ids=): the cart, the wishlist, recently
-   *  viewed. One per screen that shows them, and each id is asked for once
-   *  per visit, so a person browsing stays far below this; its own bucket so
-   *  browsing never eats the search budget. */
+  /** Products by id (/api/search?ids=): the cart, recently viewed. One per
+   *  screen that shows them, and each id is asked for once per visit, so a
+   *  person browsing stays far below this; its own bucket so browsing never
+   *  eats the search budget. */
   'catalog.lookup': { max: 120, windowSeconds: 300 },
 
   /** Starting or re-pricing a payment (Stripe intent, crypto invoice). Each

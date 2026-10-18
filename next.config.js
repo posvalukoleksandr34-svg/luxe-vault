@@ -113,6 +113,10 @@ const nextConfig = {
       { source: '/stylist/:path*', destination: '/catalog', permanent: false },
       { source: '/:locale(it|fr|de)/stylist', destination: '/:locale/catalog', permanent: false },
       { source: '/:locale(it|fr|de)/stylist/:path*', destination: '/:locale/catalog', permanent: false },
+      // The wishlist ("Избранное") was retired in 2026-10 too; a saved link
+      // or a home-screen shortcut to it opens the catalogue.
+      { source: '/wishlist', destination: '/catalog', permanent: false },
+      { source: '/:locale(it|fr|de)/wishlist', destination: '/:locale/catalog', permanent: false },
     ]
   },
 

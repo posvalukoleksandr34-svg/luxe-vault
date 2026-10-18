@@ -153,11 +153,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localized('/about', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
     ...localized('/shipping', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
     ...localized('/faq', { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }),
-    // NOT /wishlist. It declares noindex — the wishlist lives in one
-    // browser — and
-    // submitting a page that asks not to be indexed is a contradiction a
-    // crawler resolves by trusting neither signal. They keep their URLs in
-    // every language for the visitor's sake; they are simply not claims.
     // Product pages rank for the queries that actually convert, so they carry
     // the highest priority after the homepage.
     ...products.flatMap((p) =>

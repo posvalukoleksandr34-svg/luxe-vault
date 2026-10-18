@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, Home, LayoutGrid, ShoppingBag, User, type LucideIcon } from 'lucide-react'
+import { Home, LayoutGrid, ShoppingBag, User, type LucideIcon } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { usePathname } from 'next/navigation'
 import { useStore } from '@/lib/store'
@@ -11,9 +11,9 @@ import { cn } from '@/lib/utils'
  * carries the same destinations, and two navigations on one screen is one too
  * many.
  *
- * Two kinds of tab, because the site has two kinds of destination: Главная,
- * Каталог and Избранное are real routes and are real <a href>s — openable in a
- * new tab, followable by a crawler, and usable with the back button — while
+ * Two kinds of tab, because the site has two kinds of destination: Главная
+ * and Каталог are real routes and are real <a href>s — openable in a new tab,
+ * followable by a crawler, and usable with the back button — while
  * Корзина and Профиль open the drawers the rest of the shop already uses, so
  * they are buttons. Nothing here duplicates state: the badge and the signed-in
  * check read the store.
@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 
 type Tab = {
   key: string
-  labelKey: 'tab.home' | 'tab.catalog' | 'tab.wishlist' | 'tab.cart' | 'tab.profile'
+  labelKey: 'tab.home' | 'tab.catalog' | 'tab.cart' | 'tab.profile'
   icon: LucideIcon
   href?: string
   /** True when this tab represents the page currently open. */
@@ -41,13 +41,12 @@ const TABS: Tab[] = [
     href: '/catalog',
     active: (p) => p === '/catalog' || p.startsWith('/category'),
   },
-  { key: 'wishlist', labelKey: 'tab.wishlist', icon: Heart, href: '/wishlist', active: (p) => p === '/wishlist' },
   { key: 'cart', labelKey: 'tab.cart', icon: ShoppingBag, active: () => false },
   { key: 'profile', labelKey: 'tab.profile', icon: User, active: (p) => p.startsWith('/account') },
 ]
 
 export function BottomNav() {
-  const { t, cartCount, wishlistCount, currentUser, panel, setPanel, openAuth, openAccount } = useStore()
+  const { t, cartCount, currentUser, panel, setPanel, openAuth, openAccount } = useStore()
   const pathname = usePathname() ?? '/'
 
   // The admin console is a different application with its own chrome.
@@ -76,7 +75,7 @@ export function BottomNav() {
       className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-border/70 bg-background/95 shadow-[0_-4px_16px_rgba(26,20,10,0.06)] backdrop-blur-md md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <ul className="grid h-16 grid-cols-5">
+      <ul className="grid h-16 grid-cols-4">
         {TABS.map((tab) => {
           const Icon = tab.icon
           const label = t(tab.labelKey)
@@ -121,7 +120,6 @@ export function BottomNav() {
                 className={itemClass(on)}
               >
                 <Icon aria-hidden strokeWidth={1.5} className="size-[21px]" />
-                {tab.key === 'wishlist' && badge(wishlistCount)}
                 <span>{label}</span>
               </Link>
             </li>

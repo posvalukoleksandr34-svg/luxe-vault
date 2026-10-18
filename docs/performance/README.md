@@ -139,7 +139,7 @@ pass.
   ~5 KB per product). The grid and sidebar still render complete in the
   server HTML, so the layout shift the old snapshot fixed does not come back.
 - **The product page** chooses its related rail on the server.
-- **The cart, checkout, wishlist and recently viewed** look up
+- **The cart, checkout and recently viewed** look up
   only the products they show, through `/api/search?ids=` (CDN-cached, with
   its own rate-limit bucket).
 - **The store's `products`** is now the whole catalogue or nothing, loaded

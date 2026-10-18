@@ -96,12 +96,6 @@ export function supportMetadata(locale: StorefrontLocale): Metadata {
   })
 }
 
-/** Noindex: the contents live in one browser's localStorage, so there is
- *  nothing here that would be the same for two people. */
-export function wishlistMetadata(locale: StorefrontLocale): Metadata {
-  return pageMetadata({ path: '/wishlist', locale, titleKey: 'seo.wishlist.title', noindex: true })
-}
-
 // ------------------------------------------------------------------ taxonomy
 
 /** A collection: Clothing, Shoes, Accessories. `subcategories` is the joined

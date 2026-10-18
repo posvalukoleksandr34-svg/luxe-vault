@@ -76,7 +76,6 @@ export const LOCALIZED_PATHS = [
   '/product',
   '/contact',
   '/support',
-  '/wishlist',
   '/legal',
   '/about',
   '/shipping',
