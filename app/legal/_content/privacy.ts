@@ -15,7 +15,7 @@ export const PRIVACY: LegalDocSet = {
   ru: {
     title: 'Политика конфиденциальности',
     description: 'Какие персональные данные собирает Luxe Vault, зачем, кому передаёт, как долго хранит и как их удалить.',
-    effective: 'Действует с 18 октября 2026 года',
+    effective: 'Действует с 19 октября 2026 года',
     sections: [
       {
         h: '1. Кто отвечает за ваши данные',
@@ -35,6 +35,7 @@ export const PRIVACY: LegalDocSet = {
             '**Оплата криптовалютой:** NOWPayments получает номер заказа и сумму. Адрес кошелька и транзакция видны в публичном блокчейне.',
             '**Подсказки адреса:** набранный текст адреса отправляется сервису подсказок (Photon, при настройке — Google Places), чтобы предложить варианты.',
             '**Обращения в поддержку:** тема, текст, приложенные файлы, имя и email, номер заказа, если вы его укажете.',
+            '**Возвраты и претензии:** товары, причина, ваше описание и фото, переписка с нами, трек-номер возврата и итог. Чтобы защититься от злоупотреблений возвратами, мы учитываем вашу историю с нами — заказы, прежние заявки и чем они закончились, — и никогда имя, адрес, страну, язык или другие личные характеристики. Каждое решение принимает человек.',
             '**Чат-ассистент:** ваши сообщения — номера карт, IBAN, адреса email и телефоны удаляются из них до отправки; если чат открыт на странице товара — какой это товар. Если вы спрашиваете о заказе — номер, статус, позиции и даты заказа (без адреса и контактов). Переписка хранится только в этой вкладке браузера (не дольше 2 часов), у нас — не сохраняется.',
             '**Поиск:** поисковый запрос; при включённом «умном поиске» он передаётся ИИ Google Gemini.',
             '**Отзывы:** имя, оценка и текст — публикуются после проверки.',
@@ -88,6 +89,7 @@ export const PRIVACY: LegalDocSet = {
             'Заказы, их позиции и запросы на возврат — 5 лет с даты продажи (общий срок исковой давности, ст. 128 Обязательственного права), затем удаляются автоматически.',
             'Аккаунт — пока вы его не удалите. Удаление — сразу (см. раздел 6).',
             'Обращения в поддержку и вложения — 24 месяца после закрытия, затем удаляются автоматически.',
+            'Фото и документы в заявке на возврат — 2 года после закрытия заявки, затем удаляются автоматически (дольше, но не дольше срока самого заказа, — только пока открыт спор по платежу или если их требует задокументированный вывод по заявке). Сама заявка хранится вместе с заказом.',
             'Рассылка — до отписки; неподтверждённая подписка удаляется через 30 дней. После отписки хранится только отметка об отказе, чтобы больше не писать.',
             'Напоминание о корзине — не более 7 дней ожидания; запись удаляется через 30 дней после завершения. Отказ от напоминаний сохраняется, чтобы больше не писать.',
             'Записи ограничения запросов (IP-адреса) — до 1 суток. Платёжные события Stripe — 90 дней. Защита от мошенничества с картами: после нескольких неудачных попыток оплаты или отказа банка по признакам мошенничества email и IP-адрес (в зашифрованном виде, HMAC) не могут платить картой 24 часа или 30 дней соответственно; затем запись удаляется. Stripe также проверяет каждый платёж своей системой Radar.',
@@ -140,7 +142,7 @@ export const PRIVACY: LegalDocSet = {
   en: {
     title: 'Privacy Policy',
     description: 'What personal data Luxe Vault collects, why, who receives it, how long it is kept and how to delete it.',
-    effective: 'In force since 18 October 2026',
+    effective: 'In force since 19 October 2026',
     sections: [
       {
         h: '1. Who is responsible for your data',
@@ -166,6 +168,7 @@ export const PRIVACY: LegalDocSet = {
             '**Newsletter:** email, language, when you consented and confirmed. The subscription starts only once you confirm it with the link we email you.',
             '**Cart reminder:** your email and the cart\'s contents — only if you ticked "Email me one reminder" at checkout.',
             '**Stock alerts and waitlist:** email, product, size and colour.',
+            '**Returns and refunds:** the items, the reason, your description and photos, messages with us, the return\'s tracking number and the outcome. To protect against refund abuse we look at your history with us — orders, earlier requests and how they ended — never your name, address, country, language or any other personal characteristic. A person decides every request.',
             '**Referral programme (ended October 2026):** if you took part — your code, how many visits came through your link (nothing about the visitors), referred orders and the bonus earned. Nothing new is collected; the records are kept to account for rewards paid and are deleted with your account.',
             '**Technical data:** IP address (for rate limiting — kept no longer than one day), server logs, error and security-policy reports (page addresses in them are stripped of access keys).',
             '**On your device:** cart, preferences and, if you choose, your checkout details. Details in the [Cookie Policy](/legal/cookies).',
@@ -213,6 +216,7 @@ export const PRIVACY: LegalDocSet = {
             'Orders, their items and return requests — 5 years from the sale (the general limitation period, Art. 128 Swiss Code of Obligations), then deleted automatically.',
             'Account — until you delete it. Deletion is immediate (see section 6).',
             'Support requests and attachments — 24 months after they are closed, then deleted automatically.',
+            'Photos and documents attached to a return or refund request — 2 years after the request is closed, then deleted automatically (longer, never beyond the order\'s own period, only while a payment dispute is open or a documented finding on the request needs them). The request itself is kept with its order.',
             'Newsletter — until you unsubscribe; an unconfirmed sign-up is deleted after 30 days. After unsubscribing, only a record of the opt-out is kept, so that we do not write again.',
             'Cart reminder — waits no more than 7 days; the record is deleted 30 days after it ends. An opt-out from reminders is kept, so that we do not write again.',
             'Rate-limit records (IP addresses) — up to 1 day. Stripe payment events — 90 days. Card-fraud protection: after several failed card attempts, or a decline the bank marks as fraud, the email address and IP address (pseudonymised with an HMAC) are refused card payments for 24 hours or 30 days respectively; the record is then deleted. Stripe also screens every payment with its Radar system.',
@@ -265,7 +269,7 @@ export const PRIVACY: LegalDocSet = {
   it: {
     title: 'Informativa sulla privacy',
     description: 'Quali dati personali raccoglie Luxe Vault, perché, chi li riceve, per quanto tempo li conserva e come cancellarli.',
-    effective: 'In vigore dal 18 ottobre 2026',
+    effective: 'In vigore dal 19 ottobre 2026',
     sections: [
       {
         h: '1. Chi è responsabile dei tuoi dati',
@@ -291,6 +295,7 @@ export const PRIVACY: LegalDocSet = {
             '**Newsletter:** email, lingua, data del consenso e della conferma. L\'iscrizione parte solo dopo la conferma tramite il link che ti inviamo.',
             '**Promemoria del carrello:** email e contenuto del carrello — solo se hai spuntato «Inviami un solo promemoria» al checkout.',
             '**Avvisi di disponibilità e lista d\'attesa:** email, prodotto, taglia e colore.',
+            '**Resi e rimborsi:** gli articoli, il motivo, la tua descrizione e le foto, i messaggi con noi, il numero di tracciamento del reso e l\'esito. Per proteggerci dagli abusi dei rimborsi consideriamo la tua storia con noi — ordini, richieste precedenti e il loro esito — mai nome, indirizzo, paese, lingua o altre caratteristiche personali. Ogni richiesta è decisa da una persona.',
             '**Programma referral (concluso a ottobre 2026):** se vi hai partecipato — il tuo codice, quante visite sono arrivate dal tuo link (nulla sui visitatori), gli ordini segnalati e il bonus maturato. Non raccogliamo nuovi dati; i record sono conservati per la contabilità dei premi pagati e vengono cancellati insieme all’account.',
             '**Dati tecnici:** indirizzo IP (per limitare le richieste — conservato al massimo un giorno), log del server, segnalazioni di errori e di violazioni della politica di sicurezza (gli indirizzi delle pagine vengono ripuliti dalle chiavi di accesso).',
             '**Sul tuo dispositivo:** carrello, impostazioni e, se lo scegli, i dati per il checkout. Dettagli nella [Cookie Policy](/legal/cookies).',
@@ -338,6 +343,7 @@ export const PRIVACY: LegalDocSet = {
             'Ordini, relativi articoli e richieste di reso — 5 anni dalla vendita (termine generale di prescrizione, art. 128 CO), poi cancellati automaticamente.',
             'Account — finché non lo elimini. L\'eliminazione è immediata (vedi sezione 6).',
             'Richieste di assistenza e allegati — 24 mesi dalla chiusura, poi cancellati automaticamente.',
+            'Foto e documenti allegati a una richiesta di reso o rimborso — 2 anni dalla chiusura della richiesta, poi cancellati automaticamente (più a lungo, mai oltre il periodo dell\'ordine stesso, solo finché è aperta una contestazione del pagamento o lo richiede un accertamento documentato). La richiesta resta con il suo ordine.',
             'Newsletter — fino alla disiscrizione; un\'iscrizione non confermata viene cancellata dopo 30 giorni. Dopo la disiscrizione resta solo la registrazione del rifiuto, per non scriverti più.',
             'Promemoria del carrello — attende al massimo 7 giorni; il record viene cancellato 30 giorni dopo la fine. Il rifiuto dei promemoria viene conservato, per non scriverti più.',
             'Record dei limiti di richieste (indirizzi IP) — fino a 1 giorno. Eventi di pagamento Stripe — 90 giorni. Protezione dalle frodi con carta: dopo diversi tentativi di pagamento falliti, o un rifiuto che la banca segnala come frode, l\'indirizzo email e l\'indirizzo IP (pseudonimizzato con HMAC) non possono pagare con carta per 24 ore o 30 giorni rispettivamente; poi il record viene cancellato. Stripe controlla inoltre ogni pagamento con il suo sistema Radar.',

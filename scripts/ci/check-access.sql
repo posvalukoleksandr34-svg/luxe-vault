@@ -58,7 +58,12 @@ begin
      and tablename in ('admin_sessions', 'admin_totp_steps', 'rate_limits', 'stripe_events', 'coupons',
                        'payment_blocks', 'order_payment_risk', 'abandoned_carts', 'newsletter_subscribers',
                        'newsletter_campaigns', 'support_tickets', 'support_messages', 'account_credits',
-                       'referrals', 'referral_codes', 'referral_clicks', 'referral_settings');
+                       'referrals', 'referral_codes', 'referral_clicks', 'referral_settings',
+                       -- The refund system (0059): customers reach their cases through the API.
+                       'admin_staff', 'refund_policies', 'return_requests', 'return_request_items',
+                       'refund_transactions', 'refund_case_evidence', 'refund_case_messages',
+                       'refund_case_events', 'refund_risk_assessments', 'refund_approvals',
+                       'refund_notifications');
   if bad is not null then raise exception 'Policies on server-only tables: %', bad; end if;
 end $$;
 

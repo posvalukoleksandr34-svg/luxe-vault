@@ -5,6 +5,7 @@ import type { DeliveryTimeframe } from '@/config/shipping'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { getShippingSettings } from '@/lib/server/store-settings'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { CUSTOMER_EVENTS, caseCopy, type CustomerEvent } from '@/lib/refunds/customer-copy'
 import type { Notification, NotificationType, StorefrontLocale } from '@/lib/types'
 
 /**
@@ -44,6 +45,7 @@ type Template =
   | { key: 'status'; orderId: string; status: string; tracking?: string; timeframe?: DeliveryTimeframe }
   | { key: 'return_refunded'; orderId: string }
   | { key: 'return_rejected'; orderId: string; note: string }
+  | { key: 'refund_case'; orderId: string; caseNumber: string; event: CustomerEvent }
 
 type NewNotification = {
   userId: string
@@ -310,6 +312,11 @@ function render(
         body: `${copy.rejectedBody} ${t.note.trim().slice(0, 600)}`.trim(),
       }
     }
+    case 'refund_case': {
+      const line = caseCopy(locale).events[t.event]
+      if (!line) return genericRender(t.orderId, locale)
+      return { title: line.title(t.caseNumber), body: line.body }
+    }
   }
 }
 
@@ -379,7 +386,7 @@ export function recognise(title: string, body: string | undefined, orderId?: str
 function isTemplate(key: unknown, params: unknown): boolean {
   return (
     typeof key === 'string' &&
-    ['payment_failed', 'status', 'return_refunded', 'return_rejected'].includes(key) &&
+    ['payment_failed', 'status', 'return_refunded', 'return_rejected', 'refund_case'].includes(key) &&
     typeof params === 'object' &&
     params !== null &&
     typeof (params as { orderId?: unknown }).orderId === 'string'
@@ -457,6 +464,27 @@ export async function notifyReturnDecision(params: {
         ? { key: 'return_refunded', orderId: params.orderId }
         : { key: 'return_rejected', orderId: params.orderId, note: (params.note ?? '').trim().slice(0, 600) },
     actionUrl: `/order/${encodeURIComponent(params.orderId)}`,
+    orderId: params.orderId,
+  })
+}
+
+/**
+ * A refund case moved (lib/server/refunds/notify.ts). The bell shows it in
+ * the reader's language, from the same copy as the email. Returns false on
+ * failure, like every trigger here — the caller records that and retries.
+ */
+export async function notifyRefundCase(params: {
+  userId: string
+  orderId: string
+  caseNumber: string
+  event: CustomerEvent
+}): Promise<boolean> {
+  if (!(CUSTOMER_EVENTS as readonly string[]).includes(params.event)) return false
+  return insert({
+    userId: params.userId,
+    type: 'refund_update',
+    template: { key: 'refund_case', orderId: params.orderId, caseNumber: params.caseNumber, event: params.event },
+    actionUrl: `/account?section=returns&case=${encodeURIComponent(params.caseNumber)}`,
     orderId: params.orderId,
   })
 }

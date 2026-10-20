@@ -83,6 +83,26 @@ jobs:
             exit 1
           fi
 
+      - name: Call /api/cron/refunds
+        # The refund system's hourly work (lib/server/refunds/sweep.ts):
+        # refunds with an unknown outcome are checked with Stripe, customer
+        # deadlines expire cases, failed notifications are retried. Counts only.
+        if: always()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          status=$(curl --silent --show-error --max-time 120 --retry 2 --retry-delay 15 \
+            --output refunds.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/refunds")
+          echo "HTTP $status"
+          cat refunds.json; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::/api/cron/refunds answered HTTP $status (500: a job failed — see 'errors'; 503: CRON_SECRET unset on Vercel)."
+            exit 1
+          fi
+
       - name: Report failure to Telegram
         if: failure()
         env:

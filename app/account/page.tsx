@@ -8,6 +8,7 @@ import { AccountOrders } from '@/components/account-orders'
 import { DeleteAccount } from '@/components/account/delete-account'
 import { PasswordForm } from '@/components/account/password-form'
 import { ProfileForm } from '@/components/account/profile-form'
+import { ReturnsSection } from '@/components/account/returns-section'
 import {
   ACCOUNT_SECTIONS,
   CARD_ORDER,
@@ -163,7 +164,7 @@ function Overview() {
       </h1>
       <p className="mt-3 text-[13px] font-light text-foreground/70">{currentUser?.email}</p>
 
-      <ul className="mt-10 grid gap-4 md:grid-cols-3 lg:mt-12">
+      <ul className="mt-10 grid gap-4 md:grid-cols-2 lg:mt-12 lg:grid-cols-4">
         {cards.map((s) => (
           <li key={s.key}>
             <Link
@@ -215,6 +216,7 @@ function Overview() {
 
 function SectionView({ section }: { section: AccountSectionKey }) {
   const { t } = useStore()
+  const caseParam = useSearchParams().get('case')
   const current = ACCOUNT_SECTIONS.find((s) => s.key === section)!
 
   return (
@@ -268,6 +270,7 @@ function SectionView({ section }: { section: AccountSectionKey }) {
           </h1>
 
           {section === 'orders' && <OrdersSection />}
+          {section === 'returns' && <ReturnsSection caseNumber={caseParam} />}
           {section === 'details' && (
             <div className="max-w-xl space-y-4">
               <ProfileForm />

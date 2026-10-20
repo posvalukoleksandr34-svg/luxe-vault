@@ -33,6 +33,8 @@ function before(days: number): string {
 export type RetentionResult = {
   supportTickets: number
   orders: number
+  /** Refund audit rows past the orders' period (+ a month's grace). */
+  refundEvents: number
   newsletterPending: number
   cartRecords: number
   paymentBlocks: number
@@ -41,7 +43,7 @@ export type RetentionResult = {
 
 export async function enforceRetention(): Promise<RetentionResult> {
   const supabase = createAdminClient()
-  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, paymentBlocks: 0, errors: [] }
+  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, paymentBlocks: 0, refundEvents: 0, errors: [] }
 
   // ---------------------------------------------------- support requests --
   try {
@@ -97,6 +99,23 @@ export async function enforceRetention(): Promise<RetentionResult> {
   } catch (e) {
     const err = e as { code?: string; message?: string }
     if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/orders: ${err.message}`)
+  }
+
+  // ------------------------------------------------- refund audit trail --
+  // refund_case_events is append-only; the database lets a row go only once
+  // it is older than the orders' period plus a month (migration 0059), so
+  // the trail never outlives the orders, cases and refunds it describes.
+  try {
+    const { data, error } = await supabase
+      .from('refund_case_events')
+      .delete()
+      .lt('created_at', before(ORDER_RETENTION_DAYS + 31))
+      .select('id')
+    if (error) throw error
+    result.refundEvents = data?.length ?? 0
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/refund-events: ${err.message}`)
   }
 
   // ---------------------------------------------- newsletter, unconfirmed --

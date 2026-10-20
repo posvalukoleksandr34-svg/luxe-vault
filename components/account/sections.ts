@@ -5,6 +5,7 @@ import type { UIKey } from '@/lib/i18n'
 
 export type AccountSectionKey =
   | 'orders'
+  | 'returns'
   | 'credits'
   | 'details'
   | 'settings'
@@ -23,6 +24,7 @@ export type AccountSection = {
  *  `CARD_ORDER`. */
 export const ACCOUNT_SECTIONS: AccountSection[] = [
   { key: 'orders', labelKey: 'acct.orders', inMenu: true, card: { titleKey: 'acct.orders', descKey: 'acct.ordersDesc' } },
+  { key: 'returns', labelKey: 'acct.returns', inMenu: true, card: { titleKey: 'acct.returns', descKey: 'acct.returnsDesc' } },
   { key: 'credits', labelKey: 'acct.credits', inMenu: true },
   { key: 'details', labelKey: 'acct.details', inMenu: true, card: { titleKey: 'acct.details', descKey: 'acct.detailsDesc' } },
   { key: 'settings', labelKey: 'acct.settings', inMenu: true },
@@ -30,7 +32,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
 ]
 
 /** Dashboard card order, as the brief lists them. */
-export const CARD_ORDER: AccountSectionKey[] = ['orders', 'details', 'addresses']
+export const CARD_ORDER: AccountSectionKey[] = ['orders', 'returns', 'details', 'addresses']
 
 export function accountHref(key: AccountSectionKey): string {
   return `/account?section=${key}`

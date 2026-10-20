@@ -4,7 +4,8 @@ import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loa
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { ReturnRequestModal } from '@/components/account/return-request-modal'
+import { Link } from '@/components/locale-link'
+import { RefundRequestDialog } from '@/components/account/refund-request-dialog'
 import { LoadError } from '@/components/load-error'
 import { EmptyState } from '@/components/state-view'
 import { OrderListSkeleton } from '@/components/skeletons'
@@ -378,17 +379,12 @@ export function AccountOrders({
                 order={order}
                 locale={locale}
                 action={
-                  // Returns are REQUESTED here and executed by an admin. No
-                  // money moves from this screen and none ever has: a
-                  // one-click self-refund would let a customer keep the goods
-                  // and take the money back before anyone reviewed it. The
-                  // button opens a form; the form files a request.
-                  order.paymentStatus === 'paid' &&
-                  // A REJECTED return may be asked for again — the database's
-                  // one-open-request index allows it — so the button comes
-                  // back. The reason it was declined is in the customer's
-                  // notifications.
-                  (!order.returnStatus || order.returnStatus === 'none' || order.returnStatus === 'rejected') ? (
+                  // Returns are REQUESTED here and decided by a person; no
+                  // money moves from this screen. The dialog asks the server
+                  // what may be claimed on this order (several requests per
+                  // order are allowed, for different items), so the button
+                  // shows for any order that was paid.
+                  order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded' ? (
                     <div className="flex flex-col items-end gap-2">
                       <button
                         type="button"
@@ -398,12 +394,19 @@ export function AccountOrders({
                         <RotateCcw className="size-3.5" />
                         {t('orders.requestRefund')}
                       </button>
+                      {order.returnStatus && order.returnStatus !== 'none' && (
+                        <Link
+                          href="/account?section=returns"
+                          className="text-[11px] uppercase tracking-[0.12em] text-gold underline underline-offset-4 hover:no-underline"
+                        >
+                          {t('refund.orders.viewRequests')}
+                        </Link>
+                      )}
 
-                      {/* One dialog per order, mounted only while it is the
-                          one being returned, so its fields start empty each
-                          time rather than remembering the last order's. */}
+                      {/* Mounted only while it is the order being returned, so
+                          its steps start fresh each time. */}
                       {returning === order.id && (
-                        <ReturnRequestModal
+                        <RefundRequestDialog
                           orderId={order.id}
                           open
                           onOpenChange={(next: boolean) => setReturning(next ? order.id : null)}
@@ -417,20 +420,6 @@ export function AccountOrders({
                         </p>
                       )}
                     </div>
-                  ) : order.returnStatus === 'requested' ? (
-                    // The button is gone rather than disabled: there is
-                    // nothing to press twice, and a greyed-out control invites
-                    // a second try. The badge says what state it is in.
-                    <span className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold">
-                      {t('rma.pending')}
-                    </span>
-                  ) : order.returnStatus === 'approved' ? (
-                    // Decided, money not yet back — a hand-refunded payment,
-                    // or a card refund being retried. Said as such, so the
-                    // customer does not read "approved" as "paid".
-                    <span className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-gold">
-                      {t('rma.approved')}
-                    </span>
                   ) : order.returnStatus === 'refunded' ? (
                     <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-emerald-700/90">
                       {t('orders.refunded')}

@@ -160,6 +160,16 @@ const LIMITS = {
   /** Internal Telegram dispatch (bearer-authenticated). Bounds a leaked
    *  secret or a looping script to a readable number of messages. */
   'internal.telegram': { max: 30, windowSeconds: 600 },
+
+  /** A customer's refund requests: reading their cases and an order's
+   *  eligibility. Keyed by account. */
+  'refunds.read': { max: 120, windowSeconds: 600 },
+  /** Filing a request, replying, appealing. Keyed by account; a person files
+   *  a handful, a script hundreds. */
+  'refunds.write': { max: 20, windowSeconds: 600 },
+  /** A staff member confirming who they are (their own passphrase, after the
+   *  console login). A guess is the attack, so it fails closed. */
+  'admin.staff_bind': { max: 10, windowSeconds: 600, failClosed: true },
 } as const
 
 type LimitConfig = { max: number; windowSeconds: number; failClosed?: boolean }
