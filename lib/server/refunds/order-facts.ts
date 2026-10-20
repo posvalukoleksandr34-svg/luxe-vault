@@ -57,6 +57,12 @@ export type RefundOrderFacts = {
   refundedMinor: number
   /** Ledger: succeeded + in flight. */
   committedMinor: number
+  /**
+   * committedMinor plus what other open cases are approved to refund and have
+   * not reserved yet — the order's refund exposure. Approval thresholds are
+   * measured against it, so a large refund cannot be split into small ones.
+   */
+  promisedMinor: number
   inFlight: boolean
   /** Another case on this order already gave the delivery charge back. */
   shippingAlreadyRefunded: boolean
@@ -83,7 +89,7 @@ export async function loadOrderFacts(ref: { id?: string; number?: string }, excl
   const o = order as unknown as Record<string, unknown>
   const orderId = o.id as string
 
-  const [itemsRes, claimsRes, ledgerRes, shippingRes] = await Promise.all([
+  const [itemsRes, claimsRes, ledgerRes, shippingRes, approvedRes] = await Promise.all([
     admin
       .from('order_items')
       .select('id, product_id, name, image, size, color, qty, unit_price')
@@ -94,15 +100,21 @@ export async function loadOrderFacts(ref: { id?: string; number?: string }, excl
       .select('order_item_id, qty_requested, qty_approved, return_requests!inner(id, order_id, state)')
       .eq('return_requests.order_id', orderId)
       .not('return_requests.state', 'in', '(rejected,cancelled,expired)'),
-    admin.from('refund_transactions').select('amount_minor, status').eq('order_id', orderId),
+    admin.from('refund_transactions').select('amount_minor, status, case_id').eq('order_id', orderId),
     admin
       .from('return_requests')
       .select('id')
       .eq('order_id', orderId)
       .in('state', ['approved', 'refund_processing', 'partially_refunded', 'refunded'])
       .eq('approval->>includesShipping', 'true'),
+    admin
+      .from('return_requests')
+      .select('id, approved_amount_minor')
+      .eq('order_id', orderId)
+      .in('state', ['approved', 'refund_processing'])
+      .not('approved_amount_minor', 'is', null),
   ])
-  for (const r of [itemsRes, claimsRes, ledgerRes, shippingRes]) {
+  for (const r of [itemsRes, claimsRes, ledgerRes, shippingRes, approvedRes]) {
     if (r.error) throw new Error(`Failed to read refund facts for ${o.order_number}: ${r.error.message}`)
   }
 
@@ -132,10 +144,19 @@ export async function loadOrderFacts(ref: { id?: string; number?: string }, excl
 
   let committedMinor = 0
   let inFlight = false
+  const committedByCase = new Map<string, number>()
   for (const t of ledgerRes.data ?? []) {
     const status = t.status as (typeof COMMITTED_STATUSES)[number]
-    if (COMMITTED_STATUSES.includes(status)) committedMinor += Number(t.amount_minor)
+    if (COMMITTED_STATUSES.includes(status)) {
+      committedMinor += Number(t.amount_minor)
+      if (t.case_id) committedByCase.set(t.case_id as string, (committedByCase.get(t.case_id as string) ?? 0) + Number(t.amount_minor))
+    }
     if (IN_FLIGHT_STATUSES.includes(status)) inFlight = true
+  }
+  let promisedMinor = committedMinor
+  for (const r of approvedRes.data ?? []) {
+    if (r.id === excludeCaseId) continue
+    promisedMinor += Math.max(0, Number(r.approved_amount_minor) - (committedByCase.get(r.id as string) ?? 0))
   }
 
   return {
@@ -163,6 +184,7 @@ export async function loadOrderFacts(ref: { id?: string; number?: string }, excl
     totalMinor: toMinor(o.total as string | number),
     refundedMinor: toMinor(o.refunded_amount as string | number),
     committedMinor,
+    promisedMinor,
     inFlight,
     shippingAlreadyRefunded: (shippingRes.data ?? []).some((c) => c.id !== excludeCaseId),
     lines: (itemsRes.data ?? []).map((i) => ({

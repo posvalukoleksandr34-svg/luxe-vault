@@ -186,7 +186,7 @@ export function CaseView({ id }: { id: string }) {
           <h1 className="font-serif text-2xl font-semibold">
             {c.caseNumber} <Badge tone={STATE_TONE[c.state]}>{STATE_RU[c.state]}</Badge>
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="break-words text-sm text-muted-foreground">
             {CLAIM_RU[c.claimType]} · просит: {RESOLUTION_RU[c.requestedResolution]} · заказ {c.orderNumber} · {c.customerName} {c.customerEmail && `<${c.customerEmail}>`} · создана {dateRu(c.createdAt)} ({c.source === 'staff' ? 'сотрудником' : 'покупателем'}) · политика v{c.policyVersion ?? 0}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -229,8 +229,8 @@ export function CaseView({ id }: { id: string }) {
         {active && <ActionForm command={active} detail={d} me={me} onDone={done} onCancel={() => setActive(null)} />}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
           <section className="space-y-2 rounded-lg border border-border p-4">
             <h2 className="text-sm font-semibold">Заявка покупателя</h2>
             <p className="whitespace-pre-line text-sm">{c.comment || <span className="text-muted-foreground">Без описания</span>}</p>
@@ -243,7 +243,8 @@ export function CaseView({ id }: { id: string }) {
 
           <section className="space-y-2 rounded-lg border border-border p-4">
             <h2 className="text-sm font-semibold">Позиции</h2>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
                   <th className="py-1 text-left font-normal">Товар</th>
@@ -274,6 +275,7 @@ export function CaseView({ id }: { id: string }) {
                 ))}
               </tbody>
             </table>
+            </div>
             {c.returnTrackingNumber && (
               <p className="text-xs text-muted-foreground">
                 Возврат: {c.returnTrackingNumber} {c.returnCarrier && `(${c.returnCarrier})`} · отправлен {dateRu(c.returnShippedAt)} · получен {dateRu(c.returnReceivedAt)}
@@ -285,7 +287,8 @@ export function CaseView({ id }: { id: string }) {
             <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
               <h2 className="font-semibold">Заказ и деньги</h2>
               <p>
-                {d.order.number} · {d.order.status} · оплата: {d.order.paymentProvider ?? '—'} {d.order.paymentStatus} · {d.order.paymentCurrency && d.order.paymentCurrency !== 'CHF' && `списано ${d.order.paymentAmount} ${d.order.paymentCurrency}`}
+                {d.order.number} · {d.order.status} · оплата: {d.order.paymentProvider ?? '—'} {d.order.paymentStatus}
+                {d.order.paymentCurrency && d.order.paymentCurrency !== 'CHF' ? ` · списано ${d.order.paymentAmount} ${d.order.paymentCurrency}` : ''}
               </p>
               <p className="tabular-nums">
                 Товары {chf(d.order.subtotalMinor)} − скидка {chf(d.order.discountMinor)} + доставка {chf(d.order.shippingMinor)} + налог {chf(d.order.taxMinor)} = <strong>{chf(d.order.totalMinor)}</strong>
@@ -352,7 +355,7 @@ export function CaseView({ id }: { id: string }) {
           <Messages d={d} canNote={d.commands.includes('add_note')} canMessage={d.commands.includes('send_message')} onDone={done} />
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           {d.risk && (
             <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
               <h2 className="font-semibold">Риск: {RISK_RU[d.risk.level]} · {d.risk.score}/100</h2>
@@ -544,7 +547,13 @@ function EvidencePanel({ d, onOpen, onDone, canAdd }: { d: Detail; onOpen: (id: 
                 )
               )}
               {e.kind === 'tracking_snapshot' && <span className="block text-muted-foreground">{TRACKING_RU[(e.data.status as TrackingStatus) ?? 'unknown']} · {String(e.data.carrier ?? '')} {String(e.data.trackingNumber ?? '')}</span>}
-              {e.kind === 'order_event' && <span className="block text-muted-foreground">{JSON.stringify(e.data)}</span>}
+              {e.kind === 'order_event' && (
+                <span className="block break-words text-muted-foreground">
+                  статус заказа: {String(e.data.status ?? '—')} · трек: {String(e.data.trackingNumber ?? 'нет')}
+                  {e.data.courier ? ` (${String(e.data.courier)})` : ''} · отправлен: {dateRu(e.data.shippedAt as number | null)} · доставлен:{' '}
+                  {dateRu(e.data.deliveredAt as number | null)} · ожидалось до: {dateRu(e.data.expectedDeliveryBy as number | null, false)}
+                </span>
+              )}
             </li>
           ))}
         </ul>

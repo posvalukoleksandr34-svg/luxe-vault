@@ -1,5 +1,5 @@
 import type { Permission } from '@/lib/refunds/permissions'
-import type { CaseState } from '@/lib/refunds/types'
+import { CASE_STATES, type CaseState } from '@/lib/refunds/types'
 
 /**
  * The refund case state machine.
@@ -160,7 +160,9 @@ export const COMMANDS = {
     summary: 'Staff count what arrived; it waits for inspection.',
   }),
   record_inspection: def({
-    from: ['awaiting_inspection'],
+    // Also after a decision: an item approved before it was inspected still
+    // has to be inspected before it can go back on sale.
+    from: ['awaiting_inspection', 'under_review', 'approved', 'refund_processing', 'partially_refunded', 'refunded', 'resolved'],
     to: 'computed',
     actors: ['staff'],
     permission: 'case.return',
@@ -288,7 +290,9 @@ export const COMMANDS = {
   }),
   send_message: def({ from: OPEN_STATES, to: null, actors: ['staff'], permission: 'case.message', notifies: true, summary: 'A message to the customer.' }),
   record_evidence: def({
-    from: [...OPEN_STATES, 'rejected', 'expired'],
+    // Any state: a carrier's letter or a chargeback can arrive after the
+    // case closed, and the record must be able to hold it.
+    from: CASE_STATES,
     to: null,
     actors: ['staff'],
     permission: 'case.triage',

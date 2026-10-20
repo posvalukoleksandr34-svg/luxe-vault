@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { toMinor } from '@/lib/refunds/money'
 import { getOrderById } from '@/lib/server/orders-store'
 import { refundOrder } from '@/lib/server/refund-order'
+import { loadOrderFacts } from '@/lib/server/refunds/order-facts'
 import { activePolicy } from '@/lib/server/refunds/policy-store'
 import { isStripeConfigured } from '@/lib/server/stripe'
 import { requireAdmin } from '@/lib/server/admin-guard'
@@ -86,10 +87,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   // lib/server/refund-order.ts, shared with approving a return so the two
   // cannot drift. What stays here is this route's own contract: its status
   // codes and its response shape, unchanged.
-  const policy = await activePolicy()
+  // The second-approval threshold counts what the order has already refunded
+  // or been promised, so a large refund cannot be taken in small steps here.
+  const [policy, facts] = await Promise.all([activePolicy(), loadOrderFacts({ number: order.id })])
   const threshold = policy.config.approvals.secondApprovalMinor
   const asked = amount !== undefined ? toMinor(amount.toFixed(2)) : Math.round((order.total - (order.refundedAmount ?? 0)) * 100)
-  if (threshold !== null && threshold !== undefined && asked >= threshold) {
+  if (threshold !== null && threshold !== undefined && asked + (facts?.promisedMinor ?? 0) >= threshold) {
     return NextResponse.json(
       { error: 'Сумма требует согласования второго сотрудника — оформите возврат через заявку (Возвраты → Новая заявка).' },
       { status: 409 },

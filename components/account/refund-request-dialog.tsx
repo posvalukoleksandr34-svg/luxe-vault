@@ -157,7 +157,6 @@ export function RefundRequestDialog({
         return
       }
       setDone(body.case.caseNumber as string)
-      onSubmitted()
       pushToast({ title: tf('refund.form.submitted', { n: body.case.caseNumber }), variant: 'gold' })
     } catch {
       setError(t('refund.form.error'))
@@ -168,8 +167,16 @@ export function RefundRequestDialog({
 
   const steps: UIKey[] = ['refund.form.stepWhat', 'refund.form.stepItems', 'refund.form.stepDetails', 'refund.form.stepReview']
 
+  // The list behind the dialog is refreshed when the dialog CLOSES after a
+  // submission, not at the moment of it: refreshing unmounts this dialog,
+  // and the customer would lose the confirmation with their case number.
+  const close = (next: boolean) => {
+    if (!next && done) onSubmitted()
+    onOpenChange(next)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('refund.form.title')}</DialogTitle>
@@ -186,7 +193,7 @@ export function RefundRequestDialog({
             </p>
             <Link
               href={`/account?section=returns&case=${encodeURIComponent(done)}`}
-              onClick={() => onOpenChange(false)}
+              onClick={() => close(false)}
               className="tap-safe inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gold px-6 text-[11px] uppercase tracking-[0.2em] text-gold transition-colors hover:bg-gold/10"
             >
               {t('refund.form.viewRequest')}

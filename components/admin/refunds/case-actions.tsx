@@ -332,6 +332,7 @@ function ApproveForm({
     includeShipping: shipping === 'auto' ? undefined : shipping === 'yes',
     returnPostageMinor: parseChf(postage),
     deductionMinor: parseChf(deduction),
+    amountMinor: parseChf(amount),
   }
   const key = JSON.stringify(input)
   useEffect(() => {
@@ -347,7 +348,7 @@ function ApproveForm({
     }
   }, [key, c.id])
 
-  const asked = parseChf(amount)
+  const asked = input.amountMinor
   const highRisk = c.riskLevel === 'high'
   return (
     <div className="space-y-3 text-sm">

@@ -27,6 +27,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     deductionMinor: int(body.deductionMinor),
     returnPostageMinor: int(body.returnPostageMinor),
     includeShipping: typeof body.includeShipping === 'boolean' ? body.includeShipping : undefined,
+    amountMinor: int(body.amountMinor),
   })
   if (!result.ok) return NextResponse.json({ error: result.message }, { status: 400 })
   return NextResponse.json(result)

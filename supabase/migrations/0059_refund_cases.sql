@@ -682,6 +682,13 @@ revoke all on public.refund_notifications from anon, authenticated;
 
 alter type public.notification_type add value if not exists 'refund_update';
 
+-- The bell renders a refund case's update from its template (0046); the
+-- template list grows by one.
+alter table public.notifications drop constraint if exists notifications_template_check;
+alter table public.notifications
+  add constraint notifications_template_check
+  check (template is null or template in ('payment_failed', 'status', 'return_refunded', 'return_rejected', 'refund_case'));
+
 
 -- ============================================================= storage ======
 -- Staff evidence: carrier letters and proof-of-delivery PDFs as well as

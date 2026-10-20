@@ -245,17 +245,22 @@ function calculate(
   })
 }
 
-function needsSecondApproval(c: CaseRecord, amountMinor: number, policy: PolicyConfig): boolean {
+/**
+ * The threshold is per order, not per decision: what this approval adds to
+ * what the order has already refunded or been promised. Otherwise a large
+ * refund passes as several small cases, each under the line.
+ */
+function needsSecondApproval(c: Pick<CaseRecord, 'riskLevel'>, amountMinor: number, policy: PolicyConfig, priorMinor: number): boolean {
   if (amountMinor <= 0) return false
   const threshold = policy.approvals.secondApprovalMinor
-  if (threshold !== null && threshold !== undefined && amountMinor >= threshold) return true
+  if (threshold !== null && threshold !== undefined && amountMinor + priorMinor >= threshold) return true
   return c.riskLevel === 'high' && policy.approvals.highRiskRequiresSecondApproval
 }
 
 /** What approving now would refund — shown in the console before the decision. */
 export async function previewApproval(
   caseId: string,
-  input: { resolution?: Resolution; lines?: Line[]; deductionMinor?: number; returnPostageMinor?: number; includeShipping?: boolean },
+  input: { resolution?: Resolution; lines?: Line[]; deductionMinor?: number; returnPostageMinor?: number; includeShipping?: boolean; amountMinor?: number },
 ): Promise<{ ok: true; calc: CalcResult | null; lines: Line[]; needsSecondApproval: boolean } | { ok: false; message: string }> {
   const c = await getCase(caseId)
   if (!c) return { ok: false, message: 'Заявка не найдена' }
@@ -269,7 +274,9 @@ export async function previewApproval(
   if (!order) return { ok: false, message: 'Заказ не найден' }
   try {
     const calc = calculate(c, items, lines, order, policy.config, input)
-    return { ok: true, calc, lines, needsSecondApproval: needsSecondApproval(c, calc.totalMinor, policy.config) }
+    // The amount typed in the console, if any — approving can only lower it.
+    const amountMinor = input.amountMinor ? Math.min(input.amountMinor, calc.totalMinor) : calc.totalMinor
+    return { ok: true, calc, lines, needsSecondApproval: needsSecondApproval(c, amountMinor, policy.config, order.promisedMinor) }
   } catch (e) {
     if (e instanceof CalculationError) return { ok: false, message: calcMessage(e.code) }
     throw e
@@ -459,11 +466,15 @@ async function staffCommand(
         const o = outcomes.get(i.id) ?? i.inspectionOutcome
         return i.qtyReceived === 0 || (o !== undefined && o !== 'further_inspection')
       })
+      // Only a case WAITING for inspection moves on; one already decided keeps
+      // its state and just records what was found.
+      const changes: Record<string, unknown> = { items: patch }
+      if (c.state === 'awaiting_inspection' && finished) changes.state = 'under_review'
       const updated = await apply(
         c,
         v,
         from,
-        { state: finished ? 'under_review' : 'awaiting_inspection', items: patch },
+        changes,
         actor,
         { action: 'inspection.recorded', data: { lines: patch.map((p) => ({ id: p.id, outcome: p.inspection_outcome })) }, correlationId },
       )
@@ -754,6 +765,7 @@ async function approve(c: CaseRecord, input: StaffInput, actor: StaffActor, corr
   const note = text(input.note)
 
   let amountMinor = 0
+  let priorMinor = 0
   let breakdown: ApprovalBreakdown = {
     itemsMinor: 0,
     shippingMinor: 0,
@@ -784,6 +796,7 @@ async function approve(c: CaseRecord, input: StaffInput, actor: StaffActor, corr
       return fail(400, 'amount_out_of_range', `Сумма должна быть от 0.01 до ${(calc.totalMinor / 100).toFixed(2)} CHF`)
     }
     amountMinor = asked ?? calc.totalMinor
+    priorMinor = order.promisedMinor
     const partial = amountMinor < calc.computedMinor || deductionMinor > 0 || amountMinor < (c.requestedAmountMinor ?? 0)
     if (partial && note.length < 10) {
       return fail(400, 'note_required', 'Частичное одобрение: объясните покупателю, почему сумма меньше (не короче 10 символов)')
@@ -802,7 +815,7 @@ async function approve(c: CaseRecord, input: StaffInput, actor: StaffActor, corr
   }
 
   const itemPatch = items.map((i) => ({ id: i.id, qty_approved: lines.find((l) => l.itemId === i.id)?.qty ?? 0 }))
-  if (needsSecondApproval(c, amountMinor, policy.config)) {
+  if (needsSecondApproval(c, amountMinor, policy.config, priorMinor)) {
     if (actor.legacy || !actor.staffId) {
       return fail(
         409,

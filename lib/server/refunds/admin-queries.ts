@@ -271,6 +271,16 @@ export async function customerHistory(c: CaseRecord): Promise<{
   }
 }
 
+/**
+ * One CSV cell. Quoted, quotes doubled, and a value a spreadsheet would run
+ * as a formula (= + - @, tab, CR) prefixed with an apostrophe.
+ */
+export function csvCell(v: unknown): string {
+  let s = v === undefined || v === null ? '' : String(v)
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  return `"${s.replace(/"/g, '""')}"`
+}
+
 /** CSV of a filtered list — at most 5000 rows, no free-text fields a spreadsheet could execute. */
 export async function exportCsv(filter: CaseFilter, slaDecisionDays: number): Promise<string> {
   const rows: CaseRecord[] = []
@@ -278,12 +288,6 @@ export async function exportCsv(filter: CaseFilter, slaDecisionDays: number): Pr
     const chunk = await listCases({ ...filter, page, pageSize: 100 }, slaDecisionDays)
     rows.push(...chunk.rows)
     if (chunk.rows.length < 100) break
-  }
-  const cell = (v: unknown) => {
-    let s = v === undefined || v === null ? '' : String(v)
-    // A cell starting with = + - @ is a formula to a spreadsheet.
-    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
-    return `"${s.replace(/"/g, '""')}"`
   }
   const money = (m?: number) => (m === undefined ? '' : (m / 100).toFixed(2))
   const header = ['case', 'order', 'created', 'claim', 'state', 'resolution', 'requested_chf', 'approved_chf', 'refunded_chf', 'risk', 'assignee', 'closed']
@@ -302,7 +306,7 @@ export async function exportCsv(filter: CaseFilter, slaDecisionDays: number): Pr
       c.assignedLabel ?? '',
       c.closedAt ? new Date(c.closedAt).toISOString() : '',
     ]
-      .map(cell)
+      .map(csvCell)
       .join(','),
   )
   return [header.join(','), ...lines].join('\r\n')
