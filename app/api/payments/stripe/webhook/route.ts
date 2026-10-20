@@ -7,7 +7,6 @@ import {
   ensurePaidOrderStock,
   findOrderByPaymentId,
   getOrderById,
-  recordRefund,
   releaseReceiptClaim,
   setPaymentStatus,
 } from '@/lib/server/orders-store'
@@ -21,6 +20,7 @@ import { notifyPaymentFailed } from '@/lib/server/notifications'
 import { constructWebhookEvent, getStripe, isStripeWebhookConfigured } from '@/lib/server/stripe'
 import { onCardFailure, onCardSuccess, onDispute, onEarlyFraudWarning } from '@/lib/server/payment-fraud'
 import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
+import { syncChargeRefunds, syncDispute, syncStripeRefund } from '@/lib/server/refunds/stripe-sync'
 import { securityEvent } from '@/lib/server/security-events'
 import type { Order, PaymentStatus } from '@/lib/types'
 import { isTelegramConfigured, notifyPaymentConfirmed, notifyStockConflict, reportCriticalError } from '@/lib/telegram'
@@ -46,6 +46,12 @@ const HANDLED = [
   'payment_intent.payment_failed',
   'payment_intent.canceled',
   'charge.refunded',
+  // The refund ledger (lib/server/refunds/stripe-sync.ts): a refund's own
+  // lifecycle — pending → succeeded, or failed, even after succeeding.
+  'refund.created',
+  'refund.updated',
+  'refund.failed',
+  'charge.refund.updated',
   // The fraud guard (lib/server/payment-fraud.ts). An early fraud warning on
   // an order not yet shipped is refunded automatically; a dispute is flagged.
   'radar.early_fraud_warning.created',
@@ -107,8 +113,22 @@ export async function POST(request: NextRequest) {
 
   try {
     if (event.type === 'charge.refunded') {
-      const synced = await syncRefund(event.data.object as Stripe.Charge)
+      const synced = await syncChargeRefunds(event.data.object as Stripe.Charge, event.id)
+      return NextResponse.json({ received: true, refunds: synced.length, matched: synced.filter((s) => s.matched).length })
+    }
+    if (
+      event.type === 'refund.created' ||
+      event.type === 'refund.updated' ||
+      event.type === 'refund.failed' ||
+      event.type === 'charge.refund.updated'
+    ) {
+      const synced = await syncStripeRefund(event.data.object as Stripe.Refund, event.id)
       return NextResponse.json({ received: true, ...synced })
+    }
+    if (event.type === 'charge.dispute.created') {
+      // The order's open refund cases stop: no refund through Stripe while a
+      // chargeback is open (the card network handles the money).
+      await syncDispute(event.data.object as Stripe.Dispute)
     }
     if (event.type === 'radar.early_fraud_warning.created' || event.type === 'charge.dispute.created') {
       return await handleFraudSignal(event)
@@ -364,16 +384,6 @@ async function handleFraudSignal(event: Stripe.Event): Promise<NextResponse> {
   return NextResponse.json({ received: true, order: order.id, earlyFraudWarning: outcome })
 }
 
-/**
- * charge.refunded — keeps the order in step with refunds made OUTSIDE the
- * admin console (the Stripe dashboard, a dispute resolution).
- *
- * Stripe's figure is cumulative and in the currency charged; the order keeps
- * CHF, so it is converted at the rate the payment was made at (see
- * orderChargeRate). A refund the admin route already recorded arrives here
- * too, with the same total — that is detected and left alone, so nothing is
- * recorded, restocked or emailed twice.
- */
 /** Why this payment cannot settle this order, or null when it can. */
 function chargeMismatch(order: Order, intent: Stripe.PaymentIntent): string | null {
   const expected = orderCharge(order)
@@ -385,28 +395,3 @@ function chargeMismatch(order: Order, intent: Stripe.PaymentIntent): string | nu
   return null
 }
 
-async function syncRefund(
-  charge: Stripe.Charge,
-): Promise<{ matched: boolean; changed?: boolean }> {
-  const paymentIntentId =
-    typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
-  if (!paymentIntentId) return { matched: false }
-
-  const order = await findOrderByPaymentId(paymentIntentId)
-  if (!order) return { matched: false }
-
-  const fully = Boolean(charge.refunded)
-  const refundedChf = fully
-    ? order.total
-    : Math.min(order.total, roundMinor(fromMinorUnits(charge.amount_refunded) / orderChargeRate(order)))
-
-  const already = order.refundedAmount ?? 0
-  const alreadyFull = order.paymentStatus === 'refunded'
-  if ((fully && alreadyFull) || (!fully && refundedChf <= already + 0.004)) {
-    return { matched: true, changed: false }
-  }
-
-  const refundId = charge.refunds?.data?.[0]?.id ?? charge.id
-  await recordRefund(order.id, { refundedAmount: refundedChf, fully, refundId })
-  return { matched: true, changed: true }
-}

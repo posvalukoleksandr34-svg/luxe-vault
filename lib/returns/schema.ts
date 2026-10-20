@@ -69,43 +69,6 @@ export const createReturnRequestSchema = z.object({
 export type CreateReturnRequestInput = z.infer<typeof createReturnRequestSchema>
 
 /**
- * A manager's decision.
- *
- * A rejection MUST carry a note. The customer is told why, and "rejected, no
- * reason given" is the outcome that generates the support ticket this whole
- * feature exists to avoid — so it is a schema rule, not a UI convention.
- */
-export const decideReturnRequestSchema = z.discriminatedUnion('decision', [
-  z.object({
-    decision: z.literal('approve'),
-    id: z.string().uuid(),
-    /** Major units in CHF. Omitted refunds whatever remains unrefunded. */
-    amount: z.number().positive().max(1_000_000).optional(),
-    adminNotes: z.string().trim().max(COMMENT_MAX).optional(),
-  }),
-  z.object({
-    decision: z.literal('reject'),
-    id: z.string().uuid(),
-    adminNotes: z.string().trim().min(1, 'A rejection needs a reason').max(COMMENT_MAX),
-  }),
-  /**
-   * An approved return whose money went back BY HAND — a crypto payment, which
-   * has no refund API to call. The manager returns it, then says so here, and
-   * only then does the request close and the customer hear it is done.
-   */
-  z.object({
-    decision: z.literal('complete'),
-    id: z.string().uuid(),
-    adminNotes: z.string().trim().max(COMMENT_MAX).optional(),
-  }),
-])
-export type DecideReturnRequestInput = z.infer<typeof decideReturnRequestSchema>
-
-/** The admin list's filter. `all` is explicit rather than an absent value, so
- *  a typo in a query string cannot silently widen the view. */
-export const returnsFilterSchema = z.enum(['all', ...RETURN_REQUEST_STATUSES]).default('pending')
-
-/**
  * Turns a ZodError into one line a person can act on.
  *
  * Zod's own message is a JSON tree; handing that to a customer is how an error

@@ -10,6 +10,7 @@
     "pretypecheck": "node scripts/ui-dictionaries.js",
     "typecheck": "tsc --noEmit",
     "test:security": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/security/*.test.ts\"",
+    "test:refunds": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/refunds/*.test.ts\"",
     "test:assistant": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant/*.test.ts\"",
     "test:assistant:live": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant-live/*.test.ts\""
   },

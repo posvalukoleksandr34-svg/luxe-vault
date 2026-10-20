@@ -909,88 +909,9 @@ async function restoreStock(orderNumber: string): Promise<'restocked' | 'already
   return data === true ? 'restocked' : 'already'
 }
 
-/**
- * Records a refund against an order.
- *
- * `refundedAmount` is the CUMULATIVE total, computed by the caller from
- * Stripe's ledger rather than incremented here — an increment would double
- * count if Stripe retried and the caller re-ran.
- */
-export async function recordRefund(
-  id: string,
-  /** `refundId` is Stripe's, and absent for money returned BY HAND — a
-   *  crypto payment refunded outside any API. Writing a made-up id into a
-   *  column named stripe_refund_id would be a lie a reconciliation would
-   *  eventually believe. */
-  params: { refundedAmount: number; fully: boolean; refundId?: string },
-): Promise<Order | null> {
-  const { data, error } = await createAdminClient()
-    .from('orders')
-    .update({
-      payment_status: params.fully ? 'refunded' : 'partially_refunded',
-      // Only a full refund closes the order out. A partial refund leaves the
-      // fulfilment status alone: the customer may still be receiving goods.
-      ...(params.fully ? { status: 'refunded' } : {}),
-      refunded_amount: params.refundedAmount,
-      refunded_at: new Date().toISOString(),
-      stripe_refund_id: params.refundId ?? null,
-    })
-    .eq('order_number', id)
-    // A refund only follows money that arrived (the state machine above):
-    // recording one against an unpaid order would mark it refunded and put
-    // its units back on sale.
-    .or(transitionFilter(params.fully ? 'refunded' : 'partially_refunded'))
-    .select(await resolveOrderSelect())
-    .maybeSingle()
-
-  if (error) throw new Error(`Failed to record refund: ${error.message}`)
-
-  // Only a full refund puts the goods back. A partial refund is usually a
-  // price adjustment or one line of several, and guessing which units came
-  // back would corrupt the count.
-  if (!data) return null
-
-  if (params.fully) {
-    await restoreStock(id)
-    // A referral bonus earned on this order does not survive its refund.
-    await reverseReferralReward(id)
-  }
-
-  const refunded = rowToOrder(asRow(data))
-  // Silence after money moves is what turns a refund into a chargeback, so
-  // this goes out for partial refunds too — the amount is in the email.
-  void sendOrderStatusEmail(refunded, 'refunded')
-  return refunded
-}
-
-
-/**
- * Records a customer's refund request. Does NOT move money — it flags the
- * order for a human to review, which is the whole point: an automatic refund
- * on request would let anyone order, receive the goods and refund themselves.
- *
- * Guarded on `return_status = 'none'` in the same statement so a double-click
- * cannot file two requests.
- */
-export async function requestRefund(
-  id: string,
-  reason?: string,
-): Promise<{ order: Order | null; conflict: boolean }> {
-  const { data, error } = await createAdminClient()
-    .from('orders')
-    .update({
-      return_status: 'requested',
-      return_reason: reason?.trim() || null,
-      return_requested_at: new Date().toISOString(),
-    })
-    .eq('order_number', id)
-    .eq('return_status', 'none')
-    .select(await resolveOrderSelect())
-    .maybeSingle()
-
-  if (error) throw new Error(`Failed to request refund: ${error.message}`)
-  return { order: data ? rowToOrder(asRow(data)) : null, conflict: !data }
-}
+// Refunds are recorded by the refund ledger (lib/server/refunds/ledger.ts,
+// settle_refund_transaction): orders.refunded_amount and payment_status are
+// rebuilt from it there, never written from here.
 
 
 /**

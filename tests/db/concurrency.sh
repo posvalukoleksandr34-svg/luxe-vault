@@ -15,6 +15,9 @@ check() { if [ "$2" = "$3" ]; then echo "PASS $1"; else echo "FAIL $1 — expect
 
 psql_ -f "$DIR/_fixture.sql"
 cleanup() {
+  # The refund ledger refuses deletes by design (0059); a disposable test
+  # database lifts that for its own rows only, as the superuser.
+  psql_ -c "set session_replication_role = replica; delete from public.refund_case_events where order_id in (select id from public.orders where order_number like 'LV-DBC%'); delete from public.refund_transactions where order_id in (select id from public.orders where order_number like 'LV-DBC%'); set session_replication_role = origin;" >/dev/null
   psql_ -c "delete from public.orders where order_number like 'LV-DBC%'; delete from public.coupons where code like 'DBC-%';" >/dev/null
   psql_ -f "$DIR/_fixture.sql" >/dev/null
 }
@@ -74,6 +77,18 @@ check "exactly five are allowed" "$(psql_ -c "select count(*) from public.dbc_ra
 check "five are refused" "$(psql_ -c "select count(*) from public.dbc_race_results where not allowed")" 5
 check "the counter saw all ten" "$(psql_ -c "select count from public.rate_limits where bucket = 'dbc.race' and subject = 'one-client'")" 10
 psql_ -c "delete from public.rate_limits where bucket = 'dbc.race'; drop table public.dbc_race_results;" >/dev/null
+
+echo "# Four refunds of the same order at once"
+psql_ -c "insert into public.orders (order_number, lookup_token, customer_name, customer_phone, address_line, subtotal, total, payment, status, payment_status, payment_provider, payment_id) values ('LV-DBC200', 'tok-LV-DBC200', 'DB Test', '+41000000000', 'Teststrasse 1, 8000 Zurich', 500, 500, 'Карта онлайн', 'delivered', 'paid', 'stripe', 'pi_dbc200')" >/dev/null
+ORDER200=$(psql_ -c "select id from public.orders where order_number = 'LV-DBC200'")
+res=$(race 4 "select public.reserve_refund_transaction(jsonb_build_object('order_id', '$ORDER200', 'amount_minor', 30000, 'provider', 'stripe', 'payment_reference', 'pi_dbc200', 'idempotency_key', 'dbc-race-%s', 'reason', 'race', 'source', 'order_screen', 'initiated_by_label', 'race'));")
+check "exactly one of four reserves the refund" "$(grep -c '^ok' <<<"$res")" 1
+check "the others are told one is in flight" "$(grep -c 'REFUND_IN_FLIGHT' <<<"$res")" 3
+check "the ledger holds one reservation" "$(psql_ -c "select count(*) from public.refund_transactions where order_id = '$ORDER200'")" 1
+psql_ -c "select public.settle_refund_transaction(jsonb_build_object('transaction_id', (select id from public.refund_transactions where order_id = '$ORDER200'), 'status', 'succeeded', 'provider_refund_id', 're_dbc200'))" >/dev/null
+res=$(race 4 "select public.reserve_refund_transaction(jsonb_build_object('order_id', '$ORDER200', 'amount_minor', 30000, 'provider', 'stripe', 'payment_reference', 'pi_dbc200', 'idempotency_key', 'dbc-race2-%s', 'reason', 'race', 'source', 'order_screen', 'initiated_by_label', 'race'));")
+check "none of four can refund past the paid total" "$(grep -c '^ok' <<<"$res")" 0
+check "the order never shows more refunded than paid" "$(psql_ -c "select refunded_amount from public.orders where id = '$ORDER200'")" "300.00"
 
 cleanup
 echo "== concurrency: $fails failed"

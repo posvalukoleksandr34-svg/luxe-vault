@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { toMinor } from '@/lib/refunds/money'
 import { getOrderById } from '@/lib/server/orders-store'
 import { refundOrder } from '@/lib/server/refund-order'
+import { loadOrderFacts } from '@/lib/server/refunds/order-facts'
+import { activePolicy } from '@/lib/server/refunds/policy-store'
 import { isStripeConfigured } from '@/lib/server/stripe'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { readJsonObject } from '@/lib/server/http'
+import { requireStaff } from '@/lib/server/staff'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,14 +34,21 @@ export const dynamic = 'force-dynamic'
  * rate it was CHARGED at — recorded on the order — never today's, so a
  * refund always returns exactly its share of what the customer paid.
  *
- * Stripe is the source of truth for how much is left to refund — the
- * remaining balance is read from its ledger, not from our row, so two
- * concurrent requests cannot together return more than was captured.
+ * Through the refund ledger (lib/server/refund-order.ts): reserved under the
+ * order's lock — never more than was paid, never two at once — and recorded
+ * with what Stripe answered.
+ *
+ * WHO. A named staff member with refund.execute (manager or owner — or the
+ * shared login while no staff exist). A refund at or above the policy's
+ * second-approval threshold is refused HERE: it must go through a case,
+ * where a second person approves it. This screen is not a way around that.
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
+  const gate = await requireStaff('refund.execute')
+  if (!gate.ok) return gate.response
   if (!isStripeConfigured()) {
     return NextResponse.json({ error: 'Stripe не настроен' }, { status: 503 })
   }
@@ -76,9 +87,26 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   // lib/server/refund-order.ts, shared with approving a return so the two
   // cannot drift. What stays here is this route's own contract: its status
   // codes and its response shape, unchanged.
-  const result = await refundOrder(order, amount)
+  // The second-approval threshold counts what the order has already refunded
+  // or been promised, so a large refund cannot be taken in small steps here.
+  const [policy, facts] = await Promise.all([activePolicy(), loadOrderFacts({ number: order.id })])
+  const threshold = policy.config.approvals.secondApprovalMinor
+  const asked = amount !== undefined ? toMinor(amount.toFixed(2)) : Math.round((order.total - (order.refundedAmount ?? 0)) * 100)
+  if (threshold !== null && threshold !== undefined && asked + (facts?.promisedMinor ?? 0) >= threshold) {
+    return NextResponse.json(
+      { error: 'Сумма требует согласования второго сотрудника — оформите возврат через заявку (Возвраты → Новая заявка).' },
+      { status: 409 },
+    )
+  }
+
+  const result = await refundOrder(order, amount, {
+    source: 'order_screen',
+    actor: gate.actor,
+    reason: 'Refund from the order screen',
+  })
   if (!result.ok) {
-    const status = result.reason === 'manual' ? 400 : result.reason === 'not_paid' ? 409 : result.reason === 'unconfigured' ? 503 : 400
+    const status =
+      result.reason === 'manual' ? 400 : result.reason === 'not_paid' || result.reason === 'in_flight' || result.reason === 'exceeds' ? 409 : result.reason === 'unconfigured' ? 503 : 400
     const error =
       result.reason === 'manual' ? 'Возврат через Stripe недоступен для этого заказа' : result.message
     return NextResponse.json({ error }, { status })
@@ -87,6 +115,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   return NextResponse.json({
     order: result.order,
     refundId: result.refundId,
+    status: result.status,
     refunded: result.refunded,
     totalRefunded: result.totalRefunded,
     fullyRefunded: result.fullyRefunded,

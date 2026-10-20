@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, Bell, Check, Loader2, Package } from 'lucide-react'
+import { AlertTriangle, Bell, Check, Loader2, Package, RotateCcw } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -159,7 +159,7 @@ export function NotificationCenter() {
               ) : (
                 <ul className="divide-y divide-border/40">
                   {items.map((n) => {
-                    const Icon = n.type === 'payment_failed' ? AlertTriangle : Package
+                    const Icon = n.type === 'payment_failed' ? AlertTriangle : n.type === 'refund_update' ? RotateCcw : Package
                     const row = (
                       <div
                         className={cn(

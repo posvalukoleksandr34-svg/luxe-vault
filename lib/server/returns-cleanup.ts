@@ -79,6 +79,25 @@ async function readReferencedPaths(): Promise<Set<string>> {
     }
     if (!data || data.length < PAGE) break
   }
+
+  // Photographs registered as case EVIDENCE (lib/server/refunds/evidence.ts)
+  // count too — a photo a customer added later, in a reply, lives only there.
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('refund_case_evidence')
+      .select('storage_path')
+      .eq('storage_bucket', BUCKET)
+      .not('storage_path', 'is', null)
+      .order('recorded_at', { ascending: true })
+      .range(from, from + PAGE - 1)
+
+    if (error) throw new Error(`could not read case evidence: ${error.message}`)
+    for (const row of data ?? []) {
+      const path = (row as { storage_path?: unknown }).storage_path
+      if (typeof path === 'string') referenced.add(path)
+    }
+    if (!data || data.length < PAGE) break
+  }
   return referenced
 }
 

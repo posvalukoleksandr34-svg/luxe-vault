@@ -265,7 +265,14 @@ export async function onEarlyFraudWarning(order: Order, warning: Stripe.Radar.Ea
   const unshipped = order.status === 'pending' || order.status === 'processing'
   const paid = order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded'
   if (warning.actionable && unshipped && paid) {
-    const refund = await refundOrder(order)
+    // One automatic refund per order, whatever Stripe redelivers: the key is
+    // the order's, so a second warning finds the same ledger row.
+    const refund = await refundOrder(order, undefined, {
+      source: 'fraud_guard',
+      actor: { type: 'system', label: 'fraud guard' },
+      reason: `Early fraud warning (${warning.fraud_type}) on an unshipped order`,
+      idempotencyKey: `fraud_guard:${order.id}`,
+    })
     if (refund.ok) {
       await alert(
         `🛑 <b>Early fraud warning — возврат сделан автоматически</b>\nЗаказ <b>${escapeTelegramHtml(order.id)}</b> (${escapeTelegramHtml(warning.fraud_type)}). ` +

@@ -19,6 +19,7 @@ export type SecurityEvent =
   | 'rate_limiter_unavailable'
   | 'webhook_signature_invalid'
   | 'cron_unauthorized'
+  | 'admin_staff_bind_failed'
 
 function sourceHash(ip: string | null | undefined): string | undefined {
   const key = process.env.PAYMENT_FRAUD_SECRET?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()

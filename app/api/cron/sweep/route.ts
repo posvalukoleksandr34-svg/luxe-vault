@@ -13,6 +13,7 @@ import { releaseStaleCouponHolds } from '@/lib/server/promo-codes'
 import { sweepOrphanedReturnPhotos } from '@/lib/server/returns-cleanup'
 import { enforceRetention } from '@/lib/server/retention'
 import { releaseExpiredReservations } from '@/lib/server/reservations'
+import { runRefundSweep, type RefundSweepResult } from '@/lib/server/refunds/sweep'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,7 @@ async function runSweep(request: NextRequest) {
     reservationsReleased: 0,
     stripeEventsPruned: 0,
     retention: null as Awaited<ReturnType<typeof enforceRetention>> | null,
+    refunds: null as RefundSweepResult | null,
     errors: [] as string[],
   }
 
@@ -166,6 +168,17 @@ async function runSweep(request: NextRequest) {
     result.stripeEventsPruned = data?.length ?? 0
   } catch (e) {
     result.errors.push(`stripe-events: ${(e as Error).message}`)
+  }
+
+  // ------------------------------------------------------------ refunds --
+  // Normally hourly (app/api/cron/refunds); here too, so unknown refund
+  // outcomes, customer deadlines and failed notifications are still handled
+  // daily without that scheduler.
+  try {
+    result.refunds = await runRefundSweep()
+    result.errors.push(...result.refunds.errors)
+  } catch (e) {
+    result.errors.push(`refunds: ${(e as Error).message}`)
   }
 
   // ------------------------------------------------------ retention --

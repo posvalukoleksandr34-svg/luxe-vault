@@ -455,7 +455,7 @@ export type SupportTicketDetail = SupportTicket & { messages: SupportMessage[] }
 
 
 /** Mirrors the public.notification_type enum. */
-export type NotificationType = 'payment_failed' | 'status_update'
+export type NotificationType = 'payment_failed' | 'status_update' | 'refund_update'
 
 /**
  * An in-app notification, as the bell and its panel consume it.
