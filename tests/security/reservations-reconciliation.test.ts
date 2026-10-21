@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { NextRequest } from 'next/server'
 import { reconcilePayments, type ProviderPayment } from '@/lib/payment-reconciliation'
 import { releaseExpiredReservations, reservationPolicy, type LapsedOrder, type ReservationDeps } from '@/lib/server/reservations'
-import { isAmbiguousStripeFailure } from '@/lib/server/stripe'
+import { isAmbiguousStripeFailure, isMissingIntent } from '@/lib/server/stripe'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
 import type { Order } from '@/lib/types'
 
@@ -37,7 +37,7 @@ describe('reservation release: every order lands in exactly one list, and failur
   const crypto = (no: string): LapsedOrder => ({ order_number: no, payment_provider: 'nowpayments', payment_id: 'np_1' })
 
   /** An in-memory shop: orders, a shelf, and switches for each failure. */
-  function shop(lapsed: LapsedOrder[], opts: { intents?: Record<string, 'open' | 'succeeded' | 'processing' | 'error'>; dbDown?: Set<string>; restockDown?: Set<string>; changed?: Set<string> } = {}) {
+  function shop(lapsed: LapsedOrder[], opts: { intents?: Record<string, 'open' | 'succeeded' | 'processing' | 'error' | 'missing'>; dbDown?: Set<string>; restockDown?: Set<string>; changed?: Set<string> } = {}) {
     const state = { cancelled: new Set<string>(), restocked: new Set<string>(), shelf: 0, stripeCalls: 0, cancelCalls: 0 }
     const deps: ReservationDeps = {
       async listLapsed() { return lapsed.filter((o) => !state.cancelled.has(o.order_number)) },
@@ -46,6 +46,7 @@ describe('reservation release: every order lands in exactly one list, and failur
         state.stripeCalls++
         const s = opts.intents?.[id] ?? 'open'
         if (s === 'error') return { ok: false, reason: 'error', message: 'timeout' }
+        if (s === 'missing') return { ok: false, reason: 'missing', message: `No such payment_intent: '${id}'` }
         if (s === 'succeeded' || s === 'processing') return { ok: false, reason: 'captured', message: s }
         return { ok: true, alreadyTerminal: false }
       },
@@ -93,6 +94,22 @@ describe('reservation release: every order lands in exactly one list, and failur
     const off = shop([card('B')])
     assert.deepEqual(ok(await releaseExpiredReservations({ policy, deps: { ...off.deps, stripeConfigured: () => false } })).providerError, ['B'])
     assert.equal(off.state.stripeCalls, 0)
+  })
+
+  it('the alert carries Stripe\'s answer for each order it could not cancel', async () => {
+    const { deps } = shop([card('A')], { intents: { pi_A: 'error' } })
+    assert.deepEqual(ok(await releaseExpiredReservations({ policy, deps })).providerMessages, { A: 'timeout' })
+  })
+
+  it('a payment Stripe does not have (test-mode order on a live shop) is released once, not retried forever', async () => {
+    const { state, deps } = shop([card('A'), card('B')], { intents: { pi_A: 'missing' } })
+    const r = ok(await releaseExpiredReservations({ policy, deps }))
+    assert.deepEqual(r.releasedMissingIntent, ['A'])
+    assert.deepEqual(r.released, ['B'])
+    assert.deepEqual(r.providerError, [])
+    assert.equal(state.shelf, 2, 'its units are back on sale')
+    const again = ok(await releaseExpiredReservations({ policy, deps }))
+    assert.deepEqual(again.candidates, [], 'nothing left to report next run')
   })
 
   it('an order paid or cancelled by hand in the meantime is left alone', async () => {
@@ -273,5 +290,28 @@ describe('security event lines', () => {
     assert.ok(!lines.join('').includes('203.0.113.77'), 'raw IP logged')
     assert.equal(a.source, b.source, 'the same source must hash the same, so repeats can be counted')
     assert.deepEqual(Object.keys(a).sort(), ['at', 'reason', 'security_event', 'source'])
+  })
+})
+
+describe('which Stripe answers mean "this payment does not exist here"', () => {
+  it('a 404 resource_missing does', () => {
+    assert.equal(isMissingIntent({ type: 'StripeInvalidRequestError', code: 'resource_missing', statusCode: 404, message: "No such payment_intent: 'pi_1'" }), true)
+    assert.equal(
+      isMissingIntent({ code: 'resource_missing', statusCode: 404, message: "No such payment_intent: 'pi_1'; a similar object exists in test mode, but a live mode key was used to make this request." }),
+      true,
+    )
+  })
+  it('one that exists in LIVE mode (shop on test keys) does not: it could still take real money', () => {
+    assert.equal(
+      isMissingIntent({ code: 'resource_missing', statusCode: 404, message: "No such payment_intent: 'pi_1'; a similar object exists in live mode, but a test mode key was used to make this request." }),
+      false,
+    )
+  })
+  it('timeouts, 5xx, auth errors and anything unknown do not', () => {
+    assert.equal(isMissingIntent({ type: 'StripeConnectionError', message: 'timeout' }), false)
+    assert.equal(isMissingIntent({ type: 'StripeAPIError', statusCode: 500, message: 'oops' }), false)
+    assert.equal(isMissingIntent({ type: 'StripeAuthenticationError', statusCode: 401, message: 'Invalid API Key' }), false)
+    assert.equal(isMissingIntent(null), false)
+    assert.equal(isMissingIntent(new Error('No such payment_intent')), false)
   })
 })

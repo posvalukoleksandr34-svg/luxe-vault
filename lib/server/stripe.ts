@@ -420,13 +420,32 @@ export async function detachSavedCard(paymentMethodId: string): Promise<void> {
  *
  * Returns false only when the intent has actually taken money — that needs a
  * refund, not a cancellation, and silently swallowing it would lose funds.
+ *
+ * 'missing': this account has no such intent (Stripe 404), so nothing can be
+ * charged through it here — typically an order placed with test keys on a
+ * shop now running live. Not when Stripe adds that it exists in LIVE mode
+ * (this shop on test keys): that one could still take real money, so it is
+ * an 'error' like any other.
  */
+/** Stripe's 404 for an intent this account does not have — unless it adds
+ *  that one exists in live mode (see cancelPaymentIntent). */
+export function isMissingIntent(error: unknown): boolean {
+  const e = error as { code?: string; statusCode?: number; message?: string } | null
+  return e?.code === 'resource_missing' && e.statusCode === 404 && !/exists in live mode/i.test(e.message ?? '')
+}
+
 export async function cancelPaymentIntent(paymentIntentId: string): Promise<
-  { ok: true; alreadyTerminal: boolean } | { ok: false; reason: 'captured' | 'error'; message: string }
+  { ok: true; alreadyTerminal: boolean } | { ok: false; reason: 'captured' | 'missing' | 'error'; message: string }
 > {
   const stripe = getStripe()
+  let intent: Stripe.PaymentIntent
   try {
-    const intent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    intent = await stripe.paymentIntents.retrieve(paymentIntentId)
+  } catch (error) {
+    const message = (error as { message?: string } | null)?.message || 'Stripe error'
+    return { ok: false, reason: isMissingIntent(error) ? 'missing' : 'error', message }
+  }
+  try {
 
     if (intent.status === 'canceled') return { ok: true, alreadyTerminal: true }
     if (intent.status === 'succeeded' || intent.status === 'processing') {
