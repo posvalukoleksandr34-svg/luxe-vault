@@ -565,7 +565,7 @@ export function ProductForm({
                       }
                       className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition ${
                         copyLocale === l
-                          ? 'border-gold bg-gold/10 text-gold'
+                          ? 'border-gold bg-gold/10 font-medium text-foreground'
                           : 'border-border text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -962,7 +962,7 @@ export function ProductForm({
                     title={auto ? 'Рассчитывается из остатков' : undefined}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed ${
                       selected
-                        ? 'border-gold bg-gold/10 text-gold'
+                        ? 'border-gold bg-gold/10 font-medium text-foreground'
                         : 'border-border text-muted-foreground hover:border-foreground/40'
                     } ${auto && !selected ? 'opacity-40 hover:border-border' : ''}`}
                   >
@@ -1002,7 +1002,7 @@ export function ProductForm({
                         onClick={() => setStyleTags((prev) => ({ ...prev, fit: f ?? undefined }))}
                         className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
                           selected
-                            ? 'border-gold bg-gold/10 text-gold'
+                            ? 'border-gold bg-gold/10 font-medium text-foreground'
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >
@@ -1025,7 +1025,7 @@ export function ProductForm({
                         onClick={() => toggleStyle(s)}
                         className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
                           selected
-                            ? 'border-gold bg-gold/10 text-gold'
+                            ? 'border-gold bg-gold/10 font-medium text-foreground'
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >
@@ -1048,7 +1048,7 @@ export function ProductForm({
                         onClick={() => toggleOccasion(o)}
                         className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
                           selected
-                            ? 'border-gold bg-gold/10 text-gold'
+                            ? 'border-gold bg-gold/10 font-medium text-foreground'
                             : 'border-border text-muted-foreground hover:border-foreground/40'
                         }`}
                       >

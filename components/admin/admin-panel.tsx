@@ -569,7 +569,9 @@ function NavButton({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition whitespace-nowrap',
-        active ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+        // Gold ink on the gold tint is 4.3:1 — under AA — so the label is
+        // the foreground colour and the tint alone marks the active item.
+        active ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
       )}
     >
       {icon}

@@ -302,7 +302,7 @@ export function InventoryManager() {
               title="Таблица с количеством"
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-[12px] transition',
-                view === 'table' ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
+                view === 'table' ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <List className="size-3.5" />
@@ -314,7 +314,7 @@ export function InventoryManager() {
               title="Матрица размеров"
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-[12px] transition',
-                view === 'matrix' ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
+                view === 'matrix' ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Grid3x3 className="size-3.5" />
@@ -329,7 +329,7 @@ export function InventoryManager() {
                 onClick={() => setStateFilter(s)}
                 className={cn(
                   'px-3 py-2 text-[12px] transition',
-                  stateFilter === s ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
+                  stateFilter === s ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {s === 'all' ? 'Все' : s === 'low' ? 'Мало' : 'Нет'}

@@ -301,7 +301,7 @@ export function OrdersManager({
                 className={cn(
                   'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition',
                   tab === t.key
-                    ? 'border-gold/50 bg-gold/10 text-gold'
+                    ? 'border-gold/50 bg-gold/10 font-medium text-foreground'
                     : 'border-border text-muted-foreground hover:text-foreground',
                 )}
               >

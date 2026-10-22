@@ -440,7 +440,7 @@ export function NewsletterManager() {
                     aria-label={w === 'desktop' ? 'Компьютер' : 'Телефон'}
                     className={cn(
                       'flex size-8 items-center justify-center rounded-md transition',
-                      previewWidth === w ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
+                      previewWidth === w ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {w === 'desktop' ? <Monitor className="size-4" /> : <Smartphone className="size-4" />}
@@ -523,7 +523,7 @@ export function NewsletterManager() {
                     aria-pressed={filter === key}
                     className={cn(
                       'rounded-md px-3 py-1.5 text-xs transition',
-                      filter === key ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:text-foreground',
+                      filter === key ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {label}
@@ -983,7 +983,7 @@ function CtaFields({
               className={cn(
                 'rounded-full border px-3 py-1 text-xs transition',
                 label === preset
-                  ? 'border-gold bg-gold/10 text-gold'
+                  ? 'border-gold bg-gold/10 font-medium text-foreground'
                   : 'border-border text-muted-foreground hover:border-gold/50 hover:text-foreground',
               )}
             >
