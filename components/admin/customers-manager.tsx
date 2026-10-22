@@ -31,13 +31,17 @@ type Customer = {
 export function CustomersManager() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
 
   useEffect(() => {
     fetch('/api/admin/customers')
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status))
+        return r.json()
+      })
       .then((d) => setCustomers(d?.customers ?? []))
-      .catch(() => {})
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false))
   }, [])
 
@@ -62,6 +66,14 @@ export function CustomersManager() {
       <div className="flex justify-center py-16">
         <Loader2 className="size-5 animate-spin text-gold" />
       </div>
+    )
+  }
+
+  if (failed) {
+    return (
+      <p role="alert" className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        Не удалось загрузить покупателей. Обновите страницу; если ошибка повторяется — проверьте журнал сервера.
+      </p>
     )
   }
 

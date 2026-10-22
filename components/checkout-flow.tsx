@@ -525,7 +525,7 @@ export function CheckoutFlow({
         if (ok === 'blocked') pushToast({ title: t('checkout.paymentBlocked'), variant: 'default' })
         else if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
       })
-      .catch(() => {})
+      .catch(() => pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' }))
       .finally(() => setRepricing(false))
     // requestCardIntent, pushToast and t are recreated every render; the only
     // triggers are the currency and the card step itself.

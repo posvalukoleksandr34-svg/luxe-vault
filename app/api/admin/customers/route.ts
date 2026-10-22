@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isSettled } from '@/lib/admin-metrics'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/server/admin-guard'
 
@@ -18,7 +19,9 @@ export const dynamic = 'force-dynamic'
  * used to make decisions about who to look after.
  *
  * Cancelled orders are excluded from both the count and the total — they are
- * things that did not happen.
+ * things that did not happen. SPENT counts only orders whose money arrived
+ * (lib/admin-metrics isSettled): an order still awaiting payment, or one that
+ * failed or expired, cost the customer nothing.
  */
 export async function GET() {
   const denied = await requireAdmin()
@@ -34,6 +37,7 @@ export async function GET() {
     supabase
       .from('orders')
       .select('user_id, customer_email, total, refunded_amount, status, payment_status, created_at')
+      .order('created_at', { ascending: false })
       .limit(5000),
   ])
 
@@ -61,8 +65,10 @@ export async function GET() {
       existing.orders += 1
       // Net of refunds, and never negative — an over-refund is a data problem,
       // not a customer who owes money.
-      existing.spent += Math.max(0, total - refunded)
-      if (row.payment_status === 'paid') existing.paid += 1
+      if (isSettled(row.payment_status as string | null)) {
+        existing.spent += Math.max(0, total - refunded)
+        existing.paid += 1
+      }
     }
 
     const at = new Date(row.created_at as string).getTime()
