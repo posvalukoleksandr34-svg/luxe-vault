@@ -137,7 +137,7 @@ async function runSweep(request: NextRequest) {
   try {
     const run = await releaseExpiredReservations()
     if (run.status === 'ok') {
-      result.reservationsReleased = run.released.length
+      result.reservationsReleased = run.released.length + run.releasedMissingIntent.length
       if (run.providerError.length > 0) result.errors.push(`reservations: Stripe could not confirm ${run.providerError.length} cancellation(s)`)
       if (run.failed.length > 0) result.errors.push(`reservations: ${run.failed.length} order(s) could not be released`)
       if (run.restockFailed.length > 0) result.errors.push(`reservations: ${run.restockFailed.length} order(s) still not restocked`)

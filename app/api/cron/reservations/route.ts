@@ -48,14 +48,23 @@ async function run(request: NextRequest) {
     }
     if (result.status === 'ok') {
       console.log(
-        `[reservations] ${dryRun ? 'dry run: ' : ''}${result.candidates.length} lapsed, ${result.released.length} released, ` +
+        `[reservations] ${dryRun ? 'dry run: ' : ''}${result.candidates.length} lapsed, ${result.released.length} released, ${result.releasedMissingIntent.length} released (no such payment at Stripe), ` +
           `${result.paymentInFlight.length} paying, ${result.providerError.length} Stripe errors, ${result.changed.length} changed, ` +
           `${result.failed.length} failed, ${result.restockRepaired.length} restocks repaired, ${result.restockFailed.length} restocks failed`,
       )
       if (result.providerError.length > 0) {
         await reportCriticalError(
           'Reservation expiry',
-          `Stripe could not confirm the cancellation of ${result.providerError.length} order(s); their stock stays held and is retried next run: ${result.providerError.join(', ')}`,
+          `Stripe could not confirm the cancellation of ${result.providerError.length} order(s); their stock stays held and is retried next run: ` +
+            result.providerError.map((n) => `${n} (Stripe: ${result.providerMessages[n] ?? 'no answer'})`).join(', '),
+        )
+      }
+      if (result.releasedMissingIntent.length > 0) {
+        // Once per order: it is cancelled now, so the next run does not see it.
+        await reportCriticalError(
+          'Reservation expiry',
+          `Released ${result.releasedMissingIntent.length} unpaid order(s) whose payment does not exist in this Stripe account ` +
+            `(usually created with test keys); cancelled and restocked: ${result.releasedMissingIntent.join(', ')}`,
         )
       }
       const broken = [...result.failed, ...result.restockFailed]

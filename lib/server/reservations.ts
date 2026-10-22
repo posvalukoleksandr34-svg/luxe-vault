@@ -32,7 +32,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * it succeeded or is processing, the order is left for the webhook. If Stripe
  * cannot be reached, nothing is released and the next run tries again —
  * releasing units for a payment that might still complete would sell them
- * twice.
+ * twice. If Stripe answers that the intent does not exist in this account
+ * (an order placed with test keys on a shop now live), nothing can be
+ * charged through it: the order is released and reported as such, instead
+ * of holding its stock and alerting forever.
  *
  * Crypto orders: NOWPayments has no cancel. A payment that arrives after the
  * release is still marked paid by the webhook, which re-takes the units or
@@ -74,6 +77,10 @@ export type ReservationRun =
       paymentInFlight: string[]
       /** Stripe could not confirm the cancellation (or is not configured): retried next run. */
       providerError: string[]
+      /** Stripe's answer for each providerError order, so an alert says why. */
+      providerMessages: Record<string, string>
+      /** Released: Stripe has no such payment in this account, so it can never be charged here. */
+      releasedMissingIntent: string[]
       /** The order changed while the run looked at it (paid, cancelled by hand): left alone. */
       changed: string[]
       /** The database refused or failed the cancellation: nothing changed, retried next run. */
@@ -180,6 +187,8 @@ export async function releaseExpiredReservations(
     released: [] as string[],
     paymentInFlight: [] as string[],
     providerError: [] as string[],
+    providerMessages: {} as Record<string, string>,
+    releasedMissingIntent: [] as string[],
     changed: [] as string[],
     failed: [] as string[],
     restockRepaired: [] as string[],
@@ -205,18 +214,24 @@ export async function releaseExpiredReservations(
   }
 
   for (const row of rows) {
+    let missingIntent = false
     try {
       if (row.payment_provider === 'stripe' && row.payment_id) {
         if (!deps.stripeConfigured()) {
           run.providerError.push(row.order_number)
+          run.providerMessages[row.order_number] = 'Stripe is not configured'
           continue
         }
         const cancelled = await deps.cancelPaymentIntent(row.payment_id)
-        if (!cancelled.ok) {
+        if (!cancelled.ok && cancelled.reason !== 'missing') {
           if (cancelled.reason === 'captured') run.paymentInFlight.push(row.order_number)
-          else run.providerError.push(row.order_number)
+          else {
+            run.providerError.push(row.order_number)
+            run.providerMessages[row.order_number] = cancelled.message.slice(0, 200)
+          }
           continue
         }
+        if (!cancelled.ok) missingIntent = true
       }
 
       // No "your order was cancelled" email for a basket the customer walked
@@ -224,7 +239,7 @@ export async function releaseExpiredReservations(
       const result = await deps.cancel(row.order_number, `${REASON_PREFIX} not paid within ${policy.holdHours} hours`)
       if (result.conflict) run.changed.push(row.order_number)
       else if (result.restockFailed) run.restockFailed.push(row.order_number)
-      else run.released.push(row.order_number)
+      else (missingIntent ? run.releasedMissingIntent : run.released).push(row.order_number)
     } catch (e) {
       // The order is unchanged (the cancelling UPDATE did not commit) or, if
       // it did, the restock pass above finds it next run.
