@@ -184,7 +184,15 @@ export function OrdersManager({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        pushToast({ title: data.error || 'Не удалось оформить возврат', variant: 'default' })
+        // Staff routes answer a code in `error` and the sentence in `message`.
+        pushToast({
+          title: data.message || data.error || 'Не удалось оформить возврат',
+          description:
+            data.error === 'STAFF_REQUIRED'
+              ? 'Откройте «Возвраты», выберите себя и введите личный пароль — затем повторите возврат.'
+              : undefined,
+          variant: 'default',
+        })
         return
       }
       if (data.order) replace(data.order)

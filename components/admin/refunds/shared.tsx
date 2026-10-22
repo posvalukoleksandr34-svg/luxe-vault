@@ -20,7 +20,8 @@ export class ApiError extends Error {
   readonly code?: string
   readonly body: Record<string, unknown>
   constructor(status: number, body: Record<string, unknown>) {
-    super(typeof body.error === 'string' ? body.error : `HTTP ${status}`)
+    // Staff refusals carry a code in `error` and the sentence in `message`.
+    super(typeof body.message === 'string' ? body.message : typeof body.error === 'string' ? body.error : `HTTP ${status}`)
     this.status = status
     this.code = typeof body.code === 'string' ? body.code : typeof body.error === 'string' ? body.error : undefined
     this.body = body

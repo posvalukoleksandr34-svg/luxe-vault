@@ -7,6 +7,7 @@ import { enforceLimit } from '@/lib/server/rate-limit'
 import { securityEvent } from '@/lib/server/security-events'
 import { actorFor, bindSession, listStaff, resolveStaffContext, unbindSession } from '@/lib/server/staff'
 import { clientIp } from '@/lib/server/client-ip'
+import { staffUnmigrated } from '@/lib/server/refunds/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,8 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const denied = await requireAdmin()
   if (denied) return denied
+  const unmigrated = await staffUnmigrated()
+  if (unmigrated) return unmigrated
   const ctx = await resolveStaffContext()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const actor = actorFor(ctx)

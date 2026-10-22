@@ -10,6 +10,7 @@ import { sessionState } from '@/lib/server/admin-sessions'
 import { audit } from '@/lib/server/refunds/audit'
 import { hashPassphrase, passphraseProblem, verifyPassphrase } from '@/lib/server/staff-password'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { staffUnmigrated } from '@/lib/server/refunds/schema'
 
 /**
  * WHO is using the admin console (migration 0059, admin_staff).
@@ -135,6 +136,8 @@ export type StaffGate =
 export async function requireStaff(permission: Permission): Promise<StaffGate> {
   let ctx: StaffContext | null
   try {
+    const unmigrated = await staffUnmigrated()
+    if (unmigrated) return { ok: false, response: unmigrated }
     ctx = await resolveStaffContext()
   } catch (e) {
     console.error('[staff] could not resolve the console user:', (e as Error).message)
