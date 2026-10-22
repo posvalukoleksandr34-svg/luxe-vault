@@ -22,6 +22,7 @@ verified and how, what is still open. Earlier audits live in `docs/audit/`
 | 10 | The dashboard downloaded up to 2000 full orders to show five. | `/api/admin/orders?limit=` and the dashboard asks for 5. | Harness |
 | 11 | **Operator alerts repeated all day.** Alert deduplication was in memory only, so every serverless cold start reset it; LV-VNJXDF re-alerted every few hours. | `reportCriticalError` also checks a database bucket (`alert.dedupe`): the same alert at most once per 6 h across instances. It fails open, so an alert is never swallowed when the limiter is down. | Harness with intercepted Telegram: 7/7, including across a cold start and with the limiter unavailable |
 | 12 | The FAQ "How do I start a return?" described the old support-ticket route. | It now points to the order's "Request a refund" button and the "Returns & claims" section, with the support topic for guest orders. 5 languages; topic names checked against the support form. | `test:assistant` 105/105 |
+| 14 | **Admin selected items failed WCAG AA contrast** (gold ink on gold tint, 4.29–4.36:1). Affected: navigation, order tabs, inventory, product form, promo codes, newsletter, support, refund badges and buttons. | The label uses the foreground colour; the tint marks the selection. Customer pages unchanged (no violation measured there). | axe WCAG 2.2 AA: 9 admin/customer pages × 2 widths → 0 violations (was 4); 11 storefront pages × 2 widths → 0 |
 | 13 | `MANUAL_ACTIONS_REQUIRED.md` still said the 10-13 changes were uncommitted and had nothing on 0059. | New §0: migration 0059, Stripe events, staff accounts, policy, test refund, deploying the Next.js fix. §1 marked done. | — |
 
 ### Checked, no change needed
@@ -47,7 +48,8 @@ verified and how, what is still open. Earlier audits live in `docs/audit/`
 
 * Order creation has no server-side idempotency key. A retried submit can create a duplicate unpaid order, which holds stock until the 48 h reservation sweep releases it. No money is at risk. Fixing it needs a migration.
 * Build tooling advisories (eslint-config-next 14, tailwind 3 chain) need major upgrades (AUD-17).
-* One intermittent React #418 hydration warning (see Tests).
+* One intermittent React #418 hydration warning (see Tests). A targeted reproduction (64 account-page loads, signed in and out, 8 sections) gave 0 errors.
+* The store's exchange-rate effect can run twice on a page whose language dictionary suspends: one extra `/api/rates` request whose result is discarded. Harmless; noted.
 
 ### Tests run this round (real results)
 
@@ -61,6 +63,8 @@ verified and how, what is still open. Earlier audits live in `docs/audit/`
 | Harness: refund integration / refund UI | 107/107, 12/12. The UI suite timed out once on one navigation; it did not reproduce and its re-run passed. |
 | Earlier regression suites (payments, fraud, security, prices, hydration/404, size finder, no-referral, old integration) | all pass: 33, 35, 47, 17, 29, 106, 20+13, 24 |
 | Same regression suites on **Next 15.5.28** | identical results. One React #418 (hydration) in `noref-ui` at 1280px did not reproduce in 3 reruns (13/13 each): intermittent, most likely time-dependent text, not caused by the upgrade. |
+| axe (WCAG 2.2 AA) | admin + refund pages 0 violations (was 4); storefront pages 0 |
+| Harness UI suite, made robust | `networkidle` waits replaced with element waits; the cookie banner accepted in admin contexts. Both were test artefacts: the pages finish loading in ~3 s with no open requests. 12/12. |
 | Older audit suites | 13 expectations superseded by design. 9 are order-screen refunds that now require personal staff confirmation (403 STAFF_REQUIRED). 4 are reservations whose PaymentIntent does not exist at Stripe, now released (PR #24). |
 
 The harness suites live outside the repository: real Postgres + PostgREST, a fake Stripe, and the production build.
