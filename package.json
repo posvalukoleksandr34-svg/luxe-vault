@@ -40,7 +40,7 @@
     "eslint-config-next": "^15.5.27",
     "libphonenumber-js": "^1.13.12",
     "lucide-react": "^0.446.0",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "pdfkit": "^0.20.2",
     "postcss": "^8.5.28",
     "qrcode": "^1.5.4",
