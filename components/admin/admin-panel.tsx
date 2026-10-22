@@ -89,7 +89,7 @@ export function AdminPanel() {
       if (!res.ok) throw new Error(String(res.status))
       return res.json()
     }
-    fetch('/api/admin/orders')
+    fetch('/api/admin/orders?limit=5')
       .then(json)
       .then((data) => {
         if (cancelled) return

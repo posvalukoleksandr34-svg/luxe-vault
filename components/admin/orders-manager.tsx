@@ -42,6 +42,31 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'Все' },
 ]
 
+/** orders.return_status, kept by the refund workflow (syncOrderSummary). */
+const RETURN_LABELS: Partial<Record<NonNullable<Order['returnStatus']>, string>> = {
+  requested: 'Заявка на возврат открыта',
+  approved: 'Возврат одобрен, ждёт выплаты',
+  refunded: 'Возврат по заявке',
+  rejected: 'Заявка на возврат отклонена',
+}
+
+/** The order's refund requests, one click away — so a refund is not also
+ *  made here while a case for it is open in «Возвраты». */
+function ReturnLink({ order }: { order: Order }) {
+  const label = order.returnStatus ? RETURN_LABELS[order.returnStatus] : undefined
+  if (!label) return null
+  const open = order.returnStatus === 'requested' || order.returnStatus === 'approved'
+  return (
+    <Link
+      href={`/admin/returns?q=${encodeURIComponent(order.id)}`}
+      onClick={(e) => e.stopPropagation()}
+      className={cn('mt-1 block text-[11px] underline-offset-2 hover:underline', open ? 'font-medium text-amber-700' : 'text-muted-foreground')}
+    >
+      {label} →
+    </Link>
+  )
+}
+
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleString('ru-RU', {
     day: '2-digit',
@@ -397,6 +422,7 @@ export function OrdersManager({
                           {order.trackingNumber && (
                             <p className="mt-1 font-mono text-[11px] text-muted-foreground">{order.trackingNumber}</p>
                           )}
+                          <ReturnLink order={order} />
                         </td>
                         <td className="px-2 py-3 text-muted-foreground">
                           <ChevronDown className={cn('size-4 transition', open && 'rotate-180')} />
