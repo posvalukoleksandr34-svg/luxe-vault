@@ -10,7 +10,16 @@ Listed in the order they should be done. "Owner" means whoever holds the Vercel,
 
 ---
 
-## 1. Approve, commit and deploy the 2026-10-13 changes (rounds 2 and 3)
+## 0. Refund system and round 4 (2026-10-20 / 2026-10-22) — do these first
+
+| | |
+|---|---|
+| Who | Owner |
+| What | 1. **Apply `supabase/migrations/0059_refund_cases.sql`** in Supabase → SQL Editor. It only adds things: existing returns are mapped onto the new states, and existing refunds get one `backfill` ledger row each. The code is already on `main`. Until 0059 is applied, refund screens answer "apply migration 0059" (staff) or "temporarily unavailable" (customers), and Stripe refund webhooks fail and are retried by Stripe.<br>2. **Stripe → Developers → Webhooks**, the existing endpoint `/api/payments/stripe/webhook`. Add `refund.created`, `refund.updated`, `refund.failed`, `charge.refund.updated`, `charge.refunded` and `charge.dispute.created`, keeping the events already there.<br>3. Check that the repository secret `CRON_SECRET` exists: the hourly workflow also calls `/api/cron/refunds`.<br>4. **Admin → Возвраты → Сотрудники:** create personal accounts, an owner first. Once an owner exists, refunds (including the order-screen one) need the person to confirm who they are.<br>5. **Admin → Возвраты → Политика:** dual approval is off by default; turn it on once two people can approve.<br>6. Make one small refund in Stripe **test mode**, then a live one. The live Stripe path has never been exercised. |
+| Success | The refunds console opens without the "apply migration 0059" banner; a test refund appears in Stripe and the case reads "refunded"; the hourly workflow's "Call /api/cron/refunds" step is green. |
+| Also deploy | Branch `claude/admiring-albattani-xgdcm5` (round 4) carries **Next.js 15.5.28**, which fixes a critical advisory in 15.5.27 (GHSA-2464-fhr4-w9xw). Merge it promptly. Details in `PROJECT_IMPROVEMENT_LOG.md`. |
+
+## 1. Approve, commit and deploy the 2026-10-13 changes (rounds 2 and 3) — DONE (merged; migrations 0056–0058 are on `main`)
 
 | | |
 |---|---|
