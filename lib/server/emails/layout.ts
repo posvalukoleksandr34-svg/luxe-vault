@@ -264,6 +264,9 @@ export function renderEmail(o: {
   /** A quieter gold text link under the button — e.g. "View order" when the
    *  button goes to the carrier. */
   secondaryLink?: { label: string; href: string }
+  /** Rows right after the button(s) — e.g. the plain link for when a button
+   *  does not render, and a sign-off. */
+  afterCta?: string[]
   /** A line in the footer saying why this email was sent (prompted mail). */
   footerNote?: string
   /** An opt-out link in the footer (prompted mail; order emails have none). */
@@ -329,6 +332,7 @@ export function renderEmail(o: {
             ${(o.sections ?? []).join('')}
             ${cta}
             ${secondary}
+            ${(o.afterCta ?? []).join('')}
             <tr>
               <td class="lv-pad" style="padding:32px 36px 0 36px;">
                 <p style="margin:0; font-family:${SANS}; font-size:13px; line-height:21px; color:${L.muted};">

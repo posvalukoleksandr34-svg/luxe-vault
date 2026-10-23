@@ -17,6 +17,8 @@ import { SITE_ORIGIN } from '@/lib/seo'
  *                          and cached order page is a privacy incident
  *   /cart/                 cart-restore and reminder opt-out links, private to
  *                          one customer's email
+ *   /review/               review-request links (also under /it, /fr, /de),
+ *                          each a key to one customer's order
  *   /success               3-D Secure return hop, no standalone content
  *   /checkout/success      thank-you page; renders one customer's order
  *   /api/                  JSON endpoints, never useful in an index
@@ -44,6 +46,8 @@ export default function robots(): MetadataRoute.Robots {
           '/checkout',
           '/support/tickets/',
           '/newsletter/',
+          '/review/',
+          '/*/review/',
           '/api/',
         ],
       },

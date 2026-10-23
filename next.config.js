@@ -17,9 +17,10 @@ const contentSecurityPolicy = siteCsp()
 /**
  * Pages reached by a link whose address carries a secret: a support ticket's
  * `?t=`, the unsubscribe token, the cart-reminder links, Stripe's 3-D Secure
- * return to /success. See lib/sensitive-url.ts.
+ * return to /success, the review-request link (/review/<token>, also under a
+ * language prefix). See lib/sensitive-url.ts.
  */
-const SECRET_PATHS = 'support/tickets/|newsletter/unsubscribe|cart/restore/|cart/unsubscribe/|success(?:/|$)'
+const SECRET_PATHS = 'support/tickets/|newsletter/unsubscribe|cart/restore/|cart/unsubscribe/|success(?:/|$)|(?:(?:it|fr|de)/)?review/'
 const SECRET_IN_URL_PAGES = `(?=${SECRET_PATHS})`
 const NO_SECRET_IN_URL_PAGES = `(?!${SECRET_PATHS})`
 

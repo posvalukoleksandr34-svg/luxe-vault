@@ -10,6 +10,15 @@ Listed in the order they should be done. "Owner" means whoever holds the Vercel,
 
 ---
 
+## 0a. Post-delivery review requests (2026-10-23)
+
+| | |
+|---|---|
+| Who | Owner |
+| What | 1. **Apply `supabase/migrations/0060_review_requests.sql`** (Supabase → SQL Editor). Additive only: two new tables and one function. Until it is applied the hourly step "Call /api/cron/review-requests" is red with "Apply migration 0060" and the admin page says the same.<br>2. Optional: set `REVIEW_LINK_SECRET` in Vercel (else the service-role key signs links) and `REVIEW_TEST_RECIPIENTS`.<br>3. **Admin → Запросы отзывов:** check the preview in each language, send yourself a test email, and read it on a phone.<br>4. **Decide the consent basis** (docs/review-requests.md, "Consent"). The default — newsletter subscribers only — needs nothing else. "All customers who have not objected" needs a notice at checkout, a privacy-policy change and legal confirmation first.<br>5. Turn sending on. Only deliveries from the last `staleAfterDays` (30) are ever asked; older orders are not. |
+| Success | The hourly step is green; after a delivery, the admin list shows the request as "Запланирован" and, 48 h later, "Отправлен"; a test email arrives with working links. |
+| Not wired | Resend bounce/complaint webhooks are not connected: a hard bounce is not added to the suppression list automatically. |
+
 ## 0. Refund system and round 4 (2026-10-20 / 2026-10-22) — do these first
 
 | | |

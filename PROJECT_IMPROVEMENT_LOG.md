@@ -4,6 +4,57 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Post-delivery review requests (2026-10-23)
+
+The full design is in `docs/review-requests.md`; the owner steps are in `docs/audit/MANUAL_ACTIONS_REQUIRED.md` §0a.
+
+What was added:
+
+- **Migration 0060:**
+  - `review_requests`, one per order;
+  - `email_suppressions`;
+  - `claim_review_requests()`, which uses SKIP LOCKED.
+- **Scheduling:** a request is scheduled from the confirmed delivery (`orders.delivered_at`).
+  - The delivery event schedules it, and an hourly reconciliation catches missed events and corrected dates.
+  - The default delay is 48 h, configurable.
+- **The worker** runs in `/api/cron/review-requests`, hourly:
+  - it re-checks eligibility just before sending;
+  - retries back off exponentially; permanent failures stop;
+  - a crashed send is recovered with the same idempotency key;
+  - it never sends after the stale limit.
+- **The email:** branded, in en/ru/it/fr/de, with:
+  - a "Leave a review" button and a fallback link;
+  - a one-click unsubscribe (RFC 8058).
+- **The tokenized review page:**
+  - only the hash of the token is stored, and the link expires;
+  - the user and order come from the token;
+  - reviews go through the existing moderation.
+- **Admin page:** settings, figures, a filtered list, retry and cancel, preview, and an allow-listed test send. RBAC uses the staff roles.
+- **Privacy policy (ru/en/it)** updated. Retention is 12 months and is enforced by the cron.
+- **Off by default.** Requests wait until the owner turns sending on.
+
+Tests (real results):
+
+| Test | Result |
+|---|---|
+| `npm run test:store` | 39/39, including 33 new |
+| `test:security` | 138/138 |
+| `test:refunds` | 61/61 |
+| `test:assistant` | 105/105 |
+| `scripts/ci/verify-migrations.sh` + `db-tests.sh` on Postgres 16 | all PASS, including 21 new review-request checks and a 4-worker claim race |
+| End to end on the production build, real Postgres + PostgREST, fake Resend | 100/100 |
+| Refund e2e regression | 107/107 |
+| Product-review e2e regression | 82/82 |
+| typecheck, lint, client-bundle check | clean |
+
+Browser check: the review page at 390 and 1280 px and the admin page showed no overflow and no console errors.
+
+Not done:
+
+- the Resend bounce webhook;
+- review requests for guest orders;
+- a live send through Resend: only the local fake was exercised.
+
 ## Round 4 (2026-10-22)
 
 ### Done

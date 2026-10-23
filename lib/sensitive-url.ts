@@ -8,6 +8,7 @@
  *   /newsletter/unsubscribe?token=<uuid>   unsubscribes / resubscribes
  *   /cart/restore/<uuid>, /cart/unsubscribe/<uuid>   the cart-reminder links
  *   /success?payment_intent_client_secret=…          Stripe's 3-D Secure return
+ *   /review/<token>, /it/review/<token>/unsubscribe  a review-request email's link
  *
  * A full URL like that in Google Analytics, the Meta Pixel or a server log is
  * a copy of the key held by someone who should not have it. Pure functions,
@@ -28,7 +29,7 @@ const SECRET_PARAMS = new Set([
 ])
 
 /** Path segments that are themselves the secret: /cart/restore/<token>. */
-const SECRET_PATHS: RegExp[] = [/^(\/cart\/(?:restore|unsubscribe))\/[^/?#]+/]
+const SECRET_PATHS: RegExp[] = [/^(\/cart\/(?:restore|unsubscribe))\/[^/?#]+/, /^((?:\/(?:it|fr|de))?\/review)\/[^/?#]+/]
 
 function parse(raw: string): URL | null {
   try {

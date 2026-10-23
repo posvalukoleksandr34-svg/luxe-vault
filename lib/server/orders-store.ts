@@ -19,6 +19,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { safeEqual } from '@/lib/server/secure-compare'
 import type { CartItem, Order, OrderStatus, PaymentStatus, ReturnStatus } from '@/lib/types'
 import { CANCELLABLE_ORDER_STATUSES, cancellationFilter, transitionFilter } from '@/lib/payment-state'
+import { onOrderDelivered } from '@/lib/server/review-requests/schedule'
 // The payment state machine lives in lib/payment-state.ts (pure, unit-tested).
 export { isPaymentTransitionAllowed } from '@/lib/payment-state'
 
@@ -769,6 +770,9 @@ export async function setOrderStatus(
   // Fire-and-forget: an admin marking twenty parcels shipped should not wait
   // on twenty SMTP round trips, and a mail failure must not undo the status.
   if (statusChanged || trackingChanged) void sendOrderStatusEmail(updated, status)
+  // Delivery confirmed: the review request is scheduled from delivered_at
+  // (lib/server/review-requests). Not awaited — it never holds this save.
+  if (status === 'delivered' && prev?.status !== 'delivered') void onOrderDelivered(id)
   return updated
 }
 

@@ -103,6 +103,26 @@ jobs:
             exit 1
           fi
 
+      - name: Call /api/cron/review-requests
+        # Post-delivery review requests (lib/server/review-requests): creates
+        # requests a missed delivery event left out, then sends what is due
+        # (nothing while the feature is off in Admin). Counts only.
+        if: always()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
+        run: |
+          status=$(curl --silent --show-error --max-time 120 --retry 2 --retry-delay 15 \
+            --output review-requests.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/review-requests")
+          echo "HTTP $status"
+          cat review-requests.json; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::/api/cron/review-requests answered HTTP $status (503 with 'Apply migration 0060': the migration is not applied yet; 500: some requests could not be processed — see 'errors', retried with backoff)."
+            exit 1
+          fi
+
       - name: Report failure to Telegram
         if: failure()
         env:

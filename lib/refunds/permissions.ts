@@ -11,6 +11,9 @@ import type { StaffRole } from '@/lib/refunds/types'
  *             about money.
  *   manager — decides: authorises returns, approves or rejects, refunds.
  *   owner   — a manager who also sets the policy and manages staff.
+ *
+ * Review requests use the same roles: every role sees the queue, a manager
+ * may retry, cancel and send a test email, only the owner changes settings.
  */
 export const PERMISSIONS = [
   'case.view',
@@ -27,6 +30,11 @@ export const PERMISSIONS = [
   'customer.history',
   'policy.manage',
   'staff.manage',
+  // Post-delivery review requests (app/admin/review-requests): seeing the
+  // queue; retrying, cancelling and test emails; the feature's settings.
+  'review_requests.view',
+  'review_requests.manage',
+  'review_requests.settings',
 ] as const
 export type Permission = (typeof PERMISSIONS)[number]
 
@@ -39,14 +47,22 @@ const AGENT: readonly Permission[] = [
   'case.triage',
   'case.return',
   'customer.history',
+  'review_requests.view',
 ]
-const MANAGER: readonly Permission[] = [...AGENT, 'case.decide', 'refund.execute', 'refund.second_approve', 'case.export']
+const MANAGER: readonly Permission[] = [
+  ...AGENT,
+  'case.decide',
+  'refund.execute',
+  'refund.second_approve',
+  'case.export',
+  'review_requests.manage',
+]
 
 export const ROLE_PERMISSIONS: Record<StaffRole, readonly Permission[]> = {
-  viewer: ['case.view'],
+  viewer: ['case.view', 'review_requests.view'],
   agent: AGENT,
   manager: MANAGER,
-  owner: [...MANAGER, 'policy.manage', 'staff.manage'],
+  owner: [...MANAGER, 'policy.manage', 'staff.manage', 'review_requests.settings'],
 }
 
 export function can(role: StaffRole, permission: Permission): boolean {
