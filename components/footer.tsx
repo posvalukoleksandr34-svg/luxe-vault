@@ -3,8 +3,6 @@
 import { Instagram, LifeBuoy, Mail, Phone, Send } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { openCookieSettings } from '@/lib/cookie-settings'
-import { SoundToggle } from '@/components/sound-toggle'
-import { MotionToggle } from '@/components/motion-toggle'
 import { BUSINESS } from '@/config/business'
 import { useStore } from '@/lib/store'
 import { FooterNewsletter } from '@/components/newsletter/footer-newsletter'
@@ -149,15 +147,14 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-4 border-t border-border/40 pt-6 sm:flex-row sm:justify-between">
+        {/* Just the copyright. The sound and motion switches live in the
+            account's settings (app/account/page.tsx) — in the footer they read
+            as stray captions under the shop's own links. */}
+        <div className="mt-12 border-t border-border/40 pt-6 text-center">
           <p className="text-[11px] font-light text-muted-foreground">
             © {new Date().getFullYear()} {BUSINESS.tradingName}
             {BUSINESS.legalName ? ` · ${BUSINESS.legalName}` : ''}
           </p>
-          <div className="flex items-center gap-5">
-            <SoundToggle />
-            <MotionToggle />
-          </div>
         </div>
       </div>
     </footer>
