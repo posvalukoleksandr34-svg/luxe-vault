@@ -85,11 +85,14 @@ export type SendEmailInput = {
   from?: string
   /** Extra message headers — e.g. List-Unsubscribe on prompted mail. */
   headers?: Record<string, string>
+  /** Resend's Idempotency-Key: the same key within 24 h is one email, so a
+   *  retry after a lost answer cannot send it twice. */
+  idempotencyKey?: string
 }
 
 export type SendEmailResult =
   | { ok: true; id: string | null }
-  | { ok: false; reason: 'not_configured' | 'rejected' | 'network'; message: string }
+  | { ok: false; reason: 'not_configured' | 'rejected' | 'network'; message: string; status?: number }
 
 /**
  * Sends one email.
@@ -131,6 +134,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
+        ...(input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey.slice(0, 256) } : {}),
       },
       body: JSON.stringify({
         from: input.from ?? FROM_ADDRESS,
@@ -150,7 +154,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       const detail = await res.text().catch(() => '')
       const message = `Resend rejected the send (${res.status}): ${detail.slice(0, 400)}`
       console.error(`[resend] ${message}`)
-      return { ok: false, reason: 'rejected', message }
+      return { ok: false, reason: 'rejected', message, status: res.status }
     }
 
     const data = (await res.json().catch(() => null)) as { id?: string } | null

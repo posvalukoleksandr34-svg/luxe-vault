@@ -176,6 +176,14 @@ const LIMITS = {
   /** A staff member confirming who they are (their own passphrase, after the
    *  console login). A guess is the attack, so it fails closed. */
   'admin.staff_bind': { max: 10, windowSeconds: 600, failClosed: true },
+  /** Opening a review-request link (/review/[token]) and its unsubscribe.
+   *  A person opens it a few times; a script guessing tokens is cut off. */
+  'review.link': { max: 60, windowSeconds: 600 },
+  /** Staff actions on review requests: retry, cancel. */
+  'review_requests.action': { max: 60, windowSeconds: 600 },
+  /** Test emails from the review-request admin — to the shop's own
+   *  addresses only, and few of them. */
+  'review_requests.test': { max: 5, windowSeconds: 3600, failClosed: true },
 } as const
 
 type LimitConfig = { max: number; windowSeconds: number; failClosed?: boolean }

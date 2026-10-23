@@ -2,8 +2,9 @@
 # Races that only real concurrent sessions can show: two customers for the
 # last unit, two redemptions of a single-use code, two sweeps releasing the
 # same order, the same order submitted twice, ten requests against a rate
-# limit of five. Each worker waits on a shared
-# advisory lock the main session holds, so all of them start together.
+# limit of five, four workers claiming the same review requests. Each worker
+# waits on a shared advisory lock the main session holds, so all of them start
+# together.
 #
 #   DATABASE_URL=... tests/db/concurrency.sh     (a DISPOSABLE database)
 set -uo pipefail
@@ -89,6 +90,18 @@ psql_ -c "select public.settle_refund_transaction(jsonb_build_object('transactio
 res=$(race 4 "select public.reserve_refund_transaction(jsonb_build_object('order_id', '$ORDER200', 'amount_minor', 30000, 'provider', 'stripe', 'payment_reference', 'pi_dbc200', 'idempotency_key', 'dbc-race2-%s', 'reason', 'race', 'source', 'order_screen', 'initiated_by_label', 'race'));")
 check "none of four can refund past the paid total" "$(grep -c '^ok' <<<"$res")" 0
 check "the order never shows more refunded than paid" "$(psql_ -c "select refunded_amount from public.orders where id = '$ORDER200'")" "300.00"
+
+echo "# Four workers claim review requests at once"
+# Ten due requests, four workers that may take five each: every request is
+# claimed exactly once (FOR UPDATE SKIP LOCKED in claim_review_requests, 0060).
+psql_ -c "set client_min_messages = warning; drop table if exists public.dbc_claims; create table public.dbc_claims (id uuid);" >/dev/null
+psql_ -c "insert into public.orders (order_number, lookup_token, customer_name, customer_phone, address_line, subtotal, total, payment, status, payment_status, payment_provider, payment_id) select 'LV-DBC3' || lpad(g::text, 2, '0'), 'tok-dbc3-' || g, 'DB Test', '+41000000000', 'Teststrasse 1, 8000 Zurich', 50, 50, 'Карта онлайн', 'delivered', 'paid', 'stripe', 'pi_dbc3_' || g from generate_series(1, 10) g" >/dev/null
+psql_ -c "insert into public.review_requests (order_id, delivered_at, scheduled_at) select id, now() - interval '3 days', now() - interval '1 day' from public.orders where order_number like 'LV-DBC3%'" >/dev/null
+race 4 "insert into public.dbc_claims select id from public.claim_review_requests(5);" >/dev/null
+check "all ten are claimed" "$(psql_ -c "select count(*) from public.dbc_claims")" 10
+check "none is claimed twice" "$(psql_ -c "select count(distinct id) from public.dbc_claims")" 10
+check "all ten are marked sending" "$(psql_ -c "select count(*) from public.review_requests r join public.orders o on o.id = r.order_id where o.order_number like 'LV-DBC3%' and r.status = 'sending'")" 10
+psql_ -c "drop table public.dbc_claims;" >/dev/null
 
 cleanup
 echo "== concurrency: $fails failed"
