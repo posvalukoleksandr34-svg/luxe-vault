@@ -120,7 +120,7 @@ export function PromoCodesManager({ list }: { list: PromoList | null }) {
                   aria-pressed={filter === key}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition',
-                    filter === key ? 'border-gold/50 bg-gold/10 text-gold' : 'border-border text-muted-foreground hover:text-foreground',
+                    filter === key ? 'border-gold/50 bg-gold/10 font-medium text-foreground' : 'border-border text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {key === 'all' ? 'Все' : STATE_BADGE[key].label}

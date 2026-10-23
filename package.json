@@ -10,6 +10,7 @@
     "pretypecheck": "node scripts/ui-dictionaries.js",
     "typecheck": "tsc --noEmit",
     "test:security": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/security/*.test.ts\"",
+    "test:store": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/store/*.test.ts\"",
     "test:refunds": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/refunds/*.test.ts\"",
     "test:assistant": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant/*.test.ts\"",
     "test:assistant:live": "node --experimental-strip-types --no-warnings --import ./tests/register.mjs --test \"tests/assistant-live/*.test.ts\""
@@ -39,7 +40,7 @@
     "eslint-config-next": "^15.5.27",
     "libphonenumber-js": "^1.13.12",
     "lucide-react": "^0.446.0",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "pdfkit": "^0.20.2",
     "postcss": "^8.5.28",
     "qrcode": "^1.5.4",

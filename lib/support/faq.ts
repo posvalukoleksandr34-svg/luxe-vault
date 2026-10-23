@@ -277,11 +277,11 @@ export const FAQ: FaqEntry[] = [
       de: 'Wie starte ich eine Rückgabe?',
     },
     a: {
-      en: 'Open a request under “Returns”, choose the order and tell us which item it is — photos help. We reply with the return instructions.',
-      ru: 'Создайте обращение в теме «Возврат», выберите заказ и укажите, какое изделие хотите вернуть, — фото помогут. Мы ответим с инструкцией по возврату.',
-      it: 'Apri una richiesta in «Resi», scegli l’ordine e indicaci l’articolo: le foto aiutano. Ti risponderemo con le istruzioni per il reso.',
-      fr: 'Ouvrez une demande dans « Retours », choisissez la commande et indiquez l’article — des photos aident. Nous vous répondrons avec les instructions de retour.',
-      de: 'Eröffnen Sie eine Anfrage unter „Rückgabe“, wählen Sie die Bestellung und nennen Sie den Artikel – Fotos helfen. Wir antworten mit der Anleitung zur Rücksendung.',
+      en: 'In your account, open “Orders & returns”, find the order and press “Request a refund”: choose the items and the reason, add photos if you have them, and send it. You follow it, and our replies, under “Returns & claims”. Ordered without an account? Write to us under the topic “Returns” with your order number.',
+      ru: 'В личном кабинете откройте «Заказы и возвраты», найдите заказ и нажмите «Запросить возврат»: выберите изделия и причину, приложите фото, если есть, и отправьте. Статус и наши ответы — в разделе «Возвраты и заявки». Заказывали без аккаунта? Напишите нам в теме «Возврат» и укажите номер заказа.',
+      it: 'Nel tuo account apri «Ordini e resi», trova l’ordine e premi «Richiedi un rimborso»: scegli gli articoli e il motivo, aggiungi foto se le hai e invia. Segui la richiesta e le nostre risposte in «Resi e richieste». Hai ordinato senza account? Scrivici con l’argomento «Resi» e il numero d’ordine.',
+      fr: 'Dans votre compte, ouvrez « Commandes et retours », trouvez la commande et appuyez sur « Demander un remboursement » : choisissez les articles et le motif, ajoutez des photos si vous en avez, puis envoyez. Vous suivez la demande et nos réponses dans « Retours et réclamations ». Commande passée sans compte ? Écrivez-nous avec le sujet « Retours » et le numéro de commande.',
+      de: 'Öffnen Sie in Ihrem Konto „Bestellungen & Rücksendungen“, wählen Sie die Bestellung und tippen Sie auf „Rückerstattung anfragen“: Artikel und Grund wählen, Fotos anhängen, falls vorhanden, und absenden. Den Stand und unsere Antworten sehen Sie unter „Rücksendungen & Anfragen“. Ohne Konto bestellt? Schreiben Sie uns unter dem Thema „Rückgabe“ mit Ihrer Bestellnummer.',
     },
   },
   {

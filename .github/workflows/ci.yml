@@ -53,6 +53,8 @@ jobs:
         run: npx next lint
       - name: Unit and security tests
         run: npm run test:security
+      - name: Store business rules tests
+        run: npm run test:store
       - name: Refund rules tests
         # Money, calculator, eligibility, state machine, risk, delivery
         # advice: pure functions, no database or provider.

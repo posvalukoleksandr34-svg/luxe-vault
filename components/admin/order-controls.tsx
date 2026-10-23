@@ -100,6 +100,12 @@ export function RefundControl({
         {refunded > 0 && ` · уже возвращено ${formatChf(refunded)}`}
       </button>
 
+      {open && (order.returnStatus === 'requested' || order.returnStatus === 'approved') && (
+        <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
+          По этому заказу есть открытая заявка на возврат — лучше оформить выплату в ней (Возвраты), чтобы решение и
+          сумма были записаны в заявке.
+        </p>
+      )}
       {open && (
         <div className="mt-3 space-y-2 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-3">
           {/* A card charged in EUR or USD is refunded in that currency, at

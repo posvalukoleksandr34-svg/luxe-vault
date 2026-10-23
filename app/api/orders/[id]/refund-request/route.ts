@@ -9,6 +9,7 @@ import { summarise } from '@/lib/server/refunds/customer-view'
 import { loadOrderFacts, toEligibilityOrder } from '@/lib/server/refunds/order-facts'
 import { activePolicy } from '@/lib/server/refunds/policy-store'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { customerUnmigrated } from '@/lib/server/refunds/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('refunds.write', user.id)
   if (limited) return limited
+  const unavailable = await customerUnmigrated()
+  if (unavailable) return unavailable
 
   const body = (await readJsonObject<Record<string, unknown>>(request)) ?? {}
   // The order number comes from the ROUTE, never the body.

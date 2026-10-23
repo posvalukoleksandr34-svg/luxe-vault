@@ -7,6 +7,7 @@ import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { casesForOrder } from '@/lib/server/refunds/cases'
 import { loadOrderFacts, toEligibilityOrder } from '@/lib/server/refunds/order-facts'
 import { activePolicy } from '@/lib/server/refunds/policy-store'
+import { customerUnmigrated } from '@/lib/server/refunds/schema'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('refunds.read', user.id)
   if (limited) return limited
+  const unavailable = await customerUnmigrated()
+  if (unavailable) return unavailable
 
   const parsed = orderNumberSchema.safeParse(request.nextUrl.searchParams.get('order'))
   if (!parsed.success) return NextResponse.json({ error: 'Order not found' }, { status: 404 })

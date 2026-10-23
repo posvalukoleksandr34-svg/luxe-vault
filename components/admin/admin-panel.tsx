@@ -22,7 +22,7 @@ import {
   MessageSquareWarning,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { ORDER_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { STATUS_LABELS } from '@/lib/i18n'
@@ -38,6 +38,7 @@ import { ReviewsManager } from './reviews-manager'
 import { ProductReviewsQueue } from './product-reviews-queue'
 import { STATUS_COLORS } from './order-controls'
 import { SupportManager } from './support-manager'
+import type { DashboardMetrics } from '@/lib/admin-metrics'
 import type { Order, Product } from '@/lib/types'
 
 type AdminTab =
@@ -76,24 +77,32 @@ export function AdminPanel() {
   // fetched fresh here for the dashboard's figures and recent orders. They
   // are MANAGED at /admin/orders (status, tracking, refunds, deletion).
   const [orders, setOrders] = useState<Order[]>([])
-  // True when only the newest orders came back (see readOrders): the figures
-  // below then cover those, and say so.
-  const [ordersCapped, setOrdersCapped] = useState<number | null>(null)
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersError, setOrdersError] = useState(false)
+  // The figures are computed on the server over every order (admin-metrics).
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
+  const [metricsError, setMetricsError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/admin/orders')
-      .then((res) => res.json())
+    const json = (res: Response) => {
+      if (!res.ok) throw new Error(String(res.status))
+      return res.json()
+    }
+    fetch('/api/admin/orders?limit=5')
+      .then(json)
       .then((data) => {
         if (cancelled) return
         setOrders(data.orders ?? [])
-        setOrdersCapped(data.capped ? Number(data.limit) || null : null)
       })
-      .catch(() => {})
+      .catch(() => !cancelled && setOrdersError(true))
       .finally(() => {
         if (!cancelled) setOrdersLoading(false)
       })
+    fetch('/api/admin/metrics')
+      .then(json)
+      .then((data: DashboardMetrics) => !cancelled && setMetrics(data))
+      .catch(() => !cancelled && setMetricsError(true))
     return () => {
       cancelled = true
     }
@@ -103,19 +112,6 @@ export function AdminPanel() {
     await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {})
     window.location.href = '/'
   }
-
-  const stats = useMemo(() => {
-    const revenue = orders
-      .filter((o) => o.status !== 'cancelled')
-      .reduce((sum, o) => sum + o.total, 0)
-    const avgCheck = orders.length > 0 ? Math.round(revenue / orders.length) : 0
-    return {
-      revenue,
-      totalOrders: orders.length,
-      totalProducts: products.length,
-      avgCheck,
-    }
-  }, [orders, products])
 
   const needsAttention = products.filter((p) => productGaps(p).length > 0).length
   const filteredProducts = products.filter(
@@ -301,32 +297,42 @@ export function AdminPanel() {
               <h1 className="mb-6 font-serif text-2xl font-semibold text-foreground">
                 {t('admin.dashboard')}
               </h1>
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <StatCard
-                  label={t('admin.revenue')}
-                  value={formatChf(stats.revenue)}
-                  icon={<TrendingUp className="size-5 text-gold" />}
-                />
-                <StatCard
-                  label={t('admin.totalOrders')}
-                  value={stats.totalOrders.toString()}
-                  icon={<Truck className="size-5 text-gold" />}
-                />
-                <StatCard
-                  label={t('admin.totalProducts')}
-                  value={stats.totalProducts.toString()}
-                  icon={<Package className="size-5 text-gold" />}
-                />
-                <StatCard
-                  label={t('admin.avgCheck')}
-                  value={formatChf(stats.avgCheck)}
-                  icon={<TrendingUp className="size-5 text-gold" />}
-                />
-              </div>
-              {ordersCapped && (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Выручка и средний чек посчитаны по последним {ordersCapped} заказам.
+              {metricsError ? (
+                <p role="alert" className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                  Не удалось загрузить показатели. Обновите страницу; если ошибка повторяется — проверьте журнал сервера.
                 </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <StatCard
+                      label="Выручка (оплачено − возвраты)"
+                      value={metrics ? formatChf(metrics.netRevenueMinor / 100) : '…'}
+                      icon={<TrendingUp className="size-5 text-gold" />}
+                    />
+                    <StatCard
+                      label="Оплаченных заказов"
+                      value={metrics ? String(metrics.paidOrders) : '…'}
+                      icon={<Truck className="size-5 text-gold" />}
+                    />
+                    <StatCard
+                      label="Средний чек (оплаченные)"
+                      value={metrics ? formatChf(metrics.avgOrderMinor / 100) : '…'}
+                      icon={<TrendingUp className="size-5 text-gold" />}
+                    />
+                    <StatCard
+                      label="Оплачены, ждут отправки"
+                      value={metrics ? String(metrics.awaitingShipment) : '…'}
+                      icon={<Package className="size-5 text-gold" />}
+                    />
+                  </div>
+                  {metrics && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      За 30 дней: {formatChf(metrics.netRevenue30dMinor / 100)} · {metrics.paidOrders30d} оплач. · Возвращено всего:{' '}
+                      {formatChf(metrics.refundedMinor / 100)} · Ждут оплаты: {metrics.awaitingPayment} · Всего заказов: {metrics.orders} ·
+                      Товаров: {products.length}
+                    </p>
+                  )}
+                </>
               )}
 
               <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -336,6 +342,8 @@ export function AdminPanel() {
                   </h2>
                   <div className="space-y-3">
                     {/* Each opens on the orders page, where it can be acted on. */}
+                    {ordersError && <p className="text-sm text-red-700">Не удалось загрузить заказы.</p>}
+                    {!ordersLoading && !ordersError && orders.length === 0 && <p className="text-sm text-muted-foreground">Заказов пока нет.</p>}
                     {orders.slice(0, 5).map((order) => (
                       <Link
                         key={order.id}
@@ -561,7 +569,9 @@ function NavButton({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition whitespace-nowrap',
-        active ? 'bg-gold/10 text-gold' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+        // Gold ink on the gold tint is 4.3:1 — under AA — so the label is
+        // the foreground colour and the tint alone marks the active item.
+        active ? 'bg-gold/10 font-medium text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
       )}
     >
       {icon}

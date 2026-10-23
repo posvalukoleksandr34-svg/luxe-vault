@@ -46,6 +46,12 @@ const LIMITS = {
   /** Order creation. Generous — a customer may legitimately retry. */
   'order.create': { max: 10, windowSeconds: 600 },
 
+  /** The same operator alert at most once per six hours (lib/telegram.ts
+   *  reportCriticalError). In memory alone the dedupe reset with every
+   *  serverless cold start, so a persistent problem re-alerted all day.
+   *  Fails OPEN: an alert is never swallowed because the limiter is down. */
+  'alert.dedupe': { max: 1, windowSeconds: 6 * 60 * 60 },
+
   /** Order lookup. The enumeration surface: LV- plus six characters. */
   'order.lookup': { max: 20, windowSeconds: 600, failClosed: true },
 

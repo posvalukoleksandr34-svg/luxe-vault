@@ -2399,6 +2399,15 @@ html[data-keyboard='open'] .hide-with-keyboard {
   transition: none !important;
 }
 
+/* A product page's sticky buy bar sits on the phone tab bar
+   (components/products/product-detail.tsx); while it is up, the support
+   launcher moves above it instead of covering its button. */
+@media (max-width: 639px) {
+  html[data-sticky-buy] [data-chat-launcher] {
+    bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Keyboard focus on form fields: a gold ring, only for keyboard navigation
    (focus-visible), matching the ring buttons and links already have. */
 :where(input, select, textarea):focus-visible {

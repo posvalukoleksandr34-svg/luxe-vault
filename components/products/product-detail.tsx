@@ -344,8 +344,12 @@ export function ProductDetail({ product }: { product: Product }) {
       frame = 0
       const el = buyButtonRef.current
       if (!el) return
-      // Fully above the viewport's top edge: scrolled past, so offer it again.
-      setShowStickyBuy(el.getBoundingClientRect().bottom < 0)
+      // Fully above the viewport's top edge: scrolled past, so offer it again
+      // — until the footer comes into view: there the bar would only cover
+      // the footer's last lines, and the customer has left the product.
+      const footer = document.querySelector('footer')
+      const atFooter = footer ? footer.getBoundingClientRect().top < window.innerHeight : false
+      setShowStickyBuy(el.getBoundingClientRect().bottom < 0 && !atFooter)
     }
 
     function onScroll() {
@@ -362,6 +366,17 @@ export function ProductDetail({ product }: { product: Product }) {
       window.removeEventListener('resize', onScroll)
     }
   }, [])
+
+  // While the bar is up, the support launcher lifts above it (globals.css,
+  // html[data-sticky-buy]) instead of sitting on top of the buy button.
+  useEffect(() => {
+    const root = document.documentElement
+    if (showStickyBuy) root.dataset.stickyBuy = ''
+    else delete root.dataset.stickyBuy
+    return () => {
+      delete root.dataset.stickyBuy
+    }
+  }, [showStickyBuy])
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null
@@ -1076,11 +1091,15 @@ export function ProductDetail({ product }: { product: Product }) {
       )}
 
       {/* Sticky buy bar — phones only; on a laptop the button is rarely far
-          away and a permanent bar would just eat viewport. */}
+          away and a permanent bar would just eat viewport. It sits ON the
+          bottom tab bar (4rem, components/bottom-nav.tsx), not under it: at
+          bottom-0 it was hidden behind the tab bar, and with larger system
+          text only its top edge showed. Hidden means invisible too, so no
+          edge can peek out from behind the tab bar. */}
       <div
         className={cn(
-          'hide-with-keyboard fixed inset-x-0 bottom-0 z-40 border-t border-border bg-popover/95 px-4 py-3 backdrop-blur-md transition-transform duration-300 sm:hidden',
-          showStickyBuy ? 'translate-y-0' : 'translate-y-full',
+          'hide-with-keyboard fixed inset-x-0 bottom-[calc(4rem+1px+env(safe-area-inset-bottom))] z-40 border-t border-border bg-popover/95 px-4 py-3 backdrop-blur-md transition-[transform,opacity,visibility] duration-300 sm:hidden',
+          showStickyBuy ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-full opacity-0',
         )}
         // Hidden from assistive technology while off-screen: the real button
         // is still in the document, and announcing two "add to cart" controls

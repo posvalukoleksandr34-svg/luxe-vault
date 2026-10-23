@@ -25,16 +25,22 @@ export function ReviewsManager() {
   const { pushToast } = useStore()
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     fetch('/api/admin/reviews')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status))
+        return res.json()
+      })
       .then((data) => {
         if (!cancelled) setReviews(data.reviews ?? [])
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
@@ -79,11 +85,13 @@ export function ReviewsManager() {
     <div>
       <h1 className="mb-1 font-serif text-2xl font-semibold text-foreground">Отзывы</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
+        {failed || loading ? '' : pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
       </p>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>
+      ) : failed ? (
+        <p role="alert" className="text-sm text-red-700">Не удалось загрузить отзывы. Обновите страницу.</p>
       ) : reviews.length === 0 ? (
         <p className="text-sm text-muted-foreground">Отзывов пока нет</p>
       ) : (

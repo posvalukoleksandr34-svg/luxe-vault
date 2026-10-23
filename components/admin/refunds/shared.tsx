@@ -20,7 +20,8 @@ export class ApiError extends Error {
   readonly code?: string
   readonly body: Record<string, unknown>
   constructor(status: number, body: Record<string, unknown>) {
-    super(typeof body.error === 'string' ? body.error : `HTTP ${status}`)
+    // Staff refusals carry a code in `error` and the sentence in `message`.
+    super(typeof body.message === 'string' ? body.message : typeof body.error === 'string' ? body.error : `HTTP ${status}`)
     this.status = status
     this.code = typeof body.code === 'string' ? body.code : typeof body.error === 'string' ? body.error : undefined
     this.body = body
@@ -62,7 +63,7 @@ export function Spinner({ className }: { className?: string }) {
 export function Badge({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'gold' | 'green' | 'red' | 'amber' | 'blue' }) {
   const tones = {
     muted: 'border-border text-muted-foreground',
-    gold: 'border-gold/40 bg-gold/10 text-gold',
+    gold: 'border-gold/40 bg-gold/10 text-foreground',
     green: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700',
     red: 'border-red-500/30 bg-red-500/10 text-red-700',
     amber: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
@@ -122,7 +123,7 @@ export function Button({
 }) {
   const tones = {
     default: 'border-border text-foreground hover:border-gold/50',
-    primary: 'border-gold bg-gold/10 text-gold hover:bg-gold/20',
+    primary: 'border-gold bg-gold/10 font-medium text-foreground hover:bg-gold/20',
     danger: 'border-red-500/40 text-red-700 hover:bg-red-500/10',
   }
   return (

@@ -6,6 +6,7 @@ import { enforceUserLimit } from '@/lib/server/rate-limit'
 import { createCase } from '@/lib/server/refunds/create'
 import { customerCases, summarise } from '@/lib/server/refunds/customer-view'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { customerUnmigrated } from '@/lib/server/refunds/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('refunds.read', user.id)
   if (limited) return limited
+  const unavailable = await customerUnmigrated()
+  if (unavailable) return unavailable
   return NextResponse.json({ cases: await customerCases(user.id) }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
@@ -33,6 +36,8 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const limited = await enforceUserLimit('refunds.write', user.id)
   if (limited) return limited
+  const unavailable = await customerUnmigrated()
+  if (unavailable) return unavailable
 
   const body = await readJsonObject(request)
   const parsed = createCaseSchema.safeParse(body ?? {})

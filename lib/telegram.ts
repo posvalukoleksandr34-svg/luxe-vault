@@ -1,8 +1,11 @@
 import 'server-only'
 
+import { createHash } from 'node:crypto'
+
 import { formatCharged } from '@/lib/currency'
 import { getSiteUrl } from '@/lib/site-url'
 import type { Order, OrderStatus } from '@/lib/types'
+import { checkLimit } from '@/lib/server/rate-limit'
 
 /**
  * Operations alerts to a Telegram chat: paid orders (as a shipping slip),
@@ -424,5 +427,8 @@ export async function reportCriticalError(context: string, error: unknown): Prom
       if (now - at >= ERROR_DEDUPE_MS) lastReported.delete(k)
     })
   }
+  // Across instances and cold starts: the database remembers what was sent.
+  const seen = await checkLimit('alert.dedupe', createHash('sha256').update(key).digest('hex'))
+  if (!seen.allowed) return false
   return sendTelegramMessage(`🚨 <b>${esc(context)}</b>\n<code>${esc(message.slice(0, 1500))}</code>`, 'errors')
 }

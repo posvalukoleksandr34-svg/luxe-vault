@@ -179,7 +179,7 @@ export function SupportManager() {
             className={cn(
               'rounded-full border px-3 py-1 text-xs transition',
               status === s
-                ? 'border-gold/50 bg-gold/10 text-gold'
+                ? 'border-gold/50 bg-gold/10 font-medium text-foreground'
                 : 'border-border text-muted-foreground hover:text-foreground',
             )}
           >

@@ -151,6 +151,14 @@ export function OrderTracker({ order }: { order: Order }) {
             </span>
           </div>
         </div>
+        {/* A partial refund leaves the order on its way, so the status above
+            does not mention it; this line does. */}
+        {order.paymentStatus === 'partially_refunded' && (order.refundedAmount ?? 0) > 0 && (
+          <p className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">
+            <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-gold" strokeWidth={1.5} />
+            {tf('track.partiallyRefunded', { amount: refundAmount, min: FULFILMENT.refund.min, max: FULFILMENT.refund.max })}
+          </p>
+        )}
       </header>
 
       {/* ----------------------------------------------------------- tracker */}
