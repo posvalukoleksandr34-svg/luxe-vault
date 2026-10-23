@@ -54,7 +54,7 @@ export function TranslateCatalogButton() {
         variant: failed ? 'default' : 'success',
       })
     } catch (e) {
-      pushToast({ title: (e as Error).message, variant: 'default' })
+      pushToast({ title: (e as Error).message, variant: 'error' })
     } finally {
       setProgress(null)
     }

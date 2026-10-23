@@ -8,6 +8,7 @@ import { subcategoryCover } from '@/lib/subcategory-cover'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useFullCatalog, useStore } from '@/lib/store'
 import type { Category, CategoryGroupKey, Product } from '@/lib/types'
+import { ConfirmDialog } from './confirm-dialog'
 
 // Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
 const MAX_FILE_SIZE_MB = 5
@@ -42,7 +43,7 @@ function MissingDepartments({ onCreated }: { onCreated: () => Promise<void> | vo
       pushToast({ title: 'Раздел создан', variant: 'success' })
       await onCreated()
     } catch (e) {
-      pushToast({ title: (e as Error).message, variant: 'default' })
+      pushToast({ title: (e as Error).message, variant: 'error' })
     } finally {
       setBusy(null)
     }
@@ -149,7 +150,7 @@ export function CollectionsManager() {
                     )
                     const data = await res.json().catch(() => ({}))
                     if (!res.ok) {
-                      pushToast({ title: data?.error ?? 'Не удалось удалить', variant: 'default' })
+                      pushToast({ title: data?.error ?? 'Не удалось удалить', variant: 'error' })
                       return
                     }
                     pushToast({ title: 'Раздел удалён', variant: 'default' })
@@ -188,6 +189,7 @@ function CategorySlot({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { pushToast } = useStore()
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -271,18 +273,30 @@ function CategorySlot({
         {onDelete && (
           <button
             type="button"
-            onClick={() => {
-              // Deleting a collection is irreversible and only offered when it
-              // holds no products, so a single confirm is proportionate.
-              if (confirm(`Удалить раздел «${label}»?`)) void onDelete()
-            }}
+            // Irreversible, and only offered while the section holds no
+            // products, so one confirmation is proportionate.
+            onClick={() => setConfirmDelete(true)}
             className="flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
             title="Удалить раздел"
+            aria-label={`Удалить раздел «${label}»`}
           >
             <Trash2 className="size-3.5" />
           </button>
         )}
       </div>
+      {onDelete && (
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title={`Удалить раздел «${label}»?`}
+          description="Раздел пустой — товаров в нём нет. Он исчезнет из меню магазина. Отменить нельзя."
+          confirmLabel="Удалить раздел"
+          onConfirm={() => {
+            setConfirmDelete(false)
+            void onDelete()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -310,8 +324,10 @@ function CategoriesPanel({
   const { categoryTree, groupLabels, categoryLabels, collections, categories, pushToast } = useStore()
   const [addingTo, setAddingTo] = useState<string | null>(null)
 
-  async function remove(group: string, slug: string, label: string) {
-    if (!confirm(`Удалить категорию «${label}»?`)) return
+  const [pendingRemove, setPendingRemove] = useState<{ group: string; slug: string; label: string } | null>(null)
+
+  async function remove(group: string, slug: string) {
+    setPendingRemove(null)
     // With its department: since 0040 the same slug exists in each one.
     const res = await fetch(
       `/api/admin/categories?slug=${encodeURIComponent(slug)}&collection=${encodeURIComponent(group)}`,
@@ -319,10 +335,10 @@ function CategoriesPanel({
     )
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
-      pushToast({ title: data?.error ?? 'Не удалось удалить категорию', variant: 'default' })
+      pushToast({ title: data?.error ?? 'Не удалось удалить категорию', variant: 'error' })
       return
     }
-    pushToast({ title: 'Категория удалена', variant: 'default' })
+    pushToast({ title: 'Категория удалена', variant: 'success' })
     await onChanged()
   }
 
@@ -374,7 +390,7 @@ function CategoriesPanel({
                         label={localize(categoryLabels[slug] ?? {}) || slug}
                         count={count}
                         cover={subcategoryCover(categories, products, group, slug)}
-                        onRemove={row && count === 0 ? remove : undefined}
+                        onRemove={row && count === 0 ? async (g, sl, lb) => setPendingRemove({ group: g, slug: sl, label: lb }) : undefined}
                         onChanged={onChanged}
                       />
                     )
@@ -395,6 +411,14 @@ function CategoriesPanel({
           )
         })}
       </div>
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        onOpenChange={(open) => !open && setPendingRemove(null)}
+        title={`Удалить категорию «${pendingRemove?.label ?? ''}»?`}
+        description="В категории нет товаров. Она исчезнет из фильтров магазина и из выбора в карточке товара. Отменить нельзя."
+        confirmLabel="Удалить категорию"
+        onConfirm={() => pendingRemove && void remove(pendingRemove.group, pendingRemove.slug)}
+      />
     </section>
   )
 }
@@ -456,7 +480,7 @@ function CategoryTile({
       await save(await uploadCover(file))
       pushToast({ title: `Обложка «${label}» обновлена`, variant: 'success' })
     } catch (err) {
-      pushToast({ title: (err as Error).message, variant: 'default' })
+      pushToast({ title: (err as Error).message, variant: 'error' })
     } finally {
       setBusy(null)
     }
@@ -468,7 +492,7 @@ function CategoryTile({
       await save(null)
       pushToast({ title: `Своя обложка «${label}» убрана`, variant: 'default' })
     } catch (err) {
-      pushToast({ title: (err as Error).message, variant: 'default' })
+      pushToast({ title: (err as Error).message, variant: 'error' })
     } finally {
       setBusy(null)
     }
@@ -596,7 +620,7 @@ function NewCategoryForm({
       pushToast({ title: 'Категория создана', variant: 'success' })
       await onDone()
     } catch (err) {
-      pushToast({ title: (err as Error).message, variant: 'default' })
+      pushToast({ title: (err as Error).message, variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -709,7 +733,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
       setOpen(false)
       await onCreated()
     } catch (e) {
-      pushToast({ title: (e as Error).message, variant: 'default' })
+      pushToast({ title: (e as Error).message, variant: 'error' })
     } finally {
       setBusy(false)
     }

@@ -77,7 +77,7 @@ export function StaffManager() {
 
   if (!me) return <Spinner />
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <Link href="/admin/returns" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Возвраты
       </Link>

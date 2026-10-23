@@ -2567,3 +2567,46 @@ main[tabindex='-1']:focus {
 .finder-range:focus { outline: none; }
 .finder-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
 .finder-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
+
+/* ---------------------------------------------------------------------------
+   The admin console's palette (components/admin/admin-shell.tsx sets
+   data-admin-shell). Neutral greys and black instead of the shop's ivory and
+   gold: the console is a tool, read for hours, and its accents should mean
+   "selected" or "primary", not decoration. Set on body, so dialogs and toasts
+   — portalled to body — follow. Status colours (paid, cancelled, errors) are
+   not tokens and keep their meaning.
+   ------------------------------------------------------------------------- */
+body:has([data-admin-shell]) {
+  --background: 0 0% 98%;
+  --card: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --secondary: 0 0% 95%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 36%;
+  --accent: 0 0% 94%;
+  --border: 0 0% 88%;
+  --input: 0 0% 82%;
+  --ring: 0 0% 15%;
+  --gold-hairline: 0 0% 78%;
+  --gold: 0 0% 12%;
+  --gold-light: 0 0% 12%;
+  --gold-dark: 0 0% 12%;
+  --gold-ink: 0 0% 10%;
+  --gold-foreground: 0 0% 98%;
+  --primary-foreground: 0 0% 98%;
+}
+body:has([data-admin-shell]) :focus-visible {
+  outline: 2px solid hsl(0 0% 10%);
+  outline-offset: 2px;
+}
+/* One typeface in the console: the shop's display serif is for the shop. */
+body:has([data-admin-shell]) .font-serif {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+/* A scrolling table's own box is the containing block of what is positioned
+   inside it — otherwise an sr-only label in a header cell escapes the
+   scroller and widens the whole page on a phone. */
+body:has([data-admin-shell]) .overflow-x-auto {
+  position: relative;
+}

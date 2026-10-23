@@ -154,10 +154,10 @@ export function CaseView({ id }: { id: string }) {
       <ArrowLeft className="size-4" /> Все заявки
     </Link>
   )
-  if (!me) return <div className="mx-auto max-w-6xl px-4 py-8">{back}<div className="mt-6"><Spinner /></div></div>
-  if (me.mode === 'unbound') return <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">{back}<StaffBar me={me} onChange={reloadMe} /></div>
-  if (error) return <div className="mx-auto max-w-6xl space-y-4 px-4 py-8">{back}<p className="text-sm text-red-700">{error}</p></div>
-  if (!d) return <div className="mx-auto max-w-6xl px-4 py-8">{back}<div className="mt-6"><Spinner /></div></div>
+  if (!me) return <div className="mx-auto max-w-6xl">{back}<div className="mt-6"><Spinner /></div></div>
+  if (me.mode === 'unbound') return <div className="mx-auto max-w-6xl space-y-6">{back}<StaffBar me={me} onChange={reloadMe} /></div>
+  if (error) return <div className="mx-auto max-w-6xl space-y-4">{back}<p className="text-sm text-red-700">{error}</p></div>
+  if (!d) return <div className="mx-auto max-w-6xl">{back}<div className="mt-6"><Spinner /></div></div>
 
   const c = d.case
   const actions = d.commands.filter((x) => !['add_note', 'send_message', 'restock', 'customer_message'].includes(x))
@@ -178,7 +178,7 @@ export function CaseView({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {back}
       <StaffBar me={me} onChange={reloadMe} />
       <header className="flex flex-wrap items-start justify-between gap-4">

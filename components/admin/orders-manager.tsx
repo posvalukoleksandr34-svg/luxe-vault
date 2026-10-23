@@ -1,14 +1,18 @@
 'use client'
 
-import { ArrowLeft, ChevronDown, ClipboardList, FileDown, Search, ShieldAlert, Trash2, Truck } from 'lucide-react'
+import { ChevronDown, ClipboardList, FileDown, RefreshCw, Search, ShieldAlert, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { Fragment, useMemo, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { ORDER_STATUS_LABELS_RU, PAYMENT_STATUS_LABELS_RU } from '@/lib/admin-labels'
 import { formatCharged, orderCharge } from '@/lib/currency'
+import { cancellationRefusal } from '@/lib/payment-state'
 import { formatChf, useStore } from '@/lib/store'
 import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import type { OrderRisk } from '@/lib/server/payment-fraud'
+import { AdminPageHeader } from './admin-shell'
+import { ConfirmDialog } from './confirm-dialog'
 import { OrderStatusControl, PAYMENT_STATUS_COLORS, RefundControl, STATUS_COLORS } from './order-controls'
 
 /**
@@ -24,10 +28,10 @@ import { OrderStatusControl, PAYMENT_STATUS_COLORS, RefundControl, STATUS_COLORS
  * keep unpaid and closed orders one click away.
  */
 
-type Tab = 'paid' | 'unpaid' | 'closed' | 'all'
+type Tab = 'toship' | 'paid' | 'unpaid' | 'closed' | 'all'
 
-/** Which tab an order belongs in. */
-function tabOf(order: Order): Exclude<Tab, 'all'> {
+/** Which tab an order belongs in (besides "all"). */
+function tabOf(order: Order): Exclude<Tab, 'all' | 'toship'> {
   if (order.status === 'cancelled' || order.status === 'refunded' || order.paymentStatus === 'refunded') {
     return 'closed'
   }
@@ -35,12 +39,31 @@ function tabOf(order: Order): Exclude<Tab, 'all'> {
   return 'unpaid'
 }
 
+/** Paid and not yet handed to the carrier: the day's work. */
+function toShip(order: Order): boolean {
+  return tabOf(order) === 'paid' && (order.status === 'pending' || order.status === 'processing')
+}
+
+function inTab(order: Order, tab: Tab): boolean {
+  if (tab === 'all') return true
+  if (tab === 'toship') return toShip(order)
+  return tabOf(order) === tab
+}
+
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'toship', label: 'К отправке' },
   { key: 'paid', label: 'Оплаченные' },
   { key: 'unpaid', label: 'Не оплачены' },
   { key: 'closed', label: 'Отменённые и возвраты' },
   { key: 'all', label: 'Все' },
 ]
+
+const PERIODS = [
+  { key: '', label: 'За всё время', days: 0 },
+  { key: '7', label: 'За 7 дней', days: 7 },
+  { key: '30', label: 'За 30 дней', days: 30 },
+  { key: '90', label: 'За 90 дней', days: 90 },
+] as const
 
 /** orders.return_status, kept by the refund workflow (syncOrderSummary). */
 const RETURN_LABELS: Partial<Record<NonNullable<Order['returnStatus']>, string>> = {
@@ -107,37 +130,94 @@ export function OrdersManager({
       setRisk((prev) => ({ ...prev, [id]: { ...prev[id], failures: 0, lockedAt: undefined, lockReason: undefined } }))
       pushToast({ title: `Оплата картой для ${id} разблокирована`, variant: 'default' })
     } catch {
-      pushToast({ title: 'Не удалось разблокировать оплату', variant: 'default' })
+      pushToast({ title: 'Не удалось разблокировать оплату', variant: 'error' })
     }
   }
   const [openId, setOpenId] = useState<string | null>(initialOrderId)
-  const [tab, setTab] = useState<Tab>(() => {
+  // Filters live in the address (?view=&status=&q=&period=): a reload, the
+  // back button or a link from elsewhere (a customer's orders) lands on the
+  // same list.
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const [tab, setTabState] = useState<Tab>(() => {
     // Arriving for one order: open the tab it is in, not one that hides it.
     const target = initialOrderId ? initialOrders.find((o) => o.id === initialOrderId) : undefined
-    return target ? tabOf(target) : 'paid'
+    if (target) return tabOf(target)
+    const view = params.get('view')
+    return TABS.some((t) => t.key === view) ? (view as Tab) : 'toship'
   })
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'any'>('any')
-  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilterState] = useState<OrderStatus | 'any'>(() => {
+    const st = params.get('status')
+    return ORDER_STATUSES.includes(st as OrderStatus) ? (st as OrderStatus) : 'any'
+  })
+  const [period, setPeriodState] = useState<string>(() => PERIODS.find((p) => p.key === params.get('period'))?.key ?? '')
+  const [query, setQueryState] = useState(() => params.get('q') ?? '')
+  const [reloading, setReloading] = useState(false)
+  // One layout at a time (not both, one hidden by CSS): the open order's
+  // controls exist once on the page.
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const apply = () => setNarrow(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  function syncUrl(patch: Record<string, string | null>) {
+    const next = new URLSearchParams(params.toString())
+    next.delete('order')
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === '') next.delete(k)
+      else next.set(k, v)
+    }
+    const qs = next.toString()
+    // The history API, not router.replace: the filtering happens here, and a
+    // router navigation would re-render the server page — re-reading every
+    // order — on each keystroke. Next keeps useSearchParams in step with it.
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+  }
+  const setTab = (t: Tab) => {
+    setTabState(t)
+    syncUrl({ view: t === 'toship' ? null : t })
+  }
+  const setStatusFilter = (v: OrderStatus | 'any') => {
+    setStatusFilterState(v)
+    syncUrl({ status: v === 'any' ? null : v })
+  }
+  const setPeriod = (v: string) => {
+    setPeriodState(v)
+    syncUrl({ period: v || null })
+  }
+  const setQuery = (v: string) => setQueryState(v)
+  // The search box writes to the address a moment after typing stops.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if ((params.get('q') ?? '') !== query.trim()) syncUrl({ q: query.trim() || null })
+    }, 400)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [refundOpenId, setRefundOpenId] = useState<string | null>(null)
   const [refundingId, setRefundingId] = useState<string | null>(null)
 
   const counts = useMemo(() => {
-    const c: Record<Tab, number> = { paid: 0, unpaid: 0, closed: 0, all: orders.length }
-    for (const o of orders) c[tabOf(o)] += 1
+    const c: Record<Tab, number> = { toship: 0, paid: 0, unpaid: 0, closed: 0, all: orders.length }
+    for (const o of orders) {
+      c[tabOf(o)] += 1
+      if (toShip(o)) c.toship += 1
+    }
     return c
   }, [orders])
 
-  // Of the paid ones, those still to leave the warehouse.
-  const toShip = useMemo(
-    () => orders.filter((o) => tabOf(o) === 'paid' && (o.status === 'pending' || o.status === 'processing')).length,
-    [orders],
-  )
-
   const visible = useMemo(() => {
     const q = normalise(query.trim())
+    const days = PERIODS.find((p) => p.key === period)?.days ?? 0
+    const since = days ? Date.now() - days * 86_400_000 : 0
     return orders.filter((o) => {
-      if (tab !== 'all' && tabOf(o) !== tab) return false
+      if (!inTab(o, tab)) return false
+      if (since && o.createdAt < since) return false
       if (statusFilter !== 'any' && o.status !== statusFilter) return false
       if (!q) return true
       const haystack = normalise(
@@ -147,43 +227,55 @@ export function OrdersManager({
       )
       return haystack.includes(q)
     })
-  }, [orders, tab, statusFilter, query])
+  }, [orders, tab, statusFilter, query, period])
 
   const replace = (updated: Order) => setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
 
-  async function handleUpdateStatus(id: string, status: OrderStatus, trackingNumber?: string, courierName?: string) {
-    const previous = orders
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id
-          ? {
-              ...o,
-              status,
-              trackingNumber: trackingNumber ?? o.trackingNumber,
-              courierName: courierName ?? o.courierName,
-            }
-          : o,
-      ),
-    )
+  /** Re-reads the list: after a conflict, or when the admin asks. */
+  async function reload(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/admin/orders', { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
+      setOrders(data.orders ?? [])
+      return true
+    } catch {
+      pushToast({ title: 'Не удалось обновить список заказов', variant: 'error' })
+      return false
+    }
+  }
+
+  async function handleUpdateStatus(id: string, status: OrderStatus, trackingNumber?: string, courierName?: string): Promise<boolean> {
+    const before = orders.find((o) => o.id === id)
     try {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, trackingNumber, courierName }),
+        // The status this screen showed: the server refuses (409) if the
+        // order has moved on since — another admin, or the payment webhook.
+        body: JSON.stringify({ status, trackingNumber, courierName, expectedStatus: before?.status }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'failed')
+      if (!res.ok) {
+        pushToast({
+          title: typeof data?.error === 'string' ? data.error : 'Не удалось обновить статус заказа',
+          variant: 'error',
+        })
+        if (data?.code === 'STATUS_CONFLICT') await reload()
+        return false
+      }
       // Trust the server's copy: the status timestamps are stamped by a
-      // database trigger, so the optimistic row above is missing them.
+      // database trigger.
       if (data.order) replace(data.order)
       pushToast({
         title: `${id}: ${ORDER_STATUS_LABELS_RU[status]}`,
         description: status === 'shipped' && trackingNumber ? `Трек-номер ${trackingNumber}` : undefined,
         variant: 'success',
       })
+      return true
     } catch {
-      setOrders(previous)
-      pushToast({ title: 'Не удалось обновить статус заказа', variant: 'default' })
+      pushToast({ title: 'Не удалось обновить статус заказа — проверьте соединение', variant: 'error' })
+      return false
     }
   }
 
@@ -216,7 +308,7 @@ export function OrdersManager({
             data.error === 'STAFF_REQUIRED'
               ? 'Откройте «Возвраты», выберите себя и введите личный пароль — затем повторите возврат.'
               : undefined,
-          variant: 'default',
+          variant: 'error',
         })
         return
       }
@@ -228,7 +320,7 @@ export function OrdersManager({
       })
       setRefundOpenId(null)
     } catch {
-      pushToast({ title: 'Не удалось оформить возврат', variant: 'default' })
+      pushToast({ title: 'Не удалось оформить возврат — проверьте в Stripe, прошёл ли он, прежде чем повторять', variant: 'error' })
     } finally {
       setRefundingId(null)
     }
@@ -249,33 +341,37 @@ export function OrdersManager({
     } catch (e) {
       setOrders(previous)
       // The server says why — e.g. a paid order, which is kept on record.
-      pushToast({ title: 'Не удалось удалить заказ', description: (e as Error).message || undefined, variant: 'default' })
+      pushToast({ title: 'Не удалось удалить заказ', description: (e as Error).message || undefined, variant: 'error' })
     }
   }
 
   return (
-    <main id="main" className="min-h-screen bg-background px-4 py-10 sm:px-6">
+    <div>
       <div className="mx-auto max-w-6xl">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Назад в админ-панель
-        </Link>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gold/10">
-            <Truck className="size-5 text-gold" />
-          </div>
-          <div>
-            <h1 className="font-serif text-xl font-semibold text-foreground">Заказы</h1>
-            <p className="text-xs text-muted-foreground">
-              {toShip > 0 ? `Оплачено и ждёт отправки: ${toShip}. ` : ''}Нажмите на заказ, чтобы изменить статус,
-              добавить трек-номер или оформить возврат.
-            </p>
-          </div>
-        </div>
+        <AdminPageHeader
+          title="Заказы"
+          description={
+            counts.toship > 0
+              ? `Оплачено и ждёт отправки: ${counts.toship}. Откройте заказ, чтобы сменить статус, добавить трек-номер или оформить возврат.`
+              : 'Откройте заказ, чтобы сменить статус, добавить трек-номер или оформить возврат.'
+          }
+          actions={
+            <button
+              type="button"
+              disabled={reloading}
+              onClick={async () => {
+                setReloading(true)
+                await reload()
+                setReloading(false)
+              }}
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-border px-4 text-sm text-foreground transition hover:bg-accent disabled:opacity-60"
+            >
+              <RefreshCw className={cn('size-4', reloading && 'animate-spin')} aria-hidden />
+              Обновить
+            </button>
+          }
+        />
 
         {cappedAt && (
           <p className="mb-6 rounded-xl border border-gold/30 p-4 text-xs leading-relaxed text-muted-foreground">
@@ -326,8 +422,20 @@ export function OrdersManager({
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 focus-within:border-gold">
-              <Search className="size-3.5 text-muted-foreground" />
+            <select
+              aria-label="Период"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-gold"
+            >
+              {PERIODS.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 focus-within:border-gold sm:w-auto">
+              <Search className="size-3.5 text-muted-foreground" aria-hidden />
               <input
                 id="orders-search"
                 type="search"
@@ -335,7 +443,7 @@ export function OrdersManager({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Номер, имя, email, трек"
                 aria-label="Поиск заказа"
-                className="w-52 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/55"
+                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/55 sm:w-52"
               />
             </label>
           </div>
@@ -343,8 +451,61 @@ export function OrdersManager({
 
         {visible.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">
-            {orders.length === 0 ? 'Заказов пока нет.' : 'Под эти условия заказов нет.'}
+            {orders.length === 0
+              ? 'Заказов пока нет.'
+              : tab === 'toship' && !query && statusFilter === 'any' && !period
+                ? 'Все оплаченные заказы отправлены — ждать нечего.'
+                : 'Под эти условия заказов нет.'}
           </p>
+        ) : narrow ? (
+          // Phones: one card per order (number, who, how much, where it
+          // stands) instead of a 900-pixel table scrolled sideways.
+          <ul className="space-y-2">
+            {visible.map((order) => {
+              const open = openId === order.id
+              return (
+                <li key={order.id} className="rounded-xl border border-border bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(open ? null : order.id)}
+                    aria-expanded={open}
+                    aria-controls={`order-detail-${order.id}`}
+                    className="flex w-full items-start justify-between gap-3 p-3 text-left"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">{order.id}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{order.customer.name}</span>
+                      <span className="mt-0.5 block text-[11px] tabular-nums text-muted-foreground">{formatDate(order.createdAt)}</span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="text-sm font-medium tabular-nums text-foreground">{formatChf(order.total)}</span>
+                      <Badge className={STATUS_COLORS[order.status]}>{ORDER_STATUS_LABELS_RU[order.status]}</Badge>
+                      {order.paymentStatus && (
+                        <Badge className={PAYMENT_STATUS_COLORS[order.paymentStatus]}>{PAYMENT_STATUS_LABELS_RU[order.paymentStatus]}</Badge>
+                      )}
+                    </span>
+                  </button>
+                  <div className="px-3 pb-2">
+                    <RiskBadges risk={risk[order.id]} onUnlock={() => void unlockPayment(order.id)} />
+                    <ReturnLink order={order} />
+                  </div>
+                  {open && (
+                    <div id={`order-detail-${order.id}`} className="border-t border-border p-3">
+                      <OrderDetail
+                        order={order}
+                        refundOpen={refundOpenId === order.id}
+                        refunding={refundingId === order.id}
+                        onToggleRefund={() => setRefundOpenId((prev) => (prev === order.id ? null : order.id))}
+                        onRefund={(amount) => handleRefund(order.id, amount)}
+                        onSaveStatus={(status, tracking, courier) => handleUpdateStatus(order.id, status, tracking, courier)}
+                        onDelete={() => setConfirmDeleteId(order.id)}
+                      />
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border">
             <table className="w-full min-w-[900px] text-sm">
@@ -384,7 +545,7 @@ export function OrdersManager({
                             }}
                             aria-expanded={open}
                             aria-controls={`order-detail-${order.id}`}
-                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                            className="whitespace-nowrap font-medium text-foreground underline-offset-4 hover:underline"
                           >
                             {order.id}
                           </button>
@@ -404,7 +565,7 @@ export function OrdersManager({
                             {order.customer.name}
                           </td>
                         )}
-                        <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
+                        <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-foreground">
                           {formatChf(order.total)}
                         </td>
                         <td className="px-4 py-3">
@@ -455,46 +616,20 @@ export function OrdersManager({
         )}
       </div>
 
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={() => setConfirmDeleteId(null)}
-            aria-hidden
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-order-title"
-            className="animate-fade-up relative w-full max-w-sm border border-border bg-popover p-6 shadow-2xl"
-          >
-            <h3 id="delete-order-title" className="font-serif text-lg font-bold text-foreground">
-              Удалить заказ?
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Заказ <span className="text-foreground">{confirmDeleteId}</span> будет безвозвратно удалён из базы.
-              Это действие нельзя отменить.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 border border-border py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteOrder(confirmDeleteId)}
-                className="flex-1 border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+        title={`Удалить заказ ${confirmDeleteId ?? ''}?`}
+        description="Заказ и его позиции будут безвозвратно удалены из базы. Отменить это нельзя."
+        details={
+          <p>
+            Удалить можно только заказ без оплаты. Оплаченный заказ сохраняется для учёта — его отменяют и оформляют возврат.
+          </p>
+        }
+        confirmLabel="Удалить навсегда"
+        onConfirm={() => confirmDeleteId && void handleDeleteOrder(confirmDeleteId)}
+      />
+    </div>
   )
 }
 
@@ -512,7 +647,7 @@ function OrderDetail({
   refunding: boolean
   onToggleRefund: () => void
   onRefund: (amount?: number) => void
-  onSaveStatus: (status: OrderStatus, trackingNumber?: string, courierName?: string) => void
+  onSaveStatus: (status: OrderStatus, trackingNumber?: string, courierName?: string) => Promise<boolean>
   onDelete: () => void
 }) {
   const charge = orderCharge(order)
@@ -567,14 +702,20 @@ function OrderDetail({
             <ClipboardList className="size-3.5" />
             Упаковочный лист
           </a>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent hover:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-            Удалить заказ
-          </button>
+          {/* Only an order no money arrived for can be deleted (the server
+              enforces it too); a paid one stays on record. */}
+          {cancellationRefusal(order) === null ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent hover:text-destructive"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+              Удалить заказ
+            </button>
+          ) : (
+            <span className="ml-auto self-center text-[11px] text-muted-foreground/80">Оплаченный заказ не удаляется</span>
+          )}
         </div>
       </div>
 
@@ -604,7 +745,7 @@ function OrderDetail({
 
 function Badge({ className, children }: { className: string; children: React.ReactNode }) {
   return (
-    <span className={cn('inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-medium', className)}>
+    <span className={cn('inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium', className)}>
       {children}
     </span>
   )

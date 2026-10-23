@@ -1,7 +1,7 @@
 'use client'
 
-import { ArrowLeft, Check, Loader2, Truck } from 'lucide-react'
-import Link from 'next/link'
+import { AdminPageHeader } from './admin-shell'
+import { Check, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { SHIPPING_LIMITS, type ShippingSettings } from '@/config/shipping'
 import { describeBusinessDays } from '@/lib/fulfilment'
@@ -74,27 +74,10 @@ export function ShippingSettingsForm({
   const days = SHIPPING_LIMITS.businessDays
 
   return (
-    <main id="main" className="min-h-screen bg-background px-4 py-10 sm:px-6">
+    <div>
       <div className="mx-auto max-w-2xl">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Назад в админ-панель
-        </Link>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gold/10">
-            <Truck className="size-5 text-gold" />
-          </div>
-          <div>
-            <h1 className="font-serif text-xl font-semibold text-foreground">Доставка</h1>
-            <p className="text-xs text-muted-foreground">
-              Стоимость, порог бесплатной доставки и срок — для всей витрины и всех новых заказов.
-            </p>
-          </div>
-        </div>
+        <AdminPageHeader title="Доставка" description="Стоимость, порог бесплатной доставки и срок — для всей витрины и всех новых заказов." />
 
         {source === 'defaults' && (
           <p className="mb-6 rounded-xl border border-gold/30 p-4 text-xs leading-relaxed text-muted-foreground">
@@ -215,6 +198,6 @@ export function ShippingSettingsForm({
           </section>
         )}
       </div>
-    </main>
+    </div>
   )
 }

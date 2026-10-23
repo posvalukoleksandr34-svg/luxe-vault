@@ -107,6 +107,9 @@ export type Variant = {
   /** Below this, the product page says "only N left". */
   lowStockAt: number
   sku?: string
+  /** Sent by the product editor only: the stock it was showing when it
+   *  loaded, so a save cannot overwrite sales made meanwhile (lib/stock-sync.ts). */
+  stockBase?: number
 }
 
 export type SizeMeasurement = {

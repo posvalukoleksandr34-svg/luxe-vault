@@ -1,8 +1,8 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowLeft, ImagePlus, Loader2, Mail, Monitor, Search, Send, Smartphone, Users, X } from 'lucide-react'
-import Link from 'next/link'
+import { ImagePlus, Loader2, Monitor, Search, Send, Smartphone, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -285,7 +285,7 @@ export function NewsletterManager() {
       pushToast({ title: next === 'active' ? `${row.email} — подписка включена` : `${row.email} — отписан`, variant: 'success' })
     } catch {
       setData(previous)
-      pushToast({ title: 'Не удалось изменить подписку', variant: 'default' })
+      pushToast({ title: 'Не удалось изменить подписку', variant: 'error' })
     } finally {
       setPending((p) => {
         const n = new Set(p)
@@ -304,25 +304,10 @@ export function NewsletterManager() {
   const sending = send.kind === 'sending'
 
   return (
-    <main id="main" className="min-h-screen bg-background px-4 py-10 sm:px-6">
+    <div>
       <div className="mx-auto max-w-[1280px]">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Назад в админ-панель
-        </Link>
 
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gold/10">
-            <Mail className="size-5 text-gold" />
-          </div>
-          <div>
-            <h1 className="font-serif text-xl font-semibold text-foreground">Рассылка</h1>
-            <p className="text-xs text-muted-foreground">Подписчики, письма и отправка кампаний.</p>
-          </div>
-        </div>
+        <AdminPageHeader title="Рассылка" description="Подписчики, письма и отправка кампаний." />
 
         {loadState === 'gap-tables' && (
           <Notice>
@@ -707,7 +692,7 @@ export function NewsletterManager() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </main>
+    </div>
   )
 }
 

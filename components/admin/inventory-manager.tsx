@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
 import { AlertTriangle, Boxes, Download, Grid3x3, List, Loader2, Search, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -113,11 +114,14 @@ export function InventoryManager() {
       const res = await fetch('/api/admin/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: v.id, stock: next }),
+        // The number the admin was looking at: the server writes only if it
+        // is still the stock, so a sale made meanwhile is not undone.
+        body: JSON.stringify({ id: v.id, stock: next, expectedStock: v.stock }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        pushToast({ title: data.error ?? 'Не удалось сохранить', variant: 'default' })
+        pushToast({ title: data.error ?? 'Не удалось сохранить', variant: 'error' })
+        if (data.code === 'STOCK_CONFLICT') await load()
         return
       }
       setDrafts((d) => {
@@ -147,11 +151,12 @@ export function InventoryManager() {
       const res = await fetch('/api/admin/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: v.id, stock: next }),
+        body: JSON.stringify({ id: v.id, stock: next, expectedStock: v.stock }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        pushToast({ title: data.error ?? 'Не удалось сохранить', variant: 'default' })
+        pushToast({ title: data.error ?? 'Не удалось сохранить', variant: 'error' })
+        if (data.code === 'STOCK_CONFLICT') await load()
         return
       }
       await load()
@@ -169,7 +174,7 @@ export function InventoryManager() {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        pushToast({ title: data.error ?? 'Импорт не удался', variant: 'default' })
+        pushToast({ title: data.error ?? 'Импорт не удался', variant: 'error' })
         return
       }
 
@@ -253,6 +258,10 @@ export function InventoryManager() {
 
   return (
     <div>
+      <AdminPageHeader
+        title="Остатки"
+        description="Каждый размер и цвет каждого товара. Сохраняется только если остаток не изменился с момента загрузки — продажа не затрётся."
+      />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-6">
           <Stat label="Позиций" value={String(counts.total)} />

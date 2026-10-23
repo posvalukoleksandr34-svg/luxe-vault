@@ -2,7 +2,9 @@
 
 import { Loader2, Search, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { formatChf } from '@/lib/store'
+import { AdminPageHeader } from './admin-shell'
 
 /**
  * The customer list.
@@ -79,6 +81,10 @@ export function CustomersManager() {
 
   return (
     <div>
+      <AdminPageHeader
+        title="Клиенты"
+        description="Зарегистрированные покупатели — по сумме покупок. Только просмотр: данные аккаунта принадлежат клиенту."
+      />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-6">
           <Stat label="Клиентов" value={String(customers.length)} />
@@ -125,7 +131,20 @@ export function CustomersManager() {
                     <span className="block text-foreground">{c.name || '—'}</span>
                     <span className="block text-[11px] text-muted-foreground/85">{c.email}</span>
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.orders}</td>
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                    {/* Straight to this customer's orders. */}
+                    {c.orders > 0 && c.email ? (
+                      <Link
+                        href={`/admin/orders?view=all&q=${encodeURIComponent(c.email)}`}
+                        className="text-foreground underline underline-offset-4 hover:no-underline"
+                        aria-label={`Заказы ${c.email}: ${c.orders}`}
+                      >
+                        {c.orders}
+                      </Link>
+                    ) : (
+                      c.orders
+                    )}
+                  </td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.paidOrders}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-gold">
                     {formatChf(c.spent)}

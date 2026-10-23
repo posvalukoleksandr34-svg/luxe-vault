@@ -1,12 +1,13 @@
 'use client'
 
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Badge, Button, Field, Spinner, api, inputClass, useMe } from '@/components/admin/refunds/shared'
 import { StaffBar } from '@/components/admin/refunds/staff-bar'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   CONSENT_MODES,
   REASON_LABEL_RU,
@@ -134,8 +135,10 @@ export function ReviewRequestsConsole() {
     router.push(`/admin/review-requests?${next.toString()}`)
   }
 
+  const [cancelId, setCancelId] = useState<string | null>(null)
+
   async function act(id: string, action: 'retry' | 'cancel') {
-    if (action === 'cancel' && !window.confirm('Отменить этот запрос? Письмо по этому заказу не уйдёт.')) return
+    setCancelId(null)
     setBusyId(id)
     setNotice(null)
     try {
@@ -154,11 +157,7 @@ export function ReviewRequestsConsole() {
   const selected = params.get('status') ?? ''
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-      <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" />
-        Панель управления
-      </Link>
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold text-foreground">Запросы отзывов</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
@@ -308,7 +307,7 @@ export function ReviewRequestsConsole() {
                               </Button>
                             )}
                             {(r.status === 'scheduled' || r.status === 'failed') && (
-                              <Button tone="danger" onClick={() => act(r.id, 'cancel')} busy={busyId === r.id}>
+                              <Button tone="danger" onClick={() => setCancelId(r.id)} busy={busyId === r.id}>
                                 Отменить
                               </Button>
                             )}
@@ -340,6 +339,16 @@ export function ReviewRequestsConsole() {
               </div>
             </div>
           )}
+
+          <ConfirmDialog
+            open={cancelId !== null}
+            onOpenChange={(open) => !open && setCancelId(null)}
+            title="Отменить запрос отзыва?"
+            description="Письмо по этому заказу не уйдёт. Вернуть запрос в очередь можно кнопкой «Повторить»."
+            confirmLabel="Отменить запрос"
+            cancelLabel="Не отменять"
+            onConfirm={() => cancelId && void act(cancelId, 'cancel')}
+          />
 
           {data && <PreviewAndTest recipients={data.testRecipients} canSend={can('review_requests.manage')} mail={data.mail} />}
         </>
@@ -436,14 +445,12 @@ function SettingsForm({
     )
   }
 
+  const enabling = s.enabled && !initial.enabled
+  const widening = s.consentMode === 'existing_customer' && initial.consentMode !== 'existing_customer'
+  const [confirming, setConfirming] = useState(false)
+
   async function save() {
-    if (s.consentMode === 'existing_customer' && initial.consentMode !== 'existing_customer') {
-      const ok = window.confirm(
-        'Режим «всем покупателям» допустим, только если при оформлении заказа покупателю сообщают, что он может отказаться от таких писем. Это сделано?',
-      )
-      if (!ok) return
-    }
-    if (s.enabled && !initial.enabled && !window.confirm('Включить отправку? Письма начнут уходить настоящим покупателям при следующем запуске.')) return
+    setConfirming(false)
     setBusy(true)
     setError(null)
     try {
@@ -486,12 +493,30 @@ function SettingsForm({
       {error && <p className="text-sm text-red-700">{error}</p>}
       {editable && (
         <div className="flex gap-2">
-          <Button tone="primary" onClick={save} busy={busy} disabled={!dirty}>
+          <Button tone="primary" onClick={() => (enabling || widening ? setConfirming(true) : void save())} busy={busy} disabled={!dirty}>
             Сохранить
           </Button>
           {dirty && <Button onClick={() => setS(initial)}>Сбросить</Button>}
         </div>
       )}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        tone="default"
+        title={enabling ? 'Включить отправку запросов отзывов?' : 'Писать всем покупателям?'}
+        description={enabling ? 'Письма начнут уходить настоящим покупателям при следующем запуске (раз в час).' : undefined}
+        details={
+          widening ? (
+            <p>
+              Режим «всем покупателям» допустим, только если при оформлении заказа покупателю сообщают, что он может отказаться от
+              таких писем. Подтвердите, что это сделано.
+            </p>
+          ) : undefined
+        }
+        confirmLabel={enabling ? 'Включить' : 'Подтверждаю'}
+        busy={busy}
+        onConfirm={() => void save()}
+      />
     </section>
   )
 }

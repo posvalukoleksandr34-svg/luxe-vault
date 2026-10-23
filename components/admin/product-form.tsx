@@ -1,7 +1,7 @@
 'use client'
 
 import { ImagePlus, Languages, Loader2, Lock, Plus, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { AVAILABILITY_STATUSES, withDerivedAvailability } from '@/lib/availability'
 import { FIT_LABELS, OCCASION_LABELS, STYLE_LABELS } from '@/lib/i18n'
@@ -9,6 +9,9 @@ import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags }
 import { DEFAULT_DELIVERY_DAYS, isDeliveryDays } from '@/lib/fulfilment'
 import { byDepartmentOrder } from '@/lib/departments'
 import { useStore } from '@/lib/store'
+import { describeConflicts, type StockConflict } from '@/lib/stock-sync'
+import { productSlug } from '@/lib/product-slug'
+import { ConfirmDialog } from './confirm-dialog'
 import type { Color, Locale, LocalizedText, Product, SizeMeasurement, StatusKey } from '@/lib/types'
 
 const STATUS_OPTIONS: { key: StatusKey; label: string }[] = [
@@ -113,7 +116,9 @@ export function ProductForm({
   const [descriptions, setDescriptions] = useState<Record<Locale, string>>(() =>
     copyFrom(product?.description),
   )
-  const [copyLocale, setCopyLocale] = useState<Locale>('ru')
+  // Opens on a language that has text: a product written in English used to
+  // open on an empty Russian tab and look as if it had no name.
+  const [copyLocale, setCopyLocale] = useState<Locale>(() => COPY_LOCALES.find((l) => names[l].trim()) ?? 'ru')
   const [translating, setTranslating] = useState(false)
 
   const [form, setForm] = useState({
@@ -197,6 +202,17 @@ export function ProductForm({
       (product?.variants ?? []).map((v) => [`${v.size}\u0000${v.color}`, String(v.stock)]),
     ),
   )
+
+  /**
+   * The stock each cell showed when the form opened (or after a conflict, the
+   * live value the server reported). Sent as `stockBase`, so a cell the admin
+   * did not touch is never written and a changed one is written only if
+   * nobody sold from it meanwhile (lib/stock-sync.ts).
+   */
+  const [stockBase, setStockBase] = useState<Record<string, number>>(() =>
+    Object.fromEntries((product?.variants ?? []).map((v) => [`${v.size}\u0000${v.color}`, v.stock])),
+  )
+  const [conflicts, setConflicts] = useState<{ list: StockConflict[]; partial: boolean } | null>(null)
 
   const sizeList = form.sizes
     .split(',')
@@ -405,7 +421,7 @@ export function ProductForm({
         variant: done.length ? 'success' : 'default',
       })
     } catch (e) {
-      pushToast({ title: (e as Error).message, variant: 'default' })
+      pushToast({ title: (e as Error).message, variant: 'error' })
     } finally {
       setTranslating(false)
     }
@@ -416,12 +432,13 @@ export function ProductForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (deliveryInvalid) {
-      pushToast({ title: 'Проверьте срок доставки', variant: 'default' })
+    setSubmitted(true)
+    if (deliveryInvalid || priceError || oldPriceError || nameError) {
+      pushToast({ title: 'Проверьте отмеченные поля', variant: 'error' })
       return
     }
-    const price = Number(form.price) || 0
-    const oldPrice = form.oldPrice ? Number(form.oldPrice) : undefined
+    const price = Number(form.price)
+    const oldPrice = form.oldPrice.trim() ? Number(form.oldPrice) : undefined
 
     // Every language as typed. Empty ones are completed on the server —
     // translated when Gemini is configured, copied from the source otherwise
@@ -434,10 +451,6 @@ export function ProductForm({
       (acc, l) => ({ ...acc, [l]: descriptions[l].trim() }),
       {} as LocalizedText,
     )
-    if (!COPY_LOCALES.some((l) => localizedName[l])) {
-      pushToast({ title: 'Укажите название хотя бы на одном языке', variant: 'default' })
-      return
-    }
 
     const images = form.images.length > 0 ? form.images : [FALLBACK_IMAGE]
 
@@ -453,11 +466,14 @@ export function ProductForm({
           stock: Number(stockAt(s, c)),
           lowStockAt:
             product?.variants?.find((v) => v.size === s && v.color === c)?.lowStockAt ?? 5,
+          stockBase: stockBase[`${s}\u0000${c}`],
         })),
     )
 
     const next: Product = {
-      id: product?.id ?? `p-${Date.now()}`,
+      // A readable address for a new product (/product/cashmere-coat-x7k2);
+      // an existing one keeps its own — orders and reviews point at it.
+      id: product?.id ?? productSlug(localizedName),
       name: localizedName,
       // Free text, and optional: undefined rather than '' so the storefront's
       // "has a brand" check is a single truthiness test everywhere instead of
@@ -468,7 +484,7 @@ export function ProductForm({
       group: form.group,
       category: form.category,
       price,
-      oldPrice: oldPrice && oldPrice > price ? oldPrice : undefined,
+      oldPrice,
       sizes: form.sizes
         .split(',')
         .map((s) => s.trim())
@@ -505,35 +521,120 @@ export function ProductForm({
     // closing regardless would throw away everything the admin just typed on
     // a validation error or a dropped connection, leaving only a toast.
     setSaving(true)
-    const ok = editing ? await updateProduct(next) : await addProduct(next)
+    const result = editing ? await updateProduct(next) : await addProduct(next)
     setSaving(false)
-    if (ok) onClose()
+    if (result.ok) {
+      onClose()
+      return
+    }
+    if (result.conflicts?.length) {
+      // The live numbers become the new base; what the admin typed stays in
+      // the cells, so saving again is a deliberate decision about them.
+      setStockBase((prev) => {
+        const next = { ...prev }
+        for (const c of result.conflicts ?? []) next[`${c.size}\u0000${c.color}`] = c.actual
+        return next
+      })
+      setConflicts({ list: result.conflicts, partial: Boolean(result.partial) })
+    }
   }
 
+  // ------------------------------------------------------------- validation
+  const priceNumber = Number(form.price)
+  const priceError =
+    form.price.trim() === ''
+      ? 'Укажите цену'
+      : !Number.isFinite(priceNumber) || priceNumber <= 0
+        ? 'Цена должна быть больше нуля'
+        : null
+  const oldPriceError =
+    form.oldPrice.trim() === ''
+      ? null
+      : !Number.isFinite(Number(form.oldPrice)) || Number(form.oldPrice) <= 0
+        ? 'Некорректная старая цена'
+        : !priceError && Number(form.oldPrice) <= priceNumber
+          ? 'Старая цена должна быть выше текущей — иначе это не скидка'
+          : null
+  const nameError = COPY_LOCALES.some((l) => names[l].trim()) ? null : 'Укажите название хотя бы на одном языке'
+  // Errors show once the admin has tried to save, not while they type.
+  const [submitted, setSubmitted] = useState(false)
+
+  // --------------------------------------------------------- unsaved edits
+  const snapshot = JSON.stringify({ names, descriptions, form, measurements, styleTags, colors, stock })
+  const [initialSnapshot] = useState(snapshot)
+  const dirty = snapshot !== initialSnapshot
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+
+  function requestClose() {
+    if (saving || uploading) return
+    if (dirty) setConfirmDiscard(true)
+    else onClose()
+  }
+
+  // Escape closes (through the same guard); a reload or closed tab asks first.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !confirmDiscard) requestClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+  const titleId = useMemo(() => `product-form-title-${product?.id ?? 'new'}`, [product?.id])
+
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[95] flex items-end justify-center sm:items-center sm:p-4">
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
+        className="absolute inset-0 bg-black/40"
+        onClick={requestClose}
         aria-hidden
       />
       <form
         onSubmit={handleSubmit}
-        className="animate-fade-up relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-popover p-6 shadow-2xl"
+        noValidate
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="animate-fade-up relative flex max-h-[100dvh] w-full max-w-2xl flex-col border border-border bg-popover shadow-2xl sm:max-h-[92vh] sm:rounded-2xl"
       >
-        <div className="mb-5 flex items-center justify-between">
-          <h3 className="font-serif text-xl font-semibold text-foreground">
-            {editing ? 'Редактировать товар' : 'Новый товар'}
-          </h3>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h3 id={titleId} className="truncate font-serif text-xl font-semibold text-foreground">
+              {editing ? 'Редактировать товар' : 'Новый товар'}
+            </h3>
+            {editing && product && (
+              <p className="truncate font-mono text-[11px] text-muted-foreground">/product/{product.id}</p>
+            )}
+          </div>
           <button
             type="button"
-            onClick={onClose}
-            className="text-muted-foreground transition hover:text-foreground"
+            onClick={requestClose}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-foreground"
             aria-label="Закрыть"
           >
             <X className="size-5" />
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+        {conflicts && (
+          <div role="alert" className="mb-4 rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-800">
+            <p className="font-medium">
+              {conflicts.partial ? 'Товар сохранён, но остаток не изменён.' : 'Ничего не сохранено: остаток изменился, пока форма была открыта.'}
+            </p>
+            <p className="mt-1 text-[13px]">
+              {describeConflicts(conflicts.list)}. В ячейках — ваши значения. Если они верны с учётом новых продаж — сохраните ещё раз.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4">
           {/* Name and description, per storefront language. A dot on each tab:
@@ -606,6 +707,8 @@ export function ProductForm({
                 label={`Название (${copyLocale.toUpperCase()})`}
                 value={names[copyLocale]}
                 onChange={(v) => setNames((prev) => ({ ...prev, [copyLocale]: v }))}
+                required
+                error={submitted ? nameError : null}
               />
               <label className="block">
                 <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
@@ -692,12 +795,14 @@ export function ProductForm({
               value={form.price}
               onChange={(v) => setForm({ ...form, price: v })}
               required
+              error={submitted ? priceError : null}
             />
             <Input
               label="Старая цена (CHF)"
               type="number"
               value={form.oldPrice}
               onChange={(v) => setForm({ ...form, oldPrice: v })}
+              error={oldPriceError && (submitted || form.oldPrice.trim() !== '') ? oldPriceError : null}
             />
           </div>
           {/* A struck-through price is a claim to the customer. The rules the
@@ -1246,23 +1351,45 @@ export function ProductForm({
           </div>
         </div>
 
-        <div className="mt-6 flex gap-3">
+        </div>
+
+        {/* Always in view: the form is long, and Save at the bottom of it
+            was a scroll away from every field above. */}
+        <div className="flex items-center gap-3 border-t border-border px-5 py-3 sm:px-6">
+          <p className="mr-auto text-xs text-muted-foreground" aria-live="polite">
+            {saving ? 'Сохранение…' : uploading ? 'Загрузка фото…' : dirty ? 'Есть несохранённые изменения' : editing ? 'Без изменений' : ''}
+          </p>
           <button
             type="button"
-            onClick={onClose}
-            className="flex-1 rounded-xl border border-border py-3 text-sm font-medium text-foreground transition hover:bg-accent"
+            onClick={requestClose}
+            disabled={saving}
+            className="min-h-[40px] rounded-lg border border-border px-4 text-sm font-medium text-foreground transition hover:bg-accent disabled:opacity-50"
           >
             Отмена
           </button>
           <button
             type="submit"
-            disabled={saving || deliveryInvalid}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={saving || uploading || (editing && !dirty)}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? 'Сохранение…' : editing ? 'Сохранить' : 'Добавить'}
+            {saving && <Loader2 className="size-4 animate-spin" aria-hidden />}
+            {editing ? 'Сохранить' : 'Добавить товар'}
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        title="Закрыть без сохранения?"
+        description="Изменения в этом товаре будут потеряны."
+        confirmLabel="Закрыть без сохранения"
+        cancelLabel="Продолжить редактирование"
+        onConfirm={() => {
+          setConfirmDiscard(false)
+          onClose()
+        }}
+      />
     </div>
   )
 }
@@ -1274,6 +1401,7 @@ function Input({
   type = 'text',
   required,
   placeholder,
+  error,
 }: {
   label: string
   value: string
@@ -1281,11 +1409,19 @@ function Input({
   type?: string
   required?: boolean
   placeholder?: string
+  /** Shown under the field, and the field is marked invalid. */
+  error?: string | null
 }) {
+  const errorId = useMemo(() => `err-${Math.random().toString(36).slice(2, 9)}`, [])
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
         {label}
+        {required && (
+          <span className="ml-0.5 text-destructive" aria-hidden>
+            *
+          </span>
+        )}
       </span>
       <input
         type={type}
@@ -1293,8 +1429,16 @@ function Input({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-gold"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        inputMode={type === 'number' ? 'decimal' : undefined}
+        className={`w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-gold ${error ? 'border-destructive' : 'border-border'}`}
       />
+      {error && (
+        <span id={errorId} className="mt-1 block text-[11px] text-destructive">
+          {error}
+        </span>
+      )}
     </label>
   )
 }

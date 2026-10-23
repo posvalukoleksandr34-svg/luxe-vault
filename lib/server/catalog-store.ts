@@ -14,6 +14,7 @@ import 'server-only'
 
 import { withDerivedAvailability } from '@/lib/availability'
 import { isDeliveryDays } from '@/lib/fulfilment'
+import { planVariantWrites, type LiveVariant, type StockConflict, type VariantPlan } from '@/lib/stock-sync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   Category,
@@ -589,61 +590,82 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
  *
  * Passing `undefined` for variants leaves the table alone entirely, so callers
  * that know nothing about stock cannot wipe it.
+ *
+ * Stock is written only where the editor changed it, and then only if nobody
+ * else did meanwhile (lib/stock-sync.ts): an untouched cell keeps the live
+ * value, so a save can never undo a sale made while the form was open.
  */
-async function syncVariants(productUuid: string, variants: Variant[] | undefined) {
-  if (!variants) return
 
-  const supabase = createAdminClient()
-
-  const rows = variants
-    .filter((v) => v.size.trim() && v.color.trim())
-    .map((v) => ({
-      product_id: productUuid,
-      size: v.size.trim(),
-      color: v.color.trim(),
-      stock: Math.max(0, Math.trunc(v.stock)),
-      low_stock_at: Math.max(0, Math.trunc(v.lowStockAt ?? 5)),
-      sku: v.sku?.trim() || null,
-    }))
-
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from('product_variants')
-      .upsert(rows, { onConflict: 'product_id,size,color' })
-    if (error) throw new Error(`Failed to save variants: ${error.message}`)
-  }
-
-  // Drop combinations the admin removed. Done after the upsert so a variant
-  // that was only renamed is never briefly absent.
-  const keep = new Set(rows.map((r) => `${r.size} ${r.color}`))
-  const { data: existing, error: readError } = await supabase
-    .from('product_variants')
-    .select('id, size, color')
-    .eq('product_id', productUuid)
-
-  if (readError) throw new Error(`Failed to read variants: ${readError.message}`)
-
-  const stale = (existing ?? [])
-    .filter((r) => !keep.has(`${r.size} ${r.color}`))
-    .map((r) => r.id as string)
-
-  if (stale.length > 0) {
-    const { error } = await supabase.from('product_variants').delete().in('id', stale)
-    if (error) throw new Error(`Failed to remove variants: ${error.message}`)
+/** Stock the editor changed had already changed in the database. */
+export class StockConflictError extends Error {
+  readonly conflicts: StockConflict[]
+  /** True when the product's other fields were already saved. */
+  readonly partial: boolean
+  constructor(conflicts: StockConflict[], partial = false) {
+    super('Stock changed while the product was being edited')
+    this.conflicts = conflicts
+    this.partial = partial
   }
 }
 
+async function readLiveVariants(productUuid: string): Promise<LiveVariant[]> {
+  const { data, error } = await createAdminClient()
+    .from('product_variants')
+    .select('id, size, color, stock')
+    .eq('product_id', productUuid)
+  if (error) throw new Error(`Failed to read variants: ${error.message}`)
+  return ((data ?? []) as { id: string; size: string; color: string; stock: number }[]).map((r) => ({
+    id: r.id,
+    size: r.size,
+    color: r.color,
+    stock: Number(r.stock) || 0,
+  }))
+}
+
+async function applyVariantPlan(productUuid: string, plan: VariantPlan): Promise<StockConflict[]> {
+  const supabase = createAdminClient()
+  if (plan.inserts.length > 0) {
+    const { error } = await supabase
+      .from('product_variants')
+      .insert(plan.inserts.map((r) => ({ ...r, product_id: productUuid })))
+    if (error) throw new Error(`Failed to save variants: ${error.message}`)
+  }
+
+  // One row at a time: a stock change carries its own compare-and-set.
+  const late: StockConflict[] = []
+  for (const u of plan.updates) {
+    let q = supabase.from('product_variants').update(u.patch).eq('id', u.id)
+    if (u.expectedStock !== undefined) q = q.eq('stock', u.expectedStock)
+    const { data, error } = await q.select('id')
+    if (error) throw new Error(`Failed to save variants: ${error.message}`)
+    if (u.expectedStock !== undefined && !(data ?? []).length) {
+      // Sold (or restocked) between the check and this write.
+      const { data: now } = await supabase.from('product_variants').select('stock').eq('id', u.id).maybeSingle()
+      late.push({ size: u.size, color: u.color, expected: u.expectedStock, actual: Number((now as { stock?: number } | null)?.stock ?? 0) })
+    }
+  }
+
+  // Combinations the admin removed. After the writes, so a variant that was
+  // only renamed is never briefly absent.
+  if (plan.deletes.length > 0) {
+    const { error } = await supabase.from('product_variants').delete().in('id', plan.deletes)
+    if (error) throw new Error(`Failed to remove variants: ${error.message}`)
+  }
+  return late
+}
+
 export async function createProduct(product: Product): Promise<Product> {
+  const plan = product.variants ? planVariantWrites(product.variants, []) : null
   const { collectionId, categoryId } = await resolveRefs(product.group, product.category)
   const { data, error } = await createAdminClient()
     .from('products')
-    .insert(await productToRow(product, collectionId, categoryId))
+    .insert(await productToRow(plan ? { ...product, variants: plan.effective } : product, collectionId, categoryId))
     .select(await resolveProductSelect())
     .single()
 
   if (error) throw new Error(`Failed to create product: ${error.message}`)
 
-  await syncVariants((data as unknown as { id: string }).id, product.variants)
+  if (plan) await applyVariantPlan((data as unknown as { id: string }).id, plan)
 
   // Re-read so the returned product carries the variants that were just
   // written, rather than the empty set the insert saw.
@@ -651,18 +673,34 @@ export async function createProduct(product: Product): Promise<Product> {
 }
 
 export async function updateProduct(product: Product): Promise<Product | null> {
+  const supabase = createAdminClient()
+  const { data: existing, error: findError } = await supabase.from('products').select('id').eq('slug', product.id).maybeSingle()
+  if (findError) throw new Error(`Failed to update product: ${findError.message}`)
+  if (!existing) return null
+  const productUuid = (existing as { id: string }).id
+
+  // Checked before anything is written: a conflict saves nothing, so the
+  // admin can look at the live numbers and save again.
+  const plan = product.variants ? planVariantWrites(product.variants, await readLiveVariants(productUuid)) : null
+  if (plan?.conflicts.length) throw new StockConflictError(plan.conflicts)
+
   const { collectionId, categoryId } = await resolveRefs(product.group, product.category)
-  const { data, error } = await createAdminClient()
+  const { data, error } = await supabase
     .from('products')
-    .update(await productToRow(product, collectionId, categoryId))
-    .eq('slug', product.id)
+    // Availability is derived from the stock as it will be after this save —
+    // the live value for every cell the admin did not change.
+    .update(await productToRow(plan ? { ...product, variants: plan.effective } : product, collectionId, categoryId))
+    .eq('id', productUuid)
     .select(await resolveProductSelect())
     .maybeSingle()
 
   if (error) throw new Error(`Failed to update product: ${error.message}`)
   if (!data) return null
 
-  await syncVariants((data as unknown as { id: string }).id, product.variants)
+  if (plan) {
+    const late = await applyVariantPlan(productUuid, plan)
+    if (late.length) throw new StockConflictError(late, true)
+  }
 
   return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from './confirm-dialog'
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldAlert, Star, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -97,7 +98,7 @@ export function ProductReviewsQueue() {
         variant: 'default',
       })
     } catch {
-      pushToast({ title: 'Не удалось выполнить действие. Попробуйте ещё раз.', variant: 'default' })
+      pushToast({ title: 'Не удалось выполнить действие. Попробуйте ещё раз.', variant: 'error' })
     } finally {
       setBusy(null)
     }
@@ -223,35 +224,14 @@ export function ProductReviewsQueue() {
         </ul>
       )}
 
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="delete-review-title">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} aria-hidden />
-          <div className="animate-fade-up relative w-full max-w-sm rounded-2xl border border-border bg-popover p-6 shadow-2xl">
-            <h3 id="delete-review-title" className="font-serif text-lg font-bold text-foreground">
-              Удалить отзыв?
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Это нельзя отменить. Покупатель сможет написать новый отзыв об этом товаре.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={() => void act(confirmDelete, 'delete')}
-                className="flex-1 rounded-lg border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Удалить отзыв?"
+        description="Отменить нельзя. Покупатель сможет написать новый отзыв об этом товаре."
+        confirmLabel="Удалить отзыв"
+        onConfirm={() => confirmDelete && void act(confirmDelete, 'delete')}
+      />
     </div>
   )
 }
