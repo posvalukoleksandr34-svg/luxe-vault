@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { missingBusinessFields } from '@/config/business'
 import { isAdminRequest } from '@/lib/server/admin-guard'
+import { burnedAdminCredentials } from '@/lib/server/burned-credentials'
 
 // Never indexed and never linked from the storefront — reachable only by a
 // visitor who already holds a valid admin session (see middleware.ts).
@@ -20,8 +21,19 @@ export default async function AdminPage(props: { searchParams: Promise<{ tab?: s
   // On the dashboard only: a standing legal to-do, not a banner over every list.
   const { tab } = await props.searchParams
   const missing = !tab || tab === 'dashboard' ? missingBusinessFields() : []
+  const burned = !tab || tab === 'dashboard' ? burnedAdminCredentials() : []
   return (
     <>
+      {/* A credential still set to a value that is public in the repository's
+          history (lib/server/burned-credentials.ts). Names only, never values. */}
+      {burned.length > 0 && (
+        <div role="alert" className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-[13px] text-foreground">
+          <strong className="font-medium">Небезопасные учётные данные админки.</strong>{' '}
+          Значение <span className="font-mono text-[12px]">{burned.join(', ')}</span> совпадает со старым, которое
+          есть в открытой истории репозитория. Задайте новое в Vercel → Settings → Environment Variables и сделайте
+          redeploy; все сессии админки после этого закроются.
+        </div>
+      )}
       {/* The Imprint shows only what is configured. Until the seller's name
           and address are set it is incomplete — Swiss law (UWG art. 3(1)(s))
           requires them for online sales — so the console says so on every

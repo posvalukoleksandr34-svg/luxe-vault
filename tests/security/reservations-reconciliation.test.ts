@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { NextRequest } from 'next/server'
 import { reconcilePayments, type ProviderPayment } from '@/lib/payment-reconciliation'
-import { releaseExpiredReservations, reservationPolicy, type LapsedOrder, type ReservationDeps } from '@/lib/server/reservations'
+import { paymentInFlightAlert, releaseExpiredReservations, reservationPolicy, type LapsedOrder, type ReservationDeps } from '@/lib/server/reservations'
 import { isAmbiguousStripeFailure, isMissingIntent } from '@/lib/server/stripe'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
 import type { Order } from '@/lib/types'
@@ -47,7 +47,7 @@ describe('reservation release: every order lands in exactly one list, and failur
         const s = opts.intents?.[id] ?? 'open'
         if (s === 'error') return { ok: false, reason: 'error', message: 'timeout' }
         if (s === 'missing') return { ok: false, reason: 'missing', message: `No such payment_intent: '${id}'` }
-        if (s === 'succeeded' || s === 'processing') return { ok: false, reason: 'captured', message: s }
+        if (s === 'succeeded' || s === 'processing') return { ok: false, reason: 'captured', message: s, intentStatus: s }
         return { ok: true, alreadyTerminal: false }
       },
       async cancel(no) {
@@ -83,8 +83,19 @@ describe('reservation release: every order lands in exactly one list, and failur
     const { state, deps } = shop([card('A'), card('B')], { intents: { pi_A: 'succeeded', pi_B: 'processing' } })
     const r = ok(await releaseExpiredReservations({ policy, deps }))
     assert.deepEqual(r.paymentInFlight, ['A', 'B'])
+    assert.deepEqual(r.paymentInFlightStatus, { A: 'succeeded', B: 'processing' }, 'Stripe\'s status is kept for the alert')
     assert.equal(state.cancelCalls, 0, 'never cancels an order whose payment went through')
     assert.equal(state.shelf, 0)
+  })
+
+  it('a payment Stripe took for an order still unpaid here is alerted, not just counted', () => {
+    const text = paymentInFlightAlert(['A', 'B', 'C'], { A: 'succeeded', B: 'processing', C: 'succeeded' })
+    assert.ok(text)
+    assert.match(text!, /2 payment\(s\) as SUCCEEDED.*A, C/)
+    assert.match(text!, /still processing.*B \(processing\)/)
+    assert.match(text!, /Webhooks/, 'says where to look')
+    assert.equal(paymentInFlightAlert([], {}), null, 'nothing to say, no alert')
+    assert.doesNotMatch(paymentInFlightAlert(['B'], { B: 'processing' })!, /SUCCEEDED/)
   })
 
   it('Stripe unreachable, or not configured: nothing released, retried next run', async () => {

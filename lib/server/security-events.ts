@@ -15,6 +15,7 @@ import { createHmac } from 'node:crypto'
 export type SecurityEvent =
   | 'admin_login_failed'
   | 'admin_login_refused_config'
+  | 'admin_credentials_burned'
   | 'rate_limited'
   | 'rate_limiter_unavailable'
   | 'webhook_signature_invalid'

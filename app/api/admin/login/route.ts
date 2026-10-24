@@ -8,6 +8,7 @@ import {
   verifySessionToken,
 } from '@/lib/server/admin-auth'
 import { recordSession, revokeSession } from '@/lib/server/admin-sessions'
+import { burnedAdminCredentials } from '@/lib/server/burned-credentials'
 import { checkTotp, isTotpConfigured } from '@/lib/server/admin-totp'
 import { clientIp } from '@/lib/server/client-ip'
 import { enforceLimit } from '@/lib/server/rate-limit'
@@ -94,6 +95,11 @@ export async function POST(request: NextRequest) {
     console.error('[admin/login]', (e as Error).message)
     return NextResponse.json({ error: 'Вход временно недоступен' }, { status: 503 })
   }
+
+  // Signed in with a credential that is public in the git history: allowed
+  // (the dashboard says what to do), but on record for the log alerts.
+  const burned = burnedAdminCredentials()
+  if (burned.length > 0) securityEvent('admin_credentials_burned', { ip: clientIp(request.headers), reason: burned.join(',') })
 
   const response = NextResponse.json({ ok: true })
   // HttpOnly, Secure in production, SameSite=Lax, Path=/ — the reasons are

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { releaseExpiredReservations } from '@/lib/server/reservations'
+import { paymentInFlightAlert, releaseExpiredReservations } from '@/lib/server/reservations'
+import { claimStripeEvent, releaseStripeEvent } from '@/lib/server/stripe-events'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
 import { securityEvent } from '@/lib/server/security-events'
 import { clientIp } from '@/lib/server/client-ip'
@@ -58,6 +59,25 @@ async function run(request: NextRequest) {
           `Stripe could not confirm the cancellation of ${result.providerError.length} order(s); their stock stays held and is retried next run: ` +
             result.providerError.map((n) => `${n} (Stripe: ${result.providerMessages[n] ?? 'no answer'})`).join(', '),
         )
+      }
+      const inFlight = paymentInFlightAlert(result.paymentInFlight, result.paymentInFlightStatus)
+      if (inFlight) {
+        // Every run, in the platform log: it stays visible there until Stripe
+        // and the order agree, Telegram or not.
+        console.error(`[reservations] payment and order disagree: ${inFlight}`)
+        // Telegram once per order, via the event ledger (as the payment
+        // emails are): the same orders come back every hour, and an hourly
+        // repeat would be ignored. A message that did not go out (no bot
+        // configured, a send failure) gives its claims back, so a later run
+        // tries again.
+        const fresh: string[] = []
+        for (const n of result.paymentInFlight) {
+          if ((await claimStripeEvent(`alert:payment-in-flight:${n}`, 'alert.payment_in_flight')) === 'claimed') fresh.push(n)
+        }
+        const text = paymentInFlightAlert(fresh, result.paymentInFlightStatus)
+        if (text && !(await reportCriticalError('Reservation expiry: payment and order disagree', text))) {
+          for (const n of fresh) await releaseStripeEvent(`alert:payment-in-flight:${n}`)
+        }
       }
       if (result.releasedMissingIntent.length > 0) {
         // Once per order: it is cancelled now, so the next run does not see it.
