@@ -49,7 +49,7 @@ export function AccountMenu() {
           sideOffset={12}
           collisionPadding={8}
           aria-label={t('acct.menuLabel')}
-          className="z-[60] w-[min(340px,calc(100vw-16px))] rounded-xl border border-border bg-background shadow-2xl shadow-black/10 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="z-[60] w-[min(340px,calc(100vw-16px))] rounded-xl border border-border bg-background shadow-2xl shadow-black/10 outline-none motion-radix-popover"
         >
           <div className="flex items-center justify-between gap-3 border-b border-border py-2 pl-6 pr-2">
             <p className="min-w-0 truncate text-[15px] font-normal text-foreground">{currentUser.name}</p>

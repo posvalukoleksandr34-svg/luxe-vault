@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { MOTION_MS, exitDelay, motionReduced } from '@/lib/motion'
 import {
+  afterLeaving,
   noteNavigationTrigger,
   pageTransition,
   pageTransitionRunning,
@@ -54,7 +55,7 @@ class FakeElement {
 }
 
 type Env = {
-  html: { dataset: Record<string, string> }
+  html: { dataset: Record<string, string>; style: FakeStyle }
   started: number
   skipped: number
   last: Transition | null
@@ -67,7 +68,7 @@ const realGlobals = { window: globalThis.window, document: globalThis.document, 
 
 function install(opts: { api?: boolean; reduced?: boolean; hidden?: boolean; runUpdate?: boolean; throws?: boolean } = {}): Env {
   const env: Env = {
-    html: { dataset: {} },
+    html: { dataset: {}, style: new FakeStyle() },
     started: 0,
     skipped: 0,
     last: null,
@@ -273,8 +274,9 @@ describe('page transition: a normal run', () => {
     pageTransition('/product/p1', r.navigate)
     assert.equal(card.style.props.get('view-transition-name'), 'product-p1', 'the card names its photo for the old picture')
     assert.equal(card.style.props.get('view-transition-class'), 'product-media')
-    assert.equal(env.html.dataset.vtArrive, 'product')
+    assert.equal(env.html.dataset.vtArrive, undefined, 'the arrival cascade must not touch the page being photographed')
     await env.last!.updateCallbackDone
+    assert.equal(env.html.dataset.vtArrive, 'product', 'set once the old picture is taken')
     assert.equal(card.style.props.size, 0, 'released before the new page is photographed')
     assert.equal(hero.style.props.get('view-transition-name'), 'product-p1', 'the gallery receives the name')
     await env.last!.finished
@@ -282,6 +284,60 @@ describe('page transition: a normal run', () => {
     assert.equal(hero.style.props.size, 0, 'and gives it up afterwards')
     assert.equal(env.html.dataset.vtArrive, undefined)
     assert.equal(r.calls, 1)
+  })
+
+  it('the page opens from the centre of what was tapped; other pages cascade in', async () => {
+    const env = install()
+    const link = new FakeElement({ href: '/about' }) // 300×400 at (100, 100)
+    const r = router(env, '/about')
+    noteNavigationTrigger(link as unknown as Element)
+    pageTransition('/about', r.navigate)
+    assert.equal(env.html.style.props.get('--vt-ox'), '250px')
+    assert.equal(env.html.style.props.get('--vt-oy'), '300px')
+    await env.last!.updateCallbackDone
+    assert.equal(env.html.dataset.vtArrive, 'page')
+    await env.last!.finished
+    await new Promise((res) => setImmediate(res))
+    assert.equal(env.html.style.props.size, 0, 'the origin is cleared with the rest')
+    assert.equal(env.html.dataset.vtArrive, undefined)
+  })
+
+  it('without a tap (a navigation from script) there is no origin: CSS opens from the upper middle', async () => {
+    const env = install()
+    const r = router(env, '/catalog?q=bag')
+    pageTransition('/catalog?q=bag', r.navigate)
+    assert.equal(env.html.style.props.size, 0)
+    await env.last!.finished
+  })
+
+  it('afterLeaving: what a link closes stays for the old picture, then goes before the new one', async () => {
+    const env = install()
+    const order: string[] = []
+    const navigate = () => {
+      order.push('navigate')
+      env.setUrl('/product/p9')
+    }
+    afterLeaving(() => order.push('panel closed'))
+    pageTransition('/product/p9', navigate)
+    assert.deepEqual(order, [], 'nothing closes before the old page is photographed')
+    await env.last!.updateCallbackDone
+    assert.deepEqual(order, ['panel closed', 'navigate'])
+    await env.last!.finished
+    await new Promise((res) => setTimeout(res, 10))
+    assert.deepEqual(order, ['panel closed', 'navigate'], 'once only')
+  })
+
+  it('afterLeaving: without a transition it runs at once; with no navigation at all, on its own', async () => {
+    const env = install({ api: false })
+    const order: string[] = []
+    afterLeaving(() => order.push('closed'))
+    pageTransition('/product/p9', () => order.push('navigate'))
+    assert.deepEqual(order, ['closed', 'navigate'])
+    // A modifier click: the link's onClick ran, no navigation followed.
+    afterLeaving(() => order.push('closed again'))
+    await new Promise((res) => setTimeout(res, 10))
+    assert.deepEqual(order, ['closed', 'navigate', 'closed again'])
+    assert.equal(env.started, 0)
   })
 
   it('a router that never changes the address does not hold the page: it lets go after the wait', async () => {

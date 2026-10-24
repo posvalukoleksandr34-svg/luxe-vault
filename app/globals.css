@@ -2629,14 +2629,16 @@ body:has([data-admin-shell]) .overflow-x-auto {
    how a new page or component joins in.
 
    What moves, and how:
-   - Page to page (lib/page-transition.ts): the view crossfades — the old page
-     leaves quickly, the new one settles in with a few pixels of rise (or of
-     fall, going back up the hierarchy). The header, the phone tab bar, the
-     support button, the cookie banner and the toasts are lifted out of the
-     picture for the duration, so the frame of the site never moves.
-   - A product: its photo travels from the clicked card into the gallery and
-     the details settle in one after another; back from the product page to
-     a listing that shows it, the photo returns to its card.
+   - Page to page (lib/page-transition.ts): the old page leaves quickly; the
+     new one opens out of what was tapped and its content settles in block by
+     block (going back up the hierarchy it settles down instead). The header,
+     the phone tab bar, the support button, the cookie banner and the toasts
+     are lifted out of the picture for the duration, so the frame of the
+     site never moves.
+   - A product: its photo travels from where it was tapped (a card, a search
+     suggestion, the cart) into the gallery and the details settle in one
+     after another; back from the product page to a listing that shows it,
+     the photo returns to its card.
    - Results changing in place (filters, sort): only the results crossfade,
      and their height eases to the new count; the controls answer at once.
    - Drawers, dialogs, popovers (lib/use-presence.ts and the .motion-*
@@ -2660,6 +2662,8 @@ body:has([data-admin-shell]) .overflow-x-auto {
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --motion-rise: 8px;
+  /* How small a page starts when it opens from a tap. */
+  --motion-open-scale: 0.92;
 }
 
 /* Phones: shorter distances, shorter times. A mid-range phone should never
@@ -2670,6 +2674,7 @@ body:has([data-admin-shell]) .overflow-x-auto {
     --motion-page: 260ms;
     --motion-shared: 360ms;
     --motion-rise: 6px;
+    --motion-open-scale: 0.95;
   }
 }
 
@@ -2700,6 +2705,12 @@ html:is([data-vt='forward'], [data-vt='back']) [data-vt-chrome='toasts'] {
 html:is([data-vt='forward'], [data-vt='back']) .motion-popover {
   visibility: hidden;
 }
+/* …except a photo in it that is travelling to the next page (a search
+   suggestion's thumbnail): it is photographed on its own, not as part of
+   the header, and flies while the panel goes. */
+html:is([data-vt='forward'], [data-vt='back']) .motion-popover [style*='view-transition-name'] {
+  visibility: visible;
+}
 
 /* The page itself is the root picture: the size of the viewport, so it is
    always exactly what the visitor was looking at. */
@@ -2712,6 +2723,26 @@ html:is([data-vt='forward'], [data-vt='back']) .motion-popover {
 html[data-vt='back']::view-transition-new(root) {
   animation-name: vt-settle-in-back;
 }
+
+/* Opening from the tap. Going deeper, the new page grows out of the link or
+   card that was tapped — lib/page-transition.ts puts its centre in
+   --vt-ox/--vt-oy — the gesture of a product photo travelling into its
+   page, made by every page. Without a tap (a search submitted), it opens
+   from the upper middle. */
+html[data-vt='forward']::view-transition-new(root) {
+  animation-name: vt-open;
+  transform-origin: var(--vt-ox, 50%) var(--vt-oy, 35%);
+}
+
+/* Arriving on any page: its content settles in one block after another,
+   inside the opening. Opacity only. :where() keeps it weaker than any
+   entrance a block already has of its own, so nothing animates twice. */
+:where(html[data-vt-arrive='page'] main > *) {
+  animation: vt-fade-in var(--motion-base) var(--ease-standard) both;
+}
+:where(html[data-vt-arrive='page'] main > :nth-child(2)) { animation-delay: 40ms; }
+:where(html[data-vt-arrive='page'] main > :nth-child(3)) { animation-delay: 80ms; }
+:where(html[data-vt-arrive='page'] main > :nth-child(n + 4)) { animation-delay: 120ms; }
 
 /* The frame holds still: identical on both sides, it is simply shown. */
 ::view-transition-group(site-header),
@@ -2801,6 +2832,12 @@ html[data-vt='results']::view-transition-new(root) {
     translate: 0 calc(-1 * var(--motion-rise));
   }
 }
+@keyframes vt-open {
+  from {
+    opacity: 0;
+    scale: var(--motion-open-scale);
+  }
+}
 
 /* --- Overlays (lib/use-presence.ts) ---------------------------------------
    The element is mounted with data-state="closed", flips to "open" a frame
@@ -2874,6 +2911,74 @@ html[data-vt='results']::view-transition-new(root) {
   transition-timing-function: var(--ease-exit);
 }
 
+/* Radix dialogs and popovers (components/ui/dialog.tsx — the size finder,
+   the fit advisor, "notify me", the refund request — and the account menu).
+   Radix keeps them mounted until an exit *animation* ends, so these are
+   keyframes rather than transitions: the same tokens, curves and distances
+   as the overlays above. */
+.motion-radix-scrim[data-state='open'] {
+  animation: vt-fade-in var(--motion-base) var(--ease-standard) both;
+}
+.motion-radix-scrim[data-state='closed'] {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+.motion-radix-dialog[data-state='open'] {
+  animation: motion-dialog-in var(--motion-panel) var(--ease-emphasized) both;
+}
+.motion-radix-dialog[data-state='closed'] {
+  animation: motion-dialog-out var(--motion-fast) var(--ease-exit) both;
+}
+.motion-radix-popover {
+  transform-origin: var(--radix-popover-content-transform-origin, top right);
+}
+.motion-radix-popover[data-state='open'] {
+  animation: motion-popover-in var(--motion-base) var(--ease-emphasized) both;
+}
+.motion-radix-popover[data-state='closed'] {
+  animation: motion-popover-out var(--motion-fast) var(--ease-exit) both;
+}
+@keyframes motion-dialog-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+    scale: 0.98;
+  }
+}
+@keyframes motion-dialog-out {
+  to {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+    scale: 0.98;
+  }
+}
+@keyframes motion-popover-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+    scale: 0.97;
+  }
+}
+@keyframes motion-popover-out {
+  to {
+    opacity: 0;
+    translate: 0 -4px;
+    scale: 0.97;
+  }
+}
+
+/* A step of a multi-step dialog (the size finder): the new question slides
+   in from the side the visitor is moving towards (--step-dir: 1 forward,
+   -1 back). */
+.motion-step {
+  animation: motion-step-in var(--motion-panel) var(--ease-emphasized) both;
+}
+@keyframes motion-step-in {
+  from {
+    opacity: 0;
+    translate: calc(var(--step-dir, 1) * 20px) 0;
+  }
+}
+
 /* --- Press --------------------------------------------------------------
    The primary buttons give a little under the finger or the click, and come
    back on release. Not every button: a full-width row that shrinks reads as
@@ -2906,6 +3011,9 @@ html[data-motion='reduce']::view-transition-new(*) {
     animation: none !important;
   }
   html[data-vt-arrive='product'] [data-motion-stagger] > * {
+    animation: none;
+  }
+  :where(html[data-vt-arrive='page'] main > *) {
     animation: none;
   }
   :where(.btn-primary-lv, .btn-secondary-lv, .hero__cta, .motion-press, button.bg-gold-gradient, a.bg-gold-gradient):active {

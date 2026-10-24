@@ -34,9 +34,15 @@ import girlBellySmall from './photos/kids/girl-belly-small.webp'
 import girlHipsAverage from './photos/kids/girl-hips-average.webp'
 import girlHipsLarge from './photos/kids/girl-hips-large.webp'
 import girlHipsSmall from './photos/kids/girl-hips-small.webp'
-import manAbdomen from './photos/man-abdomen.webp'
-import womanAbdomen from './photos/woman-abdomen.webp'
-import womanHips from './photos/woman-hips.webp'
+import manAbdomenAverage from './photos/man-abdomen-average.webp'
+import manAbdomenLarge from './photos/man-abdomen-large.webp'
+import manAbdomenSmall from './photos/man-abdomen-small.webp'
+import womanAbdomenAverage from './photos/woman-abdomen-average.webp'
+import womanAbdomenLarge from './photos/woman-abdomen-large.webp'
+import womanAbdomenSmall from './photos/woman-abdomen-small.webp'
+import womanHipsAverage from './photos/woman-hips-average.webp'
+import womanHipsLarge from './photos/woman-hips-large.webp'
+import womanHipsSmall from './photos/woman-hips-small.webp'
 
 /**
  * "Trova la tua misura" — the step-by-step size finder on the product page.
@@ -60,8 +66,13 @@ import womanHips from './photos/woman-hips.webp'
  * PHOTOS for the hips and abdomen questions (./photos), by who the piece is
  * for (finderAudience). A set of three — one per answer — changes with the
  * choice; a single photo shows the area; with none, the line drawing
- * (./body-shape) stands in. Today: children have sets of three, women a
- * photo per question, men the abdomen.
+ * (./body-shape) stands in. Today every question has a set of three except
+ * men's hips, which keep the drawing (it changes with the answer too).
+ * The women's and men's sets are one photograph each, reshaped at the hips
+ * or the abdomen for the slimmer and fuller answers, so the person, pose and
+ * light stay the same and only the answer changes; they are on a white
+ * ground and sit on the card's warm one. The children's sets bring their
+ * own ground.
  *
  * CHILDREN (group "kids", sizes by height: 104, 110, 116…) get their own
  * table (kidsFinderRecommendation): the child's height, hips, abdomen and
@@ -112,8 +123,11 @@ export function finderAudience(group: string | undefined, text: string): FinderA
 type ShapePhoto = StaticImageData | readonly [StaticImageData, StaticImageData, StaticImageData]
 const isPhotoSet = (p: ShapePhoto | undefined): p is readonly [StaticImageData, StaticImageData, StaticImageData] => Array.isArray(p)
 const PHOTOS: Record<FinderAudience, Partial<Record<'hips' | 'belly', ShapePhoto>>> = {
-  women: { hips: womanHips, belly: womanAbdomen },
-  men: { belly: manAbdomen },
+  women: {
+    hips: [womanHipsSmall, womanHipsAverage, womanHipsLarge],
+    belly: [womanAbdomenSmall, womanAbdomenAverage, womanAbdomenLarge],
+  },
+  men: { belly: [manAbdomenSmall, manAbdomenAverage, manAbdomenLarge] },
   boys: {
     hips: [boyHipsSmall, boyHipsAverage, boyHipsLarge],
     belly: [boyBellySmall, boyBellyAverage, boyBellyLarge],
@@ -201,6 +215,9 @@ export function SizeFinder({
   const { t, tf } = useStore()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>('body')
+  // Which way the last step change went: the new question slides in from
+  // that side (globals.css → .motion-step).
+  const [stepDir, setStepDir] = useState<1 | -1>(1)
   const [a, setA] = useState<Saved>(EMPTY)
   const [error, setError] = useState<string | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -280,6 +297,7 @@ export function SizeFinder({
 
   function go(to: Step) {
     setError(null)
+    setStepDir(STEPS.indexOf(to) < STEPS.indexOf(step) ? -1 : 1)
     setStep(to)
   }
 
@@ -417,37 +435,41 @@ export function SizeFinder({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-7 sm:px-8 md:px-12 md:pt-11">
-            <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-gold" aria-hidden>
-              {tf('finder.step', { n: index + 1, total: STEPS.length })}
-            </p>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="mt-2 pr-8 text-[15px] font-semibold uppercase tracking-[0.16em] text-foreground outline-none md:text-[17px]"
-            >
-              {step === 'body' && t(kids ? 'finder.kids.body.title' : 'finder.body.title')}
-              {step === 'age' && t('finder.age.title')}
-              {step === 'hips' && t(kids ? 'finder.kids.hips.title' : 'finder.hips.title')}
-              {step === 'belly' && t(kids ? 'finder.kids.belly.title' : 'finder.belly.title')}
-              {step === 'fit' && t('finder.fit.title')}
-              {step === 'result' &&
-                (result?.fit.kind === 'none' && result.fit.reason !== 'sold_out' ? t('finder.none.title') : t('finder.result.title'))}
-            </h2>
-            {subtitle && <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-foreground/70">{subtitle}</p>}
+            {/* Keyed by step: each question slides in from the side the
+                visitor is moving towards. */}
+            <div key={step} className="motion-step flex flex-1 flex-col" style={{ ['--step-dir' as string]: stepDir }}>
+              <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-gold" aria-hidden>
+                {tf('finder.step', { n: index + 1, total: STEPS.length })}
+              </p>
+              <h2
+                ref={headingRef}
+                tabIndex={-1}
+                className="mt-2 pr-8 text-[15px] font-semibold uppercase tracking-[0.16em] text-foreground outline-none md:text-[17px]"
+              >
+                {step === 'body' && t(kids ? 'finder.kids.body.title' : 'finder.body.title')}
+                {step === 'age' && t('finder.age.title')}
+                {step === 'hips' && t(kids ? 'finder.kids.hips.title' : 'finder.hips.title')}
+                {step === 'belly' && t(kids ? 'finder.kids.belly.title' : 'finder.belly.title')}
+                {step === 'fit' && t('finder.fit.title')}
+                {step === 'result' &&
+                  (result?.fit.kind === 'none' && result.fit.reason !== 'sold_out' ? t('finder.none.title') : t('finder.result.title'))}
+              </h2>
+              {subtitle && <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-foreground/70">{subtitle}</p>}
 
-            <div className={cn('mt-7 flex flex-1 flex-col', (step === 'body' || step === 'age' || step === 'fit') && 'md:justify-center md:pb-10')}>
-              {step === 'body' && <BodyStep a={a} set={set} kids={kids} />}
-              {step === 'age' && <AgeStep a={a} set={set} onSkip={() => { set({ ageSkipped: true, age: '' }); go('hips') }} />}
-              {step === 'hips' && <ShapeStep kind="hips" photo={photos.hips} value={a.hips} onChange={(hips) => set({ hips })} />}
-              {step === 'belly' && <ShapeStep kind="belly" photo={photos.belly} value={a.belly} onChange={(belly) => set({ belly })} />}
-              {step === 'fit' && <FitStep stop={a.fitStop} onChange={(fitStop) => set({ fitStop })} />}
-              {step === 'result' && result && <ResultStep result={result} onOpenSizeChart={onOpenSizeChart ? () => { setOpen(false); onOpenSizeChart() } : undefined} />}
+              <div className={cn('mt-7 flex flex-1 flex-col', (step === 'body' || step === 'age' || step === 'fit') && 'md:justify-center md:pb-10')}>
+                {step === 'body' && <BodyStep a={a} set={set} kids={kids} />}
+                {step === 'age' && <AgeStep a={a} set={set} onSkip={() => { set({ ageSkipped: true, age: '' }); go('hips') }} />}
+                {step === 'hips' && <ShapeStep kind="hips" photo={photos.hips} ownGround={kids} value={a.hips} onChange={(hips) => set({ hips })} />}
+                {step === 'belly' && <ShapeStep kind="belly" photo={photos.belly} ownGround={kids} value={a.belly} onChange={(belly) => set({ belly })} />}
+                {step === 'fit' && <FitStep stop={a.fitStop} onChange={(fitStop) => set({ fitStop })} />}
+                {step === 'result' && result && <ResultStep result={result} onOpenSizeChart={onOpenSizeChart ? () => { setOpen(false); onOpenSizeChart() } : undefined} />}
 
-              {error && (
-                <p role="alert" className="mt-4 text-[12px] text-destructive">
-                  {error}
-                </p>
-              )}
+                {error && (
+                  <p role="alert" className="mt-4 text-[12px] text-destructive">
+                    {error}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -590,6 +612,7 @@ function AgeStep({ a, set, onSkip }: { a: Saved; set: (p: Partial<Saved>) => voi
 function ShapeStep({
   kind,
   photo,
+  ownGround = false,
   value,
   onChange,
 }: {
@@ -597,6 +620,9 @@ function ShapeStep({
   /** A reference photo of the area, or three (one per answer); without
    *  one, the line drawing. */
   photo?: ShapePhoto
+  /** The photos bring their own ground (the children's sets) rather than
+   *  a white one to sit on the card's warm ground. */
+  ownGround?: boolean
   value: ShapeLevel
   onChange: (v: ShapeLevel) => void
 }) {
@@ -631,7 +657,7 @@ function ShapeStep({
         <button type="button" onClick={() => move(-1)} disabled={i === 0} aria-label={t('finder.shapePrev')} className={arrow}>
           <ChevronLeft className="size-5" />
         </button>
-        {isPhotoSet(photo) ? (
+        {isPhotoSet(photo) && ownGround ? (
           // One photo per answer, all three loaded at once and cross-faded,
           // so a choice shows at once. The card takes the photos' own shape
           // and ground. Decorative: the radios below carry the meaning.
@@ -647,16 +673,32 @@ function ShapeStep({
                 fill
                 sizes="340px"
                 loading="eager"
-                className={cn('object-cover transition-opacity duration-300 ease-out', n === i ? 'opacity-100' : 'opacity-0')}
+                className={cn('object-cover transition-opacity duration-base ease-standard', n === i ? 'opacity-100' : 'opacity-0')}
               />
             ))}
           </div>
         ) : (
-          // A single photo sits on the card's warm ground: multiplied, its own
-          // near-white background disappears into it. Decorative — the radios
-          // below carry the question and the answer.
+          // Photos on a white ground sit on the card's warm one: multiplied,
+          // their background disappears into it. A set of three is stacked and
+          // cross-faded like the one above. Decorative — the radios below
+          // carry the question and the answer.
           <div className="relative h-[200px] w-full max-w-[300px] overflow-hidden rounded-[22px] border border-border/50 bg-[linear-gradient(180deg,#f6f2eb_0%,#eee7dc_100%)] sm:h-[230px]">
-            {photo ? (
+            {isPhotoSet(photo) ? (
+              photo.map((src, n) => (
+                <Image
+                  key={n}
+                  src={src}
+                  alt=""
+                  fill
+                  sizes="300px"
+                  loading="eager"
+                  className={cn(
+                    'object-contain object-bottom mix-blend-multiply transition-opacity duration-base ease-standard',
+                    n === i ? 'opacity-100' : 'opacity-0',
+                  )}
+                />
+              ))
+            ) : photo ? (
               <Image src={photo} alt="" fill sizes="300px" loading="eager" className="object-contain object-bottom mix-blend-multiply" />
             ) : (
               <div className="flex h-full items-center justify-center py-4">
