@@ -149,7 +149,7 @@ describe('motion tokens', () => {
     assert.equal(exitDelay(MOTION_MS.panel), 320)
     const env = install()
     env.html.dataset.motion = 'reduce'
-    assert.equal(motionReduced(), true, 'the footer switch (html[data-motion=reduce])')
+    assert.equal(motionReduced(), true, 'the account setting (html[data-motion=reduce])')
     assert.equal(exitDelay(MOTION_MS.panel), 0)
     install({ reduced: true })
     assert.equal(motionReduced(), true, 'the OS setting (prefers-reduced-motion)')

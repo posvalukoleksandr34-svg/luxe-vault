@@ -32,7 +32,8 @@ export const MOTION_MS = {
 } as const
 
 /**
- * The visitor asked for less motion: in the OS, or with the footer switch.
+ * The visitor asked for less motion: in the OS, or with the switch in
+ * their account settings.
  * Both are mirrored onto <html data-motion="reduce"> (lib/motion-preference.ts
  * and the boot script), which collapses every CSS animation and transition;
  * script-driven motion asks this.

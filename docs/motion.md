@@ -106,8 +106,8 @@ instead of closing them.
 
 ## Reduced motion
 
-`html[data-motion="reduce"]` is set from the OS setting and from the footer
-switch. With it: no view transitions are started (script), any that slip
+`html[data-motion="reduce"]` is set from the OS setting and from the switch in
+the account settings. With it: no view transitions are started (script), any that slip
 through have their animations removed (CSS), CSS durations collapse to zero,
 overlays unmount immediately (`exitDelay()` returns 0), the product details
 do not stagger and buttons do not scale. Nothing is hidden or disabled —
@@ -182,7 +182,7 @@ and a phone or emulation at 390px, in Chrome and Safari.
 12. Checkout: go from cart to checkout and complete a test payment — the
     redirect to the payment provider and back to the success page is an
     ordinary full-page navigation.
-13. Turn on "Reduce motion" (OS or the footer switch): everything still works,
+13. Turn on "Reduce motion" (OS, or the switch in the account settings): everything still works,
     nothing animates, drawers close instantly.
 14. Throttle the network to "Slow 3G": clicking a product never freezes the
     screen for more than about a second; the page arrives with the fade.
