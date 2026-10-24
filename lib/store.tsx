@@ -70,8 +70,14 @@ export type Toast = {
   id: number
   title: string
   description?: string
-  variant?: 'default' | 'success' | 'gold'
+  /** 'error': a failed action — red edge, announced at once, stays longer. */
+  variant?: 'default' | 'success' | 'gold' | 'error'
 }
+
+/** What saving a product in the console came to (lib/stock-sync.ts for conflicts). */
+export type ProductSaveResult =
+  | { ok: true }
+  | { ok: false; error: string; conflicts?: { size: string; color: string; expected: number; actual: number }[]; partial?: boolean }
 
 export type PanelState = 'cart' | 'checkout' | 'user' | 'support' | 'chat' | null
 
@@ -280,8 +286,8 @@ type StoreContextValue = {
   updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>
   logout: () => Promise<void>
 
-  addProduct: (p: Product) => Promise<boolean>
-  updateProduct: (p: Product) => Promise<boolean>
+  addProduct: (p: Product) => Promise<ProductSaveResult>
+  updateProduct: (p: Product) => Promise<ProductSaveResult>
   deleteProduct: (id: string) => Promise<boolean>
 
   paymentMethods: string[]
@@ -1067,7 +1073,8 @@ function maybeSendWelcome() {
     (t: Omit<Toast, 'id'>) => {
       const id = ++toastSeq
       setToasts((prev) => [...prev, { ...t, id }])
-      setTimeout(() => dismissToast(id), 3200)
+      // An error is read, not glanced at: it stays until it has had time to be.
+      setTimeout(() => dismissToast(id), t.variant === 'error' ? 9000 : 3200)
     },
     [dismissToast],
   )
@@ -1713,7 +1720,7 @@ function maybeSendWelcome() {
   // back and the real reason is shown — silently dropping a failed save is
   // how an admin ends up believing a product exists when it does not.
   const addProduct = useCallback(
-    async (p: Product) => {
+    async (p: Product): Promise<ProductSaveResult> => {
       const previous = products
       setProducts((prev) => [p, ...prev])
       try {
@@ -1723,22 +1730,22 @@ function maybeSendWelcome() {
           body: JSON.stringify(p),
         })
         const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data?.error ?? 'Failed to save product')
+        if (!res.ok) throw new Error(data?.error ?? 'Не удалось сохранить товар')
         setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
         forgetCachedProduct(p.id)
         pushToast({ title: t('toast.productAdded'), variant: 'success' })
-        return true
+        return { ok: true }
       } catch (e) {
         setProducts(previous)
-        pushToast({ title: (e as Error).message, variant: 'default' })
-        return false
+        pushToast({ title: (e as Error).message, variant: 'error' })
+        return { ok: false, error: (e as Error).message }
       }
     },
     [products, pushToast, t, forgetCachedProduct],
   )
 
   const updateProduct = useCallback(
-    async (p: Product) => {
+    async (p: Product): Promise<ProductSaveResult> => {
       const previous = products
       setProducts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
       try {
@@ -1748,15 +1755,22 @@ function maybeSendWelcome() {
           body: JSON.stringify(p),
         })
         const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data?.error ?? 'Failed to update product')
+        if (res.status === 409 && data?.code === 'STOCK_CONFLICT') {
+          // Not a failure to hide: the live numbers go back to the form.
+          setProducts(previous)
+          if (data.partial) forgetCachedProduct(p.id)
+          pushToast({ title: data.error, variant: 'error' })
+          return { ok: false, error: data.error, conflicts: data.conflicts, partial: Boolean(data.partial) }
+        }
+        if (!res.ok) throw new Error(data?.error ?? 'Не удалось сохранить товар')
         setProducts((prev) => prev.map((x) => (x.id === p.id ? data.product : x)))
         forgetCachedProduct(p.id)
         pushToast({ title: t('toast.productUpdated'), variant: 'success' })
-        return true
+        return { ok: true }
       } catch (e) {
         setProducts(previous)
-        pushToast({ title: (e as Error).message, variant: 'default' })
-        return false
+        pushToast({ title: (e as Error).message, variant: 'error' })
+        return { ok: false, error: (e as Error).message }
       }
     },
     [products, pushToast, t, forgetCachedProduct],
@@ -1772,14 +1786,14 @@ function maybeSendWelcome() {
         })
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          throw new Error(data?.error ?? 'Failed to delete product')
+          throw new Error(data?.error ?? 'Не удалось удалить товар')
         }
         forgetCachedProduct(id)
         pushToast({ title: t('toast.productDeleted'), variant: 'default' })
         return true
       } catch (e) {
         setProducts(previous)
-        pushToast({ title: (e as Error).message, variant: 'default' })
+        pushToast({ title: (e as Error).message, variant: 'error' })
         return false
       }
     },

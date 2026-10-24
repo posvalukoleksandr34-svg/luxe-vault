@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from './confirm-dialog'
 import { ArrowLeft, FileText, Loader2, Mail, Paperclip, Search, Send, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { ACCEPTED_TYPES, MAX_FILES, MAX_TOTAL_BYTES, formatBytes, prepareAttachment } from '@/lib/support/client'
@@ -86,7 +87,7 @@ export function SupportManager() {
       setTickets(data.tickets ?? [])
       setCounts(data.counts ?? null)
     } catch (e) {
-      pushToast({ title: 'Не удалось загрузить обращения', description: (e as Error).message, variant: 'default' })
+      pushToast({ title: 'Не удалось загрузить обращения', description: (e as Error).message, variant: 'error' })
     } finally {
       setLoading(false)
     }
@@ -108,7 +109,7 @@ export function SupportManager() {
       setDetail(data.ticket)
       setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, unread: false } : t)))
     } catch (e) {
-      pushToast({ title: 'Не удалось открыть обращение', description: (e as Error).message, variant: 'default' })
+      pushToast({ title: 'Не удалось открыть обращение', description: (e as Error).message, variant: 'error' })
       setSelected(null)
     } finally {
       setDetailLoading(false)
@@ -130,7 +131,7 @@ export function SupportManager() {
       void load()
     } catch {
       setDetail(previous)
-      pushToast({ title: 'Не удалось изменить статус', variant: 'default' })
+      pushToast({ title: 'Не удалось изменить статус', variant: 'error' })
     }
   }
 
@@ -156,7 +157,7 @@ export function SupportManager() {
       void load()
       pushToast({ title: 'Обращение удалено', variant: 'default' })
     } catch {
-      pushToast({ title: 'Не удалось удалить обращение', variant: 'default' })
+      pushToast({ title: 'Не удалось удалить обращение', variant: 'error' })
     }
   }
 
@@ -281,37 +282,14 @@ export function SupportManager() {
         </div>
       </div>
 
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={() => setConfirmDelete(false)}
-            aria-hidden
-          />
-          <div className="animate-fade-up relative w-full max-w-sm border border-border bg-popover p-6 shadow-2xl">
-            <h3 className="font-serif text-lg font-bold text-foreground">Удалить обращение?</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Переписка и вложения будут удалены без возможности восстановления.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 border border-border py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDelete()}
-                className="flex-1 border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Удалить обращение?"
+        description="Переписка и вложения будут удалены без возможности восстановления."
+        confirmLabel="Удалить обращение"
+        onConfirm={() => void handleDelete()}
+      />
     </div>
   )
 }
@@ -470,6 +448,7 @@ function AdminTicket({
       </div>
 
       <ol className="max-h-[60vh] space-y-3 overflow-y-auto p-5">
+        {ticket.messages.length === 0 && <li className="text-sm text-muted-foreground">Сообщений в переписке пока нет.</li>}
         {ticket.messages.map((m) => {
           const staff = m.author === 'staff'
           return (

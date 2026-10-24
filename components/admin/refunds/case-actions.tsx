@@ -5,6 +5,7 @@ import { FINDING_RU, INSPECTION_RU, INVESTIGATION_RU, RESOLUTION_RU, TRACKING_RU
 import { INSPECTION_OUTCOMES, INVESTIGATION_STATUSES, RESOLUTIONS, TRACKING_STATUSES, type Resolution, type TrackingStatus } from '@/lib/refunds/types'
 import type { Detail } from './case-view'
 import { api, Button, Field, inputClass, parseChf, type Me } from './shared'
+import { cn } from '@/lib/utils'
 
 /**
  * The form behind each action button. It collects what the command needs and
@@ -114,7 +115,7 @@ export function ActionForm({ command, detail, me, onDone, onCancel }: Props) {
             <span>
               {i.name} · {i.size} (заявлено {i.qtyRequested})
             </span>
-            <input type="number" min={0} max={i.qtyRequested} value={extra[i.id] ?? String(i.qtyRequested)} onChange={(e) => set(i.id, e.target.value)} className={`${inputClass} w-20`} />
+            <input type="number" min={0} max={i.qtyRequested} value={extra[i.id] ?? String(i.qtyRequested)} onChange={(e) => set(i.id, e.target.value)} className={cn(inputClass, 'w-20')} />
           </label>
         ))}
         {footer(() => void run({ lines: detail.items.map((i) => ({ itemId: i.id, qtyReceived: Number(extra[i.id] ?? i.qtyRequested) })) }))}
@@ -140,7 +141,7 @@ export function ActionForm({ command, detail, me, onDone, onCancel }: Props) {
                   </option>
                 ))}
               </select>
-              <input aria-label={`Заметка: ${i.name}`} placeholder="Заметка проверки" value={extra[`n:${i.id}`] ?? ''} onChange={(e) => set(`n:${i.id}`, e.target.value)} className={`${inputClass} sm:col-span-2`} />
+              <input aria-label={`Заметка: ${i.name}`} placeholder="Заметка проверки" value={extra[`n:${i.id}`] ?? ''} onChange={(e) => set(`n:${i.id}`, e.target.value)} className={cn(inputClass, 'sm:col-span-2')} />
             </div>
           ))}
         <label className="flex items-center gap-2">
@@ -379,7 +380,7 @@ function ApproveForm({
             <span>
               {i.name} · {i.size} <span className="text-xs text-muted-foreground">(заявлено {i.qtyRequested}, получено {i.qtyReceived}{i.inspectionOutcome ? `, ${INSPECTION_RU[i.inspectionOutcome]}` : ''})</span>
             </span>
-            <input type="number" min={0} max={i.qtyRequested} value={qty[i.id] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [i.id]: Math.max(0, Math.min(i.qtyRequested, Math.trunc(Number(e.target.value) || 0))) }))} className={`${inputClass} w-20`} />
+            <input type="number" min={0} max={i.qtyRequested} value={qty[i.id] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [i.id]: Math.max(0, Math.min(i.qtyRequested, Math.trunc(Number(e.target.value) || 0))) }))} className={cn(inputClass, 'w-20')} />
           </label>
         ))}
       </fieldset>

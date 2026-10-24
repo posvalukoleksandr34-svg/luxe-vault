@@ -18,8 +18,13 @@ import { applyConsent, trackMetaPageView } from '@/lib/analytics-vendors'
 export function AnalyticsManager() {
   const pathname = usePathname()
   const firstPath = useRef(true)
+  // Never in the admin console: its addresses carry order numbers and
+  // customers' names (/admin/orders?order=LV-…), and a staff member who once
+  // accepted analytics on the shop must not send them to Google or Meta.
+  const inConsole = pathname?.startsWith('/admin') ?? false
 
   useEffect(() => {
+    if (inConsole) return
     let idle: number | undefined
     let timer: ReturnType<typeof setTimeout> | undefined
     if ('requestIdleCallback' in window) idle = window.requestIdleCallback(applyConsent, { timeout: 4000 })
@@ -32,7 +37,7 @@ export function AnalyticsManager() {
       if (timer !== undefined) clearTimeout(timer)
       window.removeEventListener(CONSENT_EVENT, applyConsent)
     }
-  }, [])
+  }, [inConsole])
 
   // The Pixel's first PageView is sent when it starts; later client-side
   // navigations are reported here.
@@ -41,8 +46,9 @@ export function AnalyticsManager() {
       firstPath.current = false
       return
     }
+    if (inConsole) return
     trackMetaPageView()
-  }, [pathname])
+  }, [pathname, inConsole])
 
   return null
 }

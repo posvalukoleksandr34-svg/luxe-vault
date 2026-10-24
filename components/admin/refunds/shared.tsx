@@ -96,7 +96,7 @@ export const RISK_TONE = { low: 'muted', medium: 'amber', high: 'red' } as const
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="block text-xs text-muted-foreground">{label}</span>
       {children}
       {hint && <span className="block text-[11px] text-muted-foreground/80">{hint}</span>}
     </label>
@@ -122,8 +122,8 @@ export function Button({
   type?: 'button' | 'submit'
 }) {
   const tones = {
-    default: 'border-border text-foreground hover:border-gold/50',
-    primary: 'border-gold bg-gold/10 font-medium text-foreground hover:bg-gold/20',
+    default: 'border-border bg-card text-foreground hover:bg-accent',
+    primary: 'border-foreground bg-foreground font-medium text-background hover:bg-foreground/85',
     danger: 'border-red-500/40 text-red-700 hover:bg-red-500/10',
   }
   return (

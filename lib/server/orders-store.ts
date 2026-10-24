@@ -704,12 +704,19 @@ export async function adoptPaymentIntent(
   return order
 }
 
+/** The order was no longer in the status the caller saw (expectedStatus). */
+export const STATUS_CONFLICT = 'conflict' as const
+
 export async function setOrderStatus(
   id: string,
   status: OrderStatus,
   trackingNumber?: string | null,
   courierName?: string | null,
-): Promise<Order | null> {
+  /** The status the admin was looking at. When given, the save happens only
+   *  if the order is still in it — a colleague's change (or the payment
+   *  webhook's) is not overwritten from a stale screen. */
+  expectedStatus?: OrderStatus,
+): Promise<Order | null | typeof STATUS_CONFLICT> {
   // processing_at / shipped_at / delivered_at / cancelled_at are stamped by the
   // orders_stamp_status trigger, so the timeline cannot drift from the status.
   const patch: Record<string, unknown> = { status }
@@ -735,15 +742,17 @@ export async function setOrderStatus(
     courier_name?: string | null
   } | null
 
-  const { data, error } = await createAdminClient()
-    .from('orders')
-    .update(patch)
-    .eq('order_number', id)
-    .select(await resolveOrderSelect())
-    .maybeSingle()
+  if (expectedStatus && prev && prev.status !== expectedStatus) return STATUS_CONFLICT
+
+  let update = createAdminClient().from('orders').update(patch).eq('order_number', id)
+  if (expectedStatus) update = update.eq('status', expectedStatus)
+  const { data, error } = await update.select(await resolveOrderSelect()).maybeSingle()
 
   if (error) throw new Error()
-  if (!data) return null
+  if (!data) {
+    // Gone, or (with expectedStatus) moved on between the read and the write.
+    return expectedStatus && prev ? STATUS_CONFLICT : null
+  }
 
   const updated = rowToOrder(asRow(data))
 

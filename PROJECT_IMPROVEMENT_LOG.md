@@ -4,6 +4,76 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Admin console: audit and improvement round (2026-10-23)
+
+Findings, ranked, and the changes are in `docs/admin-console.md`. In short:
+
+- **Integrity:**
+  - Saving a product no longer overwrites stock sold while the form was open
+    (compare-and-set via `stockBase`, `lib/stock-sync.ts`). The stock page does
+    the same (`expectedStock`).
+  - Order status saves carry `expectedStatus` and are refused (409) if the
+    order moved on.
+- **Safety:**
+  - Order status changes are staged with an explicit save. Cancelling and
+    "refunded" ask once more and say what they do.
+  - Refunds, product deletion and the remaining deletions use one confirmation
+    dialog that states the consequences.
+  - The product editor guards unsaved edits (close, Escape, reload). It
+    validates name and price inline and never saves a CHF 0 product by
+    accident.
+  - Analytics and the cookie banner are off under `/admin`.
+- **Workflows:**
+  - One grouped navigation on every admin page, with counts of what waits; a
+    drawer on phones.
+  - The dashboard leads with "Требует внимания", counted from the database.
+  - Orders have a "К отправке" tab, a period filter, filters kept in the
+    address, refresh, and cards on phones.
+  - The product list has filters, sort, `?edit=` / `?new=`, and readable slugs
+    for new products.
+  - Customers link to their orders.
+- **Consistency:**
+  - Shared page header, confirmation dialog and error toasts (announced, kept
+    longer).
+  - One neutral palette and typeface for the console via `data-admin-shell`.
+- **No schema change, no migration.**
+
+### Tests run this round (real results)
+
+| Check | Result |
+|---|---|
+| `npm run typecheck`, `npx next lint` | clean |
+| `test:store` | 53/53 (14 new in `tests/store/admin-console.test.ts`) |
+| `test:security` | 138/138 |
+| `test:refunds` | 61/61 |
+| `test:assistant` | 105/105 |
+| `scripts/ci/check-client-bundle.sh` | clean |
+| Production build | OK |
+| Admin end-to-end on the production build (real Postgres + PostgREST): API, browser at 1280 px and 390 px | 70/70 on the final build, and on the three builds before it |
+| Regression: review-request e2e | 100/100 |
+| Regression: refund integration | 107/107 |
+| Regression: product-review suite | 82/82 |
+| Storefront smoke (home, catalogue, product, add to cart, checkout, cookie banner) at 1280 px and 390 px | 16/16 |
+
+The admin e2e covers:
+
+- stock conflicts: product save and the stock page;
+- order status conflicts;
+- server validation;
+- staged status with confirmation;
+- the unsaved-changes guard and Escape;
+- inline validation;
+- delete confirmation;
+- readable slugs;
+- no analytics in the console, against a shop control page built with a test
+  GA id, all requests intercepted;
+- no sideways scroll on nine admin pages at 390 px;
+- the phone drawer and order cards.
+
+Not run: `scratchpad/price-suite.js`. It was written for an older harness with
+a fake Supabase (`/__state`) and does not run against the current one. The
+checkout pricing code was not changed this round.
+
 ## Post-delivery review requests (2026-10-23)
 
 The full design is in `docs/review-requests.md`; the owner steps are in `docs/audit/MANUAL_ACTIONS_REQUIRED.md` §0a.

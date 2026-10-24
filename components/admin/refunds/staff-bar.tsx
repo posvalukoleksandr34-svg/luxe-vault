@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ROLE_RU } from '@/lib/refunds/labels-ru'
 import type { StaffRole } from '@/lib/refunds/types'
 import { api, Button, inputClass, type Me } from './shared'
+import { cn } from '@/lib/utils'
 
 /**
  * Who is working in the console. Staff confirm themselves with their own
@@ -72,7 +73,7 @@ export function StaffBar({ me, onChange }: { me: Me; onChange: () => void }) {
     >
       <p>Кто вы? Решения по возвратам записываются на конкретного сотрудника.</p>
       <div className="flex flex-wrap items-end gap-3">
-        <select aria-label="Сотрудник" value={staffId} onChange={(e) => setStaffId(e.target.value)} className={`${inputClass} max-w-[220px]`}>
+        <select aria-label="Сотрудник" value={staffId} onChange={(e) => setStaffId(e.target.value)} className={cn(inputClass, 'max-w-[220px]')}>
           {me.choices.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -86,7 +87,7 @@ export function StaffBar({ me, onChange }: { me: Me; onChange: () => void }) {
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           placeholder="Личный пароль"
-          className={`${inputClass} max-w-[240px]`}
+          className={cn(inputClass, 'max-w-[240px]')}
         />
         <Button type="submit" tone="primary" busy={busy} disabled={!staffId || !passphrase}>
           Войти

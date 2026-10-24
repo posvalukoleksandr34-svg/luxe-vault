@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { CLAIM_RU, RESOLUTION_RU, chf } from '@/lib/refunds/labels-ru'
 import { CLAIM_TYPES, type ClaimType, type Resolution } from '@/lib/refunds/types'
 import { api, Button, Field, inputClass } from './shared'
+import { cn } from '@/lib/utils'
 
 /**
  * A case filed by staff for a customer: an order number, then the same
@@ -142,7 +143,7 @@ export function NewCaseDialog({ onClose, onCreated }: { onClose: () => void; onC
                           max={l.available}
                           value={qty[l.orderItemId] ?? 0}
                           onChange={(e) => setQty((q) => ({ ...q, [l.orderItemId]: Math.max(0, Math.min(l.available, Math.trunc(Number(e.target.value) || 0))) }))}
-                          className={`${inputClass} w-20`}
+                          className={cn(inputClass, 'w-20')}
                         />
                       </label>
                     )

@@ -72,11 +72,16 @@ export async function GET() {
  *
  * This is the only path that can RAISE stock outside a restock — it bypasses
  * nothing, because the check constraint still refuses a negative.
+ *
+ * `expectedStock` (sent by the console) is the number the admin was looking
+ * at. The write happens only if the stock is still that number; if an order
+ * took a unit meanwhile the answer is 409 with the live value, rather than
+ * the admin's stale count silently putting the sold unit back on sale.
  */
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  const body = await readJsonObject<{ id?: unknown; stock?: unknown; lowStockAt?: unknown; sku?: unknown }>(request)
+  const body = await readJsonObject<{ id?: unknown; stock?: unknown; expectedStock?: unknown; lowStockAt?: unknown; sku?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -89,7 +94,7 @@ export async function PATCH(request: NextRequest) {
   if (body.stock !== undefined) {
     const stock = Math.trunc(Number(body.stock))
     if (!Number.isFinite(stock) || stock < 0) {
-      return NextResponse.json({ error: 'Stock must be zero or more' }, { status: 400 })
+      return NextResponse.json({ error: 'Остаток не может быть меньше нуля' }, { status: 400 })
     }
     patch.stock = stock
   }
@@ -97,7 +102,7 @@ export async function PATCH(request: NextRequest) {
   if (body.lowStockAt !== undefined) {
     const low = Math.trunc(Number(body.lowStockAt))
     if (!Number.isFinite(low) || low < 0) {
-      return NextResponse.json({ error: 'Threshold must be zero or more' }, { status: 400 })
+      return NextResponse.json({ error: 'Порог не может быть меньше нуля' }, { status: 400 })
     }
     patch.low_stock_at = low
   }
@@ -110,10 +115,17 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { error } = await createAdminClient()
-    .from('product_variants')
-    .update(patch)
-    .eq('id', id)
+  let expected: number | undefined
+  if (body.expectedStock !== undefined) {
+    expected = Math.trunc(Number(body.expectedStock))
+    if (!Number.isFinite(expected) || expected < 0) {
+      return NextResponse.json({ error: 'Некорректный ожидаемый остаток' }, { status: 400 })
+    }
+  }
+
+  let query = createAdminClient().from('product_variants').update(patch).eq('id', id)
+  if (expected !== undefined && patch.stock !== undefined) query = query.eq('stock', expected)
+  const { data: updated, error } = await query.select('id, stock')
 
   if (error) {
     // 23505 is the unique SKU index — a duplicate code is an admin typo, not
@@ -121,8 +133,22 @@ export async function PATCH(request: NextRequest) {
     const duplicate = error.code === '23505'
     console.error('[admin/inventory] update failed:', error.message)
     return NextResponse.json(
-      { error: duplicate ? 'That SKU is already used by another variant' : 'Could not update stock' },
+      { error: duplicate ? 'Такой артикул (SKU) уже у другого варианта' : 'Не удалось сохранить остаток' },
       { status: duplicate ? 409 : 500 },
+    )
+  }
+
+  if (!(updated ?? []).length) {
+    const { data: now } = await createAdminClient().from('product_variants').select('stock').eq('id', id).maybeSingle()
+    if (!now) return NextResponse.json({ error: 'Вариант не найден — возможно, его удалили' }, { status: 404 })
+    const actual = Number((now as { stock: number }).stock) || 0
+    return NextResponse.json(
+      {
+        error: `Остаток уже изменился: было ${expected}, сейчас ${actual}. Ничего не сохранено — проверьте и введите снова.`,
+        code: 'STOCK_CONFLICT',
+        actual,
+      },
+      { status: 409 },
     )
   }
 
