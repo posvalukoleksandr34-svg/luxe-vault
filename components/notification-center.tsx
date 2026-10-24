@@ -3,6 +3,8 @@
 import { AlertTriangle, Bell, Check, Loader2, Package, RotateCcw } from 'lucide-react'
 import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { MOTION_MS } from '@/lib/motion'
+import { usePresence } from '@/lib/use-presence'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Notification } from '@/lib/types'
@@ -25,6 +27,8 @@ export function NotificationCenter() {
   const [items, setItems] = useState<Notification[]>([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
+  // Drops from its trigger and lifts away on close (lib/use-presence.ts).
+  const popover = usePresence(open, MOTION_MS.fast)
   const [loading, setLoading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -126,11 +130,13 @@ export function NotificationCenter() {
         )}
       </button>
 
-      {open && (
+      {popover.mounted && (
         <>
           {/* Click-catcher sits below the panel but above the page. */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover shadow-2xl">
+          {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />}
+          <div data-state={popover.state}
+            inert={!open || undefined}
+            className="motion-popover absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {t('notifications.title')}

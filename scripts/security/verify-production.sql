@@ -79,6 +79,34 @@ checks as (
   select 'migration 0052: one product review per customer per product',
          case when to_regclass('public.reviews_one_per_user_product_idx') is not null then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0052_verified_buyer_reviews.sql'
+  union all
+  select 'migration 0056: unpaid reservations expire (expirable_unpaid_orders)',
+         case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'expirable_unpaid_orders') then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0056_unpaid_order_reservations.sql — preview first: /api/cron/reservations?dry=1'
+  union all
+  select 'migration 0057: product/collection coupons apply to their lines only (redeem_coupon takes p_lines)',
+         case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'redeem_coupon' and pg_get_function_identity_arguments(p.oid) like '%p_lines%') then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0057_coupon_line_scope.sql'
+  union all
+  select 'migration 0058: search_products is service-role only',
+         case when not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'search_products' and (has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE'))) then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0058_search_products_limits.sql'
+  union all
+  select 'migration 0059: refund cases and ledger (refund_transactions, return_requests.case_number)',
+         case when to_regclass('public.refund_transactions') is not null and to_regclass('public.refund_case_events') is not null
+               and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'return_requests' and column_name = 'case_number')
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0059_refund_cases.sql — refund screens and Stripe refund webhooks fail until it is'
+  union all
+  select 'migration 0059: one ledger row per Stripe refund (unique provider refund id)',
+         case when to_regclass('public.refund_transactions_provider_refund_key') is not null then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0059_refund_cases.sql'
+  union all
+  select 'migration 0060: review requests (review_requests, email_suppressions, claim_review_requests)',
+         case when to_regclass('public.review_requests') is not null and to_regclass('public.email_suppressions') is not null
+               and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'claim_review_requests')
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0060_review_requests.sql'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -120,7 +148,11 @@ checks as (
   select 'no customer access to public.' || t,
          case when not exists (select 1 from pg_policies where schemaname = 'public' and tablename = t) then 'OK' else 'PROBLEM' end,
          'server-only table: drop its policies'
-  from unnest(array['admin_sessions', 'admin_totp_steps', 'rate_limits', 'stripe_events', 'order_payment_risk', 'payment_blocks']) as t
+  from unnest(array['admin_sessions', 'admin_totp_steps', 'rate_limits', 'stripe_events', 'order_payment_risk', 'payment_blocks',
+                    -- 0059: staff, refund policy, ledger and case records; 0060: review requests.
+                    'admin_staff', 'refund_policies', 'refund_transactions', 'refund_case_evidence', 'refund_case_messages',
+                    'refund_case_events', 'refund_risk_assessments', 'refund_approvals', 'refund_notifications',
+                    'review_requests', 'email_suppressions']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action

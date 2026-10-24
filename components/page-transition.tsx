@@ -1,6 +1,8 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
+import { pageTransitionRunning } from '@/lib/page-transition'
 
 /**
  * A short dissolve on every route change.
@@ -21,9 +23,18 @@ import { usePathname } from 'next/navigation'
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  return (
-    <div key={pathname} className="page-enter">
-      {children}
-    </div>
-  )
+  return <PageEnter key={pathname}>{children}</PageEnter>
+}
+
+/**
+ * The fade is the fallback. When the page arrives inside a view transition
+ * (lib/page-transition.ts — a link click in a browser that supports them),
+ * the browser is already crossfading the whole view and a second fade would
+ * double it — and, starting only once the transition ends, would replay it.
+ * Decided once, when this page mounts: on the server and at hydration no
+ * transition is running, so both render the same class.
+ */
+function PageEnter({ children }: { children: React.ReactNode }) {
+  const [fade] = useState(() => !pageTransitionRunning())
+  return <div className={fade ? 'page-enter' : undefined}>{children}</div>
 }

@@ -1528,7 +1528,9 @@ iframe[src*="elements-inner-easel"] {
  * fixed element in the application.
  */
 .page-enter {
-  animation: page-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* The fallback route-change fade (browser back/forward, and browsers
+     without view transitions); see "Motion system" below. */
+  animation: page-enter var(--motion-page) var(--ease-standard) both;
 }
 
 @keyframes page-enter {
@@ -1670,7 +1672,8 @@ iframe[src*="elements-inner-easel"] {
   z-index: 105;
   visibility: hidden;
   pointer-events: none;
-  transition: visibility 0s linear 420ms;
+  /* Leaves the page once the close below has finished. */
+  transition: visibility 0s linear calc(var(--motion-base) + 60ms);
 }
 
 .site-menu[data-state='open'] {
@@ -1686,12 +1689,12 @@ iframe[src*="elements-inner-easel"] {
   opacity: 0;
   /* A drag on the dimmed page must not scroll it on a touch screen. */
   touch-action: none;
-  transition: opacity 340ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity var(--motion-base) var(--ease-exit);
 }
 
 .site-menu[data-state='open'] > .site-menu__overlay {
   opacity: 1;
-  transition-duration: 480ms;
+  transition: opacity var(--motion-panel) var(--ease-standard);
 }
 
 .site-menu__panel {
@@ -1706,9 +1709,10 @@ iframe[src*="elements-inner-easel"] {
   outline: none;
   opacity: 0;
   transform: translate3d(-100%, 0, 0);
+  /* Motion tokens (globals.css, "Motion system"): out on the exit curve. */
   transition:
-    transform 380ms cubic-bezier(0.7, 0, 0.84, 0),
-    opacity 300ms cubic-bezier(0.4, 0, 1, 1) 80ms;
+    transform var(--motion-base) var(--ease-exit),
+    opacity var(--motion-fast) var(--ease-exit) 60ms;
 }
 
 @media (min-width: 640px) {
@@ -1722,9 +1726,11 @@ iframe[src*="elements-inner-easel"] {
 .site-menu[data-state='open'] > .site-menu__panel {
   opacity: 1;
   transform: none;
+  /* In on the emphasized curve, at the shared-element length: the largest
+     surface on the site, so the slowest settle — still under half a second. */
   transition:
-    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 360ms cubic-bezier(0, 0, 0.2, 1);
+    transform var(--motion-shared) var(--ease-emphasized),
+    opacity var(--motion-base) var(--ease-standard);
 }
 
 /* The header's row, repeated: same height, same inset as the menu button, so
@@ -2567,3 +2573,342 @@ main[tabindex='-1']:focus {
 .finder-range:focus { outline: none; }
 .finder-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
 .finder-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px hsl(var(--gold) / 0.55); }
+
+/* ---------------------------------------------------------------------------
+   The admin console's palette (components/admin/admin-shell.tsx sets
+   data-admin-shell). Neutral greys and black instead of the shop's ivory and
+   gold: the console is a tool, read for hours, and its accents should mean
+   "selected" or "primary", not decoration. Set on body, so dialogs and toasts
+   — portalled to body — follow. Status colours (paid, cancelled, errors) are
+   not tokens and keep their meaning.
+   ------------------------------------------------------------------------- */
+body:has([data-admin-shell]) {
+  --background: 0 0% 98%;
+  --card: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --secondary: 0 0% 95%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 36%;
+  --accent: 0 0% 94%;
+  --border: 0 0% 88%;
+  --input: 0 0% 82%;
+  --ring: 0 0% 15%;
+  --gold-hairline: 0 0% 78%;
+  --gold: 0 0% 12%;
+  --gold-light: 0 0% 12%;
+  --gold-dark: 0 0% 12%;
+  --gold-ink: 0 0% 10%;
+  --gold-foreground: 0 0% 98%;
+  --primary-foreground: 0 0% 98%;
+  /* :root sets the accent from the shop's gold; checkboxes and radios in the
+     console tick in black like everything else selected. */
+  accent-color: hsl(0 0% 12%);
+}
+body:has([data-admin-shell]) :focus-visible {
+  outline: 2px solid hsl(0 0% 10%);
+  outline-offset: 2px;
+}
+/* One typeface in the console: the shop's display serif is for the shop. */
+body:has([data-admin-shell]) .font-serif {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+/* A scrolling table's own box is the containing block of what is positioned
+   inside it — otherwise an sr-only label in a header cell escapes the
+   scroller and widens the whole page on a phone. */
+body:has([data-admin-shell]) .overflow-x-auto {
+  position: relative;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion system
+   ---------------------------------------------------------------------------
+   One vocabulary for every movement on the site. Durations and curves live
+   here as custom properties; lib/motion.ts mirrors the durations for the
+   script that needs them (unmounting after an exit). docs/motion.md explains
+   how a new page or component joins in.
+
+   What moves, and how:
+   - Page to page (lib/page-transition.ts): the view crossfades — the old page
+     leaves quickly, the new one settles in with a few pixels of rise (or of
+     fall, going back up the hierarchy). The header, the phone tab bar, the
+     support button, the cookie banner and the toasts are lifted out of the
+     picture for the duration, so the frame of the site never moves.
+   - A product: its photo travels from the clicked card into the gallery and
+     the details settle in one after another; back from the product page to
+     a listing that shows it, the photo returns to its card.
+   - Results changing in place (filters, sort): only the results crossfade,
+     and their height eases to the new count; the controls answer at once.
+   - Drawers, dialogs, popovers (lib/use-presence.ts and the .motion-*
+     classes below): arrive on the emphasized curve, leave faster on the exit
+     curve, and stay mounted until they have left.
+   - Press: the site's primary buttons give a little under the finger.
+
+   Only opacity and the individual `translate`/`scale` properties move.
+   Never `transform` on an element that may contain fixed descendants — see
+   the page-enter note above — and never `transition: all`.
+--------------------------------------------------------------------------- */
+
+:root {
+  --motion-instant: 120ms;
+  --motion-fast: 180ms;
+  --motion-base: 240ms;
+  --motion-panel: 320ms;
+  --motion-page: 300ms;
+  --motion-shared: 420ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-rise: 8px;
+}
+
+/* Phones: shorter distances, shorter times. A mid-range phone should never
+   feel as if it is catching up with its own interface. */
+@media (max-width: 767px) {
+  :root {
+    --motion-panel: 280ms;
+    --motion-page: 260ms;
+    --motion-shared: 360ms;
+    --motion-rise: 6px;
+  }
+}
+
+/* --- Page transitions (View Transitions API) ----------------------------- */
+
+/* The persistent frame: named only while a page transition runs, so outside
+   one nothing changes (a permanent name would make the header a backdrop
+   root and break the blur of the menus that open from it). Each appears at
+   most once per page. */
+html:is([data-vt='forward'], [data-vt='back']) .site-header {
+  view-transition-name: site-header;
+}
+html:is([data-vt='forward'], [data-vt='back']) [data-vt-chrome='bottom-nav'] {
+  view-transition-name: bottom-nav;
+}
+html:is([data-vt='forward'], [data-vt='back']) [data-chat-launcher] {
+  view-transition-name: chat-launcher;
+}
+html:is([data-vt='forward'], [data-vt='back']) [data-vt-chrome='cookies'] {
+  view-transition-name: cookie-banner;
+}
+html:is([data-vt='forward'], [data-vt='back']) [data-vt-chrome='toasts'] {
+  view-transition-name: toasts;
+}
+
+/* A menu open in the header when one of its links is followed would be
+   photographed as part of the header and stretch it; it simply goes. */
+html:is([data-vt='forward'], [data-vt='back']) .motion-popover {
+  visibility: hidden;
+}
+
+/* The page itself is the root picture: the size of the viewport, so it is
+   always exactly what the visitor was looking at. */
+::view-transition-old(root) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(root) {
+  animation: vt-settle-in var(--motion-page) var(--ease-emphasized) both;
+}
+html[data-vt='back']::view-transition-new(root) {
+  animation-name: vt-settle-in-back;
+}
+
+/* The frame holds still: identical on both sides, it is simply shown. */
+::view-transition-group(site-header),
+::view-transition-group(bottom-nav),
+::view-transition-group(chat-launcher),
+::view-transition-group(cookie-banner),
+::view-transition-group(toasts) {
+  animation-duration: var(--motion-page);
+  animation-timing-function: var(--ease-standard);
+}
+
+/* A product photo travelling between its card and its page. The group moves
+   and resizes; the two photographs crossfade inside it. */
+::view-transition-group(*.product-media) {
+  animation-duration: var(--motion-shared);
+  animation-timing-function: var(--ease-emphasized);
+}
+::view-transition-old(*.product-media),
+::view-transition-new(*.product-media) {
+  animation-duration: var(--motion-shared);
+  animation-timing-function: var(--ease-standard);
+  /* Same 3:4 frame on both sides; cover keeps the photo from stretching
+     during the resize if a frame rounds differently. */
+  object-fit: cover;
+}
+
+/* Arriving on a product from its card: the details settle in one after
+   another while the photo travels. Opacity only, and short: the page is
+   usable from the first frame. */
+html[data-vt-arrive='product'] [data-motion-stagger] > * {
+  animation: vt-fade-in var(--motion-base) var(--ease-standard) both;
+}
+html[data-vt-arrive='product'] [data-motion-stagger] > :nth-child(2) { animation-delay: 30ms; }
+html[data-vt-arrive='product'] [data-motion-stagger] > :nth-child(3) { animation-delay: 60ms; }
+html[data-vt-arrive='product'] [data-motion-stagger] > :nth-child(4) { animation-delay: 90ms; }
+html[data-vt-arrive='product'] [data-motion-stagger] > :nth-child(5) { animation-delay: 110ms; }
+html[data-vt-arrive='product'] [data-motion-stagger] > :nth-child(n + 6) { animation-delay: 130ms; }
+
+/* Results changing in place: the rest of the page is shown as it now is,
+   at once; only the results area crossfades and eases to its new height. */
+html[data-vt='results'] [data-vt-results] {
+  view-transition-name: results;
+}
+html[data-vt='results']::view-transition-old(root) {
+  display: none;
+}
+html[data-vt='results']::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-group(results) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--ease-standard);
+}
+::view-transition-old(results) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+  /* Top-anchored: a shorter list must not squash the old picture. */
+  height: 100%;
+  object-fit: none;
+  object-position: top;
+}
+::view-transition-new(results) {
+  animation: vt-fade-in var(--motion-base) var(--ease-standard) both;
+  height: 100%;
+  object-fit: none;
+  object-position: top;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-settle-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+  }
+}
+@keyframes vt-settle-in-back {
+  from {
+    opacity: 0;
+    translate: 0 calc(-1 * var(--motion-rise));
+  }
+}
+
+/* --- Overlays (lib/use-presence.ts) ---------------------------------------
+   The element is mounted with data-state="closed", flips to "open" a frame
+   later (so there is a start to transition from), and on closing flips back
+   and stays mounted until MOTION_MS says it has left. Entrances use the
+   emphasized curve, exits the faster exit curve. */
+
+.motion-scrim,
+.motion-fade {
+  transition: opacity var(--motion-base) var(--ease-standard);
+}
+.motion-scrim[data-state='closed'],
+.motion-fade[data-state='closed'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.motion-drawer-right,
+.motion-drawer-left,
+.motion-sheet {
+  transition: translate var(--motion-panel) var(--ease-emphasized);
+}
+.motion-drawer-right[data-state='closed'] {
+  translate: 100% 0;
+}
+.motion-drawer-left[data-state='closed'] {
+  translate: -100% 0;
+}
+.motion-sheet[data-state='closed'] {
+  translate: 0 100%;
+}
+.motion-drawer-right[data-state='closed'],
+.motion-drawer-left[data-state='closed'],
+.motion-sheet[data-state='closed'] {
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--ease-exit);
+  pointer-events: none;
+}
+
+/* Dialogs centred with -translate-x/y-1/2 keep that transform: `translate`
+   and `scale` here are separate properties and compose with it. */
+.motion-dialog {
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    translate var(--motion-panel) var(--ease-emphasized),
+    scale var(--motion-panel) var(--ease-emphasized);
+}
+.motion-dialog[data-state='closed'] {
+  opacity: 0;
+  translate: 0 var(--motion-rise);
+  scale: 0.98;
+  pointer-events: none;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-exit);
+}
+
+/* Menus and popovers drop from their trigger. */
+.motion-popover {
+  transform-origin: top right;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    translate var(--motion-base) var(--ease-emphasized),
+    scale var(--motion-base) var(--ease-emphasized);
+}
+.motion-popover[data-state='closed'] {
+  opacity: 0;
+  translate: 0 -4px;
+  scale: 0.97;
+  pointer-events: none;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-exit);
+}
+
+/* --- Press --------------------------------------------------------------
+   The primary buttons give a little under the finger or the click, and come
+   back on release. Not every button: a full-width row that shrinks reads as
+   a glitch, so this is the site's buttons plus anything marked
+   .motion-press. Keyboard activation has no :active, so focus stays as the
+   focus ring says. */
+@layer base {
+  :where(a, button, [role='button'], summary) {
+    transition-property: color, background-color, border-color, text-decoration-color, opacity, scale;
+  }
+}
+:where(.btn-primary-lv, .btn-secondary-lv, .hero__cta, .motion-press, button.bg-gold-gradient, a.bg-gold-gradient):where(:not(:disabled, [aria-disabled='true'])):active {
+  scale: 0.98;
+  transition-duration: var(--motion-instant);
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   Script skips view transitions when motion is reduced; this is the guard
+   for anything that slips through, and the overlays become instant changes
+   of state (the global rule above already zeroes their durations). */
+html[data-motion='reduce']::view-transition-group(*),
+html[data-motion='reduce']::view-transition-old(*),
+html[data-motion='reduce']::view-transition-new(*) {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  html[data-vt-arrive='product'] [data-motion-stagger] > * {
+    animation: none;
+  }
+  :where(.btn-primary-lv, .btn-secondary-lv, .hero__cta, .motion-press, button.bg-gold-gradient, a.bg-gold-gradient):active {
+    scale: none;
+  }
+}

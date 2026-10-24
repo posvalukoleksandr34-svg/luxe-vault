@@ -1,7 +1,8 @@
 'use client'
 
-import { ArrowLeft, Check, Loader2, Plus, Tag, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { AdminPageHeader } from './admin-shell'
+import { ConfirmDialog } from './confirm-dialog'
+import { Check, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import {
@@ -74,27 +75,10 @@ export function PromoCodesManager({ list }: { list: PromoList | null }) {
   const visible = filter === 'all' ? codes : codes.filter((p) => promoState(p, now) === filter)
 
   return (
-    <main id="main" className="min-h-screen bg-background px-4 py-10 sm:px-6">
-      <div className="mx-auto max-w-5xl">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Назад в админ-панель
-        </Link>
+    <div>
+      <div>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gold/10">
-            <Tag className="size-5 text-gold" />
-          </div>
-          <div>
-            <h1 className="font-serif text-xl font-semibold text-foreground">Промокоды</h1>
-            <p className="text-xs text-muted-foreground">
-              Скидка, сколько человек может воспользоваться кодом и сколько он действует. Проверяются при оформлении заказа.
-            </p>
-          </div>
-        </div>
+        <AdminPageHeader title="Промокоды" description="Скидка, сколько человек может воспользоваться кодом и сколько он действует. Проверяются при оформлении заказа." />
 
         {list && !list.migrated && (
           <p className="mb-6 rounded-xl border border-gold/30 p-4 text-xs leading-relaxed text-muted-foreground">
@@ -143,7 +127,7 @@ export function PromoCodesManager({ list }: { list: PromoList | null }) {
           </>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 
@@ -370,6 +354,7 @@ function CreateForm() {
 function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
   const router = useRouter()
   const { pushToast } = useStore()
+  const [confirmRemove, setConfirmRemove] = useState(false)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [maxUses, setMaxUses] = useState(promo.maxUses === null ? '' : String(promo.maxUses))
@@ -405,7 +390,7 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Удалить промокод ${promo.code}? Это нельзя отменить.`)) return
+    setConfirmRemove(false)
     setBusy(true)
     setError(null)
     try {
@@ -415,7 +400,7 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
         setError(typeof data?.error === 'string' ? data.error : 'Не удалось удалить')
         return
       }
-      pushToast({ title: `Промокод ${promo.code} удалён`, variant: 'default' })
+      pushToast({ title: `Промокод ${promo.code} удалён`, variant: 'success' })
       router.refresh()
     } catch {
       setError('Сеть недоступна — промокод не удалён')
@@ -461,7 +446,7 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
             <button
               type="button"
               disabled={busy}
-              onClick={remove}
+              onClick={() => setConfirmRemove(true)}
               aria-label={`Удалить ${promo.code}`}
               title="Удалить (только если код ни разу не применялся)"
               className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:opacity-50"
@@ -536,6 +521,16 @@ function PromoRow({ promo, now }: { promo: PromoCode; now: number }) {
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title={`Удалить промокод ${promo.code}?`}
+        description="Код перестанет приниматься при оформлении заказа. Отменить удаление нельзя."
+        details={promo.used > 0 ? <p>Им уже воспользовались {promo.used} раз — эти заказы не изменятся. Чтобы просто прекратить приём, можно отключить код.</p> : undefined}
+        confirmLabel="Удалить промокод"
+        busy={busy}
+        onConfirm={() => void remove()}
+      />
     </li>
   )
 }

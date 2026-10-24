@@ -177,7 +177,7 @@ export function Header() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-border px-4 py-3">
+        <div className="animate-fade-in border-t border-border px-4 py-3">
           <div className="mx-auto w-full max-w-xl">
             <SearchBox variant="mobile" autoFocus onNavigate={() => setSearchOpen(false)} />
           </div>

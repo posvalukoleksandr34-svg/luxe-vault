@@ -435,7 +435,8 @@ export function isMissingIntent(error: unknown): boolean {
 }
 
 export async function cancelPaymentIntent(paymentIntentId: string): Promise<
-  { ok: true; alreadyTerminal: boolean } | { ok: false; reason: 'captured' | 'missing' | 'error'; message: string }
+  | { ok: true; alreadyTerminal: boolean }
+  | { ok: false; reason: 'captured' | 'missing' | 'error'; message: string; intentStatus?: Stripe.PaymentIntent.Status }
 > {
   const stripe = getStripe()
   let intent: Stripe.PaymentIntent
@@ -453,6 +454,7 @@ export async function cancelPaymentIntent(paymentIntentId: string): Promise<
         ok: false,
         reason: 'captured',
         message: `PaymentIntent is ${intent.status}; refund it instead of cancelling.`,
+        intentStatus: intent.status,
       }
     }
 

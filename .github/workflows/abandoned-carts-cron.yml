@@ -76,8 +76,10 @@ jobs:
             --header "Authorization: Bearer $CRON_SECRET" \
             "$SITE_URL/api/cron/reservations")
           echo "HTTP $status"
-          # Order numbers and counts only — no customer details.
-          cat reservations.json; echo
+          # Counts only. This repository is public, and so are its Actions
+          # logs: the order numbers in the answer stay out of them (they are
+          # in the Vercel log and in the Telegram alerts instead).
+          jq -c 'with_entries(if (.value|type) == "array" then .value |= length elif (.value|type) == "object" and .key != "policy" then .value |= length else . end)' reservations.json 2>/dev/null || head -c 300 reservations.json; echo
           if [ "$status" != "200" ]; then
             echo "::error::/api/cron/reservations answered HTTP $status (503 with 'Apply migration 0056': the migration is not applied yet; 500: the database failed for the orders listed in 'failed' / 'restockFailed', retried next run)."
             exit 1
@@ -97,7 +99,8 @@ jobs:
             --header "Authorization: Bearer $CRON_SECRET" \
             "$SITE_URL/api/cron/refunds")
           echo "HTTP $status"
-          cat refunds.json; echo
+          # Counts only (public log): the error texts name cases.
+          jq -c 'with_entries(if (.value|type) == "array" then .value |= length else . end)' refunds.json 2>/dev/null || head -c 300 refunds.json; echo
           if [ "$status" != "200" ]; then
             echo "::error::/api/cron/refunds answered HTTP $status (500: a job failed — see 'errors'; 503: CRON_SECRET unset on Vercel)."
             exit 1

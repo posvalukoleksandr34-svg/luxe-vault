@@ -26,6 +26,7 @@ import type { CaseState, ClaimType, EvidenceKind, InspectionOutcome, Investigati
 import { ActionForm } from './case-actions'
 import { RISK_TONE, STATE_TONE, Badge, Button, Spinner, api, inputClass, useMe } from './shared'
 import { StaffBar } from './staff-bar'
+import { cn } from '@/lib/utils'
 
 /**
  * One refund case, for staff (/admin/returns/[id]): the request, the order as
@@ -154,10 +155,10 @@ export function CaseView({ id }: { id: string }) {
       <ArrowLeft className="size-4" /> Все заявки
     </Link>
   )
-  if (!me) return <div className="mx-auto max-w-6xl px-4 py-8">{back}<div className="mt-6"><Spinner /></div></div>
-  if (me.mode === 'unbound') return <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">{back}<StaffBar me={me} onChange={reloadMe} /></div>
-  if (error) return <div className="mx-auto max-w-6xl space-y-4 px-4 py-8">{back}<p className="text-sm text-red-700">{error}</p></div>
-  if (!d) return <div className="mx-auto max-w-6xl px-4 py-8">{back}<div className="mt-6"><Spinner /></div></div>
+  if (!me) return <div>{back}<div className="mt-6"><Spinner /></div></div>
+  if (me.mode === 'unbound') return <div className="space-y-6">{back}<StaffBar me={me} onChange={reloadMe} /></div>
+  if (error) return <div className="space-y-4">{back}<p className="text-sm text-red-700">{error}</p></div>
+  if (!d) return <div>{back}<div className="mt-6"><Spinner /></div></div>
 
   const c = d.case
   const actions = d.commands.filter((x) => !['add_note', 'send_message', 'restock', 'customer_message'].includes(x))
@@ -178,12 +179,12 @@ export function CaseView({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="space-y-6">
       {back}
       <StaffBar me={me} onChange={reloadMe} />
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="font-serif text-2xl font-semibold">
+        <div className="min-w-0 flex-1 basis-96 space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {c.caseNumber} <Badge tone={STATE_TONE[c.state]}>{STATE_RU[c.state]}</Badge>
           </h1>
           <p className="break-words text-sm text-muted-foreground">
@@ -197,7 +198,7 @@ export function CaseView({ id }: { id: string }) {
           </p>
         </div>
         {c.riskLevel && (
-          <div className="text-right">
+          <div className="shrink-0 sm:text-right">
             <Badge tone={RISK_TONE[c.riskLevel]}>Риск: {RISK_RU[c.riskLevel]} · {c.riskScore}</Badge>
             <p className="mt-1 max-w-[260px] text-[11px] text-muted-foreground">Подсказка для проверки, не решение. Один признак никогда не означает мошенничество.</p>
           </div>
@@ -213,7 +214,7 @@ export function CaseView({ id }: { id: string }) {
         </section>
       )}
 
-      <section aria-label="Действия" className="space-y-3 rounded-lg border border-gold/30 p-4">
+      <section aria-label="Действия" className="space-y-3 rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">Действия</h2>
         {actions.length === 0 ? (
           <p className="text-sm text-muted-foreground">В этом статусе действий нет (или недостаточно прав).</p>
@@ -231,7 +232,7 @@ export function CaseView({ id }: { id: string }) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
-          <section className="space-y-2 rounded-lg border border-border p-4">
+          <section className="space-y-2 rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Заявка покупателя</h2>
             <p className="whitespace-pre-line text-sm">{c.comment || <span className="text-muted-foreground">Без описания</span>}</p>
             {c.eligibility?.manualReview && c.eligibility.manualReview.length > 0 && (
@@ -241,7 +242,7 @@ export function CaseView({ id }: { id: string }) {
             {c.finding && <p className="text-sm">Вывод: <strong>{FINDING_RU[c.finding]}</strong> — {c.findingNote}</p>}
           </section>
 
-          <section className="space-y-2 rounded-lg border border-border p-4">
+          <section className="space-y-2 rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Позиции</h2>
             <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
@@ -284,7 +285,7 @@ export function CaseView({ id }: { id: string }) {
           </section>
 
           {d.order && (
-            <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">Заказ и деньги</h2>
               <p>
                 {d.order.number} · {d.order.status} · оплата: {d.order.paymentProvider ?? '—'} {d.order.paymentStatus}
@@ -357,7 +358,7 @@ export function CaseView({ id }: { id: string }) {
 
         <aside className="min-w-0 space-y-6">
           {d.risk && (
-            <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">Риск: {RISK_RU[d.risk.level]} · {d.risk.score}/100</h2>
               {d.risk.heldAtMedium && <p className="text-xs text-muted-foreground">Высокий балл от одного признака удержан на «среднем».</p>}
               {d.risk.explanations.length === 0 ? (
@@ -382,7 +383,7 @@ export function CaseView({ id }: { id: string }) {
           )}
 
           {d.advice && (
-            <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">Недоставка: рекомендация</h2>
               <p>{ADVICE_RU[d.advice.advice]}</p>
               <ul className="list-disc pl-5 text-xs text-muted-foreground">
@@ -406,7 +407,7 @@ export function CaseView({ id }: { id: string }) {
           )}
 
           {d.approvals.length > 0 && (
-            <section className="space-y-1 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-1 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">Согласования</h2>
               {d.approvals.map((a, i) => (
                 <p key={i} className="text-xs">
@@ -418,7 +419,7 @@ export function CaseView({ id }: { id: string }) {
           )}
 
           {d.history && (
-            <section className="space-y-1 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-1 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">История покупателя</h2>
               <p className="text-xs text-muted-foreground">
                 Заказов: {d.history.orders} · оплачено: {chf(d.history.totalSpentMinor)} · заявок: {d.history.cases.length}
@@ -432,7 +433,7 @@ export function CaseView({ id }: { id: string }) {
             </section>
           )}
 
-          <section className="space-y-1 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-1 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Журнал</h2>
             <ol className="max-h-[480px] space-y-1.5 overflow-y-auto text-xs">
               {d.events
@@ -527,7 +528,7 @@ function EvidencePanel({ d, onOpen, onDone, canAdd }: { d: Detail; onOpen: (id: 
     }
   }
   return (
-    <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+    <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
       <h2 className="font-semibold">Доказательства</h2>
       {d.evidence.length === 0 ? (
         <p className="text-muted-foreground">Нет.</p>
@@ -560,14 +561,14 @@ function EvidencePanel({ d, onOpen, onDone, canAdd }: { d: Detail; onOpen: (id: 
       )}
       {canAdd && (
         <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
-          <select aria-label="Тип файла" value={kind} onChange={(e) => setKind(e.target.value as EvidenceKind)} className={`${inputClass} w-auto`}>
+          <select aria-label="Тип файла" value={kind} onChange={(e) => setKind(e.target.value as EvidenceKind)} className={cn(inputClass, 'w-auto')}>
             {EVIDENCE_KINDS.filter((k) => k !== 'tracking_snapshot' && k !== 'order_event').map((k) => (
               <option key={k} value={k}>
                 {EVIDENCE_RU[k]}
               </option>
             ))}
           </select>
-          <input aria-label="Название" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название" className={`${inputClass} w-44`} />
+          <input aria-label="Название" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название" className={cn(inputClass, 'w-44')} />
           <input aria-label="Файл" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
           <Button busy={busy} disabled={!file} onClick={() => void upload()}>
             Загрузить
@@ -594,7 +595,7 @@ function Messages({ d, canNote, canMessage, onDone }: { d: Detail; canNote: bool
     }
   }
   return (
-    <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+    <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
       <h2 className="font-semibold">Переписка и заметки</h2>
       <ul className="space-y-2">
         {d.messages.map((m) => (

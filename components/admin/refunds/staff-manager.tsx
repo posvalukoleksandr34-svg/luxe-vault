@@ -7,6 +7,7 @@ import { ROLE_RU, dateRu } from '@/lib/refunds/labels-ru'
 import { STAFF_ROLES, type StaffRole } from '@/lib/refunds/types'
 import { api, Badge, Button, Field, Spinner, inputClass, useMe } from './shared'
 import { StaffBar } from './staff-bar'
+import { cn } from '@/lib/utils'
 
 /**
  * /admin/returns/staff — named staff accounts for the refund console
@@ -77,11 +78,11 @@ export function StaffManager() {
 
   if (!me) return <Spinner />
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="max-w-4xl space-y-6">
       <Link href="/admin/returns" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Возвраты
       </Link>
-      <h1 className="font-serif text-2xl font-semibold">Сотрудники</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Сотрудники</h1>
       <StaffBar me={me} onChange={reload} />
       {error && <p className="text-sm text-red-700">{error}</p>}
       {me.mode !== 'unbound' && !me.permissions.includes('staff.manage') ? (
@@ -101,7 +102,7 @@ export function StaffManager() {
                       <strong>{m.displayName}</strong> {!m.active && <Badge>отключён</Badge>} {m.lockedUntil && m.lockedUntil > Date.now() && <Badge tone="red">заблокирован</Badge>}
                       <span className="block text-xs text-muted-foreground">последний вход: {dateRu(m.lastSignedInAt)}</span>
                     </span>
-                    <select aria-label={`Роль: ${m.displayName}`} value={m.role} disabled={busy === m.id} onChange={(e) => void update(m.id, { role: e.target.value })} className={`${inputClass} w-auto`}>
+                    <select aria-label={`Роль: ${m.displayName}`} value={m.role} disabled={busy === m.id} onChange={(e) => void update(m.id, { role: e.target.value })} className={cn(inputClass, 'w-auto')}>
                       {STAFF_ROLES.map((r) => (
                         <option key={r} value={r}>
                           {ROLE_RU[r]}
@@ -123,7 +124,7 @@ export function StaffManager() {
                 ))}
               </ul>
             )}
-            <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+            <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
               <h2 className="font-semibold">Добавить сотрудника</h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Имя">

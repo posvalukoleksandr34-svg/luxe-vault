@@ -1,5 +1,7 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
+import { ConfirmDialog } from './confirm-dialog'
 import { Check, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -61,7 +63,7 @@ export function ReviewsManager() {
       if (!res.ok) throw new Error('failed')
     } catch {
       setReviews(previous)
-      pushToast({ title: 'Не удалось обновить отзыв', variant: 'default' })
+      pushToast({ title: 'Не удалось обновить отзыв', variant: 'error' })
     }
   }
 
@@ -75,7 +77,7 @@ export function ReviewsManager() {
       pushToast({ title: 'Отзыв удалён', variant: 'default' })
     } catch {
       setReviews(previous)
-      pushToast({ title: 'Не удалось удалить отзыв', variant: 'default' })
+      pushToast({ title: 'Не удалось удалить отзыв', variant: 'error' })
     }
   }
 
@@ -83,17 +85,18 @@ export function ReviewsManager() {
 
   return (
     <div>
-      <h1 className="mb-1 font-serif text-2xl font-semibold text-foreground">Отзывы</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        {failed || loading ? '' : pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
-      </p>
+      {/* Named as in the navigation: "Отзывы о товарах" is the other queue. */}
+      <AdminPageHeader
+        title="Отзывы о магазине"
+        description={failed || loading ? undefined : pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
+      />
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>
       ) : failed ? (
         <p role="alert" className="text-sm text-red-700">Не удалось загрузить отзывы. Обновите страницу.</p>
       ) : reviews.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Отзывов пока нет</p>
+        <p className="rounded-lg border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Отзывов о магазине пока нет.</p>
       ) : (
         <div className="space-y-3">
           {reviews.map((review) => (
@@ -160,37 +163,14 @@ export function ReviewsManager() {
         </div>
       )}
 
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={() => setConfirmDeleteId(null)}
-            aria-hidden
-          />
-          <div className="animate-fade-up relative w-full max-w-sm border border-border bg-popover p-6 shadow-2xl">
-            <h3 className="font-serif text-lg font-bold text-foreground">Удалить отзыв?</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Это действие нельзя отменить.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 border border-border py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(confirmDeleteId)}
-                className="flex-1 border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+        title="Удалить отзыв о магазине?"
+        description="Отзыв исчезнет с сайта и из базы. Отменить нельзя."
+        confirmLabel="Удалить отзыв"
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+      />
     </div>
   )
 }

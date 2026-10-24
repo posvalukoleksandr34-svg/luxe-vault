@@ -1,5 +1,7 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
+import { ConfirmDialog } from './confirm-dialog'
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldAlert, Star, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
@@ -97,7 +99,7 @@ export function ProductReviewsQueue() {
         variant: 'default',
       })
     } catch {
-      pushToast({ title: 'Не удалось выполнить действие. Попробуйте ещё раз.', variant: 'default' })
+      pushToast({ title: 'Не удалось выполнить действие. Попробуйте ещё раз.', variant: 'error' })
     } finally {
       setBusy(null)
     }
@@ -105,25 +107,27 @@ export function ProductReviewsQueue() {
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-semibold text-foreground">Отзывы о товарах</h1>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[12px] text-muted-foreground transition hover:text-foreground disabled:opacity-50"
-        >
-          <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-          Обновить
-        </button>
-      </div>
-      <p className="mb-2 text-sm text-muted-foreground">
-        {loading
-          ? 'Загрузка…'
-          : reviews.length > 0
-            ? `${reviews.length} ${plural(reviews.length, 'отзыв ждёт', 'отзыва ждут', 'отзывов ждут')} проверки`
-            : 'Очередь пуста — все отзывы проверены'}
-      </p>
+      <AdminPageHeader
+        title="Отзывы о товарах"
+        description={
+          loading
+            ? 'Загрузка…'
+            : reviews.length > 0
+              ? `${reviews.length} ${plural(reviews.length, 'отзыв ждёт', 'отзыва ждут', 'отзывов ждут')} проверки`
+              : 'Очередь пуста — все отзывы проверены'
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-border bg-card px-3.5 text-sm text-foreground transition hover:bg-accent disabled:opacity-50"
+          >
+            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            Обновить
+          </button>
+        }
+      />
       <div className="mb-6 max-w-3xl space-y-1 rounded-xl border border-border/70 bg-card/50 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
         <p>
           Отзывы с оценкой 4–5 без нарушений публикуются автоматически и сюда не попадают. Здесь — те, что
@@ -223,35 +227,14 @@ export function ProductReviewsQueue() {
         </ul>
       )}
 
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="delete-review-title">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} aria-hidden />
-          <div className="animate-fade-up relative w-full max-w-sm rounded-2xl border border-border bg-popover p-6 shadow-2xl">
-            <h3 id="delete-review-title" className="font-serif text-lg font-bold text-foreground">
-              Удалить отзыв?
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Это нельзя отменить. Покупатель сможет написать новый отзыв об этом товаре.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground transition hover:bg-accent"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={() => void act(confirmDelete, 'delete')}
-                className="flex-1 rounded-lg border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Удалить отзыв?"
+        description="Отменить нельзя. Покупатель сможет написать новый отзыв об этом товаре."
+        confirmLabel="Удалить отзыв"
+        onConfirm={() => confirmDelete && void act(confirmDelete, 'delete')}
+      />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { Link } from '@/components/locale-link'
 import { Cookie, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -34,6 +35,10 @@ import { cn } from '@/lib/utils'
  */
 export function CookieConsent() {
   const { t } = useStore()
+  // The console sets only its own session cookie and loads no analytics
+  // (components/analytics/analytics-manager.tsx): nothing to consent to, and
+  // the banner sat over the order table.
+  const inConsole = usePathname()?.startsWith('/admin') ?? false
   const [state, setState] = useState<ConsentState | null>(null)
   const [decided, setDecided] = useState(true)
   const [customising, setCustomising] = useState(false)
@@ -69,7 +74,7 @@ export function CookieConsent() {
     setCustomising(false)
   }, [])
 
-  if (decided) return null
+  if (decided || inConsole) return null
 
   return (
     <>
@@ -79,6 +84,7 @@ export function CookieConsent() {
         role="dialog"
         aria-live="polite"
         aria-label={t('cookies.title')}
+        data-vt-chrome="cookies"
         className="hide-with-keyboard animate-fade-up fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[45] md:bottom-0 border-t border-gold/25 bg-popover/95 backdrop-blur-md"
       >
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10">

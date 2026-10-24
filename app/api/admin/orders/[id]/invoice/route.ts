@@ -43,7 +43,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const safeId = order.id.replace(/[^A-Za-z0-9-]/g, '')
   const filename = `LuxeVault-${kind === 'invoice' ? 'Invoice' : 'PackingSlip'}-${safeId}.pdf`
 
-  return new NextResponse(pdf, {
+  // A plain Uint8Array: newer DOM typings no longer accept a Node Buffer as a
+  // response body, though the bytes are the same.
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,

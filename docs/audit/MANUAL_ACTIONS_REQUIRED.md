@@ -1,5 +1,7 @@
 # Manual actions required
 
+> **2026-10-24:** the current, consolidated list is [OWNER_APPROVAL_CHECKLIST.md](OWNER_APPROVAL_CHECKLIST.md) (with evidence in [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md)). This file keeps the detailed procedures it links to.
+
 Everything here needs one of three things:
 
 - access this audit does not have: provider dashboards, production secrets, the production database;

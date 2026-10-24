@@ -55,7 +55,9 @@ export function ProductCard({
         onMouseEnter={playHoverSound}
         className="block"
       >
-        <div className="card-gold product-card relative aspect-[3/4] overflow-hidden">
+        {/* data-vt-product: the photo that travels to the product page when
+            this card is the one clicked (lib/page-transition.ts). */}
+        <div data-vt-product={product.id} className="card-gold product-card relative aspect-[3/4] overflow-hidden">
           <Image
             src={imageFailed ? PRODUCT_PLACEHOLDER : productImage(product.image)}
             onError={() => setImageFailed(true)}

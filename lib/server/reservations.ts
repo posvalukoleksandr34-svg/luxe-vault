@@ -75,6 +75,8 @@ export type ReservationRun =
       released: string[]
       /** Stripe says the payment succeeded or is processing: left for the webhook. */
       paymentInFlight: string[]
+      /** Stripe's status for each paymentInFlight order ('succeeded' or 'processing'). */
+      paymentInFlightStatus: Record<string, string>
       /** Stripe could not confirm the cancellation (or is not configured): retried next run. */
       providerError: string[]
       /** Stripe's answer for each providerError order, so an alert says why. */
@@ -158,6 +160,42 @@ const defaultDeps: ReservationDeps = {
 }
 
 /**
+ * The alert for orders whose reservation lapsed while Stripe holds a payment
+ * for them. Every such order is older than the hold (48 h), so the webhook
+ * should long since have settled it:
+ *
+ *   succeeded   the money was taken but the order still reads unpaid — the
+ *               webhook never arrived, failed, or refused the payment (wrong
+ *               amount or currency). The customer is waiting for goods.
+ *   processing  a bank payment still settling; worth a look if it lasts
+ *               more than a few days.
+ *
+ * Until 2026-10-24 these orders were only counted in the log, so six of
+ * them sat for days without anyone being told. Null when there is nothing
+ * to say.
+ */
+export function paymentInFlightAlert(orders: string[], statuses: Record<string, string>): string | null {
+  if (orders.length === 0) return null
+  const paid = orders.filter((n) => statuses[n] === 'succeeded')
+  const other = orders.filter((n) => statuses[n] !== 'succeeded')
+  const lines: string[] = []
+  if (paid.length > 0) {
+    lines.push(
+      `Stripe shows ${paid.length} payment(s) as SUCCEEDED, but the order is still unpaid here: ${paid.join(', ')}. ` +
+        'Check Stripe → Developers → Webhooks (event deliveries) and /api/admin/reconciliation; do not ship or refund before the order and Stripe agree.',
+    )
+  }
+  if (other.length > 0) {
+    lines.push(
+      `Stripe shows ${other.length} payment(s) as still processing past the reservation hold: ` +
+        other.map((n) => `${n} (${statuses[n] ?? 'unknown'})`).join(', ') +
+        '. Their stock stays held until Stripe settles them.',
+    )
+  }
+  return lines.join('\n')
+}
+
+/**
  * Releases lapsed reservations. Safe to run concurrently and repeatedly:
  * cancelOrder() only succeeds once per order (its UPDATE re-checks the state)
  * and restore_order_stock() only restocks once (restocked_at). Order numbers
@@ -186,6 +224,7 @@ export async function releaseExpiredReservations(
     candidates: rows.map((r) => r.order_number),
     released: [] as string[],
     paymentInFlight: [] as string[],
+    paymentInFlightStatus: {} as Record<string, string>,
     providerError: [] as string[],
     providerMessages: {} as Record<string, string>,
     releasedMissingIntent: [] as string[],
@@ -224,8 +263,10 @@ export async function releaseExpiredReservations(
         }
         const cancelled = await deps.cancelPaymentIntent(row.payment_id)
         if (!cancelled.ok && cancelled.reason !== 'missing') {
-          if (cancelled.reason === 'captured') run.paymentInFlight.push(row.order_number)
-          else {
+          if (cancelled.reason === 'captured') {
+            run.paymentInFlight.push(row.order_number)
+            run.paymentInFlightStatus[row.order_number] = cancelled.intentStatus ?? 'unknown'
+          } else {
             run.providerError.push(row.order_number)
             run.providerMessages[row.order_number] = cancelled.message.slice(0, 200)
           }

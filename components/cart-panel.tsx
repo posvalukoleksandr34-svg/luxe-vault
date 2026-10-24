@@ -15,18 +15,7 @@ import { productImage } from '@/lib/product-image'
 import { formatPrice, useProductsById, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useFocusTrap } from '@/lib/use-focus-trap'
-
-/** How long the slide-out takes; the drawer unmounts once it has finished. */
-const EXIT_MS = 320
-
-/** The visitor asked for less motion — in the OS, or with the footer switch
- *  (html[data-motion='reduce']). The drawer then closes at once. */
-function prefersLessMotion(): boolean {
-  return (
-    document.documentElement.dataset.motion === 'reduce' ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
+import { usePresence } from '@/lib/use-presence'
 
 /**
  * The cart drawer: slides in from the right over a dimmed backdrop, from any
@@ -81,31 +70,12 @@ export function CartPanel() {
   )
 
   /**
-   * Enter AND exit transitions. `mounted` keeps the drawer in the document
-   * while it slides out; `shown` is what moves it. On open it is painted
-   * off-screen first (translate-x-full) and moved a frame later, or the
-   * browser would have no start position to transition from.
+   * Enter AND exit transitions: mounted through the slide-out, `shown` is
+   * what moves it (lib/use-presence.ts, the .motion-* classes).
    */
-  const [mounted, setMounted] = useState(cartOpen)
-  const [shown, setShown] = useState(false)
+  const { mounted, state } = usePresence(cartOpen)
+  const shown = state === 'open'
   const dialogRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (cartOpen) {
-      setMounted(true)
-      let second = 0
-      const first = requestAnimationFrame(() => {
-        second = requestAnimationFrame(() => setShown(true))
-      })
-      return () => {
-        cancelAnimationFrame(first)
-        cancelAnimationFrame(second)
-      }
-    }
-    setShown(false)
-    const timer = setTimeout(() => setMounted(false), prefersLessMotion() ? 0 : EXIT_MS)
-    return () => clearTimeout(timer)
-  }, [cartOpen])
 
   // Focus moves into the drawer, so a keyboard or screen-reader user lands in
   // the cart they just opened rather than on the page behind it.
@@ -198,20 +168,17 @@ export function CartPanel() {
   return (
     <>
       <div
-        className={cn(
-          'fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm transition-opacity duration-300',
-          shown ? 'opacity-100' : 'pointer-events-none opacity-0',
-        )}
+        data-state={state}
+        className="motion-scrim fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm"
         onClick={() => setPanel(null)}
         aria-hidden
       />
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={cn(
-          'fixed right-0 top-0 z-[100] flex h-full w-full max-w-md flex-col border-l border-border bg-popover shadow-2xl outline-none transition-transform duration-300 ease-out',
-          shown ? 'translate-x-0' : 'translate-x-full',
-        )}
+        data-state={state}
+        inert={!cartOpen || undefined}
+        className="motion-drawer-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-md flex-col border-l border-border bg-popover shadow-2xl outline-none"
         role="dialog"
         aria-modal="true"
         aria-label={t('cart.title')}

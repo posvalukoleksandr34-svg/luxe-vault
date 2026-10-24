@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useFocusTrap } from '@/lib/use-focus-trap'
+import { usePresence } from '@/lib/use-presence'
 import { SupportCenter } from '@/components/support/support-center'
 import { useStore } from '@/lib/store'
 
@@ -38,19 +39,24 @@ export function SupportDrawer() {
     if (open) dialogRef.current?.focus({ preventScroll: true })
   }, [open])
 
-  if (!open) return null
+  // Mounted through its slide-out (lib/use-presence.ts); inert while leaving.
+  const { mounted, state } = usePresence(open)
+  if (!mounted) return null
 
   return (
     <>
       <div
-        className="animate-fade-in fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm"
+        data-state={state}
+        className="motion-scrim fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm"
         onClick={() => setPanel(null)}
         aria-hidden
       />
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full flex-col border-l border-border bg-popover outline-none sm:max-w-xl lg:max-w-2xl"
+        data-state={state}
+        inert={!open || undefined}
+        className="motion-drawer-right fixed right-0 top-0 z-[100] flex h-full w-full flex-col border-l border-border bg-popover outline-none sm:max-w-xl lg:max-w-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={t('support.title')}

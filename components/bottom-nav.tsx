@@ -72,6 +72,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t('tab.nav')}
+      data-vt-chrome="bottom-nav"
       className="hide-with-keyboard fixed inset-x-0 bottom-0 z-50 block border-t border-border/70 bg-background/95 shadow-[0_-4px_16px_rgba(26,20,10,0.06)] backdrop-blur-md md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

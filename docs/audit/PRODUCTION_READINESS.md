@@ -1,5 +1,7 @@
 # Production readiness — 2026-10-13 (after the code-only remediation round)
 
+> **Superseded on 2026-10-24** by [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md) and [OWNER_APPROVAL_CHECKLIST.md](OWNER_APPROVAL_CHECKLIST.md). Kept for its 2026-10-13 evidence.
+
 **Verdict:**
 
 - **The code is ready for staging.** Every repository-level check passes on the final working tree (Part A). Conditions:

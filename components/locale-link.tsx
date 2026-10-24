@@ -4,6 +4,7 @@ import NextLink from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, type ComponentProps } from 'react'
 import { hasLocalizedRoute, localizedPath } from '@/lib/locale-routing'
+import { noteNavigationTrigger, pageTransition } from '@/lib/page-transition'
 import { useStore } from '@/lib/store'
 import type { StorefrontLocale } from '@/lib/types'
 
@@ -55,7 +56,16 @@ export function useLocaleRouter() {
   const router = useRouter()
   const { locale } = useStore()
 
-  const push = useCallback((href: string) => router.push(localeHref(href, locale)), [router, locale])
+  // Imperative navigations (a search submitted, a checkout left) get the same
+  // page transition as links. replace() does not: it rewrites the current
+  // page's address (filters, tabs) rather than going somewhere new.
+  const push = useCallback(
+    (href: string) => {
+      const target = localeHref(href, locale)
+      pageTransition(target, () => router.push(target))
+    },
+    [router, locale],
+  )
   const replace = useCallback(
     (href: string, options?: { scroll?: boolean }) => router.replace(localeHref(href, locale), options),
     [router, locale],
@@ -66,10 +76,49 @@ export function useLocaleRouter() {
 
 type LinkProps = ComponentProps<typeof NextLink>
 
-export function Link({ href, ...props }: LinkProps) {
+/**
+ * The storefront's link, and with it the site's page transitions
+ * (lib/page-transition.ts). next/link still does everything it does — the
+ * prefetch, the pending state, ignoring modifier-clicks and new tabs, leaving
+ * external URLs and downloads to the browser — and calls `onNavigate` only
+ * for a plain click on an internal address. That is the one moment the
+ * navigation is handed to pageTransition(), which runs the same router call
+ * (push or replace, with this link's scroll option) inside a view transition,
+ * or runs it straight away when it cannot.
+ *
+ * Opting a link out: data-transition="off". A link whose own onClick or
+ * onNavigate prevents navigation keeps that behaviour.
+ */
+export function Link({ href, onClick, onNavigate, replace, scroll, ...props }: LinkProps) {
   const { locale } = useStore()
+  const router = useRouter()
   // `href` may be a UrlObject; those are rare here and are passed through
   // rather than half-handled, which would be a silently wrong URL.
   const target = typeof href === 'string' ? localeHref(href, locale) : href
-  return <NextLink href={target} {...props} />
+  const optedOut = (props as Record<string, unknown>)['data-transition'] === 'off'
+  return (
+    <NextLink
+      href={target}
+      replace={replace}
+      scroll={scroll}
+      {...props}
+      onClick={(e) => {
+        noteNavigationTrigger(e.currentTarget)
+        onClick?.(e)
+      }}
+      onNavigate={(e) => {
+        let prevented = false
+        onNavigate?.({
+          preventDefault: () => {
+            prevented = true
+            e.preventDefault()
+          },
+        })
+        if (prevented || optedOut || typeof target !== 'string') return
+        e.preventDefault()
+        const options = { scroll: scroll ?? true }
+        pageTransition(target, () => (replace ? router.replace(target, options) : router.push(target, options)))
+      }}
+    />
+  )
 }

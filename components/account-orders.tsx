@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, ArrowLeft, Ban, ChevronDown, RotateCcw, Loa
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { usePresence } from '@/lib/use-presence'
 import { Link } from '@/components/locale-link'
 import { RefundRequestDialog } from '@/components/account/refund-request-dialog'
 import { LoadError } from '@/components/load-error'
@@ -113,6 +114,14 @@ export function AccountOrders({
   // is unstyled, unlocalisable beyond its button labels, and on mobile Safari
   // renders as a jarring system sheet over a dark luxury UI.
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null)
+  // The dialog keeps showing the order it was opened for while it fades
+  // out, after confirmOrder has gone back to null (lib/use-presence.ts).
+  const cancelPresence = usePresence(Boolean(confirmOrder))
+  const [lastConfirmOrder, setLastConfirmOrder] = useState<Order | null>(null)
+  useEffect(() => {
+    if (confirmOrder) setLastConfirmOrder(confirmOrder)
+  }, [confirmOrder])
+  const dialogOrder = confirmOrder ?? lastConfirmOrder
   const [cancelledOpen, setCancelledOpen] = useState(false)
 
   const load = onReload
@@ -462,11 +471,13 @@ export function AccountOrders({
         </section>
       )}
 
-      {confirmOrder && (
+      {cancelPresence.mounted && dialogOrder && (
         <CancelDialog
-          order={confirmOrder}
+          order={dialogOrder}
+          state={cancelPresence.state}
+          open={Boolean(confirmOrder)}
           onDismiss={() => setConfirmOrder(null)}
-          onConfirm={() => void cancel(confirmOrder)}
+          onConfirm={() => void cancel(dialogOrder)}
         />
       )}
     </div>
@@ -482,10 +493,14 @@ export function AccountOrders({
  */
 function CancelDialog({
   order,
+  state,
+  open,
   onDismiss,
   onConfirm,
 }: {
   order: Order
+  state: 'open' | 'closed'
+  open: boolean
   onDismiss: () => void
   onConfirm: () => void
 }) {
@@ -503,7 +518,8 @@ function CancelDialog({
   return (
     <>
       <div
-        className="animate-fade-in fixed inset-0 z-[120] bg-background/80 backdrop-blur-sm"
+        data-state={state}
+        className="motion-scrim fixed inset-0 z-[120] bg-background/80 backdrop-blur-sm"
         onClick={onDismiss}
         aria-hidden
       />
@@ -511,7 +527,9 @@ function CancelDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="cancel-dialog-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[121] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl"
+        data-state={state}
+        inert={!open || undefined}
+        className="motion-dialog fixed left-1/2 top-1/2 z-[121] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl"
       >
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" strokeWidth={1.5} />

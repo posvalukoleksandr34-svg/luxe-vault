@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { cancelOrder, deleteOrder, getOrderById, setOrderStatus } from '@/lib/server/orders-store'
+import { STATUS_CONFLICT, cancelOrder, deleteOrder, getOrderById, setOrderStatus } from '@/lib/server/orders-store'
 import { cancelPaymentIntent, isStripeConfigured } from '@/lib/server/stripe'
 import { cancellationRefusal } from '@/lib/payment-state'
 import { notifyStatusUpdate } from '@/lib/server/notifications'
@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
   const params = await props.params;
   const denied = await requireAdmin()
   if (denied) return denied
-  const body = await readJsonObject<{ status?: string; trackingNumber?: unknown; courierName?: unknown }>(request)
+  const body = await readJsonObject<{ status?: string; expectedStatus?: unknown; trackingNumber?: unknown; courierName?: unknown }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -26,6 +26,16 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
   if (!body.status || !VALID_STATUSES.includes(body.status as OrderStatus)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
+  // Optional: the status the admin was looking at (see setOrderStatus).
+  if (body.expectedStatus !== undefined && !VALID_STATUSES.includes(body.expectedStatus as OrderStatus)) {
+    return NextResponse.json({ error: 'Invalid expected status' }, { status: 400 })
+  }
+  const expectedStatus = body.expectedStatus as OrderStatus | undefined
+  const conflict = () =>
+    NextResponse.json(
+      { error: 'Статус заказа уже изменили (другой сотрудник или оплата) — обновите страницу и проверьте.', code: 'STATUS_CONFLICT' },
+      { status: 409 },
+    )
 
   // `undefined` leaves the stored tracking number untouched; an explicit empty
   // string clears it. Anything non-string is rejected rather than coerced.
@@ -69,6 +79,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
   // follow the refund (lib/server/refund-order.ts).
   let updated: Order | null
   const current = body.status === 'cancelled' ? await getOrderById(params.id) : null
+  if (current && expectedStatus && current.status !== expectedStatus) return conflict()
   if (current && current.status !== 'cancelled' && cancellationRefusal(current) === null) {
     if (current.paymentProvider === 'stripe' && current.paymentId && isStripeConfigured()) {
       const intent = await cancelPaymentIntent(current.paymentId)
@@ -90,7 +101,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     }
     updated = result.order
   } else {
-    updated = await setOrderStatus(params.id, body.status as OrderStatus, trackingNumber, courierName)
+    const result = await setOrderStatus(params.id, body.status as OrderStatus, trackingNumber, courierName, expectedStatus)
+    if (result === STATUS_CONFLICT) return conflict()
+    updated = result
   }
   if (!updated) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
