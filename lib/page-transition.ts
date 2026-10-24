@@ -33,9 +33,14 @@ import { motionReduced } from '@/lib/motion'
  *    transition there would be the new page fading into itself. History keeps
  *    the short fade instead.
  *
- * SHARED ELEMENT. A product's photo travels from its card to the product
- * page, and back to its card when a link leads from the product page to a
- * listing that shows it. The name (product-<id>) is given to exactly one
+ * OPENING. Every page opens from what was tapped: the new picture grows
+ * out of the link or card that was clicked (its centre is handed to CSS as
+ * --vt-ox / --vt-oy), and its content settles in one block after another.
+ *
+ * SHARED ELEMENT. A product's photo travels from where it was tapped — a
+ * card in a listing, a search suggestion, a line in the cart — to the
+ * product page, and back to its card when a link leads from the product
+ * page to a listing that shows it. The name (product-<id>) is given to exactly one
  * element on each side — the card that was clicked, the gallery that receives
  * it — and only for the duration of the transition, so repeated cards,
  * filtered grids and rails never collide. No matching element on the far
@@ -65,6 +70,8 @@ const IMAGE_BUDGET_MS = 220
 
 let active: ViewTransitionLike | null = null
 let trigger: { el: Element; at: number } | null = null
+let leaving: (() => void)[] = []
+let leavingTimer: ReturnType<typeof setTimeout> | null = null
 
 function startFn(): StartViewTransition | null {
   if (typeof document === 'undefined') return null
@@ -89,6 +96,40 @@ export function pageTransitionRunning(): boolean {
  */
 export function noteNavigationTrigger(el: Element): void {
   trigger = { el, at: performance.now() }
+}
+
+/**
+ * Runs `fn` once the page being left has been photographed — or at once,
+ * when no page transition follows. For what a click on a link also closes
+ * (a search panel, a menu): closed straight away, it would vanish from the
+ * old picture and the page would jump before the transition began; closed
+ * here, it leaves with the old page.
+ *
+ * A link's onClick runs just before its navigation reaches pageTransition(),
+ * which collects these; if nothing does in this task (a modifier click, a
+ * navigation that was prevented), they run anyway.
+ */
+export function afterLeaving(fn: () => void): void {
+  leaving.push(fn)
+  if (leavingTimer === null) leavingTimer = setTimeout(() => runAll(takeLeaving()), 0)
+}
+
+function takeLeaving(): (() => void)[] {
+  if (leavingTimer !== null) clearTimeout(leavingTimer)
+  leavingTimer = null
+  const fns = leaving
+  leaving = []
+  return fns
+}
+
+function runAll(fns: (() => void)[]): void {
+  for (const fn of fns.splice(0)) {
+    try {
+      fn()
+    } catch {
+      // one failing must not keep the others from running
+    }
+  }
 }
 
 function takeTrigger(): Element | null {
@@ -172,17 +213,20 @@ function settle<T>(p: Promise<T>, ms: number): Promise<void> {
  */
 export function pageTransition(href: string, navigate: () => void): void {
   const clicked = takeTrigger()
+  const onLeave = takeLeaving()
   const start = startFn()
   let target: URL
   try {
     target = new URL(href, window.location.href)
   } catch {
+    runAll(onLeave)
     navigate()
     return
   }
   // Same address (a hash link, a refresh of the page itself): nothing will
   // change, so there is nothing to transition — and nothing to wait for.
   if (!start || !canTransition() || target.origin !== window.location.origin || urlKey(target) === urlKey(window.location)) {
+    runAll(onLeave)
     navigate()
     return
   }
@@ -212,17 +256,26 @@ export function pageTransition(href: string, navigate: () => void): void {
   }
 
   root.dataset.vt = transitionDirection(window.location.pathname, target.pathname)
-  if (shared?.into === 'hero') root.dataset.vtArrive = 'product'
+  // The new page opens from what was tapped: the centre of the link or card,
+  // as a point in the viewport (globals.css → "Opening from the tap").
+  const origin = clicked && visible(clicked) ? clicked.getBoundingClientRect() : null
+  if (origin) {
+    root.style.setProperty('--vt-ox', `${Math.round(origin.left + origin.width / 2)}px`)
+    root.style.setProperty('--vt-oy', `${Math.round(origin.top + origin.height / 2)}px`)
+  }
 
   const cleanup = () => {
     clearNames(outgoing)
     clearNames(incoming)
     delete root.dataset.vt
     delete root.dataset.vtArrive
+    root.style.removeProperty('--vt-ox')
+    root.style.removeProperty('--vt-oy')
   }
 
   let navigated = false
   const go = () => {
+    runAll(onLeave)
     if (navigated) return
     navigated = true
     navigate()
@@ -234,12 +287,16 @@ export function pageTransition(href: string, navigate: () => void): void {
       // The outgoing picture is taken. Its names are released before the new
       // page renders, so an element present on both sides is never named twice.
       clearNames(outgoing)
+      runAll(onLeave)
       if (!(await addressChanged(fromKey, go))) {
         // Still loading: let go of the screen without animating the old page
         // into itself. The new one arrives with the ordinary fade when ready.
         transition.skipTransition()
         return
       }
+      // Only now, with the old page photographed: the arrival cascade
+      // (globals.css) must not touch the picture of the page being left.
+      root.dataset.vtArrive = shared?.into === 'hero' ? 'product' : 'page'
       if (!shared) return
       if (shared.into === 'hero') {
         const hero = document.querySelector<HTMLElement>(selector(VT_PRODUCT_HERO_ATTR, shared.id))

@@ -86,12 +86,16 @@ contain fixed children; never `transition: all` for new code.
 
 | Interaction | Behaviour |
 | --- | --- |
-| Page → page (any `Link` / `useLocaleRouter().push`) | Old page fades out (`fast`); new page settles in with 8px of rise (`page`, emphasized). Going up the hierarchy (fewer path segments, locale prefix ignored) it settles *down* instead. Header, phone tab bar, support button, cookie banner and toasts are named for the duration and hold still. |
-| Product card → product page | The clicked card's photo travels and resizes into the gallery (`shared`); the details column fades in one block after another (30–130ms apart, opacity only). The gallery image gets up to 220ms to decode first. |
+| Page → page (any `Link` / `useLocaleRouter().push`) | Old page fades out (`fast`). The new page **opens out of what was tapped**: it grows from 0.92 (0.95 on phones) to full size around the centre of the link or card (`page`, emphasized; without a tap — a search submitted — from the upper middle), and its content settles in one block after another (`main`'s sections, 40ms apart, opacity only). Going up the hierarchy (fewer path segments, locale prefix ignored) it settles *down* instead. Header, phone tab bar, support button, cookie banner and toasts are named for the duration and hold still. |
+| Product → product page, from a card, a search suggestion or the cart | The tapped photo travels and resizes into the gallery (`shared`) while the page opens around it; the details column fades in one block after another (30–130ms apart, opacity only). The gallery image gets up to 220ms to decode first. The search panel closes only once the old page has been photographed (`afterLeaving()`), so the thumbnail is still there to fly. |
 | Product page → a listing (by link) | The gallery photo travels back to its card if that card is visible; otherwise it fades with the page. |
 | Catalogue filters, chips, sort, clear | Only the results area crossfades and eases to its new height; the controls and the rest of the page change at once. The address still updates (`?inStock=1`, …). Price fields are continuous input and update without a transition. |
 | Cart, account and support drawers | Slide in on the emphasized curve, out faster on the exit curve; scrim fades; inert while leaving; Escape, focus return and scroll lock unchanged. |
 | Password recovery/reset, cancel-order dialog, chat window | Fade + 8px rise + 0.98 scale in, quicker out. |
+| Size finder, fit advisor, "notify me", refund request (Radix dialogs) | The same entrance and exit, as keyframes (`.motion-radix-dialog`, `.motion-radix-scrim`): Radix keeps a dialog mounted until its exit *animation* ends. |
+| Size finder steps | Each question slides in 20px from the side the visitor is moving towards ("Next" from the right, "Back" from the left), fading in. |
+| Size finder body photos (hips, abdomen) | Change with the answer: three photos per question, cross-faded (`base`). |
+| Account menu (Radix popover) | Drops from its trigger like the other popovers (`.motion-radix-popover`). |
 | Language/currency, notifications, search suggestions | Drop 4px from the trigger, lift away on close. Outside click, Escape (in the search field Escape closes the suggestions and keeps the text). |
 | Product photo zoom | Fades in and out. |
 | Header search row | Fades in (it changes the header's height, so it does not slide). |
@@ -131,6 +135,17 @@ every action works identically.
 - **Results that change in place**: wrap them in `data-vt-results` and make
   the change through `resultsTransition(() => setState(...))` — one per
   discrete action, never per keystroke.
+- **A product photo that should travel to its page** (a thumbnail in a new
+  list): put `data-vt-product={product.id}` on the photo's element, inside
+  the link.
+- **A panel that a link closes** (like the search suggestions): close it
+  through `afterLeaving(() => setOpen(false))` from the link's `onClick`, so
+  it is still on screen when the old page is photographed.
+- **A page's sections cascade in** by themselves: they are the children of
+  `main`. A section with an entrance animation of its own keeps it (the
+  cascade is written with `:where()`, the weakest selector).
+- **A Radix dialog or popover**: `components/ui/dialog.tsx` already carries
+  the motion; a new Radix popover takes `.motion-radix-popover`.
 - **Another shared element**: follow the product pattern — a data attribute
   on each side, the name set only for the duration of the transition. Never a
   permanent `view-transition-name` on repeated items: two elements with one
@@ -139,6 +154,13 @@ every action works identically.
 ## Limitations, and what is still abrupt
 
 - **Back/Forward** use the fade, not a view transition (reason above).
+- **Men's hips** in the size finder keep the line drawing (no photograph of
+  that view exists yet); it changes with the answer like the photos.
+- **The size finder's adult photos** are one photograph per question,
+  reshaped at the hips or abdomen for the slimmer and fuller answers (the
+  person, pose and light stay the same). No freely licensed set of the same
+  person in three builds was found; a professionally shot set can replace
+  them file for file (`components/products/size-finder/photos`).
 - **Admin console** and the **chat assistant's product links** use their own
   links and are not transitioned; the admin keeps its existing behaviour.
 - **Language switch** (`router.replace`) changes the page in place without a
@@ -168,24 +190,33 @@ and a phone or emulation at 390px, in Chrome and Safari.
    restored, no flash of the wrong page.
 4. Ctrl/Cmd-click and middle-click a product: opens in a new tab, this tab does
    not animate.
-5. Click "In stock only", a size, a colour, sort: only the results crossfade;
+5. From the home page, open a category card, a footer link and a menu item:
+   each page opens out of what was tapped and its sections cascade in.
+6. Search for a product and choose a suggestion; add it to the cart, open the
+   cart and tap the line's photo: in both cases the photo flies into the
+   gallery.
+7. Size finder: open it, go through the questions (each slides in from the
+   side you move to; "Back" from the left), and on hips and abdomen choose
+   each answer: the photo changes with the choice (women, men's abdomen,
+   children).
+8. Click "In stock only", a size, a colour, sort: only the results crossfade;
    the address updates; Back restores the previous filter.
-6. Type in a price field: results update without flicker.
-7. Open/close the cart (button, scrim, Escape): slides, focus returns to the
+9. Type in a price field: results update without flicker.
+10. Open/close the cart (button, scrim, Escape): slides, focus returns to the
    cart button, page scroll locked while open and released after.
-8. Same for the account panel and the support drawer; open the chat window.
-9. Open the language/currency popover and the notifications: click the page
+11. Same for the account panel and the support drawer; open the chat window.
+12. Open the language/currency popover and the notifications: click the page
    outside to close; Escape closes.
-10. Header search: open the row, type two letters (suggestions drop in),
+13. Header search: open the row, type two letters (suggestions drop in),
     Escape (they lift away), choose a suggestion (navigates with a transition).
-11. Product photo zoom: open and close.
-12. Checkout: go from cart to checkout and complete a test payment — the
+14. Product photo zoom: open and close.
+15. Checkout: go from cart to checkout and complete a test payment — the
     redirect to the payment provider and back to the success page is an
     ordinary full-page navigation.
-13. Turn on "Reduce motion" (OS, or the switch in the account settings): everything still works,
+16. Turn on "Reduce motion" (OS, or the switch in the account settings): everything still works,
     nothing animates, drawers close instantly.
-14. Throttle the network to "Slow 3G": clicking a product never freezes the
+17. Throttle the network to "Slow 3G": clicking a product never freezes the
     screen for more than about a second; the page arrives with the fade.
-15. Phone at 390px: no sideways scroll during any transition; the tab bar
+18. Phone at 390px: no sideways scroll during any transition; the tab bar
     holds still.
-16. DevTools console: no errors or hydration warnings during all of the above.
+19. DevTools console: no errors or hydration warnings during all of the above.

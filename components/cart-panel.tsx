@@ -291,11 +291,13 @@ export function CartPanel() {
                         tabIndex={-1}
                         aria-hidden
                       >
+                        {/* The photo travels from here into the product page's gallery. */}
                         <Image
                           src={productImage(item.image)}
                           alt=""
                           width={96}
                           height={96}
+                          data-vt-product={item.productId}
                           className="size-24 rounded-xl object-cover"
                         />
                       </Link>

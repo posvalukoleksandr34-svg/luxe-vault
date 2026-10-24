@@ -3,6 +3,7 @@
 import { Clock, Loader2, Search, SearchX, TrendingUp, X } from 'lucide-react'
 import Image from 'next/image'
 import { Link } from '@/components/locale-link'
+import { afterLeaving } from '@/lib/page-transition'
 import { useEffect, useRef, useState } from 'react'
 import { trackSearch } from '@/lib/analytics'
 import { MOTION_MS } from '@/lib/motion'
@@ -251,9 +252,14 @@ export function SearchBox({
     setQuery(next)
   }
 
+  // For the links in the panel: it closes once the page being left has been
+  // photographed (lib/page-transition.ts → afterLeaving), so it leaves with
+  // that page instead of the header jumping shut before the transition.
   function close() {
-    setOpen(false)
-    onNavigate?.()
+    afterLeaving(() => {
+      setOpen(false)
+      onNavigate?.()
+    })
   }
 
   /** The chip for one understood filter, in the visitor's language. */
@@ -483,7 +489,8 @@ export function SearchBox({
                         onClick={close}
                         className="flex items-center gap-3 border-b border-border/40 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/40"
                       >
-                        <span className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-border/60">
+                        {/* The photo travels from here into the product page's gallery. */}
+                        <span data-vt-product={p.id} className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-border/60">
                           <Image
                             src={productImage(p.image)}
                             alt=""
