@@ -8,6 +8,7 @@ import { subcategoryCover } from '@/lib/subcategory-cover'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useFullCatalog, useStore } from '@/lib/store'
 import type { Category, CategoryGroupKey, Product } from '@/lib/types'
+import { AdminPageHeader } from './admin-shell'
 import { ConfirmDialog } from './confirm-dialog'
 
 // Mirrors the bucket's own file_size_limit — see lib/server/product-images.ts.
@@ -59,7 +60,7 @@ function MissingDepartments({ onCreated }: { onCreated: () => Promise<void> | vo
             type="button"
             disabled={busy !== null}
             onClick={() => void create(d.slug, d.name, d.sortOrder)}
-            className="inline-flex items-center gap-2 border border-gold px-4 py-2 text-xs uppercase tracking-wider text-gold transition-colors hover:bg-gold hover:text-gold-foreground disabled:opacity-50"
+            className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-border bg-card px-3.5 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-50"
           >
             {busy === d.slug ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
             {t('admin.departmentCreate')} «{localize(d.name)}»
@@ -110,10 +111,7 @@ export function CollectionsManager() {
 
   return (
     <div>
-      <h1 className="mb-2 font-serif text-2xl font-semibold text-foreground">
-        {t('admin.collections')}
-      </h1>
-      <p className="mb-6 text-sm text-muted-foreground">{t('admin.departmentsHint')}</p>
+      <AdminPageHeader title={t('admin.collections')} description={t('admin.departmentsHint')} />
 
       {/* The three core departments, offered until each one exists. */}
       <MissingDepartments onCreated={reloadCatalog} />
@@ -225,19 +223,19 @@ function CategorySlot({
   }
 
   return (
-    <div className="border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="relative aspect-[4/5] overflow-hidden bg-background">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt={label} className="size-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/90">
+          <p className="text-xs text-muted-foreground">
             {count} {count === 1 ? 'товар' : 'товаров'}
           </p>
-          <h3 className="font-serif text-xl font-semibold text-foreground">{label}</h3>
+          <h3 className="text-lg font-semibold text-foreground">{label}</h3>
         </div>
         {isCustom && (
-          <span className="absolute left-3 top-3 border border-gold/50 bg-background/85 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-gold">
+          <span className="absolute left-3 top-3 rounded-md border border-border bg-background/90 px-2 py-0.5 text-[11px] text-foreground">
             Своё фото
           </span>
         )}
@@ -255,7 +253,7 @@ function CategorySlot({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="flex flex-1 items-center justify-center gap-1.5 border border-border py-2 text-xs uppercase tracking-wider text-foreground transition hover:border-gold/50 hover:text-gold disabled:cursor-wait disabled:opacity-60"
+          className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-border text-sm text-foreground transition hover:bg-accent disabled:cursor-wait disabled:opacity-60"
         >
           <ImagePlus className="size-3.5" />
           {uploading ? 'Загрузка...' : 'Заменить фото'}
@@ -264,7 +262,7 @@ function CategorySlot({
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
+            className="flex min-h-[36px] items-center justify-center rounded-lg border border-border px-3 text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
             title="Вернуть изображение по умолчанию"
           >
             <RotateCcw className="size-3.5" />
@@ -276,7 +274,7 @@ function CategorySlot({
             // Irreversible, and only offered while the section holds no
             // products, so one confirmation is proportionate.
             onClick={() => setConfirmDelete(true)}
-            className="flex items-center justify-center gap-1.5 border border-border px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
+            className="flex min-h-[36px] items-center justify-center rounded-lg border border-border px-3 text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
             title="Удалить раздел"
             aria-label={`Удалить раздел «${label}»`}
           >
@@ -344,7 +342,7 @@ function CategoriesPanel({
 
   return (
     <section className="mt-10">
-      <h2 className="mb-2 font-serif text-xl font-semibold text-foreground">Категории</h2>
+      <h2 className="mb-2 text-lg font-semibold text-foreground">Категории</h2>
       <p className="mb-5 max-w-3xl text-sm text-muted-foreground">
         По категориям работают фильтры магазина и выбор категории в карточке товара. Названия — на
         всех языках сайта; пустой язык показывает русское название. Обложка — фото на карточке
@@ -510,7 +508,7 @@ function CategoryTile({
             className={`size-full object-cover ${cover.source === 'product' ? 'mix-blend-multiply' : ''}`}
           />
         ) : (
-          <span className="flex size-full items-center justify-center font-serif text-2xl italic text-gold/70">
+          <span className="flex size-full items-center justify-center text-lg font-medium text-muted-foreground">
             {label.trim().charAt(0).toUpperCase()}
           </span>
         )}
@@ -522,7 +520,7 @@ function CategoryTile({
           {slug} · {count}
         </p>
         <p
-          className={`mt-0.5 text-[10px] uppercase tracking-[0.12em] ${cover.source === 'custom' ? 'text-gold' : 'text-muted-foreground'}`}
+          className={`mt-0.5 text-[11px] ${cover.source === 'custom' ? 'text-foreground' : 'text-muted-foreground'}`}
         >
           {cover.source === 'custom' ? 'Своя обложка' : cover.source === 'product' ? 'Фото товара' : 'Без фото'}
         </p>
@@ -631,7 +629,7 @@ function NewCategoryForm({
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {CATEGORY_NAME_FIELDS.map((field) => (
           <label key={field.locale} className="block">
-            <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
               Название {field.label}
               {field.required && <span className="text-destructive"> *</span>}
             </span>
@@ -649,7 +647,7 @@ function NewCategoryForm({
           </label>
         ))}
         <label className="block">
-          <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">
             Slug <span className="text-destructive">*</span>
           </span>
           <input
@@ -744,7 +742,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-6 flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/5 px-4 py-2.5 text-sm font-medium text-gold transition hover:bg-gold hover:text-gold-foreground"
+        className="mb-6 flex min-h-[38px] items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:bg-foreground/85"
       >
         <Plus className="size-4" />
         Новый раздел
@@ -759,7 +757,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Название (RU)
           </span>
           <input
@@ -776,7 +774,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Название (EN)
           </span>
           <input
@@ -789,7 +787,7 @@ function NewCollectionForm({ onCreated }: { onCreated: () => Promise<void> | voi
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Slug (латиницей)
           </span>
           <input

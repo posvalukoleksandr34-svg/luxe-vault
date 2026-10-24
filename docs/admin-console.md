@@ -100,6 +100,26 @@ Each change below is listed with the problem it solves.
 - **Page headers and spacing.** One page header, one page padding, and one
   `<main>`, provided by the shell. Previously pages nested their own `<main>`.
 
+### 4. UX refinement round (2026-10-24)
+
+A screen-by-screen pass over every page, at 1280px and at 390px, plus the
+detail views: the product editor, an open order, a support request, a refund
+case, the refund policy and staff pages. No features, settings, routes or API
+changes.
+
+| Problem seen | Change |
+|---|---|
+| **Width classes had no effect in the refund and review-request consoles.** `inputClass` carries `w-full`, and `` `${inputClass} w-auto` `` let `w-full` win in the CSS. Every filter select took a full row: five stacked selects on "Возвраты". Policy number fields and quantity inputs stretched across the page. | The classes are merged with `cn()` (tailwind-merge), so the caller's width applies. Fixed in 8 files and 26 places. |
+| **Gold checkboxes and radios** on the promo, review-request and policy pages. `:root` takes `accent-color` from the shop's gold. | The admin token block sets a black `accent-color`. |
+| **Pages sat at different widths.** Some were centred at 2xl/4xl/5xl/6xl/1280px and some were full width, so on a wide screen each section jumped. "Доставка" was centred while every other page was left-aligned. | The shell gives one container (`max-w-[1280px]`). Pages keep only a reading width for narrow forms, left-aligned. |
+| **The login page was still ivory and gold**, with an English "Private Access" and English password-toggle labels. | It now uses the console palette, a sans heading "Luxe Vault · админ", Russian toggle labels and `role="alert"` on errors. The form fields and "Войти" are unchanged. |
+| **"Разделы и категории" was in the old style**: uppercase tracked buttons ("ЗАМЕНИТЬ ФОТО"), square cards and a gold "Новый раздел". | Normal-case buttons, rounded cards, the shared page header and a black primary button. |
+| **Headings and tables differed by section.** The refund and review-request consoles had their own heading, grey-gold primary buttons and lowercase table headers. The store reviews page was titled "Отзывы" next to "Отзывы о товарах". | Those pages use `AdminPageHeader`. The refund-console primary button is black. List tables share one header style. The store reviews page is "Отзывы о магазине", as in the menu. |
+| **Phone: the search icon overlapped the typed text** in Остатки, Клиенты and Рассылка. The phone field rule replaced `pl-9` because the class had no `px-`. | Those fields declare `px-3 pl-9`. The storefront rule is untouched. |
+| **Phone: the product search was squeezed** to about 150px beside the filters. | It takes its own row below 640px. |
+| **Refund case header**: the risk badge wrapped into an orphaned right-aligned box. **Field labels** sat inline with their inputs. | The header has two columns that wrap cleanly, and the labels are block-level. |
+| Small items | The product editor's field labels are no longer uppercase. "Early fraud warning" on orders is now Russian. An empty support thread says so instead of showing a blank strip. Refund amounts no longer break across lines. The store reviews empty state uses the dashed box the other sections use. |
+
 ## Verified
 
 See "Tests run" in `PROJECT_IMPROVEMENT_LOG.md` for the commands and results.

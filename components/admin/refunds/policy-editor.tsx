@@ -9,6 +9,7 @@ import { RULE_EXPLANATION_RU } from '@/lib/refunds/risk'
 import { CLAIM_TYPES, RESOLUTIONS, type Resolution } from '@/lib/refunds/types'
 import { api, Button, Field, Spinner, inputClass, parseChf, useMe } from './shared'
 import { StaffBar } from './staff-bar'
+import { cn } from '@/lib/utils'
 
 /**
  * /admin/returns/policy — the refund policy the console applies, versioned:
@@ -90,15 +91,15 @@ export function PolicyEditor() {
   }
 
   const num = (value: number, onChange: (n: number) => void) => (
-    <input type="number" min={0} disabled={!editable} value={value} onChange={(e) => onChange(Math.max(0, Math.trunc(Number(e.target.value) || 0)))} className={`${inputClass} w-28`} />
+    <input type="number" min={0} disabled={!editable} value={value} onChange={(e) => onChange(Math.max(0, Math.trunc(Number(e.target.value) || 0)))} className={cn(inputClass, 'w-28')} />
   )
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <Link href="/admin/returns" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Возвраты
       </Link>
-      <h1 className="font-serif text-2xl font-semibold">Политика возвратов</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Политика возвратов</h1>
       <StaffBar me={me} onChange={reload} />
       {message && <p className="rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm">{message}</p>}
       {!config || !data ? (
@@ -110,7 +111,7 @@ export function PolicyEditor() {
             {!editable && ' Изменять может только владелец.'}
           </p>
 
-          <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Сроки</h2>
             {(Object.keys(WINDOW_LABELS) as (keyof PolicyConfig['windows'])[]).map((k) => (
               <label key={k} className="flex items-center justify-between gap-4">
@@ -120,10 +121,10 @@ export function PolicyEditor() {
             ))}
           </section>
 
-          <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Согласование</h2>
             <Field label="Второе согласование от суммы, CHF (пусто — не требуется)" hint="Требует личных учётных записей: второе согласование даёт другой сотрудник.">
-              <input disabled={!editable} inputMode="decimal" value={second} onChange={(e) => setSecond(e.target.value)} className={`${inputClass} w-40`} />
+              <input disabled={!editable} inputMode="decimal" value={second} onChange={(e) => setSecond(e.target.value)} className={cn(inputClass, 'w-40')} />
             </Field>
             <label className="flex items-center gap-2">
               <input type="checkbox" disabled={!editable} checked={config.approvals.highRiskRequiresJustification} onChange={(e) => patch((c) => void (c.approvals.highRiskRequiresJustification = e.target.checked))} />
@@ -143,7 +144,7 @@ export function PolicyEditor() {
             </label>
           </section>
 
-          <section className="space-y-2 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Типы заявок</h2>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px]">
@@ -197,7 +198,7 @@ export function PolicyEditor() {
             </div>
           </section>
 
-          <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Невозвратные товары</h2>
             <Field label="Слаги товаров (через запятую)">
               <input disabled={!editable} value={config.restrictions.nonReturnableProductSlugs.join(', ')} onChange={(e) => patch((c) => void (c.restrictions.nonReturnableProductSlugs = e.target.value.split(',').map((x) => x.trim()).filter(Boolean)))} className={inputClass} />
@@ -210,7 +211,7 @@ export function PolicyEditor() {
             </Field>
           </section>
 
-          <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Оценка риска</h2>
             <p className="text-xs text-muted-foreground">
               Риск только сортирует очередь и усиливает проверку; решает человек. Высокий уровень — только при двух и более разных признаках. Персональные характеристики не используются.
@@ -220,7 +221,7 @@ export function PolicyEditor() {
               <label className="flex items-center justify-between gap-2">Порог «высокий» {num(config.risk.highThreshold, (n) => patch((c) => void (c.risk.highThreshold = n)))}</label>
               <label className="flex items-center justify-between gap-2">
                 Крупная сумма, CHF
-                <input disabled={!editable} inputMode="decimal" value={highValue} onChange={(e) => setHighValue(e.target.value)} className={`${inputClass} w-28`} />
+                <input disabled={!editable} inputMode="decimal" value={highValue} onChange={(e) => setHighValue(e.target.value)} className={cn(inputClass, 'w-28')} />
               </label>
             </div>
             <table className="w-full">
@@ -238,7 +239,7 @@ export function PolicyEditor() {
             </table>
           </section>
 
-          <section className="space-y-3 rounded-lg border border-border p-4 text-sm">
+          <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
             <h2 className="font-semibold">Сроки работы и хранения</h2>
             <label className="flex items-center justify-between gap-4">Решение по заявке, дней (дальше — эскалация) {num(config.sla.decisionDays, (n) => patch((c) => void (c.sla.decisionDays = n)))}</label>
             <label className="flex items-center justify-between gap-4">Хранить файлы закрытых заявок, дней {num(config.retention.evidenceDays, (n) => patch((c) => void (c.retention.evidenceDays = n)))}</label>
@@ -247,7 +248,7 @@ export function PolicyEditor() {
           {editable && (
             <div className="flex flex-wrap items-end gap-3">
               <Field label="Что изменено и почему">
-                <input value={note} onChange={(e) => setNote(e.target.value)} className={`${inputClass} w-96`} />
+                <input value={note} onChange={(e) => setNote(e.target.value)} className={cn(inputClass, 'w-full sm:w-96')} />
               </Field>
               <Button tone="primary" busy={busy} onClick={() => void save()}>
                 Сохранить новую версию

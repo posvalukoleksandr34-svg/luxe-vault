@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
 import { ConfirmDialog } from './confirm-dialog'
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldAlert, Star, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -106,25 +107,27 @@ export function ProductReviewsQueue() {
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-semibold text-foreground">Отзывы о товарах</h1>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[12px] text-muted-foreground transition hover:text-foreground disabled:opacity-50"
-        >
-          <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-          Обновить
-        </button>
-      </div>
-      <p className="mb-2 text-sm text-muted-foreground">
-        {loading
-          ? 'Загрузка…'
-          : reviews.length > 0
-            ? `${reviews.length} ${plural(reviews.length, 'отзыв ждёт', 'отзыва ждут', 'отзывов ждут')} проверки`
-            : 'Очередь пуста — все отзывы проверены'}
-      </p>
+      <AdminPageHeader
+        title="Отзывы о товарах"
+        description={
+          loading
+            ? 'Загрузка…'
+            : reviews.length > 0
+              ? `${reviews.length} ${plural(reviews.length, 'отзыв ждёт', 'отзыва ждут', 'отзывов ждут')} проверки`
+              : 'Очередь пуста — все отзывы проверены'
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-border bg-card px-3.5 text-sm text-foreground transition hover:bg-accent disabled:opacity-50"
+          >
+            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            Обновить
+          </button>
+        }
+      />
       <div className="mb-6 max-w-3xl space-y-1 rounded-xl border border-border/70 bg-card/50 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
         <p>
           Отзывы с оценкой 4–5 без нарушений публикуются автоматически и сюда не попадают. Здесь — те, что

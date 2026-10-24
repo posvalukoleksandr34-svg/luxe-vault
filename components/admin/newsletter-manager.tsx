@@ -305,7 +305,7 @@ export function NewsletterManager() {
 
   return (
     <div>
-      <div className="mx-auto max-w-[1280px]">
+      <div>
 
         <AdminPageHeader title="Рассылка" description="Подписчики, письма и отправка кампаний." />
 
@@ -526,7 +526,7 @@ export function NewsletterManager() {
                   }}
                   placeholder="Поиск по email"
                   aria-label="Поиск подписчиков"
-                  className="w-56 rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-[13px] text-foreground outline-none focus:border-gold"
+                  className="w-56 rounded-lg border border-border bg-background py-2 px-3 pl-9 text-[13px] text-foreground outline-none focus:border-gold"
                 />
               </div>
             </div>

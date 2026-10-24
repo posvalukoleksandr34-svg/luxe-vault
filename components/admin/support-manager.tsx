@@ -448,6 +448,7 @@ function AdminTicket({
       </div>
 
       <ol className="max-h-[60vh] space-y-3 overflow-y-auto p-5">
+        {ticket.messages.length === 0 && <li className="text-sm text-muted-foreground">Сообщений в переписке пока нет.</li>}
         {ticket.messages.map((m) => {
           const staff = m.author === 'staff'
           return (

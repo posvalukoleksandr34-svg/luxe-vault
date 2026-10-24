@@ -354,7 +354,7 @@ export function InventoryManager() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Товар, SKU, размер"
               aria-label="Поиск по остаткам"
-              className="w-52 rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-[13px] text-foreground outline-none focus:border-gold"
+              className="w-52 rounded-lg border border-border bg-background py-2 px-3 pl-9 text-[13px] text-foreground outline-none focus:border-gold"
             />
           </div>
         </div>

@@ -2594,6 +2594,9 @@ body:has([data-admin-shell]) {
   --gold-ink: 0 0% 10%;
   --gold-foreground: 0 0% 98%;
   --primary-foreground: 0 0% 98%;
+  /* :root sets the accent from the shop's gold; checkboxes and radios in the
+     console tick in black like everything else selected. */
+  accent-color: hsl(0 0% 12%);
 }
 body:has([data-admin-shell]) :focus-visible {
   outline: 2px solid hsl(0 0% 10%);

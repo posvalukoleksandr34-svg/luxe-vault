@@ -18,6 +18,8 @@ import {
   type ReviewRequestStatus,
   type SuppressReason,
 } from '@/lib/review-requests'
+import { cn } from '@/lib/utils'
+import { AdminPageHeader } from '@/components/admin/admin-shell'
 
 /**
  * /admin/review-requests — post-delivery review requests: the switch and the
@@ -157,14 +159,11 @@ export function ReviewRequestsConsole() {
   const selected = params.get('status') ?? ''
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold text-foreground">Запросы отзывов</h1>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Письмо «Как вам покупка?» уходит через заданное время после подтверждённой доставки — каждому покупателю, а не
-          только довольным. Отменённые, полностью возвращённые и помеченные как мошеннические заказы не получают письма.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="Запросы отзывов"
+        description="Письмо «Как вам покупка?» уходит через заданное время после подтверждённой доставки — каждому покупателю, а не только довольным. Отменённые, полностью возвращённые и помеченные как мошеннические заказы не получают письма."
+      />
 
       {meError && <p className="text-sm text-red-700">{meError}</p>}
       {me && <StaffBar me={me} onChange={reload} />}
@@ -201,8 +200,8 @@ export function ReviewRequestsConsole() {
             </>
           )}
 
-          <section aria-label="Фильтры" className="flex flex-wrap items-end gap-3">
-            <select aria-label="Статус" value={selected} onChange={(e) => setParam('status', e.target.value || null)} className={`${inputClass} w-auto`}>
+          <section aria-label="Фильтры" className="flex flex-wrap items-end gap-2">
+            <select aria-label="Статус" value={selected} onChange={(e) => setParam('status', e.target.value || null)} className={cn(inputClass, 'w-auto')}>
               <option value="">Все статусы</option>
               {REVIEW_REQUEST_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -226,17 +225,17 @@ export function ReviewRequestsConsole() {
               }}
               className="flex flex-wrap gap-2"
             >
-              <input aria-label="Заказ или покупатель" value={q} onChange={(e) => setQ(e.target.value)} placeholder="LV-…, email, имя" className={`${inputClass} w-48`} />
-              <input aria-label="Товар" value={product} onChange={(e) => setProduct(e.target.value)} placeholder="Товар" className={`${inputClass} w-40`} />
+              <input aria-label="Заказ или покупатель" value={q} onChange={(e) => setQ(e.target.value)} placeholder="LV-…, email, имя" className={cn(inputClass, 'w-48')} />
+              <input aria-label="Товар" value={product} onChange={(e) => setProduct(e.target.value)} placeholder="Товар" className={cn(inputClass, 'w-40')} />
               <Button type="submit">Найти</Button>
             </form>
-            <label className="text-xs text-muted-foreground">
+            <label className="flex flex-col text-xs text-muted-foreground">
               Запланирован с
-              <input type="date" value={params.get('from') ?? ''} onChange={(e) => setParam('from', e.target.value || null)} className={`${inputClass} mt-1 w-auto`} />
+              <input type="date" value={params.get('from') ?? ''} onChange={(e) => setParam('from', e.target.value || null)} className={cn(inputClass, 'mt-1 w-auto')} />
             </label>
-            <label className="text-xs text-muted-foreground">
+            <label className="flex flex-col text-xs text-muted-foreground">
               по
-              <input type="date" value={params.get('to') ?? ''} onChange={(e) => setParam('to', e.target.value || null)} className={`${inputClass} mt-1 w-auto`} />
+              <input type="date" value={params.get('to') ?? ''} onChange={(e) => setParam('to', e.target.value || null)} className={cn(inputClass, 'mt-1 w-auto')} />
             </label>
             <div className="ml-auto">
               <Button onClick={load} busy={loading}>
@@ -246,40 +245,40 @@ export function ReviewRequestsConsole() {
           </section>
 
           {data && (
-            <section aria-label="Запросы" className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[960px] text-left text-sm">
-                <thead className="bg-muted/40 text-xs text-muted-foreground">
+            <section aria-label="Запросы" className="overflow-x-auto rounded-lg border border-border bg-card">
+              <table className="w-full min-w-[1040px] text-left text-[13px]">
+                <thead className="bg-background/60 text-[11px] uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Заказ / покупатель</th>
-                    <th className="px-3 py-2 font-medium">Товары</th>
-                    <th className="px-3 py-2 font-medium">Статус</th>
-                    <th className="px-3 py-2 font-medium">Доставлен</th>
-                    <th className="px-3 py-2 font-medium">Запланирован / след. попытка</th>
-                    <th className="px-3 py-2 font-medium">Отправлен</th>
-                    <th className="px-3 py-2 font-medium">Попытки</th>
-                    <th className="px-3 py-2 font-medium">Отзывы</th>
-                    <th className="px-3 py-2 font-medium" />
+                    <th className="px-4 py-3 font-normal">Заказ / покупатель</th>
+                    <th className="px-4 py-3 font-normal">Товары</th>
+                    <th className="px-4 py-3 font-normal">Статус</th>
+                    <th className="px-4 py-3 font-normal">Доставлен</th>
+                    <th className="px-4 py-3 font-normal">Запланирован / след. попытка</th>
+                    <th className="px-4 py-3 font-normal">Отправлен</th>
+                    <th className="px-4 py-3 font-normal">Попытки</th>
+                    <th className="px-4 py-3 font-normal">Отзывы</th>
+                    <th className="px-4 py-3 font-normal" />
                   </tr>
                 </thead>
                 <tbody>
                   {data.rows.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
                         Нет запросов под этот фильтр.
                       </td>
                     </tr>
                   )}
                   {data.rows.map((r) => (
-                    <tr key={r.id} className="border-t border-border align-top">
-                      <td className="px-3 py-2">
+                    <tr key={r.id} className="border-t border-border/60 align-top">
+                      <td className="min-w-[200px] px-4 py-3">
                         <Link href={`/admin/orders?order=${encodeURIComponent(r.orderNumber)}`} className="font-mono text-xs text-foreground hover:underline">
                           {r.orderNumber}
                         </Link>
                         <span className="block text-xs text-muted-foreground">{r.customerName || '—'}</span>
-                        <span className="block break-all text-[11px] text-muted-foreground/80">{r.customerEmail}</span>
+                        <span className="block break-words text-[11px] text-muted-foreground/80">{r.customerEmail}</span>
                       </td>
                       <td className="max-w-[200px] px-3 py-2 text-xs text-muted-foreground">{r.products.join(', ') || '—'}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-3">
                         <Badge tone={TONE[r.status]}>{STATUS_LABEL_RU[r.status]}</Badge>
                         {reasonLabel(r.reason) && <span className="mt-1 block text-[11px] text-muted-foreground">{reasonLabel(r.reason)}</span>}
                         {r.lastError && (
@@ -288,17 +287,17 @@ export function ReviewRequestsConsole() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs tabular-nums">{when(r.deliveredAt)}</td>
-                      <td className="px-3 py-2 text-xs tabular-nums">
+                      <td className="px-4 py-3 text-xs tabular-nums">{when(r.deliveredAt)}</td>
+                      <td className="px-4 py-3 text-xs tabular-nums">
                         {when(r.scheduledAt)}
                         {r.nextAttemptAt && r.nextAttemptAt !== r.scheduledAt && r.status === 'scheduled' && (
                           <span className="block text-muted-foreground">→ {when(r.nextAttemptAt)}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs tabular-nums">{when(r.sentAt)}</td>
-                      <td className="px-3 py-2 text-xs tabular-nums">{r.attempts}</td>
-                      <td className="px-3 py-2 text-xs tabular-nums">{r.reviewsSubmitted}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-3 text-xs tabular-nums">{when(r.sentAt)}</td>
+                      <td className="px-4 py-3 text-xs tabular-nums">{r.attempts}</td>
+                      <td className="px-4 py-3 text-xs tabular-nums">{r.reviewsSubmitted}</td>
+                      <td className="px-4 py-3">
                         {can('review_requests.manage') && (
                           <div className="flex flex-col gap-1">
                             {(r.status === 'failed' || r.status === 'cancelled') && (
@@ -369,7 +368,7 @@ function StatusBanner({ data }: { data: Payload }) {
   else if (mail.mode === 'test') lines.push({ tone: 'warn', text: 'EMAIL_DELIVERY=test: письма только записываются в лог, покупателям ничего не уходит.' })
   if (data.settingsSource === 'defaults') lines.push({ tone: 'warn', text: 'Настройки ещё не сохранялись — действуют значения по умолчанию.' })
   return (
-    <section aria-label="Состояние" className="space-y-1 rounded-lg border border-border p-3 text-sm">
+    <section aria-label="Состояние" className="space-y-1 rounded-lg border border-border bg-card p-3 text-sm">
       {lines.map((l) => (
         <p key={l.text} className={l.tone === 'ok' ? 'text-emerald-700' : 'text-amber-700'}>
           {l.text}
@@ -395,12 +394,12 @@ function MetricsCards({ metrics, onFilter }: { metrics: Metrics; onFilter: (stat
     <section aria-label="Сводка" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {cards.map(([label, value, status]) =>
         status ? (
-          <button key={label} type="button" onClick={() => onFilter(status)} className="rounded-lg border border-border p-3 text-left transition hover:border-gold/50">
+          <button key={label} type="button" onClick={() => onFilter(status)} className="rounded-lg border border-border bg-card p-3 text-left transition hover:border-foreground/40">
             <span className="block text-xl font-semibold tabular-nums text-foreground">{value}</span>
             <span className="text-xs text-muted-foreground">{label}</span>
           </button>
         ) : (
-          <div key={label} className="rounded-lg border border-border p-3">
+          <div key={label} className="rounded-lg border border-border bg-card p-3">
             <span className="block text-xl font-semibold tabular-nums text-foreground">{value}</span>
             <span className="text-xs text-muted-foreground">{label}</span>
           </div>
@@ -465,7 +464,7 @@ function SettingsForm({
   }
 
   return (
-    <section aria-label="Настройки" className="space-y-4 rounded-lg border border-border p-4">
+    <section aria-label="Настройки" className="space-y-4 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-foreground">Настройки</h2>
         {!editable && <span className="text-xs text-muted-foreground">Изменять настройки может только владелец.</span>}
@@ -554,10 +553,10 @@ function PreviewAndTest({ recipients, canSend, mail }: { recipients: string[]; c
   }
 
   return (
-    <section aria-label="Предпросмотр" className="space-y-3 rounded-lg border border-border p-4">
+    <section aria-label="Предпросмотр" className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-end gap-3">
         <h2 className="mr-auto text-base font-semibold text-foreground">Предпросмотр письма</h2>
-        <select aria-label="Язык" value={lang} onChange={(e) => setLang(e.target.value)} className={`${inputClass} w-auto`}>
+        <select aria-label="Язык" value={lang} onChange={(e) => setLang(e.target.value)} className={cn(inputClass, 'w-auto')}>
           {LANGS.map(([code, label]) => (
             <option key={code} value={code}>
               {label}
@@ -566,7 +565,7 @@ function PreviewAndTest({ recipients, canSend, mail }: { recipients: string[]; c
         </select>
         {canSend && recipients.length > 0 && (
           <>
-            <select aria-label="Получатель теста" value={to} onChange={(e) => setTo(e.target.value)} className={`${inputClass} w-auto`}>
+            <select aria-label="Получатель теста" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputClass, 'w-auto')}>
               {recipients.map((r) => (
                 <option key={r} value={r}>
                   {r}

@@ -76,7 +76,7 @@ export function PromoCodesManager({ list }: { list: PromoList | null }) {
 
   return (
     <div>
-      <div className="mx-auto max-w-5xl">
+      <div>
 
         <AdminPageHeader title="Промокоды" description="Скидка, сколько человек может воспользоваться кодом и сколько он действует. Проверяются при оформлении заказа." />
 

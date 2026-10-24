@@ -75,7 +75,7 @@ export function ShippingSettingsForm({
 
   return (
     <div>
-      <div className="mx-auto max-w-2xl">
+      <div className="max-w-2xl">
 
         <AdminPageHeader title="Доставка" description="Стоимость, порог бесплатной доставки и срок — для всей витрины и всех новых заказов." />
 

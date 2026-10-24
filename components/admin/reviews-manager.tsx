@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminPageHeader } from './admin-shell'
 import { ConfirmDialog } from './confirm-dialog'
 import { Check, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -84,17 +85,18 @@ export function ReviewsManager() {
 
   return (
     <div>
-      <h1 className="mb-1 font-serif text-2xl font-semibold text-foreground">Отзывы</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        {failed || loading ? '' : pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
-      </p>
+      {/* Named as in the navigation: "Отзывы о товарах" is the other queue. */}
+      <AdminPageHeader
+        title="Отзывы о магазине"
+        description={failed || loading ? undefined : pendingCount > 0 ? `${pendingCount} на модерации` : 'Новых отзывов на модерации нет'}
+      />
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>
       ) : failed ? (
         <p role="alert" className="text-sm text-red-700">Не удалось загрузить отзывы. Обновите страницу.</p>
       ) : reviews.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Отзывов пока нет</p>
+        <p className="rounded-lg border border-dashed border-border px-6 py-12 text-center text-sm text-muted-foreground">Отзывов о магазине пока нет.</p>
       ) : (
         <div className="space-y-3">
           {reviews.map((review) => (

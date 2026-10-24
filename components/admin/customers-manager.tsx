@@ -100,7 +100,7 @@ export function CustomersManager() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Имя или email"
             aria-label="Поиск клиентов"
-            className="w-56 rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-[13px] text-foreground outline-none focus:border-gold"
+            className="w-56 rounded-lg border border-border bg-background py-2 px-3 pl-9 text-[13px] text-foreground outline-none focus:border-gold"
           />
         </div>
       </div>

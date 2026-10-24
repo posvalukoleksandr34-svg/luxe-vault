@@ -347,7 +347,7 @@ export function OrdersManager({
 
   return (
     <div>
-      <div className="mx-auto max-w-6xl">
+      <div>
 
         <AdminPageHeader
           title="Заказы"
@@ -753,7 +753,7 @@ function Badge({ className, children }: { className: string; children: React.Rea
 
 const FRAUD_FLAG_LABELS: Record<NonNullable<OrderRisk['fraudFlag']>, string> = {
   elevated_risk: 'Повышенный риск — проверить до отправки',
-  early_fraud_warning: 'Early fraud warning',
+  early_fraud_warning: 'Предупреждение банка о мошенничестве',
   dispute: 'Спор (chargeback)',
 }
 

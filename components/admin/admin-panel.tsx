@@ -390,7 +390,7 @@ function ProductsSection() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <label className="flex min-h-[40px] flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 focus-within:border-foreground sm:max-w-xs">
+        <label className="flex min-h-[40px] w-full items-center gap-2 rounded-lg border border-border bg-background px-3 focus-within:border-foreground sm:w-auto sm:max-w-xs sm:flex-1">
           <Search className="size-4 text-muted-foreground" aria-hidden />
           <input
             type="search"

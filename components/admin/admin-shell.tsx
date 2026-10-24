@@ -230,12 +230,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </header>
 
         <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          {failed && (
-            <p role="status" className="mb-4 text-xs text-muted-foreground">
-              Счётчики в меню не загрузились — разделы работают, обновите страницу позже.
-            </p>
-          )}
-          {children}
+          {/* One width for every section, so pages don't jump between widths
+              (and sides) on a wide screen. */}
+          <div className="mx-auto w-full max-w-[1280px]">
+            {failed && (
+              <p role="status" className="mb-4 text-xs text-muted-foreground">
+                Счётчики в меню не загрузились — разделы работают, обновите страницу позже.
+              </p>
+            )}
+            {children}
+          </div>
         </main>
       </div>
     </AttentionContext.Provider>

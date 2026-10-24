@@ -711,7 +711,7 @@ export function ProductForm({
                 error={submitted ? nameError : null}
               />
               <label className="block">
-                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+                <span className="mb-1.5 block text-xs font-medium text-foreground">
                   Описание ({copyLocale.toUpperCase()})
                 </span>
                 <textarea
@@ -745,7 +745,7 @@ export function ProductForm({
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+              <span className="mb-1.5 block text-xs font-medium text-foreground">
                 {t('admin.department')}
               </span>
               <select
@@ -771,7 +771,7 @@ export function ProductForm({
               </select>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+              <span className="mb-1.5 block text-xs font-medium text-foreground">
                 Категория
               </span>
               <select
@@ -825,7 +825,7 @@ export function ProductForm({
               visitor's language, and stamped on its orders. Empty keeps the
               store default. */}
           <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">
               Срок доставки, дней
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -870,7 +870,7 @@ export function ProductForm({
               colour, and an optional stock count. */}
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <span className="text-xs font-medium uppercase tracking-wider text-foreground">
+              <span className="text-xs font-medium text-foreground">
                 Цвета
               </span>
               <button
@@ -965,7 +965,7 @@ export function ProductForm({
               matches the order rendered there. */}
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <span className="text-xs font-medium uppercase tracking-wider text-foreground">
+              <span className="text-xs font-medium text-foreground">
                 Замеры по размерам
               </span>
               <button
@@ -1044,7 +1044,7 @@ export function ProductForm({
           </div>
 
           <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">
               Статусы <span className="text-destructive">*</span>
             </span>
             <p className="mb-1.5 text-[11px] text-muted-foreground/85">
@@ -1086,7 +1086,7 @@ export function ProductForm({
               product's name and category (lib/style-tags/tagging.ts); set here,
               the admin's word wins. */}
           <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">
               Посадка, стиль и повод
             </span>
             <p className="mb-2 text-[11px] text-muted-foreground/85">
@@ -1170,7 +1170,7 @@ export function ProductForm({
               buys. Leaving the whole grid blank keeps the product untracked,
               which is how every product behaved before inventory existed. */}
           <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">
               Остатки
             </span>
             <p className="mb-2 text-[11px] text-muted-foreground/85">
@@ -1239,7 +1239,7 @@ export function ProductForm({
           {/* Images upload to Supabase Storage; the row holds a URL. See
               lib/server/product-images.ts for why they are not base64. */}
           <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">
               Изображения товара
             </span>
 
@@ -1277,7 +1277,7 @@ export function ProductForm({
 
             {form.images.length > 0 && (
               <div className="mt-3">
-                <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+                <span className="mb-1.5 block text-xs font-medium text-foreground">
                   Загруженные фото (первое — обложка)
                 </span>
                 <div className="flex flex-wrap gap-3">
@@ -1415,7 +1415,7 @@ function Input({
   const errorId = useMemo(() => `err-${Math.random().toString(36).slice(2, 9)}`, [])
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-foreground">
+      <span className="mb-1.5 block text-xs font-medium text-foreground">
         {label}
         {required && (
           <span className="ml-0.5 text-destructive" aria-hidden>
