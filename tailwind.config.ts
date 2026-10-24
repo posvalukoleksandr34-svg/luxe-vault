@@ -10,6 +10,20 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Motion tokens (globals.css → "Motion system"): duration-fast,
+      // ease-emphasized and so on, so components never hand-pick a timing.
+      transitionDuration: {
+        instant: 'var(--motion-instant)',
+        fast: 'var(--motion-fast)',
+        base: 'var(--motion-base)',
+        panel: 'var(--motion-panel)',
+        page: 'var(--motion-page)',
+      },
+      transitionTimingFunction: {
+        standard: 'var(--ease-standard)',
+        emphasized: 'var(--ease-emphasized)',
+        exit: 'var(--ease-exit)',
+      },
       // Tailwind 3.3's default scale stops at multiples of 5 only up to 10 and
       // then every 10 (plus 25/75/95), so classes used across the site such as
       // text-foreground/85, bg-background/85 or bg-gold/15 compiled to nothing
@@ -105,29 +119,34 @@ const config: Config = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        // The individual `translate` / `scale` properties, not `transform`:
+        // they compose with a component's own transform. Dialogs centred with
+        // -translate-x/y-1/2 used to lose that centring for the length of the
+        // animation (the keyframe's transform replaced it) and jump into place
+        // at the end.
         'fade-up': {
-          from: { opacity: '0', transform: 'translateY(12px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          from: { opacity: '0', translate: '0 var(--motion-rise)' },
+          to: { opacity: '1', translate: '0 0' },
         },
         'fade-in': {
           from: { opacity: '0' },
           to: { opacity: '1' },
         },
         'slide-in-right': {
-          from: { transform: 'translateX(100%)' },
-          to: { transform: 'translateX(0)' },
+          from: { translate: '100% 0' },
+          to: { translate: '0 0' },
         },
         'slide-in-left': {
-          from: { transform: 'translateX(-100%)' },
-          to: { transform: 'translateX(0)' },
+          from: { translate: '-100% 0' },
+          to: { translate: '0 0' },
         },
         'shimmer': {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
         'scale-in': {
-          from: { opacity: '0', transform: 'scale(0.96)' },
-          to: { opacity: '1', transform: 'scale(1)' },
+          from: { opacity: '0', scale: '0.97' },
+          to: { opacity: '1', scale: '1' },
         },
         'reveal-up': {
           from: { opacity: '0', transform: 'translateY(24px)' },
@@ -139,14 +158,15 @@ const config: Config = {
         },
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-up': 'fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-        'fade-in': 'fade-in 0.4s ease-out',
-        'slide-in-right': 'slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-in-left': 'slide-in-left 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        'accordion-down': 'accordion-down var(--motion-base) var(--ease-standard)',
+        'accordion-up': 'accordion-up var(--motion-fast) var(--ease-exit)',
+        // Durations and curves from the motion tokens (globals.css).
+        'fade-up': 'fade-up var(--motion-panel) var(--ease-emphasized) both',
+        'fade-in': 'fade-in var(--motion-base) var(--ease-standard) both',
+        'slide-in-right': 'slide-in-right var(--motion-panel) var(--ease-emphasized) both',
+        'slide-in-left': 'slide-in-left var(--motion-panel) var(--ease-emphasized) both',
         'shimmer': 'shimmer 2s linear infinite',
-        'scale-in': 'scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scale-in var(--motion-base) var(--ease-emphasized) both',
         'reveal-up': 'reveal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         'line-grow': 'line-grow 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
       },

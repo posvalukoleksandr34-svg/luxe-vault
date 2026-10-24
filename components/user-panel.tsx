@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import type { Order } from '@/lib/types'
 import { PrivacyNotice } from '@/components/privacy-notice'
 import { useFocusTrap } from '@/lib/use-focus-trap'
+import { usePresence } from '@/lib/use-presence'
 
 /**
  * The sign-in and registration fields.
@@ -152,7 +153,9 @@ export function UserPanel() {
     if (panel === 'user') dialogRef.current?.focus({ preventScroll: true })
   }, [panel])
 
-  if (panel !== 'user') return null
+  // Mounted through its slide-out (lib/use-presence.ts); inert while leaving.
+  const { mounted, state } = usePresence(panel === 'user')
+  if (!mounted) return null
 
   const unpaidCount = myOrders.filter(isUnpaid).length
 
@@ -262,11 +265,14 @@ export function UserPanel() {
   return (
     <>
       <div
-        className="fixed inset-0 z-[90] bg-background/60 backdrop-blur-sm"
+        data-state={state}
+        className="motion-scrim fixed inset-0 z-[90] bg-background/60 backdrop-blur-sm"
         onClick={() => setPanel(null)}
         aria-hidden
       />
-      <div className="animate-slide-in-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl outline-none"
+      <div className="motion-drawer-right fixed right-0 top-0 z-[100] flex h-full w-full max-w-lg flex-col border-l border-border bg-popover shadow-2xl outline-none"
+        data-state={state}
+        inert={panel !== 'user' || undefined}
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"

@@ -13,6 +13,7 @@ export function ToastViewport() {
     // without the focus moving; an error is announced at once (role=alert).
     <div
       aria-live="polite"
+      data-vt-chrome="toasts"
       className="pointer-events-none fixed bottom-5 left-5 right-5 z-[200] flex flex-col items-start gap-2 sm:right-auto sm:max-w-md"
     >
       {toasts.map((toast) => (

@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { MOTION_MS } from '@/lib/motion'
+import { usePresence } from '@/lib/use-presence'
 import { CURRENCY_CODES, CURRENCY_NAME_KEY } from '@/lib/currency'
 import { STOREFRONT_LOCALES } from '@/lib/i18n'
 import { useStore } from '@/lib/store'
@@ -25,6 +27,9 @@ const LANGUAGE_ORDER: StorefrontLocale[] = ['it', 'en', 'de', 'fr']
 export function LocaleCurrencyMenu() {
   const { locale, setLocale, currency, setCurrency, t } = useStore()
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Drops from its trigger and lifts away on close (lib/use-presence.ts).
+  const popover = usePresence(open, MOTION_MS.fast)
   const current = STOREFRONT_LOCALES.find((l) => l.code === locale)
 
   useEffect(() => {
@@ -36,8 +41,20 @@ export function LocaleCurrencyMenu() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  // Close on outside click. The click-catcher below cannot do it alone: the
+  // header's backdrop-filter makes it the containing block for fixed
+  // children, so that layer only covers the header bar, not the page.
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [open])
+
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -53,15 +70,17 @@ export function LocaleCurrencyMenu() {
         <span>{currency}</span>
       </button>
 
-      {open && (
+      {popover.mounted && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />}
           <div
             role="dialog"
             aria-label={t('header.langCurrency')}
             // max-w keeps it inside a 375px screen whatever the button's
             // position; anchored right, it opens leftwards under the header.
-            className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover py-3 shadow-2xl"
+            data-state={popover.state}
+            inert={!open || undefined}
+            className="motion-popover absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover py-3 shadow-2xl"
           >
             <p className="px-4 pb-1.5 text-[10px] uppercase tracking-[0.3em] text-gold">
               {t('header.language')}

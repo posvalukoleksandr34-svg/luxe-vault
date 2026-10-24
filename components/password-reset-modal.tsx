@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CheckCircle2, KeyRound, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePresence } from '@/lib/use-presence'
 import { isOtpComplete, OtpCodeInput } from '@/components/otp-code-input'
 import { PasswordInput } from '@/components/password-input'
 import { MIN_PASSWORD_LENGTH, RESEND_COOLDOWN_SECONDS } from '@/lib/auth-config'
@@ -199,7 +200,9 @@ export function PasswordResetModal({
     })
   }
 
-  if (!open) return null
+  // Mounted through its exit (lib/use-presence.ts); inert while leaving.
+  const { mounted, state } = usePresence(open)
+  if (!mounted) return null
 
   const tooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH
   const mismatch = confirm.length > 0 && confirm !== password
@@ -207,7 +210,8 @@ export function PasswordResetModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm"
+        data-state={state}
+        className="motion-scrim fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
@@ -216,7 +220,9 @@ export function PasswordResetModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        data-state={state}
+        inert={!open || undefined}
+        className="motion-dialog fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">

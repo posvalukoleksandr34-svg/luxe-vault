@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { Link } from '@/components/locale-link'
 import { useEffect, useRef, useState } from 'react'
 import { trackSearch } from '@/lib/analytics'
+import { MOTION_MS } from '@/lib/motion'
+import { usePresence } from '@/lib/use-presence'
 import { isProductBuyable } from '@/lib/availability'
 import { formatMoney } from '@/lib/currency'
 import {
@@ -88,6 +90,8 @@ export function SearchBox({
   } = useStore()
 
   const [open, setOpen] = useState(false)
+  // Drops from the field and lifts away on close (lib/use-presence.ts).
+  const panel = usePresence(open, MOTION_MS.fast)
   const [loading, setLoading] = useState(false)
   const [found, setFound] = useState<Found>(NOTHING)
   const [popular, setPopular] = useState<string[]>([])
@@ -317,6 +321,12 @@ export function SearchBox({
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
+        // Escape with the suggestions showing closes them and keeps the text
+        // (the combobox convention). Left alone, a search input clears itself
+        // on Escape, and that change reopened the panel it was meant to close.
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && open) e.preventDefault()
+        }}
         placeholder={t('filter.search')}
         className={cn(
           // outline-none is replaced, not dropped: focus draws a gold border.
@@ -353,13 +363,15 @@ export function SearchBox({
           : ''}
       </p>
 
-      {open && (
+      {panel.mounted && (
         <div
           id="search-suggestions"
           role="region"
           aria-label={t('search.panel')}
+          data-state={panel.state}
+          inert={!open || undefined}
           className={cn(
-            'absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover shadow-xl',
+            'motion-popover absolute z-[120] mt-2 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover shadow-xl',
             variant === 'desktop' ? 'right-0 w-[24rem]' : 'left-0 right-0 w-full',
           )}
         >

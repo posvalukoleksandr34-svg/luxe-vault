@@ -2,6 +2,7 @@
 
 import { CheckCircle2, KeyRound, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { usePresence } from '@/lib/use-presence'
 import { PasswordInput } from '@/components/password-input'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
 import { hasSessionCookie, loadSupabase } from '@/lib/supabase/lazy'
@@ -111,7 +112,9 @@ export function PasswordRecoveryModal() {
     }
   }
 
-  if (!open) return null
+  // Mounted through its exit (lib/use-presence.ts); inert while leaving.
+  const { mounted, state } = usePresence(open)
+  if (!mounted) return null
 
   const mismatch = confirm.length > 0 && confirm !== password
   // Too short is caught on submit too, but disabling here keeps the button's
@@ -123,13 +126,15 @@ export function PasswordRecoveryModal() {
       {/* No click-to-dismiss on the backdrop: the recovery session is
           single-use, so an accidental click outside would strand the customer
           with no way back in. Closing is an explicit choice. */}
-      <div className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm" aria-hidden />
+      <div data-state={state} className="motion-scrim fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm" aria-hidden />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="recovery-title"
-        className="animate-fade-up fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
+        data-state={state}
+        inert={!open || undefined}
+        className="motion-dialog fixed left-1/2 top-1/2 z-[111] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-popover p-6 shadow-2xl sm:p-8"
       >
         {done ? (
           <div className="flex flex-col items-center gap-4 py-4 text-center">

@@ -20,6 +20,7 @@ import {
 import Image from 'next/image'
 import { Link } from '@/components/locale-link'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePresence } from '@/lib/use-presence'
 import { rememberViewed } from '@/components/products/product-rail'
 import { FitAdvisorModal } from '@/components/products/fit-advisor-modal'
 import { SizeFinder, finderAudience } from '@/components/products/size-finder/size-finder'
@@ -312,6 +313,8 @@ export function ProductDetail({ product }: { product: Product }) {
   const [showStickyBuy, setShowStickyBuy] = useState(false)
 
   const [zoomed, setZoomed] = useState(false)
+  // The full-screen photo fades in and out (lib/use-presence.ts).
+  const zoom = usePresence(zoomed)
 
   // Escape closes the lightbox, and the page behind it must not scroll while
   // it is open — a zoomed image that slides away under the overlay is the
@@ -445,7 +448,12 @@ export function ProductDetail({ product }: { product: Product }) {
           corners, a full-bleed photo would round off against the screen
           edge. */}
       <div>
+        {/* data-vt-product-hero: where a card's photo lands when the product
+            is opened from a listing, and where it leaves from on the way back
+            (lib/page-transition.ts). Same 3:4 frame as the card, so the photo
+            moves and grows without changing shape. */}
         <div
+          data-vt-product-hero={p.id}
           className="card-gold group relative aspect-[3/4] overflow-hidden"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -550,7 +558,11 @@ export function ProductDetail({ product }: { product: Product }) {
           the panel is taller than the gallery the row takes its height and
           it simply scrolls with the page, so nothing can end up hidden. The
           phone layout is a single column and never sticky. */}
-      <div className="flex flex-col lg:sticky lg:top-24 lg:self-start">
+      {/* data-motion-stagger: arriving from a card, the details settle in one
+          after another while the photo travels (globals.css, "Motion
+          system"). Opacity only: nothing here waits, and nothing moves under
+          the sticky panel. */}
+      <div data-motion-stagger className="flex flex-col lg:sticky lg:top-24 lg:self-start">
         <p className="text-[10px] uppercase tracking-[0.25em] text-gold">
           {localize(categoryLabels[p.category] ?? {})}
         </p>
@@ -1061,13 +1073,15 @@ export function ProductDetail({ product }: { product: Product }) {
 
       {/* Full-screen image. Rendered outside the gallery box so it is not
           clipped by its overflow-hidden. */}
-      {zoomed && (
+      {zoom.mounted && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label={productName}
           onClick={() => setZoomed(false)}
-          className="animate-fade-in fixed inset-0 z-[130] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm"
+          data-state={zoom.state}
+          inert={!zoomed || undefined}
+          className="motion-fade fixed inset-0 z-[130] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm"
         >
           <button
             type="button"

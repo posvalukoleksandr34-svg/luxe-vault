@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/state-view'
 import { isProductBuyable } from '@/lib/availability'
 import { buildSearchContext, interpretQuery } from '@/lib/search/interpret'
 import { matchProducts } from '@/lib/search/match'
+import { resultsTransition } from '@/lib/page-transition'
 import { EMPTY_FILTER, useFullCatalog, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -85,6 +86,12 @@ export function ProductGrid({
     categories: storeCategories,
     currency,
   } = useStore()
+
+  // A filter or sort chosen with one click: the results crossfade and settle
+  // to their new height while the controls change at once (resultsTransition,
+  // lib/page-transition.ts). The price fields keep setFilter — typing is
+  // continuous, and one transition per keystroke would only stutter.
+  const changeFilter = (next: typeof filter) => resultsTransition(() => setFilter(next))
 
   // What to list: the products the page read on the server (the catalogue
   // and category pages pass them in — see ListingProvider), so the grid is
@@ -233,7 +240,7 @@ export function ProductGrid({
   // writers racing on first paint is how a shared ?sort= link lost its sort.
 
   function toggleSize(size: string) {
-    setFilter({
+    changeFilter({
       ...filter,
       sizes: filter.sizes.includes(size)
         ? filter.sizes.filter((s) => s !== size)
@@ -242,7 +249,7 @@ export function ProductGrid({
   }
 
   function toggleColor(color: string) {
-    setFilter({
+    changeFilter({
       ...filter,
       colors: filter.colors.includes(color)
         ? filter.colors.filter((c) => c !== color)
@@ -291,7 +298,7 @@ export function ProductGrid({
   function clearAllFilters() {
     // One shared definition, so "clear all" cannot drift from the initial
     // state the way it did before — a cleared filter used to keep its sizes.
-    setFilter(EMPTY_FILTER)
+    changeFilter(EMPTY_FILTER)
   }
 
   /**
@@ -353,7 +360,7 @@ export function ProductGrid({
             <select
               value={filter.sort}
               onChange={(e) =>
-                setFilter({ ...filter, sort: e.target.value as typeof filter.sort })
+                changeFilter({ ...filter, sort: e.target.value as typeof filter.sort })
               }
               className="w-full min-w-[180px] cursor-pointer appearance-none truncate whitespace-nowrap rounded-xl border border-border/60 bg-transparent py-1.5 pl-2.5 pr-9 text-[12px] text-foreground outline-none transition focus:border-gold"
             >
@@ -394,7 +401,7 @@ export function ProductGrid({
           <>
             <FilterLink
               active={!filter.group && !filter.sale}
-              onClick={() => setFilter({ ...filter, group: null, category: null, sale: false })}
+              onClick={() => changeFilter({ ...filter, group: null, category: null, sale: false })}
             >
               {t('filter.all')} <span className="text-muted-foreground/85">· {products.length}</span>
             </FilterLink>
@@ -403,7 +410,7 @@ export function ProductGrid({
                 key={g.key}
                 active={filter.group === g.key && !filter.sale}
                 onClick={() =>
-                  setFilter({
+                  changeFilter({
                     ...filter,
                     group: g.key,
                     category: null,
@@ -419,7 +426,7 @@ export function ProductGrid({
                 <span className="mx-1 h-3 w-px bg-border/60" />
                 <FilterLink
                   active={filter.sale}
-                  onClick={() => setFilter({ ...filter, sale: !filter.sale, group: null, category: null })}
+                  onClick={() => changeFilter({ ...filter, sale: !filter.sale, group: null, category: null })}
                   accent
                 >
                   {t('filter.sale')} <span className="text-muted-foreground/85">· {saleCount}</span>
@@ -438,7 +445,7 @@ export function ProductGrid({
           <>
             <FilterLink
               active={filter.sale}
-              onClick={() => setFilter({ ...filter, sale: !filter.sale })}
+              onClick={() => changeFilter({ ...filter, sale: !filter.sale })}
               accent
             >
               {t('filter.sale')}
@@ -516,7 +523,7 @@ export function ProductGrid({
         <span className="mx-1 h-3 w-px bg-border/60" />
         <FilterLink
           active={filter.inStockOnly}
-          onClick={() => setFilter({ ...filter, inStockOnly: !filter.inStockOnly })}
+          onClick={() => changeFilter({ ...filter, inStockOnly: !filter.inStockOnly })}
         >
           {t('filter.inStockOnly')}
         </FilterLink>
@@ -571,7 +578,7 @@ export function ProductGrid({
               key={c.key}
               active={filter.category === c.key}
               onClick={() =>
-                setFilter({
+                changeFilter({
                   ...filter,
                   category: filter.category === c.key ? null : c.key,
                 })
@@ -584,6 +591,8 @@ export function ProductGrid({
         </div>
       )}
 
+      {/* data-vt-results: the area that crossfades when a filter changes. */}
+      <div data-vt-results>
       {filtered.length === 0 && catalogLoading && products.length === 0 ? (
         // The catalogue has not arrived yet: its shape, not "nothing found".
         <ProductGridSkeleton count={8} label={t('common.loading')} />
@@ -642,6 +651,7 @@ export function ProductGrid({
           )}
         </>
       )}
+      </div>
     </Wrapper>
   )
 }

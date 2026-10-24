@@ -84,6 +84,7 @@ export function CookieConsent() {
         role="dialog"
         aria-live="polite"
         aria-label={t('cookies.title')}
+        data-vt-chrome="cookies"
         className="hide-with-keyboard animate-fade-up fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[45] md:bottom-0 border-t border-gold/25 bg-popover/95 backdrop-blur-md"
       >
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-10">

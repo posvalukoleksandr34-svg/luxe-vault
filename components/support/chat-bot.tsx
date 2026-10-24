@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { usePresence } from '@/lib/use-presence'
 import { FULFILMENT, describeBusinessDays } from '@/lib/fulfilment'
 import { readOrderRegistry } from '@/lib/order-registry'
 import { productImage } from '@/lib/product-image'
@@ -369,7 +370,9 @@ export function ChatBot() {
     window.setTimeout(() => document.querySelector<HTMLElement>('[data-chat-launcher]')?.focus(), 30)
   }, [setPanel])
 
-  if (!open) return null
+  // Mounted through its exit (lib/use-presence.ts); inert while leaving.
+  const { mounted, state } = usePresence(open)
+  if (!mounted) return null
 
   const push = (message: Omit<Message, 'id'>) => {
     const next = { ...message, id: nextId() }
@@ -614,8 +617,12 @@ export function ChatBot() {
       // Not .hide-with-keyboard: that hides bottom-fixed bars while a field
       // has focus on a phone, and this panel HOLDS the field — it hid itself
       // the moment the customer tapped into it, so nothing could be typed.
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      className="animate-slide-in-right fixed bottom-0 right-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-l border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:right-5 sm:h-[580px] sm:w-[390px] sm:border"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)', transformOrigin: 'bottom right' }}
+      data-state={state}
+      inert={!open || undefined}
+      // Rises from the corner the launcher sits in, rather than sliding in
+      // from the edge: on a desktop it is a floating window, not a drawer.
+      className="motion-dialog fixed bottom-0 right-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-l border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:right-5 sm:h-[580px] sm:w-[390px] sm:border"
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
