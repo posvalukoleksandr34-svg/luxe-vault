@@ -4,7 +4,7 @@ import { ImagePlus, Loader2, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-r
 import { useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
 import { subcategoryCover } from '@/lib/subcategory-cover'
-import { CORE_DEPARTMENTS } from '@/lib/departments'
+import { CORE_DEPARTMENTS, isCoreDepartment } from '@/lib/departments'
 import { useFullCatalog, useStore } from '@/lib/store'
 import type { Category, CategoryGroupKey, Collection, LocalizedText, Product } from '@/lib/types'
 import { AdminPageHeader } from './admin-shell'
@@ -253,8 +253,13 @@ function CategorySlot({
             {count} {count === 1 ? 'товар' : 'товаров'} · в продаже {onSale}
           </p>
           <h3 className="text-lg font-semibold text-foreground">{label}</h3>
-          {onSale === 0 && (
-            <p className="mt-1 text-[11px] text-amber-800">Не показан в магазине: нет опубликованных товаров</p>
+          {/* The shop's menu shows Women, Men and Kids only (lib/store.tsx). */}
+          {!isCoreDepartment(group) ? (
+            <p className="mt-1 text-[11px] text-amber-800">
+              Не показан в меню магазина: в меню только «Женщины», «Мужчины» и «Дети». Перенесите товары в один из них.
+            </p>
+          ) : (
+            onSale === 0 && <p className="mt-1 text-[11px] text-muted-foreground">В меню есть, но товаров в продаже пока нет</p>
           )}
         </div>
         {isCustom && (

@@ -69,8 +69,8 @@ export function CategoryNav({
             // that returns nothing — the same rule the chips already applied.
             .filter((c) => c.count > 0),
         }))
-        // Empty departments are dropped too — but not Women, Men and Kids,
-        // which the shop always shows (see navTree in lib/store.tsx).
+        // navTree holds Women, Men and Kids only, shown even when empty
+        // (lib/store.tsx).
         .filter((n) => n.count > 0 || isCoreDepartment(n.slug)),
     [counts, navTree, groupLabels, categoryLabel, localize],
   )

@@ -7,7 +7,7 @@ import { AVAILABILITY_STATUSES, withDerivedAvailability } from '@/lib/availabili
 import { FIT_LABELS, OCCASION_LABELS, STYLE_LABELS } from '@/lib/i18n'
 import { FITS, OCCASIONS, STYLES, type Occasion, type StyleKey, type StyleTags } from '@/lib/style-tags/types'
 import { DEFAULT_DELIVERY_DAYS, isDeliveryDays } from '@/lib/fulfilment'
-import { byDepartmentOrder } from '@/lib/departments'
+import { byDepartmentOrder, isCoreDepartment } from '@/lib/departments'
 import { useStore } from '@/lib/store'
 import { describeConflicts, type StockConflict } from '@/lib/stock-sync'
 import { productSlug } from '@/lib/product-slug'
@@ -122,12 +122,20 @@ export function ProductForm({
   const [copyLocale, setCopyLocale] = useState<Locale>(() => COPY_LOCALES.find((l) => names[l].trim()) ?? 'ru')
   const [translating, setTranslating] = useState(false)
 
+  // The departments a product can be put in: Women, Men, Kids — the only
+  // ones the shop's menu shows (lib/store.tsx navTree). A new product opens on
+  // the first of them.
+  const coreTree = [...categoryTree]
+    .filter((n) => isCoreDepartment(n.group))
+    .sort((a, b) => byDepartmentOrder(a.group, b.group))
+  const firstDepartment = coreTree[0] ?? categoryTree[0]
+
   const [form, setForm] = useState({
     brand: product?.brand ?? '',
     deliveryMin: product?.deliveryDays?.min?.toString() ?? '',
     deliveryMax: product?.deliveryDays?.max?.toString() ?? '',
-    group: product?.group ?? categoryTree[0]?.group ?? '',
-    category: product?.category ?? categoryTree[0]?.items[0] ?? '',
+    group: product?.group ?? firstDepartment?.group ?? '',
+    category: product?.category ?? firstDepartment?.items[0] ?? '',
     price: product?.price?.toString() ?? '',
     sizes: product?.sizes?.join(', ') ?? 'S, M, L, XL',
     images: product?.images?.length ? product.images : product?.image ? [product.image] : [],
@@ -756,17 +764,26 @@ export function ProductForm({
                 }}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
               >
-                {/* Core departments first (lib/departments.ts), so a new
-                    product always opens on a real one even while older
-                    collections are still being emptied. */}
-                {[...categoryTree]
-                  .sort((a, b) => byDepartmentOrder(a.group, b.group))
-                  .map((n) => (
-                    <option key={n.group} value={n.group}>
-                      {localize(groupLabels[n.group] ?? {}) || n.group}
-                    </option>
-                  ))}
+                {/* Women, Men, Kids only (lib/departments.ts). A product
+                    still filed under an older department keeps it listed,
+                    marked, until it is moved — so saving never moves it
+                    silently. */}
+                {coreTree.map((n) => (
+                  <option key={n.group} value={n.group}>
+                    {localize(groupLabels[n.group] ?? {}) || n.group}
+                  </option>
+                ))}
+                {!isCoreDepartment(form.group) && form.group && (
+                  <option value={form.group}>
+                    {localize(groupLabels[form.group] ?? {}) || form.group} — старый раздел
+                  </option>
+                )}
               </select>
+              {!isCoreDepartment(form.group) && (
+                <span className="mt-1 block text-[11px] text-amber-800">
+                  Этого раздела нет в меню магазина. Выберите «Женщины», «Мужчины» или «Дети».
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-foreground">

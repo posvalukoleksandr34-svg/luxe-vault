@@ -941,16 +941,18 @@ function maybeSendWelcome() {
     [collections, categories],
   )
 
-  // The same, without anything that has nothing on sale — except the core
-  // departments (Women, Men, Kids, lib/departments.ts), which the owner wants
-  // in the navigation at all times: an empty one opens on its own page, which
-  // says plainly that nothing is on sale there yet. Their empty categories and
-  // every other empty department stay hidden. A count the server did not send
-  // (an older cached payload) is not taken for zero.
+  // The storefront's navigation: the core departments — Women, Men, Kids
+  // (lib/departments.ts) — and nothing else, as the owner wants. They are
+  // shown even when empty: an empty one opens on its own page, which says
+  // plainly that nothing is on sale there yet. Inside them, only categories
+  // with something on sale. Any other department (the older Clothing / Shoes /
+  // Accessories, a test one) is not in the menu; its products are still in
+  // the full catalogue and search. A count the server did not send (an older
+  // cached payload) is not taken for zero.
   const navTree = useMemo(() => {
     const onSale = (count: number | undefined) => count === undefined || count > 0
     return collections
-      .filter((c) => isCoreDepartment(c.slug) || onSale(c.count))
+      .filter((c) => isCoreDepartment(c.slug))
       .map((c) => ({
         group: c.slug,
         items: categories
