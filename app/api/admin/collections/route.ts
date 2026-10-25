@@ -9,6 +9,7 @@ import type { LocalizedText } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { revalidateStorefront } from '@/lib/server/revalidate'
 import { readJsonObject } from '@/lib/server/http'
+import { cleanLocalizedText } from '@/lib/localized-text'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,7 +90,13 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  const body = await readJsonObject<{ slug?: unknown; name?: unknown; image?: unknown; sortOrder?: unknown }>(request)
+  const body = await readJsonObject<{
+    slug?: unknown
+    name?: unknown
+    image?: unknown
+    sortOrder?: unknown
+    description?: unknown
+  }>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -97,12 +104,34 @@ export async function PATCH(request: NextRequest) {
   const slug = typeof body.slug === 'string' ? body.slug : ''
   if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
 
+  // Each field is checked before anything is written: a department's name is
+  // its menu label (Russian required, as on creation), its description a
+  // short paragraph, its order a whole number.
+  let name: Partial<LocalizedText> | undefined
+  if (body.name !== undefined) {
+    name = cleanLocalizedText(body.name, 60)
+    if (!name.ru) return NextResponse.json({ error: 'The Russian name is required' }, { status: 400 })
+  }
+  let sortOrder: number | undefined
+  if (body.sortOrder !== undefined) {
+    if (typeof body.sortOrder !== 'number' || !Number.isInteger(body.sortOrder) || Math.abs(body.sortOrder) > 10_000) {
+      return NextResponse.json({ error: 'sortOrder must be a whole number' }, { status: 400 })
+    }
+    sortOrder = body.sortOrder
+  }
+  // An empty object clears the description.
+  const description = body.description === undefined ? undefined : cleanLocalizedText(body.description, 600)
+  if (body.image !== undefined && body.image !== null && typeof body.image !== 'string') {
+    return NextResponse.json({ error: 'The image must be an address or null' }, { status: 400 })
+  }
+
   try {
     const collection = await updateCollection(slug, {
-      name: body.name === undefined ? undefined : (body.name as LocalizedText),
+      name,
       // null clears the image; undefined leaves it untouched.
       image: body.image === undefined ? undefined : (body.image as string | null),
-      sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
+      sortOrder,
+      description,
     })
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 })
@@ -110,8 +139,9 @@ export async function PATCH(request: NextRequest) {
     revalidateStorefront()
     return NextResponse.json({ collection })
   } catch (e) {
+    const message = (e as Error).message
     console.error('[admin/collections] update failed:', e)
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: /0064/.test(message) ? 503 : 500 })
   }
 }
 

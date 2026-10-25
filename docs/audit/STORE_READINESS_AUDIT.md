@@ -40,6 +40,33 @@ Findings are ranked within each group. **B** = blocks a lawful launch,
 | C-4 | M | **Labels are keyed by category slug alone**, although since 0040 a slug is unique only within its department. Two departments with a same-slug category share one label. | `lib/store.tsx` (`categoryLabels`). |
 | C-5 | L | **Department pages have no description.** The collections table has no column for one. | `0005_catalog.sql`. |
 
+**Status (2026-10-25, this branch):**
+- **C-1 fixed.** The server counts the products on sale (published, sold out
+  or not) in each department and category. The menu, the catalogue sidebar,
+  the filter chips, the department cards on the homepage and the category
+  cards on a department page show only those with at least one. "Coming soon"
+  cards are gone. An empty department or category page still answers (links
+  do not break) but is `noindex`. A temporarily sold-out product keeps its
+  category visible.
+- **C-2 fixed.** `CATEGORY_TREE` and `DEFAULT_CATEGORY_IMAGES` are removed;
+  the taxonomy comes from the database alone. When the page's own server
+  render could not read it, the browser asks `/api/catalog?part=taxonomy`
+  once instead of showing invented categories. `SEED_PRODUCTS` stays for
+  `scripts/seed-catalog.mjs`, without the third-party-brand entry and without
+  typed old prices; seeded products arrive as drafts.
+- **C-3 fixed.** The admin renames and reorders departments and categories
+  (pencil on each card). Slugs stay fixed, since they are in every link. Each
+  card shows "N товаров · в продаже M" and says when it is not shown in the
+  shop.
+- **C-4 fixed.** Labels are keyed by department and category
+  (`categoryLabel(group, slug)`); the bare-slug key keeps the first
+  department's name for older callers.
+- **C-5 fixed** with migration 0064 (OA-22): an optional short description
+  per department, shown under its title and used as its meta description.
+- **Kept two levels.** No third level was added. The 0040 "Clothing / Shoes /
+  Accessories" categories under each department stay in the database and are
+  hidden while empty. The owner can rename, reorder or delete them.
+
 ## 3. Catalogue page, filters and sorting
 
 | # | Rank | Finding | Evidence |
@@ -48,6 +75,11 @@ Findings are ranked within each group. **B** = blocks a lawful launch,
 | F-2 | M | **"Biggest discount" sorts on the unverified `oldPrice`** (S-4). | same |
 | F-3 | — | URL sync of filters and sort, back/forward and shareable links already exist (`components/products/filter-url-sync.tsx`). Price, size, colour and availability filters exist. Kept. | — |
 | F-4 | L | **No popularity sort** — acceptable. If one is added, it must come from paid orders. | — |
+
+**Status:** F-1 fixed (sorted by the date the product was added). F-2 resolved
+by S-4: `oldPrice` now comes only from price history, so "biggest discount"
+orders by real reductions. The result count says "1 item found", not
+"1 items found".
 
 ## 4. Product page and cards
 

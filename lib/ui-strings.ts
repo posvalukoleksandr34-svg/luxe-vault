@@ -817,6 +817,7 @@ export const UI = {
   'filter.categoryLabel': { ru: 'Категория', en: 'Category', it: 'Categoria', fr: 'Catégorie', de: 'Kategorie' },
   'filter.clearAll': { ru: 'Сбросить фильтры', en: 'Clear filters', it: 'Cancella filtri', fr: 'Réinitialiser', de: 'Filter zurücksetzen' },
   'filter.results': { ru: 'товаров найдено', en: 'items found', it: 'articoli trovati', fr: 'articles trouvés', de: 'Artikel gefunden' },
+  'filter.resultsOne': { ru: 'товар найден', en: 'item found', it: 'articolo trovato', fr: 'article trouvé', de: 'Artikel gefunden' },
 
   // Crypto checkout
   'crypto.title': { ru: 'Оплата криптовалютой', en: 'Pay with Crypto', it: 'Paga con Crypto', fr: 'Payer en Crypto', de: 'Mit Krypto bezahlen' },

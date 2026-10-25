@@ -15,7 +15,7 @@ import type { Product } from '@/lib/types'
  * default locale, so the structured data keeps one canonical form.
  */
 export function ProductTrail({ product }: { product: Product }) {
-  const { t, localize, groupLabels, categoryLabels } = useStore()
+  const { t, localize, groupLabels, categoryLabel } = useStore()
 
   const trail = useMemo(
     () => [
@@ -31,14 +31,14 @@ export function ProductTrail({ product }: { product: Product }) {
       ...(product.group && product.category
         ? [
             {
-              name: localize(categoryLabels[product.category] ?? {}) || product.category,
+              name: localize(categoryLabel(product.group, product.category)) || product.category,
               url: `/category/${product.group}/${product.category}`,
             },
           ]
         : []),
       { name: localize(product.name), url: `/product/${product.id}` },
     ],
-    [t, localize, groupLabels, categoryLabels, product],
+    [t, localize, groupLabels, categoryLabel, product],
   )
 
   return <Breadcrumbs trail={trail} />

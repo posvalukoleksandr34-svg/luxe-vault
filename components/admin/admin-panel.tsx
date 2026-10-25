@@ -307,7 +307,7 @@ type Sort = 'name' | 'price_asc' | 'price_desc'
  */
 function ProductsSection() {
   const { products, catalogLoading } = useFullCatalog()
-  const { deleteProduct, categoryLabels } = useStore()
+  const { deleteProduct, categoryLabels, categoryLabel } = useStore()
   const pathname = usePathname()
   const params = useSearchParams()
 
@@ -545,7 +545,7 @@ function ProductsSection() {
                         </div>
                       </td>
                       <td className="hidden px-4 py-3 sm:table-cell">
-                        <span className="text-sm text-muted-foreground">{localize(categoryLabels[p.category] ?? {}) || p.category}</span>
+                        <span className="text-sm text-muted-foreground">{localize(categoryLabel(p.group, p.category)) || p.category}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col">

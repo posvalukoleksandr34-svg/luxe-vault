@@ -30,10 +30,11 @@ import { useListing } from './listing-context'
  * grid across the full width above the sidebar and the grid.
  */
 
-/** Whether a department page shows the cards: it has subcategories. */
+/** Whether a department page shows the cards: it has subcategories with
+ *  something on sale. */
 export function useHasSubcategoryCards(group: string): boolean {
-  const { categoryTree } = useStore()
-  return (categoryTree.find((n) => n.group === group)?.items.length ?? 0) > 0
+  const { navTree } = useStore()
+  return (navTree.find((n) => n.group === group)?.items.length ?? 0) > 0
 }
 
 type Card = {
@@ -47,16 +48,18 @@ type Card = {
 }
 
 export function SubcategoryCards({ group }: { group: string }) {
-  const { categoryTree, categories, categoryLabels, localize, t, tf } = useStore()
+  const { navTree, categories, categoryLabel, localize, t, tf } = useStore()
   const listing = useListing()
 
   const cards = useMemo<Card[]>(() => {
-    const node = categoryTree.find((n) => n.group === group)
+    // navTree: a category with nothing on sale has no card ("Coming soon"
+    // was a promise the shop had not made).
+    const node = navTree.find((n) => n.group === group)
     if (!node) return []
     const products = listing?.products ?? []
     return node.items.map((slug) => ({
       slug,
-      label: localize(categoryLabels[slug] ?? {}) || slug,
+      label: localize(categoryLabel(group, slug)) || slug,
       count:
         listing?.counts[`${group}/${slug}`] ??
         products.filter((p) => p.group === group && p.category === slug).length,
@@ -65,7 +68,7 @@ export function SubcategoryCards({ group }: { group: string }) {
         return { image: cover.src, blend: cover.source === 'product' }
       })(),
     }))
-  }, [categoryTree, categories, categoryLabels, localize, listing, group])
+  }, [navTree, categories, categoryLabel, localize, listing, group])
 
   if (cards.length === 0) return null
 

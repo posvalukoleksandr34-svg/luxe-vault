@@ -39,7 +39,7 @@ const barePath = (path: string) => path.replace(/^\/(it|fr|de)(?=\/|$)/, '') || 
 type Department = { slug: string; label: string; items: { slug: string; label: string }[] }
 
 export function SiteMenu() {
-  const { t, localize, categoryTree, groupLabels, categoryLabels, filter, setFilter, openSupport, supportUnread } =
+  const { t, localize, navTree, groupLabels, categoryLabel, filter, setFilter, openSupport, supportUnread } =
     useStore()
   const open = useSiteMenuOpen()
   const pathname = usePathname()
@@ -142,12 +142,14 @@ export function SiteMenu() {
 
   const departments = useMemo<Department[]>(
     () =>
-      categoryTree.map((node) => ({
+      // Only what has something on sale: an empty department or category is
+      // a dead end, not a place to send a customer.
+      navTree.map((node) => ({
         slug: node.group,
         label: localize(groupLabels[node.group] ?? {}) || node.group,
-        items: node.items.map((slug) => ({ slug, label: localize(categoryLabels[slug] ?? {}) || slug })),
+        items: node.items.map((slug) => ({ slug, label: localize(categoryLabel(node.group, slug)) || slug })),
       })),
-    [categoryTree, groupLabels, categoryLabels, localize],
+    [navTree, groupLabels, categoryLabel, localize],
   )
   const sub = departments.find((d) => d.slug === subSlug) ?? null
 

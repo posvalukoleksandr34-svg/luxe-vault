@@ -102,7 +102,7 @@ export function ProductForm({
   product: Product | null
   onClose: () => void
 }) {
-  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabels, groupLabels } = useStore()
+  const { addProduct, updateProduct, pushToast, categoryTree, categoryLabel, groupLabels } = useStore()
   const [saving, setSaving] = useState(false)
   const editing = Boolean(product)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -779,7 +779,7 @@ export function ProductForm({
               >
                 {availableCats.map((c) => (
                   <option key={c} value={c}>
-                    {localize(categoryLabels[c] ?? {}) || c}
+                    {localize(categoryLabel(form.group, c)) || c}
                   </option>
                 ))}
               </select>
@@ -1346,6 +1346,11 @@ export function ProductForm({
               Лимит. тираж
             </label>
           </div>
+          {/* Both are claims a customer reads on the card. */}
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Отмечайте, только если это правда: «Новинка» — товар недавно в продаже, «Лимит. тираж» — количество
+            действительно ограничено и вы можете это подтвердить.
+          </p>
         </div>
 
         </div>

@@ -1,27 +1,4 @@
-import type {
-  CategoryGroupKey,
-  CategoryKey,
-  Order,
-  Product,
-} from './types'
-
-export const CATEGORY_TREE: { group: CategoryGroupKey; items: CategoryKey[] }[] = [
-  { group: 'clothing', items: ['hoodies', 'tshirts', 'jackets', 'pants'] },
-  { group: 'shoes', items: ['sneakers', 'sneakers_low', 'boots', 'loafers', 'sandals'] },
-  {
-    group: 'accessories',
-    items: ['bags', 'caps', 'hats', 'watches', 'sunglasses', 'gloves'],
-  },
-]
-
-/** Out-of-the-box preview image for each Collections (Collezioni) card,
- * used until an admin swaps it out via the admin panel's Коллекции tab —
- * see CATEGORY_IMAGES_STORAGE_KEY in lib/store.tsx. */
-export const DEFAULT_CATEGORY_IMAGES: Record<CategoryGroupKey, string> = {
-  clothing: '/images/hoodie.png',
-  shoes: '/images/sneakers.png',
-  accessories: '/images/bag.png',
-}
+import type { Product } from './types'
 
 const NEUTRALS = [
   { name: 'Onyx', hex: '#141414' },
@@ -29,47 +6,16 @@ const NEUTRALS = [
   { name: 'Ivory', hex: '#ece6d8' },
 ]
 
+/**
+ * The first products, for scripts/seed-catalog.mjs only — the storefront reads
+ * the database. Seeded products arrive as drafts (migration 0062) and are
+ * sold only once the owner publishes them with a rights record.
+ *
+ * Nothing here may carry another company's name or mark: a seed entry for a
+ * branded third-party product, with no record of a right to sell it, was
+ * removed on 2026-10-25.
+ */
 export const SEED_PRODUCTS: Product[] = [
-  {
-    id: 'p-gucci-blind-for-love-hoodie',
-    name: {
-      ru: 'Худи Gucci "Blind for Love" с тигром',
-      en: 'Gucci "Blind for Love" Tiger Hoodie',
-      it: 'Felpa Gucci "Blind for Love" con tigre',
-      fr: 'Sweat Gucci « Blind for Love » à tigre',
-      de: 'Gucci „Blind for Love"-Hoodie mit Tiger',
-    },
-    group: 'clothing',
-    category: 'hoodies',
-    price: 850,
-    oldPrice: 1100,
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [{ name: 'Onyx', hex: '#141414' }],
-    image: '/images/gucci-hoodie-1.jpg',
-    images: [
-      '/images/gucci-hoodie-1.jpg',
-      '/images/gucci-hoodie-2.jpg',
-      '/images/gucci-hoodie-3.jpg',
-      '/images/gucci-hoodie-4.jpg',
-      '/images/gucci-hoodie-5.jpg',
-      '/images/gucci-hoodie-6.jpg',
-    ],
-    description: {
-      ru: 'Черное худи Gucci из плотного премиального хлопка. Модель украшена контрастной красной надписью "BLIND FOR LOVE" и объемной фактурной патч-вышивкой тигра на груди.',
-      en: 'A black Gucci hoodie in heavyweight premium cotton, featuring the contrasting red "BLIND FOR LOVE" print and a raised textured tiger patch embroidery on the chest.',
-      it: 'Felpa nera Gucci in cotone premium di peso elevato, con la scritta rossa a contrasto "BLIND FOR LOVE" e un ricamo patch a rilievo raffigurante una tigre sul petto.',
-      fr: 'Sweat à capuche noir Gucci en coton premium épais, orné de l\'inscription rouge contrastante « BLIND FOR LOVE » et d\'un écusson brodé en relief représentant un tigre sur la poitrine.',
-      de: 'Schwarzer Gucci-Hoodie aus schwerer Premium-Baumwolle mit kontrastierendem rotem „BLIND FOR LOVE"-Schriftzug und einer plastisch gestickten Tiger-Patch-Stickerei auf der Brust.',
-    },
-    statuses: ['in_stock'],
-    isNew: true,
-    sizeChart: [
-      { size: 'S', length: 63, chest: 106, shoulder: 47, sleeve: 60 },
-      { size: 'M', length: 65, chest: 110, shoulder: 48, sleeve: 62 },
-      { size: 'L', length: 67, chest: 114, shoulder: 49, sleeve: 64 },
-      { size: 'XL', length: 69, chest: 118, shoulder: 50, sleeve: 66 },
-    ],
-  },
   {
     id: 'p-hoodie-noir',
     name: {

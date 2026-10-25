@@ -97,7 +97,8 @@ for (const p of products) {
       collection_id,
       category_id,
       price: p.price,
-      old_price: p.oldPrice ?? null,
+      // No old_price: a "was" price comes only from prices actually charged
+      // (product_price_history, migration 0063), never from a typed number.
       image: p.image ?? null,
       images: p.images ?? [],
       sizes: p.sizes ?? [],
@@ -113,4 +114,5 @@ for (const p of products) {
 }
 
 console.log(`\nDone: ${ok}/${products.length} products in public.products.`)
+console.log('They are drafts: review each one and publish it from the admin (Товары → Продажа).')
 console.log('You can now delete SEED_PRODUCTS from lib/data.ts.')

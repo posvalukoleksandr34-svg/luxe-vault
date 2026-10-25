@@ -34,7 +34,7 @@ export function CategoryNav({
   /** False where the page already shows these links (the subcategory cards). */
   mobileRail?: boolean
 }) {
-  const { categoryTree, groupLabels, categoryLabels, localize, t } = useStore()
+  const { navTree, groupLabels, categoryLabel, localize, t } = useStore()
 
   // Counts for the WHOLE catalogue, which the listing page computed on the
   // server: a department page lists one department, but its sidebar counts
@@ -53,7 +53,7 @@ export function CategoryNav({
 
   const tree = useMemo(
     () =>
-      categoryTree
+      navTree
         .map((n) => ({
           slug: n.group,
           label: localize(groupLabels[n.group] ?? {}),
@@ -61,7 +61,7 @@ export function CategoryNav({
           items: n.items
             .map((c) => ({
               slug: c,
-              label: localize(categoryLabels[c] ?? {}),
+              label: localize(categoryLabel(n.group, c)),
               count: counts[`${n.group}/${c}`] ?? 0,
             }))
             // A subcategory with nothing in it is a dead link, not a filter
@@ -69,7 +69,7 @@ export function CategoryNav({
             .filter((c) => c.count > 0),
         }))
         .filter((n) => n.count > 0),
-    [counts, categoryTree, groupLabels, categoryLabels, localize],
+    [counts, navTree, groupLabels, categoryLabel, localize],
   )
 
   const active = tree.find((n) => n.slug === group)

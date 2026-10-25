@@ -130,6 +130,12 @@ checks as (
                and exists (select 1 from pg_trigger where tgname = 'products_record_price' and not tgisinternal)
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0063_price_history.sql — until then no strike-through prices are shown'
+  union all
+  select 'migration 0064: department descriptions (collections.description)',
+         case when exists (select 1 from information_schema.columns
+                            where table_schema = 'public' and table_name = 'collections' and column_name = 'description')
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0064_collection_description.sql — until then department pages have no description'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to

@@ -36,6 +36,10 @@ export type Collection = {
   name: LocalizedText
   image?: string
   sortOrder: number
+  /** Short text under the department's title (0064); unset = none. */
+  description?: LocalizedText
+  /** Products on sale in it (published, sold out or not); unset where not counted. */
+  count?: number
 }
 
 /** A category nested under a collection. */
@@ -48,6 +52,8 @@ export type Category = {
   sortOrder: number
   /** Cover photograph for the subcategory card (0054); unset → a product photo. */
   image?: string
+  /** Products on sale in it (published, sold out or not); unset where not counted. */
+  count?: number
 }
 
 /**

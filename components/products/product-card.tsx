@@ -20,7 +20,7 @@ export function ProductCard({
    *  eagerly and at high priority — it is the page's LCP candidate. */
   priority?: boolean
 }) {
-  const { localize, t, tf, categoryLabels } = useStore()
+  const { localize, t, tf, categoryLabel } = useStore()
   const { playHoverSound } = useAudioFeedback()
   // Units across every size and colour — null when stock is not tracked
   // (no variant rows), which is NOT the same as none left.
@@ -136,7 +136,7 @@ export function ProductCard({
               design it references is named on the product page instead,
               inside the authenticity note. */}
           <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <span className="truncate">{localize(categoryLabels[product.category] ?? {})}</span>
+            <span className="truncate">{localize(categoryLabel(product.group, product.category))}</span>
             <span aria-hidden className="text-border">·</span>
             <span className="shrink-0 text-foreground/70">{t('product.replicaTag')}</span>
           </p>

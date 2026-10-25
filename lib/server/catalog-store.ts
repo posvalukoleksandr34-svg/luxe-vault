@@ -30,6 +30,9 @@ import type {
 } from '@/lib/types'
 
 const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
+/** With the department's description (0064). Read first; COLLECTION_SELECT
+ *  is the fallback for a database that has not had 0064 yet. */
+const COLLECTION_SELECT_WITH_DESCRIPTION = `${COLLECTION_SELECT}, description`
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
 /** With the subcategory cover (0054). Read first; CATEGORY_SELECT is the
  *  fallback for a database that has not had 0054 yet. */
@@ -77,12 +80,16 @@ const refSlug = (ref: Ref): string =>
   Array.isArray(ref) ? (ref[0]?.slug ?? '') : (ref?.slug ?? '')
 
 function rowToCollection(row: Record<string, unknown>): Collection {
+  const description = row.description && typeof row.description === 'object' ? (row.description as LocalizedText) : undefined
   return {
     id: row.id as string,
     slug: row.slug as string,
     name: (row.name ?? {}) as LocalizedText,
     image: (row.image_url as string | null) ?? undefined,
     sortOrder: (row.sort_order as number) ?? 0,
+    ...(description && Object.values(description).some((v) => typeof v === 'string' && v.trim())
+      ? { description }
+      : {}),
   }
 }
 
@@ -332,10 +339,15 @@ export type TaxonomyLists = Pick<Catalog, 'collections' | 'categories'>
 async function readTaxonomyRows(
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<TaxonomyLists> {
-  const [collectionsRes, withImages] = await Promise.all([
-    supabase.from('collections').select(COLLECTION_SELECT).order('sort_order'),
+  const [withDescription, withImages] = await Promise.all([
+    supabase.from('collections').select(COLLECTION_SELECT_WITH_DESCRIPTION).order('sort_order'),
     supabase.from('categories').select(CATEGORY_SELECT_WITH_IMAGE).order('sort_order'),
   ])
+  // 0064 not applied yet: departments without a description.
+  const collectionsRes: { data: Record<string, unknown>[] | null; error: { message: string } | null } =
+    isMissingColumn(withDescription.error)
+      ? await supabase.from('collections').select(COLLECTION_SELECT).order('sort_order')
+      : (withDescription as unknown as { data: Record<string, unknown>[] | null; error: { message: string } | null })
   // 0054 not applied yet: the catalogue without subcategory covers.
   const categoriesRes: { data: Record<string, unknown>[] | null; error: { message: string } | null } =
     isMissingColumn(withImages.error)
@@ -369,7 +381,58 @@ async function readTaxonomyRows(
  * serialised every product into every page and every prefetch.
  */
 export async function readTaxonomyLists(): Promise<TaxonomyLists> {
-  return readTaxonomyRows(createAdminClient())
+  const supabase = createAdminClient()
+  const [taxonomy, onSale] = await Promise.all([readTaxonomyRows(supabase), readPublishedPlacement(supabase)])
+  return withCounts(taxonomy, onSale)
+}
+
+/** Where each product on sale sits: two ids per row, no product data. */
+async function readPublishedPlacement(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<{ collection_id: string; category_id: string }[]> {
+  // Without 0062 nothing is on sale (readProducts), so nothing is counted.
+  if (!(await listingSupported())) return []
+  const { data, error } = await supabase
+    .from('products')
+    .select('collection_id, category_id')
+    .eq('listing_status', 'published')
+  if (error) throw new Error(`Failed to count products: ${error.message}`)
+  return (data ?? []) as { collection_id: string; category_id: string }[]
+}
+
+/**
+ * Each department and category with the number of products ON SALE in it —
+ * published, sold out or not. The storefront's navigation shows only those
+ * with at least one (lib/store.tsx `navTree`); a product that is temporarily
+ * sold out still counts, so its category does not vanish with its stock.
+ */
+function withCounts(
+  taxonomy: TaxonomyLists,
+  onSale: { collection_id: string; category_id: string }[],
+): TaxonomyLists {
+  const byCollection = new Map<string, number>()
+  const byCategory = new Map<string, number>()
+  for (const row of onSale) {
+    byCollection.set(row.collection_id, (byCollection.get(row.collection_id) ?? 0) + 1)
+    byCategory.set(row.category_id, (byCategory.get(row.category_id) ?? 0) + 1)
+  }
+  return {
+    collections: taxonomy.collections.map((c) => ({ ...c, count: byCollection.get(c.id) ?? 0 })),
+    categories: taxonomy.categories.map((c) => ({ ...c, count: byCategory.get(c.id) ?? 0 })),
+  }
+}
+
+/** The same counts, from products already read (slugs instead of ids). */
+function withCountsFrom(taxonomy: TaxonomyLists, onSale: Product[]): TaxonomyLists {
+  const collectionIds = new Map(taxonomy.collections.map((c) => [c.slug, c.id]))
+  const categoryIds = new Map(taxonomy.categories.map((c) => [`${c.collectionSlug}/${c.slug}`, c.id]))
+  return withCounts(
+    taxonomy,
+    onSale.map((p) => ({
+      collection_id: collectionIds.get(p.group) ?? '',
+      category_id: categoryIds.get(`${p.group}/${p.category}`) ?? '',
+    })),
+  )
 }
 
 /**
@@ -391,7 +454,11 @@ export async function readCatalog({ scope = 'public' }: { scope?: CatalogScope }
   // defensively, so the cast is safe.
   const productRows = (productsRes.data ?? []) as unknown as Record<string, unknown>[]
 
-  return { ...taxonomy, products: productRows.map((r) => forScope(rowToProduct(r), scope)) }
+  const products = productRows.map((r) => forScope(rowToProduct(r), scope))
+  // The public catalogue holds only products on sale; the admin's holds
+  // everything, and counts the published ones — the same numbers either way.
+  const onSale = scope === 'public' ? products : products.filter((p) => p.listing?.status === 'published')
+  return { ...withCountsFrom(taxonomy, onSale), products }
 }
 
 // ------------------------------------------------------------ collections ----
@@ -419,22 +486,28 @@ export async function createCollection(input: {
 
 export async function updateCollection(
   slug: string,
-  patch: { name?: LocalizedText; image?: string | null; sortOrder?: number },
+  patch: { name?: Partial<LocalizedText>; image?: string | null; sortOrder?: number; description?: Partial<LocalizedText> },
 ): Promise<Collection | null> {
   const row: Record<string, unknown> = {}
   if (patch.name !== undefined) row.name = patch.name
   if (patch.image !== undefined) row.image_url = patch.image
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
+  if (patch.description !== undefined) row.description = patch.description
 
   const { data, error } = await createAdminClient()
     .from('collections')
     .update(row)
     .eq('slug', slug)
-    .select(COLLECTION_SELECT)
+    .select(patch.description !== undefined ? COLLECTION_SELECT_WITH_DESCRIPTION : COLLECTION_SELECT)
     .maybeSingle()
 
-  if (error) throw new Error(`Failed to update collection: ${error.message}`)
-  return data ? rowToCollection(data) : null
+  if (error) {
+    if (patch.description !== undefined && isMissingColumn(error)) {
+      throw new Error('Department descriptions need migration 0064_collection_description.sql')
+    }
+    throw new Error(`Failed to update collection: ${error.message}`)
+  }
+  return data ? rowToCollection(data as unknown as Record<string, unknown>) : null
 }
 
 /**
@@ -537,16 +610,24 @@ export async function deleteCategory(slug: string, collectionSlug: string): Prom
 }
 
 /**
- * Sets or clears (null) a subcategory's cover photograph. By id: a slug is
- * unique only within its department.
+ * Renames, reorders, or sets or clears (null) the cover photograph of one
+ * subcategory. By id: a slug is unique only within its department. The slug
+ * itself never changes — it is in every link to the category.
  */
-export async function updateCategoryImage(id: string, image: string | null): Promise<Category | null> {
+export async function updateCategory(
+  id: string,
+  patch: { image?: string | null; name?: Partial<LocalizedText>; sortOrder?: number },
+): Promise<Category | null> {
   const supabase = createAdminClient()
+  const row: Record<string, unknown> = {}
+  if (patch.image !== undefined) row.image_url = patch.image
+  if (patch.name !== undefined) row.name = patch.name
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
   const { data, error } = await supabase
     .from('categories')
-    .update({ image_url: image })
+    .update(row)
     .eq('id', id)
-    .select(CATEGORY_SELECT_WITH_IMAGE)
+    .select(patch.image !== undefined ? CATEGORY_SELECT_WITH_IMAGE : CATEGORY_SELECT)
     .maybeSingle()
 
   if (error) {
@@ -554,18 +635,18 @@ export async function updateCategoryImage(id: string, image: string | null): Pro
     throw new Error(`Failed to update category: ${error.message}`)
   }
   if (!data) return null
-  const row = data as unknown as Record<string, unknown>
+  const saved = data as unknown as Record<string, unknown>
   const collectionSlug =
-    ((await supabase.from('collections').select('slug').eq('id', row.collection_id as string).maybeSingle()).data
+    ((await supabase.from('collections').select('slug').eq('id', saved.collection_id as string).maybeSingle()).data
       ?.slug as string | undefined) ?? ''
   return {
-    id: row.id as string,
-    collectionId: row.collection_id as string,
+    id: saved.id as string,
+    collectionId: saved.collection_id as string,
     collectionSlug,
-    slug: row.slug as string,
-    name: (row.name ?? {}) as LocalizedText,
-    sortOrder: (row.sort_order as number) ?? 0,
-    image: (row.image_url as string | null) ?? undefined,
+    slug: saved.slug as string,
+    name: (saved.name ?? {}) as LocalizedText,
+    sortOrder: (saved.sort_order as number) ?? 0,
+    image: (saved.image_url as string | null) ?? undefined,
   }
 }
 

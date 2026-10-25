@@ -115,14 +115,21 @@ export function collectionMetadata(
   slug: string,
   name: string,
   subcategories: string,
+  /** The department's own description (0064), in this language, if written. */
+  ownDescription = '',
+  /** Nothing on sale in it: reachable, but not offered to search engines. */
+  empty = false,
 ): Metadata {
   return pageMetadata({
     path: `/category/${slug}`,
     locale,
     title: name,
-    description: subcategories
-      ? fill('seo.category.description', locale, { name, items: subcategories })
-      : fill('seo.category.plain', locale, { name }),
+    description:
+      truncate(ownDescription) ||
+      (subcategories
+        ? fill('seo.category.description', locale, { name, items: subcategories })
+        : fill('seo.category.plain', locale, { name })),
+    noindex: empty,
   })
 }
 
@@ -132,12 +139,14 @@ export function subcategoryMetadata(
   subcategory: string,
   name: string,
   groupName: string,
+  empty = false,
 ): Metadata {
   return pageMetadata({
     path: `/category/${collection}/${subcategory}`,
     locale,
     title: `${name} — ${groupName}`,
     description: fill('seo.category.plain', locale, { name: `${name} — ${groupName}` }),
+    noindex: empty,
   })
 }
 
@@ -176,12 +185,22 @@ export async function collectionMetadataFor(
   if (!node) return { title: 'Not Found' }
 
   const name = translate(node.name, locale) || node.slug
+  // Only what is on sale: a description promising an empty category is the
+  // claim the navigation no longer makes either.
   const subcategories = node.categories
+    .filter((c) => c.count > 0)
     .map((c) => translate(c.name, locale))
     .filter(Boolean)
     .join(', ')
 
-  return collectionMetadata(locale, node.slug, name, subcategories)
+  return collectionMetadata(
+    locale,
+    node.slug,
+    name,
+    subcategories,
+    node.description ? translate(node.description, locale) : '',
+    node.count === 0,
+  )
 }
 
 /**
@@ -203,7 +222,7 @@ export async function subcategoryMetadataFor(
   const groupName = translate(node.name, locale) || node.slug
   const name = translate(category.name, locale) || category.slug
 
-  return subcategoryMetadata(locale, node.slug, category.slug, name, groupName)
+  return subcategoryMetadata(locale, node.slug, category.slug, name, groupName, category.count === 0)
 }
 
 // ----------------------------------------------------- product, from the DB
