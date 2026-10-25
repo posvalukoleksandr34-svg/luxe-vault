@@ -107,6 +107,10 @@ checks as (
                and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'claim_review_requests')
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0060_review_requests.sql'
+  union all
+  select 'migration 0061: one order per checkout attempt (order_idempotency)',
+         case when to_regclass('public.order_idempotency') is not null then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0061_order_idempotency.sql'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -152,7 +156,9 @@ checks as (
                     -- 0059: staff, refund policy, ledger and case records; 0060: review requests.
                     'admin_staff', 'refund_policies', 'refund_transactions', 'refund_case_evidence', 'refund_case_messages',
                     'refund_case_events', 'refund_risk_assessments', 'refund_approvals', 'refund_notifications',
-                    'review_requests', 'email_suppressions']) as t
+                    'review_requests', 'email_suppressions',
+                    -- 0061: checkout attempt keys.
+                    'order_idempotency']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action
