@@ -11,6 +11,42 @@ paid, refunded or emailed.
 
 ---
 
+## CI-9 · Tab titles for checkout and account; `/cart` opens the cart (2026-10-25)
+
+**Problem.** Crawl (CI-4) findings: `/checkout` and `/account` showed the
+site's default tab title, so with several tabs open the customer could not
+tell checkout or their account apart from any other page; `/cart`, a URL
+people type or bookmark, was a 404 (the basket is a drawer, and
+`/cart/restore/…` existed beside it).
+
+**Change.**
+- `app/checkout/layout.tsx`, `app/account/layout.tsx`: English titles
+  ("Checkout", "Your account") in the server HTML through the root
+  template ("… — LUXE VAULT").
+- `lib/use-document-title.ts` (new), used by both pages: the title in the
+  visitor's language ("Bestellung — LUXE VAULT"; on an account section its
+  name, e.g. "Adressbuch"). Next applies the layout title after hydration
+  (streamed metadata), which undid a plain `document.title` assignment in
+  testing; the hook therefore watches the head and replaces only that exact
+  English fallback, never another page's title.
+- `app/cart/` (new, noindex, title "Cart"): waits for the saved cart to be
+  read, opens the cart drawer and replaces the URL with `/`, so Back does not
+  return to `/cart`.
+
+**Tests (real results).** Production build (`ci/titles-cart.js`) 10/10:
+`/cart` → `/` with the drawer open showing the saved item, no errors, Back
+does not bounce; titles in English, Italian ("Checkout" is the same word),
+German for both pages; leaving `/account` by a client-side link gives the
+next page its own title ("Versand — LUXE VAULT"). First attempt (plain
+assignment) failed the German checks, which is how the streamed-metadata
+race was found. Regression: storefront smoke 16/16; checkout flash check
+(CI-5) unchanged; typecheck, lint, build clean.
+
+**Limitations.** Crawlers and the first paint see the English title; these
+pages are noindex, so this has no search effect.
+
+---
+
 ## CI-8 · Admin → Stock: a failed load is not an empty warehouse (2026-10-25)
 
 **Problem.** The stock page ignored a failed answer (`if (!res.ok) return`)

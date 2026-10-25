@@ -4,6 +4,9 @@ import type { Metadata } from 'next'
 // page is a client component, which cannot export metadata, so the segment's
 // layout carries it. Renders nothing of its own.
 export const metadata: Metadata = {
+  // English, the default language; the page puts it into the visitor's
+  // language once loaded (lib/use-document-title.ts, 'checkout.title').
+  title: 'Checkout',
   robots: { index: false, follow: false },
 }
 

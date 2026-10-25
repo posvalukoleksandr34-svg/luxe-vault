@@ -10,6 +10,7 @@ import { Header } from '@/components/header'
 import { EmptyState } from '@/components/state-view'
 import { productImage } from '@/lib/product-image'
 import { formatPrice, useProductsById, useStore } from '@/lib/store'
+import { useDocumentTitle } from '@/lib/use-document-title'
 
 /**
  * Dedicated checkout screen.
@@ -28,6 +29,7 @@ import { formatPrice, useProductsById, useStore } from '@/lib/store'
  */
 export default function CheckoutPage() {
   const { cart, cartReady, cartCount, cartSubtotal, cartLineName, colorName, t } = useStore()
+  useDocumentTitle(t('checkout.title'), 'Checkout')
 
   // The lines' products, looked up by id — see the cart drawer.
   useProductsById(cart.map((line) => line.productId))
