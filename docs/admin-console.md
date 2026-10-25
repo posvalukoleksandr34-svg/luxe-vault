@@ -13,8 +13,8 @@ Each change below is listed with the problem it solves.
   - On phones the navigation is a drawer.
 - **Sections.**
   - Some are their own routes: `/admin/orders`, `/admin/returns`,
-    `/admin/promocodes`, `/admin/review-requests`, `/admin/newsletter`,
-    `/admin/settings`.
+    `/admin/reconciliation`, `/admin/promocodes`, `/admin/review-requests`,
+    `/admin/newsletter`, `/admin/settings`.
   - The rest are views of `/admin` chosen by `?tab=`: `products`,
     `collections`, `inventory`, `customers`, `support`, `productReviews`,
     `reviews`.
@@ -126,12 +126,10 @@ See "Tests run" in `PROJECT_IMPROVEMENT_LOG.md` for the commands and results.
 
 ## Not done / recommended next
 
-- **Drafts and unpublished products.** The schema has no draft or archived
-  state, so a saved product is live at once. Adding one touches every
-  storefront read path (catalogue, search function, sitemap, product page,
-  cart validation, order placement). It is worth doing as its own change,
-  with a migration and tests. The editor's required fields and the
-  "требуют заполнения" flags reduce the risk meanwhile.
+- **Drafts and unpublished products.** Done on 2026-10-25 (migration 0062,
+  `docs/audit/STORE_READINESS_AUDIT.md` S-1): a product is on sale only once
+  published from the "Продажа" panel, with the owner's record of the right to
+  sell it.
 - **Roles for the whole console.** Staff roles (`lib/refunds/permissions.ts`)
   guard refunds and review requests only. Every other section is open to
   anyone with the shared login and second factor. Extending `requireStaff` to

@@ -470,6 +470,11 @@ export function CheckoutFlow({
           pushToast({ title: t('checkout.paymentBlocked'), description: order.id, variant: 'default' })
           return
         }
+        if (started === 'unavailable') {
+          router.push('/')
+          pushToast({ title: t('checkout.errProductUnavailable'), description: order.id, variant: 'default' })
+          return
+        }
 
         // Stripe unreachable or misconfigured. The order is safe, so say so
         // rather than implying the checkout failed outright.
@@ -503,7 +508,7 @@ export function CheckoutFlow({
    * it, or re-pricing the one the order already has. Returns false when
    * Stripe is unavailable.
    */
-  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean | 'blocked'> {
+  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean | 'blocked' | 'unavailable'> {
     if (!order.lookupToken) return false
     const pay = await fetch('/api/payments/stripe/intent', {
       method: 'POST',
@@ -519,6 +524,8 @@ export function CheckoutFlow({
     // The fraud guard refused: too many failed card attempts on this order or
     // from this customer (lib/server/payment-fraud.ts).
     if (pay.status === 403 && payData.error === 'PAYMENT_BLOCKED') return 'blocked'
+    // A piece was taken off sale between placing the order and paying it.
+    if (pay.status === 409 && payData.error === 'PRODUCT_UNAVAILABLE') return 'unavailable'
     if (!pay.ok || !payData.clientSecret) return false
 
     setCharge({
@@ -544,6 +551,7 @@ export function CheckoutFlow({
     requestCardIntent(cardOrder, currency)
       .then((ok) => {
         if (ok === 'blocked') pushToast({ title: t('checkout.paymentBlocked'), variant: 'default' })
+        else if (ok === 'unavailable') pushToast({ title: t('checkout.errProductUnavailable'), variant: 'default' })
         else if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
       })
       .catch(() => pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' }))

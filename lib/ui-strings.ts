@@ -116,6 +116,7 @@ export const UI = {
   "checkout.errRateLimited": { ru: "Слишком много попыток. Подождите минуту и попробуйте снова.", en: "Too many attempts. Wait a minute and try again.", it: "Troppi tentativi. Attendi un minuto e riprova.", fr: "Trop de tentatives. Patientez une minute puis réessayez.", de: "Zu viele Versuche. Bitte warten Sie eine Minute und versuchen Sie es erneut." },
   "checkout.errOrderRejected": { ru: "Заказ не принят: проверьте данные и корзину и попробуйте снова.", en: "The order could not be accepted. Check your details and basket, then try again.", it: "L'ordine non è stato accettato. Controlla i dati e il carrello, poi riprova.", fr: "La commande n'a pas pu être acceptée. Vérifiez vos informations et votre panier, puis réessayez.", de: "Die Bestellung konnte nicht angenommen werden. Prüfen Sie Ihre Angaben und den Warenkorb und versuchen Sie es erneut." },
   "checkout.errAlreadyPaid": { ru: "Этот заказ уже оплачен.", en: "This order has already been paid.", it: "Questo ordine è già stato pagato.", fr: "Cette commande a déjà été payée.", de: "Diese Bestellung wurde bereits bezahlt." },
+  'checkout.errProductUnavailable': { ru: 'Один из товаров этого заказа больше не продаётся, поэтому оплатить заказ нельзя. Деньги не списаны. Напишите нам или оформите новый заказ.', en: 'One of the items in this order is no longer on sale, so the order can’t be paid. Nothing was charged. Please contact us or place a new order.', it: 'Uno degli articoli di questo ordine non è più in vendita, quindi l’ordine non può essere pagato. Non è stato addebitato nulla. Contattaci o effettua un nuovo ordine.', fr: 'Un des articles de cette commande n’est plus en vente : la commande ne peut donc pas être payée. Rien n’a été débité. Contactez-nous ou passez une nouvelle commande.', de: 'Ein Artikel dieser Bestellung ist nicht mehr im Verkauf, daher kann die Bestellung nicht bezahlt werden. Es wurde nichts belastet. Bitte kontaktieren Sie uns oder geben Sie eine neue Bestellung auf.' },
   "checkout.errOrderCancelled": { ru: "Этот заказ отменён.", en: "This order has been cancelled.", it: "Questo ordine è stato annullato.", fr: "Cette commande a été annulée.", de: "Diese Bestellung wurde storniert." },
   "checkout.errCryptoUnavailable": { ru: "Оплата криптовалютой временно недоступна.", en: "Crypto payment is temporarily unavailable.", it: "Il pagamento in criptovaluta non è al momento disponibile.", fr: "Le paiement en cryptomonnaie est temporairement indisponible.", de: "Die Zahlung mit Kryptowährung ist vorübergehend nicht verfügbar." },
   "checkout.errCryptoNetwork": { ru: "Выбранная сеть сейчас недоступна. Выберите другую.", en: "The selected network is unavailable right now. Please choose another.", it: "La rete selezionata non è disponibile al momento. Scegline un'altra.", fr: "Le réseau choisi est indisponible pour le moment. Choisissez-en un autre.", de: "Das gewählte Netzwerk ist gerade nicht verfügbar. Bitte wählen Sie ein anderes." },
@@ -816,6 +817,7 @@ export const UI = {
   'filter.categoryLabel': { ru: 'Категория', en: 'Category', it: 'Categoria', fr: 'Catégorie', de: 'Kategorie' },
   'filter.clearAll': { ru: 'Сбросить фильтры', en: 'Clear filters', it: 'Cancella filtri', fr: 'Réinitialiser', de: 'Filter zurücksetzen' },
   'filter.results': { ru: 'товаров найдено', en: 'items found', it: 'articoli trovati', fr: 'articles trouvés', de: 'Artikel gefunden' },
+  'filter.resultsOne': { ru: 'товар найден', en: 'item found', it: 'articolo trovato', fr: 'article trouvé', de: 'Artikel gefunden' },
 
   // Crypto checkout
   'crypto.title': { ru: 'Оплата криптовалютой', en: 'Pay with Crypto', it: 'Paga con Crypto', fr: 'Payer en Crypto', de: 'Mit Krypto bezahlen' },
@@ -936,12 +938,14 @@ export const UI = {
     fr: '{name} — expédié de Suisse.',
     de: '{name} — Versand aus der Schweiz.',
   },
+  // Only what is true of every product: "limited drops" was a claim no
+  // product record backs.
   'seo.product.fallback': {
-    ru: '{name} — ограниченный дроп, доставка из Швейцарии.',
-    en: '{name} — designer-inspired, limited drops, shipped from Switzerland.',
-    it: '{name} — ispirazione designer, drop limitati, spedizione dalla Svizzera.',
-    fr: '{name} — inspiration créateur, séries limitées, expédié de Suisse.',
-    de: '{name} — designer-inspiriert, limitierte Drops, Versand aus der Schweiz.',
+    ru: '{name} — доставка из Швейцарии.',
+    en: '{name} — shipped from Switzerland.',
+    it: '{name} — spedizione dalla Svizzera.',
+    fr: '{name} — expédié de Suisse.',
+    de: '{name} — Versand aus der Schweiz.',
   },
   'auth.resent': { ru: 'Письмо отправлено повторно', en: 'Email sent again', it: 'Email inviata di nuovo', fr: 'E-mail renvoyé', de: 'E-Mail erneut gesendet' },
   'auth.resendFailed': { ru: 'Не удалось отправить письмо', en: 'The email could not be sent', it: 'Non è stato possibile inviare l’email', fr: 'L’e-mail n’a pas pu être envoyé', de: 'Die E-Mail konnte nicht gesendet werden' },

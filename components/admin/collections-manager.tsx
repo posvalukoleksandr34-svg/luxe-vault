@@ -1,13 +1,12 @@
 'use client'
 
-import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
+import { ImagePlus, Loader2, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { adminLocalize as localize, adminT as t } from '@/lib/admin-i18n'
-import { DEFAULT_CATEGORY_IMAGES } from '@/lib/data'
 import { subcategoryCover } from '@/lib/subcategory-cover'
 import { CORE_DEPARTMENTS } from '@/lib/departments'
 import { useFullCatalog, useStore } from '@/lib/store'
-import type { Category, CategoryGroupKey, Product } from '@/lib/types'
+import type { Category, CategoryGroupKey, Collection, LocalizedText, Product } from '@/lib/types'
 import { AdminPageHeader } from './admin-shell'
 import { ConfirmDialog } from './confirm-dialog'
 
@@ -123,17 +122,20 @@ export function CollectionsManager() {
           <CategorySlot
             key={group}
             group={group}
+            row={collections.find((c) => c.slug === group)}
             count={products.filter((p) => p.group === group).length}
+            onSale={products.filter((p) => p.group === group && p.listing?.status === 'published').length}
             label={localize(groupLabels[group] ?? {})}
-            image={categoryImages[group] || DEFAULT_CATEGORY_IMAGES[group]}
+            image={categoryImages[group] ?? ''}
             isCustom={Boolean(categoryImages[group])}
+            onSaved={reloadCatalog}
             onChange={(image) => {
               void setCategoryImage(group, image)
               pushToast({ title: 'Изображение раздела обновлено', variant: 'success' })
             }}
             onReset={() => {
               void resetCategoryImage(group)
-              pushToast({ title: 'Возвращено изображение по умолчанию', variant: 'default' })
+              pushToast({ title: 'Своё фото раздела убрано', variant: 'default' })
             }}
             onDelete={
               // A collection can only be removed once it is empty: the FK from
@@ -167,27 +169,37 @@ export function CollectionsManager() {
 
 function CategorySlot({
   group,
+  row,
   label,
   count,
+  onSale,
   image,
   isCustom,
   onChange,
   onReset,
   onDelete,
+  onSaved,
 }: {
   group: CategoryGroupKey
+  /** The database row; absent for a department not created yet. */
+  row?: Collection
   label: string
   count: number
+  /** Of `count`, how many are published — the storefront shows the
+   *  department only when this is above zero. */
+  onSale: number
   image: string
   isCustom: boolean
   onChange: (image: string) => void
   onReset: () => void
   /** Present only when the collection is empty and therefore deletable. */
   onDelete?: () => Promise<void>
+  onSaved: () => Promise<void> | void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editing, setEditing] = useState(false)
   const { pushToast } = useStore()
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -225,14 +237,25 @@ function CategorySlot({
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="relative aspect-[4/5] overflow-hidden bg-background">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image} alt={label} className="size-full object-cover" />
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt={label} className="size-full object-cover" />
+        ) : (
+          // No photo of its own: the storefront card shows its bundled artwork
+          // or a plain panel; here, the initial.
+          <span aria-hidden className="flex size-full items-center justify-center text-5xl font-medium text-muted-foreground/60">
+            {label.trim().charAt(0).toUpperCase()}
+          </span>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
           <p className="text-xs text-muted-foreground">
-            {count} {count === 1 ? 'товар' : 'товаров'}
+            {count} {count === 1 ? 'товар' : 'товаров'} · в продаже {onSale}
           </p>
           <h3 className="text-lg font-semibold text-foreground">{label}</h3>
+          {onSale === 0 && (
+            <p className="mt-1 text-[11px] text-amber-800">Не показан в магазине: нет опубликованных товаров</p>
+          )}
         </div>
         {isCustom && (
           <span className="absolute left-3 top-3 rounded-md border border-border bg-background/90 px-2 py-0.5 text-[11px] text-foreground">
@@ -268,6 +291,18 @@ function CategorySlot({
             <RotateCcw className="size-3.5" />
           </button>
         )}
+        {row && (
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-expanded={editing}
+            className="flex min-h-[36px] items-center justify-center rounded-lg border border-border px-3 text-muted-foreground transition hover:text-foreground"
+            title="Название, порядок и описание"
+            aria-label={`Изменить раздел «${label}»`}
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        )}
         {onDelete && (
           <button
             type="button"
@@ -282,6 +317,28 @@ function CategorySlot({
           </button>
         )}
       </div>
+      {editing && row && (
+        <div className="border-t border-border p-3">
+          <TaxonomyEditForm
+            name={row.name}
+            sortOrder={row.sortOrder}
+            description={row.description ?? ({} as LocalizedText)}
+            onCancel={() => setEditing(false)}
+            onSave={async (patch) => {
+              const res = await fetch('/api/admin/collections', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug: row.slug, ...patch }),
+              })
+              const data = await res.json().catch(() => ({}))
+              if (!res.ok) throw new Error(data?.error ?? 'Не удалось сохранить раздел')
+              pushToast({ title: `Раздел «${label}» сохранён`, variant: 'success' })
+              setEditing(false)
+              await onSaved()
+            }}
+          />
+        </div>
+      )}
       {onDelete && (
         <ConfirmDialog
           open={confirmDelete}
@@ -319,7 +376,7 @@ function CategoriesPanel({
   products: Product[]
   onChanged: () => Promise<void> | void
 }) {
-  const { categoryTree, groupLabels, categoryLabels, collections, categories, pushToast } = useStore()
+  const { categoryTree, groupLabels, categoryLabel, collections, categories, pushToast } = useStore()
   const [addingTo, setAddingTo] = useState<string | null>(null)
 
   const [pendingRemove, setPendingRemove] = useState<{ group: string; slug: string; label: string } | null>(null)
@@ -378,15 +435,17 @@ function CategoriesPanel({
                 <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {items.map((slug) => {
                     const row = categories.find((c) => c.collectionSlug === group && c.slug === slug)
-                    const count = products.filter((p) => p.group === group && p.category === slug).length
+                    const inIt = products.filter((p) => p.group === group && p.category === slug)
+                    const count = inIt.length
                     return (
                       <CategoryTile
                         key={slug}
                         group={group}
                         slug={slug}
                         row={row}
-                        label={localize(categoryLabels[slug] ?? {}) || slug}
+                        label={localize(categoryLabel(group, slug)) || slug}
                         count={count}
+                        onSale={inIt.filter((p) => p.listing?.status === 'published').length}
                         cover={subcategoryCover(categories, products, group, slug)}
                         onRemove={row && count === 0 ? async (g, sl, lb) => setPendingRemove({ group: g, slug: sl, label: lb }) : undefined}
                         onChanged={onChanged}
@@ -428,16 +487,19 @@ function CategoryTile({
   row,
   label,
   count,
+  onSale,
   cover,
   onRemove,
   onChanged,
 }: {
   group: string
   slug: string
-  /** The database row; absent for a category that exists only in the code fallback. */
+  /** The database row. */
   row?: Category
   label: string
   count: number
+  /** Of `count`, how many are published: shown in the shop only above zero. */
+  onSale: number
   cover: ReturnType<typeof subcategoryCover>
   onRemove?: (group: string, slug: string, label: string) => Promise<void>
   onChanged: () => Promise<void> | void
@@ -445,6 +507,7 @@ function CategoryTile({
   const { pushToast } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<'upload' | 'clear' | null>(null)
+  const [editing, setEditing] = useState(false)
   // A photo that fails to load shows the initial, as the storefront card does.
   const [broken, setBroken] = useState<string | null>(null)
   const preview = cover.src && cover.src !== broken ? cover.src : null
@@ -497,76 +560,226 @@ function CategoryTile({
   }
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-border bg-background/60 p-2.5">
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={preview}
-            alt=""
-            onError={() => setBroken(preview)}
-            className={`size-full object-cover ${cover.source === 'product' ? 'mix-blend-multiply' : ''}`}
-          />
-        ) : (
-          <span className="flex size-full items-center justify-center text-lg font-medium text-muted-foreground">
-            {label.trim().charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
+    <li className="min-w-0 rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt=""
+              onError={() => setBroken(preview)}
+              className={`size-full object-cover ${cover.source === 'product' ? 'mix-blend-multiply' : ''}`}
+            />
+          ) : (
+            <span className="flex size-full items-center justify-center text-lg font-medium text-muted-foreground">
+              {label.trim().charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-foreground">{label}</p>
-        <p className="font-mono text-[10px] text-muted-foreground/85">
-          {slug} · {count}
-        </p>
-        <p
-          className={`mt-0.5 text-[11px] ${cover.source === 'custom' ? 'text-foreground' : 'text-muted-foreground'}`}
-        >
-          {cover.source === 'custom' ? 'Своя обложка' : cover.source === 'product' ? 'Фото товара' : 'Без фото'}
-        </p>
-      </div>
+        <div className="min-w-0 flex-1 basis-28">
+          <p className="truncate text-sm text-foreground">{label}</p>
+          <p className="break-words font-mono text-[10px] text-muted-foreground/85">
+            {slug} · {count} · в продаже {onSale}
+          </p>
+          {onSale === 0 && <p className="text-[11px] text-amber-800">Не показана в магазине</p>}
+          <p
+            className={`mt-0.5 text-[11px] ${cover.source === 'custom' ? 'text-foreground' : 'text-muted-foreground'}`}
+          >
+            {cover.source === 'custom' ? 'Своя обложка' : cover.source === 'product' ? 'Фото товара' : 'Без фото'}
+          </p>
+        </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        {row && (
-          <>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={busy !== null}
-              title={cover.source === 'custom' ? 'Заменить обложку' : 'Загрузить обложку'}
-              aria-label={`${cover.source === 'custom' ? 'Заменить' : 'Загрузить'} обложку «${label}»`}
-              className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-gold/50 hover:text-gold disabled:opacity-50"
-            >
-              {busy === 'upload' ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
-            </button>
-            {cover.source === 'custom' && (
+        <div className="flex shrink-0 items-center gap-1">
+          {row && (
+            <>
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
               <button
                 type="button"
-                onClick={() => void clear()}
+                onClick={() => fileRef.current?.click()}
                 disabled={busy !== null}
-                title="Убрать свою обложку (вернуть фото товара)"
-                aria-label={`Убрать свою обложку «${label}»`}
-                className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
+                title={cover.source === 'custom' ? 'Заменить обложку' : 'Загрузить обложку'}
+                aria-label={`${cover.source === 'custom' ? 'Заменить' : 'Загрузить'} обложку «${label}»`}
+                className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-gold/50 hover:text-gold disabled:opacity-50"
               >
-                {busy === 'clear' ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                {busy === 'upload' ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
               </button>
-            )}
-          </>
-        )}
-        {onRemove && (
-          <button
-            type="button"
-            onClick={() => void onRemove(group, slug, label)}
-            title="Удалить категорию"
-            aria-label={`Удалить категорию ${label}`}
-            className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
+              {cover.source === 'custom' && (
+                <button
+                  type="button"
+                  onClick={() => void clear()}
+                  disabled={busy !== null}
+                  title="Убрать свою обложку (вернуть фото товара)"
+                  aria-label={`Убрать свою обложку «${label}»`}
+                  className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
+                >
+                  {busy === 'clear' ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                </button>
+              )}
+            </>
+          )}
+          {row && (
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              aria-expanded={editing}
+              title="Название и порядок"
+              aria-label={`Изменить категорию «${label}»`}
+              className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:text-foreground"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              onClick={() => void onRemove(group, slug, label)}
+              title="Удалить категорию"
+              aria-label={`Удалить категорию ${label}`}
+              className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
+      {editing && row && (
+        <div className="mt-3 border-t border-border pt-3">
+          <TaxonomyEditForm
+            name={row.name}
+            sortOrder={row.sortOrder}
+            onCancel={() => setEditing(false)}
+            onSave={async (patch) => {
+              const res = await fetch('/api/admin/categories', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: row.id, ...patch }),
+              })
+              const data = await res.json().catch(() => ({}))
+              if (!res.ok) throw new Error(data?.error ?? 'Не удалось сохранить категорию')
+              pushToast({ title: `Категория «${label}» сохранена`, variant: 'success' })
+              setEditing(false)
+              await onChanged()
+            }}
+          />
+        </div>
+      )}
     </li>
+  )
+}
+
+/**
+ * Renaming and reordering a department or a category, and a department's
+ * short description. The slug is not here: it is in every link and on every
+ * product, so it stays what it was created as.
+ */
+function TaxonomyEditForm({
+  name,
+  sortOrder,
+  description,
+  onSave,
+  onCancel,
+}: {
+  name: LocalizedText
+  sortOrder: number
+  /** Departments only; a category has none. */
+  description?: LocalizedText
+  onSave: (patch: { name: Record<string, string>; sortOrder: number; description?: Record<string, string> }) => Promise<void>
+  onCancel: () => void
+}) {
+  const { pushToast } = useStore()
+  const [names, setNames] = useState<Record<string, string>>({ ...name })
+  const [order, setOrder] = useState(String(sortOrder))
+  const [texts, setTexts] = useState<Record<string, string>>({ ...(description ?? {}) })
+  const [busy, setBusy] = useState(false)
+  const orderValid = /^-?\d{1,4}$/.test(order.trim())
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy || !orderValid || !(names.ru ?? '').trim()) return
+    setBusy(true)
+    try {
+      await onSave({
+        name: names,
+        sortOrder: Number(order.trim()),
+        ...(description !== undefined ? { description: texts } : {}),
+      })
+    } catch (err) {
+      pushToast({ title: (err as Error).message, variant: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {CATEGORY_NAME_FIELDS.map((field) => (
+          <label key={field.locale} className="block">
+            <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
+              Название {field.label}
+              {field.required && <span className="text-destructive"> *</span>}
+            </span>
+            <input
+              type="text"
+              value={names[field.locale] ?? ''}
+              maxLength={60}
+              required={field.required}
+              onChange={(e) => setNames((prev) => ({ ...prev, [field.locale]: e.target.value }))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
+            />
+          </label>
+        ))}
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-medium text-muted-foreground">Порядок (меньше — выше)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={order}
+            onChange={(e) => setOrder(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
+          />
+        </label>
+      </div>
+      {description !== undefined && (
+        <fieldset className="space-y-2">
+          <legend className="mb-1 text-[11px] font-medium text-muted-foreground">
+            Короткое описание под заголовком раздела (необязательно; только то, что правда)
+          </legend>
+          {CATEGORY_NAME_FIELDS.map((field) => (
+            <label key={field.locale} className="block">
+              <span className="sr-only">Описание {field.label}</span>
+              <textarea
+                rows={2}
+                maxLength={600}
+                placeholder={field.label}
+                value={texts[field.locale] ?? ''}
+                onChange={(e) => setTexts((prev) => ({ ...prev, [field.locale]: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-gold"
+              />
+            </label>
+          ))}
+        </fieldset>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={busy || !orderValid || !(names.ru ?? '').trim()}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy && <Loader2 className="size-3.5 animate-spin" />}
+          Сохранить
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
+        >
+          Отмена
+        </button>
+      </div>
+    </form>
   )
 }
 

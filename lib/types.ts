@@ -36,6 +36,10 @@ export type Collection = {
   name: LocalizedText
   image?: string
   sortOrder: number
+  /** Short text under the department's title (0064); unset = none. */
+  description?: LocalizedText
+  /** Products on sale in it (published, sold out or not); unset where not counted. */
+  count?: number
 }
 
 /** A category nested under a collection. */
@@ -48,6 +52,8 @@ export type Category = {
   sortOrder: number
   /** Cover photograph for the subcategory card (0054); unset → a product photo. */
   image?: string
+  /** Products on sale in it (published, sold out or not); unset where not counted. */
+  count?: number
 }
 
 /**
@@ -176,6 +182,16 @@ export type Product = {
    * `variants.length > 0` first.
    */
   variants?: Variant[]
+
+  /**
+   * Sale state (migration 0062). Present only on what the ADMIN reads; the
+   * storefront only ever receives published products and gets no listing
+   * data at all — the rights record names suppliers and invoices.
+   */
+  listing?: import('@/lib/listing').ProductListing
+
+  /** When the product was created (ms). Sorts "newest" by date added. */
+  createdAt?: number
 }
 
 export type CartItem = {

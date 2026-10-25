@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { readCatalog } from '@/lib/server/catalog-store'
+import { NextResponse, type NextRequest } from 'next/server'
+import { readCatalog, readTaxonomyLists } from '@/lib/server/catalog-store'
 import { getShippingSettings } from '@/lib/server/store-settings'
 
 // The catalogue changes whenever an admin edits it, and the storefront reads
@@ -27,12 +27,19 @@ export const dynamic = 'force-dynamic'
 const CACHE_CONTROL = 'public, s-maxage=60, stale-while-revalidate=300'
 
 /**
- * Public catalogue: collections, categories and products in one payload,
+ * Public catalogue: collections, categories and PUBLISHED products (0062) in
+ * one payload, with no listing data,
  * plus the admin's shipping settings — so a fee or delivery-time change
  * reaches an already-open storefront the same way a catalogue edit does.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // ?part=taxonomy: departments and categories with their on-sale counts,
+    // no products — what the store asks for when the page's own server render
+    // could not read them, so the navigation is never left empty.
+    if (request.nextUrl.searchParams.get('part') === 'taxonomy') {
+      return NextResponse.json(await readTaxonomyLists(), { headers: { 'Cache-Control': CACHE_CONTROL } })
+    }
     const [catalog, shipping] = await Promise.all([readCatalog(), getShippingSettings()])
     return NextResponse.json({ ...catalog, shipping }, {
       headers: { 'Cache-Control': CACHE_CONTROL },

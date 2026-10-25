@@ -7,8 +7,10 @@ import type { Order, PaymentStatus } from '@/lib/types'
  * (lib/server/reconciliation.ts), so this can be tested with plain data.
  *
  * It never corrects anything. Every discrepancy is for a person to look at in
- * the Stripe dashboard and the admin console; the webhook remains the only
- * thing that changes an order's payment status.
+ * the Stripe dashboard and the admin console. The one correction the console
+ * offers — recording a `paid_not_recorded` order as paid — is the owner's
+ * decision, per order, and re-checks the payment with Stripe first
+ * (app/api/admin/reconciliation/apply/route.ts).
  */
 
 /** The parts of a Stripe PaymentIntent the comparison needs. */
@@ -26,6 +28,8 @@ export type ProviderPayment = {
 
 export type DiscrepancyKind =
   | 'paid_not_recorded'
+  /** Stripe is still settling it (a bank debit, Klarna); the order does not know. */
+  | 'processing_not_recorded'
   | 'recorded_not_paid'
   | 'amount_mismatch'
   | 'currency_mismatch'
@@ -76,8 +80,25 @@ export function reconcilePayments(
     }
 
     const recordedIn = MONEY_IN.indexOf(order.paymentStatus as PaymentStatus) !== -1
+    const charge = orderCharge(order)
+    const due = toMinorUnits(charge.amount)
     if (succeeded && !recordedIn) {
-      out.push({ kind: 'paid_not_recorded', orderId: order.id, paymentId: p.id, detail: `Stripe: succeeded; order: ${order.paymentStatus ?? 'no status'}` })
+      // Unrecorded money is "paid, not recorded" only if it is the order's
+      // money: the right currency, and at least the amount due — the same
+      // test the webhook applies before marking an order paid. Anything less
+      // is a mismatch, which no button may settle.
+      const detail = `Stripe: succeeded; order: ${order.paymentStatus ?? 'no status'}`
+      if (p.currency.toUpperCase() !== charge.currency) {
+        out.push({ kind: 'currency_mismatch', orderId: order.id, paymentId: p.id, detail: `${detail}; Stripe ${p.currency.toUpperCase()}, order ${charge.currency}` })
+      } else if (!(due > 0) || p.amountReceived < due) {
+        out.push({ kind: 'amount_mismatch', orderId: order.id, paymentId: p.id, detail: `${detail}; received ${p.amountReceived}, order requires ${due} (minor units)` })
+      } else {
+        out.push({ kind: 'paid_not_recorded', orderId: order.id, paymentId: p.id, detail })
+      }
+      continue
+    }
+    if (p.status === 'processing' && !recordedIn && order.paymentStatus !== 'confirming') {
+      out.push({ kind: 'processing_not_recorded', orderId: order.id, paymentId: p.id, detail: `Stripe: processing; order: ${order.paymentStatus ?? 'no status'}` })
       continue
     }
     if (!succeeded) {
@@ -87,12 +108,10 @@ export function reconcilePayments(
       continue
     }
 
-    const charge = orderCharge(order)
     if (p.currency.toUpperCase() !== charge.currency) {
       out.push({ kind: 'currency_mismatch', orderId: order.id, paymentId: p.id, detail: `Stripe ${p.currency.toUpperCase()}, order ${charge.currency}` })
       continue
     }
-    const due = toMinorUnits(charge.amount)
     if (p.amountReceived !== due) {
       out.push({ kind: 'amount_mismatch', orderId: order.id, paymentId: p.id, detail: `received ${p.amountReceived}, order requires ${due} (minor units)` })
     }

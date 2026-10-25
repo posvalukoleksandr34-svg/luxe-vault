@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
+import { productsNotOnSale } from '@/lib/server/order-sale'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
@@ -79,6 +80,11 @@ export async function POST(request: NextRequest) {
       { error: 'This order was cancelled and its pieces went back on sale. Please place a new order.' },
       { status: 409 },
     )
+  }
+  // A piece in this order has been taken off sale since it was placed
+  // (lib/server/order-sale.ts): no new payment for it.
+  if ((await productsNotOnSale(order)).length > 0) {
+    return NextResponse.json({ error: 'PRODUCT_UNAVAILABLE' }, { status: 409 })
   }
 
   // The fraud guard (lib/server/payment-fraud.ts): an order locked after too

@@ -2,8 +2,10 @@
 # The database tests (tests/db) against a database scripts/ci/verify-migrations.sh
 # has just built: access denials, coupon scoping, reservation expiry, search
 # bounds, rate-limit counting, the refund ledger and case guards, review
-# requests (one per order, claiming, access), checkout attempt keys, and the
-# races only concurrent sessions can show. DISPOSABLE databases only.
+# requests (one per order, claiming, access), checkout attempt keys, product
+# publication and sale rights, price history, and the races only concurrent
+# sessions can show.
+# DISPOSABLE databases only.
 #
 #   DATABASE_URL=postgresql://postgres:pw@127.0.0.1:5432/postgres scripts/ci/db-tests.sh
 set -euo pipefail
@@ -13,7 +15,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 psql_() { psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_ -f "$ROOT/tests/db/_fixture.sql"
-for t in rls coupons reservations search rate_limits refunds review_requests order_idempotency; do
+for t in rls coupons reservations search rate_limits refunds review_requests order_idempotency publication price_history collection_description; do
   echo "→ tests/db/$t.sql"
   # NOTICE lines carry the PASS results; a FAIL raises and stops the run.
   psql_ -f "$ROOT/tests/db/$t.sql" 2>&1 | sed -n 's/.*NOTICE:  //p'

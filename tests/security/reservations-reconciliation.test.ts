@@ -218,6 +218,20 @@ describe('payment reconciliation', () => {
     assert.deepEqual(kinds(reconcilePayments([order('A', { paymentStatus: 'pending_payment' })], [pay('A')])), ['paid_not_recorded'])
   })
 
+  it('unrecorded money that is short, or in another currency, is a mismatch — not "paid, not recorded"', () => {
+    const unpaid = order('A', { paymentStatus: 'pending_payment' })
+    assert.deepEqual(kinds(reconcilePayments([unpaid], [pay('A', { amountReceived: 9900 })])), ['amount_mismatch'])
+    assert.deepEqual(kinds(reconcilePayments([unpaid], [pay('A', { currency: 'eur' })])), ['currency_mismatch'])
+    // More than due still settles the order, as the webhook would.
+    assert.deepEqual(kinds(reconcilePayments([unpaid], [pay('A', { amountReceived: 10100 })])), ['paid_not_recorded'])
+  })
+
+  it('a payment Stripe is still settling, which the order does not show', () => {
+    assert.deepEqual(kinds(reconcilePayments([order('A', { paymentStatus: 'pending_payment' })], [pay('A', { status: 'processing', amountReceived: 0 })])), ['processing_not_recorded'])
+    // Already "confirming": the order knows, nothing to report.
+    assert.deepEqual(reconcilePayments([order('A', { paymentStatus: 'confirming' })], [pay('A', { status: 'processing', amountReceived: 0 })]), [])
+  })
+
   it('an order marked paid that Stripe did not take', () => {
     assert.deepEqual(kinds(reconcilePayments([order('A')], [pay('A', { status: 'canceled', amountReceived: 0 })])), ['recorded_not_paid'])
     assert.deepEqual(kinds(reconcilePayments([order('A')], [])), ['recorded_not_paid'])

@@ -23,15 +23,18 @@ import { cn } from '@/lib/utils'
  * unknown; nothing here re-validates them.
  */
 export function CategoryView({ group, category }: { group: string; category?: string }) {
-  const { t, localize, groupLabels, categoryLabels } = useStore()
+  const { t, localize, groupLabels, categoryLabel: labelOf, collections } = useStore()
 
   const groupLabel = localize(groupLabels[group] ?? {}) || group
-  const categoryLabel = category ? localize(categoryLabels[category] ?? {}) || category : ''
+  const categoryLabel = category ? localize(labelOf(group, category)) || category : ''
 
   // Department pages with subcategories; on a subcategory page you have
   // already chosen.
   const hasCards = useHasSubcategoryCards(group)
   const cards = !category && hasCards
+  // Only on the department page itself, not repeated on each subcategory.
+  const own = collections.find((c) => c.slug === group)?.description
+  const description = !category && own ? localize(own) : ''
 
   const trail = useMemo(
     () => [
@@ -55,11 +58,22 @@ export function CategoryView({ group, category }: { group: string; category?: st
       <h1
         className={cn(
           'font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl',
-          cards ? 'mb-6 lg:mb-8' : 'mb-10',
+          description ? 'mb-3' : cards ? 'mb-6 lg:mb-8' : 'mb-10',
         )}
       >
         {category ? categoryLabel : groupLabel}
       </h1>
+      {/* The department's own short text, written in the admin (0064). */}
+      {description && (
+        <p
+          className={cn(
+            'max-w-2xl text-[14px] font-light leading-relaxed text-muted-foreground',
+            cards ? 'mb-6 lg:mb-8' : 'mb-10',
+          )}
+        >
+          {description}
+        </p>
+      )}
 
       {/* A department page opens on where to go next: its subcategories as
           photo cards, above the sidebar, the filters and the grid. */}

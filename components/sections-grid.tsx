@@ -71,11 +71,13 @@ const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string
 const FALLBACK_GRADIENT = 'radial-gradient(120% 90% at 50% 0%, #f2ebdf 0%, #e2d6c2 75%)'
 
 export function SectionsGrid() {
-  const { t, localize, collections, categoryImages } = useStore()
+  const { t, localize, collections, navTree, categoryImages } = useStore()
 
-  // A department that exists in the catalogue gets its own page; one that does
-  // not yet gets /catalog, so the card always leads somewhere real.
-  const live = useMemo(() => new Set(collections.map((c) => c.slug)), [collections])
+  // Only departments with something on sale: a card is a promise of
+  // products, and an empty department would break it. A shop with none on
+  // sale shows no cards at all.
+  const live = useMemo(() => new Set(navTree.map((n) => n.group)), [navTree])
+  const shownDepartments = CORE_DEPARTMENTS.filter((d) => live.has(d.slug))
   const coverOf = (slug: string) =>
     categoryImages[slug] || collections.find((c) => c.slug === slug)?.image || ''
   // How many photographs have failed per card. Set from <Image onError>,
@@ -90,6 +92,8 @@ export function SectionsGrid() {
   // Which cards have a photograph on screen (set from <Image onLoad>).
   const [loaded, setLoaded] = useState<Record<string, string>>({})
 
+  if (shownDepartments.length === 0) return null
+
   return (
     <section id="collections" className="section-y scroll-mt-20">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
@@ -100,20 +104,25 @@ export function SectionsGrid() {
           </h2>
         </Reveal>
 
-        {/* One column on a phone, then three equal columns from tablet up —
-            `1fr` each, so the row always fills the container exactly. Two
-            columns at an intermediate width would strand the third card alone
-            on its own row, which is why the jump is straight to three. */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-          {CORE_DEPARTMENTS.map((department, i) => {
+        {/* One column on a phone, then one equal column per department from
+            tablet up — `1fr` each, so the row always fills the container
+            exactly. Two columns at an intermediate width would strand the
+            third card alone on its own row, which is why the jump is straight
+            to the full row. */}
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3 md:gap-4',
+            shownDepartments.length >= 3 ? 'md:grid-cols-3' : shownDepartments.length === 2 ? 'md:grid-cols-2' : 'mx-auto md:max-w-md',
+          )}
+        >
+          {shownDepartments.map((department, i) => {
             const section = VISUALS[department.slug]
             // A department with no card art of its own still renders, labelled
             // from the catalogue rather than from a missing i18n key.
             const label = section ? t(section.labelKey) : localize(department.name)
-            // Its own department page when that department exists, the full
-            // catalogue when it does not — never the homepage's shop section,
+            // Its own department page — never the homepage's shop section,
             // which was a stop on the way rather than a destination.
-            const href = live.has(department.slug) ? `/category/${department.slug}` : '/catalog'
+            const href = `/category/${department.slug}`
             const sources = Array.from(
               new Set([coverOf(department.slug), section?.image].filter((x): x is string => Boolean(x))),
             )

@@ -79,9 +79,10 @@ export function ProductGrid({
     t,
     localize,
     colorName,
-    categoryTree,
+    navTree,
     groupLabels,
     categoryLabels,
+    categoryLabel,
     // Named apart from the grid's own `categories` (its filter chips) below.
     categories: storeCategories,
     currency,
@@ -157,7 +158,7 @@ export function ProductGrid({
         const haystack = [
           localize(p.name),
           localize(p.description),
-          localize(categoryLabels[p.category] ?? {}),
+          localize(categoryLabel(p.group, p.category)),
           localize(groupLabels[p.group] ?? {}),
         ]
           .join(' ')
@@ -175,19 +176,20 @@ export function ProductGrid({
     } else if (filter.sort === 'price_desc') {
       result.sort((a, b) => b.price - a.price)
     } else if (filter.sort === 'discount') {
-      // Deepest percentage off first. A product with no old price has no
-      // discount and sorts last rather than being dropped — the customer
-      // asked for an order, not a filter.
+      // Deepest percentage off first. `oldPrice` is set only from the prices
+      // the shop actually charged (lib/price-reference.ts), so this orders by
+      // real reductions. A product with none sorts last rather than being
+      // dropped — the customer asked for an order, not a filter.
       result.sort((a, b) => discountOf(b) - discountOf(a))
     } else if (filter.sort === 'newest') {
-      // The catalogue already arrives newest-first from the server, and
-      // `isNew` is the admin's own flag, so this lifts flagged products to the
-      // top while preserving that order underneath.
-      result.sort((a, b) => Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)))
+      // By the date the product was added. Products without one (an old
+      // cached payload) keep their place after the dated ones; sort() is
+      // stable, so equal dates keep the server's order.
+      result.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
     }
 
     return result
-  }, [products, filter, activeGroup, activeCategory, query, smartIds, localize, categoryLabels, groupLabels])
+  }, [products, filter, activeGroup, activeCategory, query, smartIds, localize, categoryLabel, groupLabels])
 
   // Counts are derived live from `products` on every render, and any group
   // or category with zero matching products is dropped from the filter bar
@@ -195,25 +197,25 @@ export function ProductGrid({
   // ("Sneakers", "Apparel", ...) with a count that no longer reflects reality.
   const groups = useMemo(
     () =>
-      categoryTree.map((n) => ({
+      navTree.map((n) => ({
         key: n.group,
         label: localize(groupLabels[n.group] ?? {}),
         count: products.filter((p) => p.group === n.group).length,
       })).filter((g) => g.count > 0),
-    [products, localize, categoryTree, groupLabels],
+    [products, localize, navTree, groupLabels],
   )
 
   const categories = useMemo(() => {
     if (!activeGroup) return []
-    const items = categoryTree.find((n) => n.group === activeGroup)?.items ?? []
+    const items = navTree.find((n) => n.group === activeGroup)?.items ?? []
     return items
       .map((c) => ({
         key: c,
-        label: localize(categoryLabels[c] ?? {}),
+        label: localize(categoryLabel(activeGroup, c)),
         count: products.filter((p) => p.group === activeGroup && p.category === c).length,
       }))
       .filter((c) => c.count > 0)
-  }, [products, activeGroup, localize, categoryTree, categoryLabels])
+  }, [products, activeGroup, localize, navTree, categoryLabel])
 
   /**
    * The products this view could ever show, before any refinement.
@@ -345,7 +347,7 @@ export function ProductGrid({
             </h2>
           )}
           <p className={cn('text-[12px] uppercase tracking-[0.15em] text-muted-foreground/85', wrap && 'mt-2')}>
-            {filtered.length} {t('filter.results')}
+            {filtered.length} {t(filtered.length === 1 ? 'filter.resultsOne' : 'filter.results')}
           </p>
         </div>
 

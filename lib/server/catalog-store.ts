@@ -14,6 +14,8 @@ import 'server-only'
 
 import { withDerivedAvailability } from '@/lib/availability'
 import { isDeliveryDays } from '@/lib/fulfilment'
+import { publishBlockers, type ListingStatus, type PublishBlocker, type RightsBasis } from '@/lib/listing'
+import { referencePrice, type PricePoint } from '@/lib/price-reference'
 import { planVariantWrites, type LiveVariant, type StockConflict, type VariantPlan } from '@/lib/stock-sync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
@@ -28,6 +30,9 @@ import type {
 } from '@/lib/types'
 
 const COLLECTION_SELECT = 'id, slug, name, image_url, sort_order'
+/** With the department's description (0064). Read first; COLLECTION_SELECT
+ *  is the fallback for a database that has not had 0064 yet. */
+const COLLECTION_SELECT_WITH_DESCRIPTION = `${COLLECTION_SELECT}, description`
 const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
 /** With the subcategory cover (0054). Read first; CATEGORY_SELECT is the
  *  fallback for a database that has not had 0054 yet. */
@@ -39,6 +44,7 @@ const isMissingColumn = (error: { code?: string; message?: string } | null) =>
 const PRODUCT_BASE_SELECT = `
   id, slug, name, description, price, old_price, image, images, sizes,
   colors, statuses, is_new, limited, size_chart, specs, brand, style_tags, delivery_days_min, delivery_days_max,
+  created_at, listing_status, published_at,
   collection:collections ( slug ),
   category:categories ( slug )
 `
@@ -74,12 +80,16 @@ const refSlug = (ref: Ref): string =>
   Array.isArray(ref) ? (ref[0]?.slug ?? '') : (ref?.slug ?? '')
 
 function rowToCollection(row: Record<string, unknown>): Collection {
+  const description = row.description && typeof row.description === 'object' ? (row.description as LocalizedText) : undefined
   return {
     id: row.id as string,
     slug: row.slug as string,
     name: (row.name ?? {}) as LocalizedText,
     image: (row.image_url as string | null) ?? undefined,
     sortOrder: (row.sort_order as number) ?? 0,
+    ...(description && Object.values(description).some((v) => typeof v === 'string' && v.trim())
+      ? { description }
+      : {}),
   }
 }
 
@@ -123,15 +133,45 @@ function rowToProduct(row: Record<string, unknown>): Product {
       }))
     : rawColors
 
+  const rights = Array.isArray(row.rights) ? row.rights[0] : row.rights
+  const listing =
+    typeof row.listing_status === 'string'
+      ? {
+          status: row.listing_status as ListingStatus,
+          publishedAt: row.published_at ? Date.parse(row.published_at as string) : undefined,
+          rights:
+            rights && typeof rights === 'object'
+              ? {
+                  basis: (rights as Record<string, unknown>).basis as RightsBasis,
+                  reference: String((rights as Record<string, unknown>).reference ?? ''),
+                  confirmedAt: Date.parse(String((rights as Record<string, unknown>).confirmed_at ?? '')) || 0,
+                }
+              : undefined,
+        }
+      : undefined
+
   return {
     id: row.slug as string,
+    listing,
+    createdAt: row.created_at ? Date.parse(row.created_at as string) || undefined : undefined,
     variants: variants.length ? variants : undefined,
     name: (row.name ?? {}) as LocalizedText,
     description: (row.description ?? {}) as LocalizedText,
     group: refSlug(row.collection as Ref),
     category: refSlug(row.category as Ref),
     price: num(row.price as string),
-    oldPrice: row.old_price == null ? undefined : num(row.old_price as string),
+    // The strike-through price comes from the price history (0063), never
+    // from the typed products.old_price: only a price the shop really
+    // charged may be shown as "was" (lib/price-reference.ts).
+    oldPrice: Array.isArray(row.price_history)
+      ? referencePrice(
+          (row.price_history as { price: string | number; valid_from: string }[]).map(
+            (h): PricePoint => ({ price: num(h.price), validFrom: Date.parse(h.valid_from) }),
+          ),
+          num(row.price as string),
+          Date.now(),
+        )
+      : undefined,
     image: (row.image as string | null) ?? '',
     images: ((row.images as string[] | null) ?? []).length
       ? (row.images as string[])
@@ -202,12 +242,14 @@ async function resolveProductSelect(): Promise<string> {
 
   const supabase = createAdminClient()
 
-  const [variants, specs, brand, styleTags, deliveryDays] = await Promise.all([
+  const [variants, specs, brand, styleTags, deliveryDays, listing, priceHistory] = await Promise.all([
     supabase.from('product_variants').select('id').limit(1),
     supabase.from('products').select('specs').limit(1),
     supabase.from('products').select('brand').limit(1),
     supabase.from('products').select('style_tags').limit(1),
     supabase.from('products').select('delivery_days_min').limit(1),
+    supabase.from('products').select('listing_status').limit(1),
+    supabase.from('product_price_history').select('id').limit(1),
   ])
 
   let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
@@ -234,16 +276,62 @@ async function resolveProductSelect(): Promise<string> {
     console.error('[catalog] products.delivery_days_* is missing. Apply 0026_delivery_days_and_categories.sql.')
     select = select.replace(' delivery_days_min, delivery_days_max,', '')
   }
+  if (listing.error) {
+    // FAIL CLOSED. Without 0062 nothing records which products may be sold,
+    // so the storefront sells none of them (publicFilter); the admin still
+    // sees and edits everything.
+    console.error(
+      '[catalog] products.listing_status is missing — NO product is on sale. ' +
+        'Apply supabase/migrations/0062_product_publication.sql, then publish products in the admin.',
+    )
+    select = select.replace(' listing_status, published_at,', '')
+  }
+  if (priceHistory.error) {
+    // No history, no strike-through prices: nothing proves an earlier price.
+    console.error('[catalog] product_price_history is missing — no "was" prices are shown. Apply 0063_price_history.sql.')
+  } else {
+    select = `${select},\n  price_history:product_price_history ( price, valid_from )`
+  }
 
   productSelectCache = select
   return select
 }
 
-async function readProducts(supabase: ReturnType<typeof createAdminClient>) {
-  return supabase
-    .from('products')
-    .select(await resolveProductSelect())
-    .order('created_at', { ascending: false })
+/**
+ * Who is reading. 'public' — every storefront path, the search, the sitemap,
+ * the cart and the checkout — sees published products only, with no listing
+ * data. 'admin' sees every product with its listing state and rights record.
+ */
+export type CatalogScope = 'public' | 'admin'
+
+/** True when migration 0062 is applied (products carry a listing status). */
+export async function listingSupported(): Promise<boolean> {
+  return (await resolveProductSelect()).includes(' listing_status,')
+}
+
+/** The select for this scope: the admin's adds the rights record (0062). */
+async function selectFor(scope: CatalogScope): Promise<string> {
+  const select = await resolveProductSelect()
+  return scope === 'admin' && select.includes(' listing_status,')
+    ? `${select},\n  rights:product_rights ( basis, reference, confirmed_at )`
+    : select
+}
+
+/** A public product carries no listing data at all. */
+function forScope(product: Product, scope: CatalogScope): Product {
+  if (scope === 'admin') return product
+  const { listing: _listing, ...rest } = product
+  return rest
+}
+
+type ProductQueryResult = { data: unknown[] | null; error: { message: string } | null }
+
+async function readProducts(supabase: ReturnType<typeof createAdminClient>, scope: CatalogScope): Promise<ProductQueryResult> {
+  const select = await selectFor(scope)
+  if (scope === 'public' && !select.includes(' listing_status,')) return { data: [], error: null }
+  let query = supabase.from('products').select(select).order('created_at', { ascending: false })
+  if (scope === 'public') query = query.eq('listing_status', 'published')
+  return (await query) as unknown as ProductQueryResult
 }
 
 export type TaxonomyLists = Pick<Catalog, 'collections' | 'categories'>
@@ -251,10 +339,15 @@ export type TaxonomyLists = Pick<Catalog, 'collections' | 'categories'>
 async function readTaxonomyRows(
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<TaxonomyLists> {
-  const [collectionsRes, withImages] = await Promise.all([
-    supabase.from('collections').select(COLLECTION_SELECT).order('sort_order'),
+  const [withDescription, withImages] = await Promise.all([
+    supabase.from('collections').select(COLLECTION_SELECT_WITH_DESCRIPTION).order('sort_order'),
     supabase.from('categories').select(CATEGORY_SELECT_WITH_IMAGE).order('sort_order'),
   ])
+  // 0064 not applied yet: departments without a description.
+  const collectionsRes: { data: Record<string, unknown>[] | null; error: { message: string } | null } =
+    isMissingColumn(withDescription.error)
+      ? await supabase.from('collections').select(COLLECTION_SELECT).order('sort_order')
+      : (withDescription as unknown as { data: Record<string, unknown>[] | null; error: { message: string } | null })
   // 0054 not applied yet: the catalogue without subcategory covers.
   const categoriesRes: { data: Record<string, unknown>[] | null; error: { message: string } | null } =
     isMissingColumn(withImages.error)
@@ -288,15 +381,71 @@ async function readTaxonomyRows(
  * serialised every product into every page and every prefetch.
  */
 export async function readTaxonomyLists(): Promise<TaxonomyLists> {
-  return readTaxonomyRows(createAdminClient())
+  const supabase = createAdminClient()
+  const [taxonomy, onSale] = await Promise.all([readTaxonomyRows(supabase), readPublishedPlacement(supabase)])
+  return withCounts(taxonomy, onSale)
 }
 
-/** One round trip for the whole catalogue — it is small and always needed
- *  together, so three queries beat N+1 and beat three separate requests. */
-export async function readCatalog(): Promise<Catalog> {
+/** Where each product on sale sits: two ids per row, no product data. */
+async function readPublishedPlacement(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<{ collection_id: string; category_id: string }[]> {
+  // Without 0062 nothing is on sale (readProducts), so nothing is counted.
+  if (!(await listingSupported())) return []
+  const { data, error } = await supabase
+    .from('products')
+    .select('collection_id, category_id')
+    .eq('listing_status', 'published')
+  if (error) throw new Error(`Failed to count products: ${error.message}`)
+  return (data ?? []) as { collection_id: string; category_id: string }[]
+}
+
+/**
+ * Each department and category with the number of products ON SALE in it —
+ * published, sold out or not. The storefront's navigation shows only those
+ * with at least one (lib/store.tsx `navTree`); a product that is temporarily
+ * sold out still counts, so its category does not vanish with its stock.
+ */
+function withCounts(
+  taxonomy: TaxonomyLists,
+  onSale: { collection_id: string; category_id: string }[],
+): TaxonomyLists {
+  const byCollection = new Map<string, number>()
+  const byCategory = new Map<string, number>()
+  for (const row of onSale) {
+    byCollection.set(row.collection_id, (byCollection.get(row.collection_id) ?? 0) + 1)
+    byCategory.set(row.category_id, (byCategory.get(row.category_id) ?? 0) + 1)
+  }
+  return {
+    collections: taxonomy.collections.map((c) => ({ ...c, count: byCollection.get(c.id) ?? 0 })),
+    categories: taxonomy.categories.map((c) => ({ ...c, count: byCategory.get(c.id) ?? 0 })),
+  }
+}
+
+/** The same counts, from products already read (slugs instead of ids). */
+function withCountsFrom(taxonomy: TaxonomyLists, onSale: Product[]): TaxonomyLists {
+  const collectionIds = new Map(taxonomy.collections.map((c) => [c.slug, c.id]))
+  const categoryIds = new Map(taxonomy.categories.map((c) => [`${c.collectionSlug}/${c.slug}`, c.id]))
+  return withCounts(
+    taxonomy,
+    onSale.map((p) => ({
+      collection_id: collectionIds.get(p.group) ?? '',
+      category_id: categoryIds.get(`${p.group}/${p.category}`) ?? '',
+    })),
+  )
+}
+
+/**
+ * One round trip for the whole catalogue — it is small and always needed
+ * together, so three queries beat N+1 and beat three separate requests.
+ *
+ * Public by default: only published products, and none of their listing
+ * data. Pass `{ scope: 'admin' }` for the console's view of everything.
+ */
+export async function readCatalog({ scope = 'public' }: { scope?: CatalogScope } = {}): Promise<Catalog> {
   const supabase = createAdminClient()
 
-  const [taxonomy, productsRes] = await Promise.all([readTaxonomyRows(supabase), readProducts(supabase)])
+  const [taxonomy, productsRes] = await Promise.all([readTaxonomyRows(supabase), readProducts(supabase, scope)])
 
   if (productsRes.error) throw new Error(`Failed to read products: ${productsRes.error.message}`)
 
@@ -305,7 +454,11 @@ export async function readCatalog(): Promise<Catalog> {
   // defensively, so the cast is safe.
   const productRows = (productsRes.data ?? []) as unknown as Record<string, unknown>[]
 
-  return { ...taxonomy, products: productRows.map(rowToProduct) }
+  const products = productRows.map((r) => forScope(rowToProduct(r), scope))
+  // The public catalogue holds only products on sale; the admin's holds
+  // everything, and counts the published ones — the same numbers either way.
+  const onSale = scope === 'public' ? products : products.filter((p) => p.listing?.status === 'published')
+  return { ...withCountsFrom(taxonomy, onSale), products }
 }
 
 // ------------------------------------------------------------ collections ----
@@ -333,22 +486,28 @@ export async function createCollection(input: {
 
 export async function updateCollection(
   slug: string,
-  patch: { name?: LocalizedText; image?: string | null; sortOrder?: number },
+  patch: { name?: Partial<LocalizedText>; image?: string | null; sortOrder?: number; description?: Partial<LocalizedText> },
 ): Promise<Collection | null> {
   const row: Record<string, unknown> = {}
   if (patch.name !== undefined) row.name = patch.name
   if (patch.image !== undefined) row.image_url = patch.image
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
+  if (patch.description !== undefined) row.description = patch.description
 
   const { data, error } = await createAdminClient()
     .from('collections')
     .update(row)
     .eq('slug', slug)
-    .select(COLLECTION_SELECT)
+    .select(patch.description !== undefined ? COLLECTION_SELECT_WITH_DESCRIPTION : COLLECTION_SELECT)
     .maybeSingle()
 
-  if (error) throw new Error(`Failed to update collection: ${error.message}`)
-  return data ? rowToCollection(data) : null
+  if (error) {
+    if (patch.description !== undefined && isMissingColumn(error)) {
+      throw new Error('Department descriptions need migration 0064_collection_description.sql')
+    }
+    throw new Error(`Failed to update collection: ${error.message}`)
+  }
+  return data ? rowToCollection(data as unknown as Record<string, unknown>) : null
 }
 
 /**
@@ -451,16 +610,24 @@ export async function deleteCategory(slug: string, collectionSlug: string): Prom
 }
 
 /**
- * Sets or clears (null) a subcategory's cover photograph. By id: a slug is
- * unique only within its department.
+ * Renames, reorders, or sets or clears (null) the cover photograph of one
+ * subcategory. By id: a slug is unique only within its department. The slug
+ * itself never changes — it is in every link to the category.
  */
-export async function updateCategoryImage(id: string, image: string | null): Promise<Category | null> {
+export async function updateCategory(
+  id: string,
+  patch: { image?: string | null; name?: Partial<LocalizedText>; sortOrder?: number },
+): Promise<Category | null> {
   const supabase = createAdminClient()
+  const row: Record<string, unknown> = {}
+  if (patch.image !== undefined) row.image_url = patch.image
+  if (patch.name !== undefined) row.name = patch.name
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
   const { data, error } = await supabase
     .from('categories')
-    .update({ image_url: image })
+    .update(row)
     .eq('id', id)
-    .select(CATEGORY_SELECT_WITH_IMAGE)
+    .select(patch.image !== undefined ? CATEGORY_SELECT_WITH_IMAGE : CATEGORY_SELECT)
     .maybeSingle()
 
   if (error) {
@@ -468,18 +635,18 @@ export async function updateCategoryImage(id: string, image: string | null): Pro
     throw new Error(`Failed to update category: ${error.message}`)
   }
   if (!data) return null
-  const row = data as unknown as Record<string, unknown>
+  const saved = data as unknown as Record<string, unknown>
   const collectionSlug =
-    ((await supabase.from('collections').select('slug').eq('id', row.collection_id as string).maybeSingle()).data
+    ((await supabase.from('collections').select('slug').eq('id', saved.collection_id as string).maybeSingle()).data
       ?.slug as string | undefined) ?? ''
   return {
-    id: row.id as string,
-    collectionId: row.collection_id as string,
+    id: saved.id as string,
+    collectionId: saved.collection_id as string,
     collectionSlug,
-    slug: row.slug as string,
-    name: (row.name ?? {}) as LocalizedText,
-    sortOrder: (row.sort_order as number) ?? 0,
-    image: (row.image_url as string | null) ?? undefined,
+    slug: saved.slug as string,
+    name: (saved.name ?? {}) as LocalizedText,
+    sortOrder: (saved.sort_order as number) ?? 0,
+    image: (saved.image_url as string | null) ?? undefined,
   }
 }
 
@@ -539,7 +706,8 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
     collection_id: collectionId,
     category_id: categoryId,
     price: product.price,
-    old_price: product.oldPrice ?? null,
+    // old_price is no longer written: the "was" price is computed from the
+    // price history (0063). The column keeps whatever it held.
     image: product.image || null,
     images: product.images ?? [],
     sizes: product.sizes ?? [],
@@ -669,7 +837,7 @@ export async function createProduct(product: Product): Promise<Product> {
 
   // Re-read so the returned product carries the variants that were just
   // written, rather than the empty set the insert saw.
-  return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
+  return (await getProductBySlug(product.id, { scope: 'admin' })) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }
 
 export async function updateProduct(product: Product): Promise<Product | null> {
@@ -702,7 +870,7 @@ export async function updateProduct(product: Product): Promise<Product | null> {
     if (late.length) throw new StockConflictError(late, true)
   }
 
-  return (await getProductBySlug(product.id)) ?? rowToProduct(data as unknown as Record<string, unknown>)
+  return (await getProductBySlug(product.id, { scope: 'admin' })) ?? rowToProduct(data as unknown as Record<string, unknown>)
 }
 
 /**
@@ -749,15 +917,18 @@ export async function deleteProduct(slug: string): Promise<boolean> {
  * Returns null for an unknown slug so the caller can render notFound() rather
  * than a 500 — a mistyped URL is a 404, not a server error.
  */
-export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const { data, error } = await createAdminClient()
-    .from('products')
-    .select(await resolveProductSelect())
-    .eq('slug', slug)
-    .maybeSingle()
+export async function getProductBySlug(
+  slug: string,
+  { scope = 'public' }: { scope?: CatalogScope } = {},
+): Promise<Product | null> {
+  const select = await selectFor(scope)
+  if (scope === 'public' && !select.includes(' listing_status,')) return null
+  let query = createAdminClient().from('products').select(select).eq('slug', slug)
+  if (scope === 'public') query = query.eq('listing_status', 'published')
+  const { data, error } = await query.maybeSingle()
 
   if (error) throw new Error(`Failed to read product: ${error.message}`)
-  return data ? rowToProduct(data as unknown as Record<string, unknown>) : null
+  return data ? forScope(rowToProduct(data as unknown as Record<string, unknown>), scope) : null
 }
 
 /**
@@ -765,15 +936,19 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
  * absent from the result — a withdrawn product and a mistyped id look the
  * same, and both mean "not for sale".
  */
-export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+export async function getProductsBySlugs(
+  slugs: string[],
+  { scope = 'public' }: { scope?: CatalogScope } = {},
+): Promise<Product[]> {
   if (slugs.length === 0) return []
-  const { data, error } = await createAdminClient()
-    .from('products')
-    .select(await resolveProductSelect())
-    .in('slug', slugs)
+  const select = await selectFor(scope)
+  if (scope === 'public' && !select.includes(' listing_status,')) return []
+  let query = createAdminClient().from('products').select(select).in('slug', slugs)
+  if (scope === 'public') query = query.eq('listing_status', 'published')
+  const { data, error } = await query
 
   if (error) throw new Error(`Failed to read products: ${error.message}`)
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToProduct)
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => forScope(rowToProduct(r), scope))
 }
 
 /**
@@ -786,9 +961,12 @@ export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
  * and teach it to ignore the field.
  */
 export async function listProductSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+  // Published products only: a draft or withdrawn piece must not be indexed.
+  if (!(await listingSupported())) return []
   const { data, error } = await createAdminClient()
     .from('products')
     .select('slug, updated_at')
+    .eq('listing_status', 'published')
     .order('updated_at', { ascending: false })
 
   if (error) throw new Error(`Failed to list product slugs: ${error.message}`)
@@ -796,4 +974,72 @@ export async function listProductSlugs(): Promise<{ slug: string; updatedAt: Dat
     slug: row.slug as string,
     updatedAt: new Date((row.updated_at as string) ?? Date.now()),
   }))
+}
+
+// ---------------------------------------------------------------- listing ----
+
+/** Migration 0062 is not applied: nothing can be published yet. */
+export class ListingUnavailableError extends Error {
+  constructor() {
+    super('Публикация товаров требует миграции 0062_product_publication.sql')
+  }
+}
+
+/** The product is missing what a buyer needs; nothing was changed. */
+export class PublishBlockedError extends Error {
+  readonly blockers: PublishBlocker[]
+  constructor(blockers: PublishBlocker[]) {
+    super('Товар нельзя опубликовать: не заполнены обязательные поля')
+    this.blockers = blockers
+  }
+}
+
+export type ListingChange =
+  | { action: 'publish'; basis: RightsBasis; reference: string }
+  | { action: 'withdraw' }
+
+/**
+ * Puts a product on sale or takes it off.
+ *
+ * Publishing re-checks, on the product as stored, everything publishBlockers()
+ * lists, records the owner's rights entry and then flips the status; the
+ * database trigger (0062) refuses the flip if the rights entry is missing, so
+ * the order of the two writes cannot be raced into a published product with
+ * no record. Withdrawing keeps the rights entry: the owner may republish.
+ *
+ * Returns the admin's view of the product, or null for an unknown slug.
+ */
+export async function setProductListing(slug: string, change: ListingChange): Promise<Product | null> {
+  if (!(await listingSupported())) throw new ListingUnavailableError()
+  const supabase = createAdminClient()
+  const { data: row, error: findError } = await supabase.from('products').select('id').eq('slug', slug).maybeSingle()
+  if (findError) throw new Error(`Failed to read product: ${findError.message}`)
+  if (!row) return null
+  const productUuid = (row as { id: string }).id
+
+  if (change.action === 'publish') {
+    const product = await getProductBySlug(slug, { scope: 'admin' })
+    if (!product) return null
+    const blockers = publishBlockers(product)
+    if (blockers.length) throw new PublishBlockedError(blockers)
+
+    const now = new Date().toISOString()
+    const { error: rightsError } = await supabase.from('product_rights').upsert(
+      { product_id: productUuid, basis: change.basis, reference: change.reference.trim(), confirmed_at: now, updated_at: now },
+      { onConflict: 'product_id' },
+    )
+    if (rightsError) throw new Error(`Failed to record sale rights: ${rightsError.message}`)
+
+    const { error } = await supabase.from('products').update({ listing_status: 'published' }).eq('id', productUuid)
+    if (error) throw new Error(`Failed to publish product: ${error.message}`)
+  } else {
+    const { error } = await supabase
+      .from('products')
+      .update({ listing_status: 'withdrawn' })
+      .eq('id', productUuid)
+      .eq('listing_status', 'published')
+    if (error) throw new Error(`Failed to withdraw product: ${error.message}`)
+  }
+
+  return getProductBySlug(slug, { scope: 'admin' })
 }

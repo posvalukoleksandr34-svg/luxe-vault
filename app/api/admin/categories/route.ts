@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createCategory, deleteCategory, updateCategoryImage } from '@/lib/server/catalog-store'
-import type { Locale } from '@/lib/types'
+import { createCategory, deleteCategory, updateCategory } from '@/lib/server/catalog-store'
+import { cleanLocalizedText } from '@/lib/localized-text'
+import type { LocalizedText } from '@/lib/types'
 import { requireAdmin } from '@/lib/server/admin-guard'
 import { revalidateStorefront } from '@/lib/server/revalidate'
 import { readJsonObject } from '@/lib/server/http'
@@ -12,7 +13,8 @@ export const dynamic = 'force-dynamic'
 /** Mirrors the categories.slug check constraint in migration 0005. */
 const SLUG_RE = /^[a-z0-9]+(_[a-z0-9]+)*$/
 
-const LOCALES: Locale[] = ['ru', 'en', 'it', 'fr', 'de']
+/** A category name is a menu label: short. */
+const NAME_MAX = 60
 
 
 /**
@@ -46,12 +48,7 @@ export async function POST(request: NextRequest) {
 
   // Only the five storefront languages, trimmed; empty ones are left out so
   // the storefront's fallback to Russian applies instead of a blank label.
-  const raw = (body.name && typeof body.name === 'object' ? body.name : {}) as Record<string, unknown>
-  const name: Partial<Record<Locale, string>> = {}
-  for (const locale of LOCALES) {
-    const value = raw[locale]
-    if (typeof value === 'string' && value.trim()) name[locale] = value.trim()
-  }
+  const name = cleanLocalizedText(body.name, NAME_MAX)
   if (!name.ru) {
     return NextResponse.json({ error: 'The Russian name is required' }, { status: 400 })
   }
@@ -72,9 +69,12 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Sets or clears a subcategory's cover photograph (the card on the department
- * page). Body: { id: string, image: string | null } — by id, because a slug is
- * unique only within its department.
+ * Edits one subcategory, by id — a slug is unique only within its department.
+ * Body: { id, image?, name?, sortOrder? }; at least one of the three.
+ *   - image: the card's cover on the department page, or null to clear it;
+ *   - name: { ru, en?, it?, fr?, de? }, Russian required, as on creation;
+ *   - sortOrder: its position in the department, lowest first.
+ * The slug never changes: it is in every link to the category.
  *
  * Accepted: an https:// address, a path on this site, or our own Storage's
  * public URL (http on a local Supabase). The admin console uploads to Storage
@@ -97,24 +97,41 @@ function acceptableImage(value: unknown): value is string {
 export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin()
   if (denied) return denied
-  const body = await readJsonObject<{ id?: unknown; image?: unknown }>(request)
+  const body = await readJsonObject<{ id?: unknown; image?: unknown; name?: unknown; sortOrder?: unknown }>(request)
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
 
   const id = typeof body.id === 'string' ? body.id : ''
   if (!UUID_RE.test(id)) return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-  const image = body.image === null ? null : acceptableImage(body.image) ? body.image : undefined
-  if (image === undefined) {
-    return NextResponse.json({ error: 'The image must be an https:// address (upload it first) or null' }, { status: 400 })
+
+  const patch: { image?: string | null; name?: Partial<LocalizedText>; sortOrder?: number } = {}
+  if ('image' in body) {
+    const image = body.image === null ? null : acceptableImage(body.image) ? body.image : undefined
+    if (image === undefined) {
+      return NextResponse.json({ error: 'The image must be an https:// address (upload it first) or null' }, { status: 400 })
+    }
+    patch.image = image
   }
+  if ('name' in body) {
+    const name = cleanLocalizedText(body.name, NAME_MAX)
+    if (!name.ru) return NextResponse.json({ error: 'The Russian name is required' }, { status: 400 })
+    patch.name = name
+  }
+  if ('sortOrder' in body) {
+    if (typeof body.sortOrder !== 'number' || !Number.isInteger(body.sortOrder) || Math.abs(body.sortOrder) > 10_000) {
+      return NextResponse.json({ error: 'sortOrder must be a whole number' }, { status: 400 })
+    }
+    patch.sortOrder = body.sortOrder
+  }
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
 
   try {
-    const category = await updateCategoryImage(id, image)
+    const category = await updateCategory(id, patch)
     if (!category) return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     revalidateStorefront()
     return NextResponse.json({ category })
   } catch (e) {
     const message = (e as Error).message
-    console.error('[admin/categories] image update failed:', e)
+    console.error('[admin/categories] update failed:', e)
     return NextResponse.json({ error: message }, { status: /0054/.test(message) ? 503 : 500 })
   }
 }

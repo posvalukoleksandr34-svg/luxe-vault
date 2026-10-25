@@ -39,6 +39,7 @@ export type NavIcon =
   | 'dashboard'
   | 'orders'
   | 'returns'
+  | 'reconciliation'
   | 'customers'
   | 'promos'
   | 'products'
@@ -74,6 +75,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { key: 'orders', label: 'Заказы', href: '/admin/orders', icon: 'orders', badge: (a) => a.ordersToShip, urgent: true },
       { key: 'returns', label: 'Возвраты', href: '/admin/returns', icon: 'returns', badge: (a) => a.refundCasesWaiting, urgent: true },
+      { key: 'reconciliation', label: 'Сверка платежей', href: '/admin/reconciliation', icon: 'reconciliation' },
       { key: 'customers', label: 'Клиенты', href: '/admin?tab=customers', icon: 'customers' },
       { key: 'promos', label: 'Промокоды', href: '/admin/promocodes', icon: 'promos' },
     ],
@@ -109,6 +111,7 @@ export function activeNavKey(pathname: string, tab: string | null): string {
   if (pathname === '/admin' || pathname === '/admin/') return tabFrom(tab)
   if (pathname.startsWith('/admin/orders')) return 'orders'
   if (pathname.startsWith('/admin/returns')) return 'returns'
+  if (pathname.startsWith('/admin/reconciliation')) return 'reconciliation'
   if (pathname.startsWith('/admin/promocodes')) return 'promos'
   if (pathname.startsWith('/admin/review-requests')) return 'reviewRequests'
   if (pathname.startsWith('/admin/newsletter')) return 'newsletter'

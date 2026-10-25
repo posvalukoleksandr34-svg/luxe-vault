@@ -1,6 +1,4 @@
 import { readCatalog } from '@/lib/server/catalog-store'
-import { CATEGORY_LABELS, GROUP_LABELS } from '@/lib/i18n'
-import { CATEGORY_TREE } from '@/lib/data'
 import type { LocalizedText, Product } from '@/lib/types'
 import { primaryText } from '@/lib/localized-text'
 
@@ -8,17 +6,20 @@ import { primaryText } from '@/lib/localized-text'
  * The catalogue taxonomy, resolved on the server.
  *
  * The storefront reads its tree from the store, which derives it from the
- * database and falls back to the seeded CATEGORY_TREE when no collections
- * exist. The category routes need exactly the same answer BEFORE React runs —
- * to 404 an unknown slug, to build <title>, and to emit the BreadcrumbList a
- * crawler reads. Re-deriving it here from the same two sources, with the same
- * fallback, is what keeps a route from disagreeing with the sidebar rendered
- * inside it.
+ * database alone: a catalogue with no departments has no navigation, rather
+ * than a built-in list of categories nobody created. The category routes need
+ * exactly the same answer BEFORE React runs — to 404 an unknown slug, to build
+ * <title>, and to emit the BreadcrumbList a crawler reads. Deriving it here
+ * from the same rows is what keeps a route from disagreeing with the sidebar
+ * rendered inside it.
  */
 
 export type TaxonomyNode = {
   slug: string
   name: LocalizedText
+  /** Short text under the department's title (0064), when written. */
+  description?: LocalizedText
+  /** Products on sale in it: published, sold out or not. */
   count: number
   categories: { slug: string; name: LocalizedText; count: number }[]
 }
@@ -36,35 +37,16 @@ export async function readTaxonomy(): Promise<{ tree: TaxonomyNode[]; products: 
   const catalog = await readCatalog()
   const { collections, categories, products } = catalog
 
-  const countIn = (group: string, category?: string) =>
-    products.filter((p) => p.group === group && (category === undefined || p.category === category))
-      .length
-
-  // Same shape either way, so the routes never branch on which source won.
-  const tree: TaxonomyNode[] =
-    collections.length === 0
-      ? CATEGORY_TREE.map((n) => ({
-          slug: n.group,
-          name: GROUP_LABELS[n.group] ?? { ru: n.group },
-          count: countIn(n.group),
-          categories: n.items.map((c) => ({
-            slug: c,
-            name: CATEGORY_LABELS[c] ?? { ru: c },
-            count: countIn(n.group, c),
-          })),
-        }))
-      : collections.map((c) => ({
-          slug: c.slug,
-          name: c.name,
-          count: countIn(c.slug),
-          categories: categories
-            .filter((cat) => cat.collectionSlug === c.slug)
-            .map((cat) => ({
-              slug: cat.slug,
-              name: cat.name,
-              count: countIn(c.slug, cat.slug),
-            })),
-        }))
+  // readCatalog() has counted the products on sale in each one.
+  const tree: TaxonomyNode[] = collections.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    ...(c.description ? { description: c.description } : {}),
+    count: c.count ?? 0,
+    categories: categories
+      .filter((cat) => cat.collectionSlug === c.slug)
+      .map((cat) => ({ slug: cat.slug, name: cat.name, count: cat.count ?? 0 })),
+  }))
 
   return { tree, products }
 }

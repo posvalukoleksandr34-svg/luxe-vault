@@ -96,7 +96,7 @@ const GALLERY_ARROW =
  * JSON-LD are produced on the server where crawlers can see them.
  */
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, setPanel, t, tf, locale, localize, colorName, categoryLabels, pushToast, shipping } = useStore()
+  const { addToCart, setPanel, t, tf, locale, localize, colorName, categoryLabel, pushToast, shipping } = useStore()
   const { playHoverSound, playClickSound } = useAudioFeedback()
 
   const p = product
@@ -564,7 +564,7 @@ export function ProductDetail({ product }: { product: Product }) {
           the sticky panel. */}
       <div data-motion-stagger className="flex flex-col lg:sticky lg:top-24 lg:self-start">
         <p className="text-[10px] uppercase tracking-[0.25em] text-gold">
-          {localize(categoryLabels[p.category] ?? {})}
+          {localize(categoryLabel(p.group, p.category))}
         </p>
         {/* h1, not h2: on a dedicated page the product name is the document's
             heading, and a page whose only h1 is the site name ranks for the

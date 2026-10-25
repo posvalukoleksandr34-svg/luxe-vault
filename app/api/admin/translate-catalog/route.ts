@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
     // No body: start from the beginning.
   }
 
-  const { products } = await readCatalog()
+  // Every product, drafts included: translations are prepared before publishing.
+  const { products } = await readCatalog({ scope: 'admin' })
   const ordered = products.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const batch = ordered.slice(offset, offset + BATCH)
 

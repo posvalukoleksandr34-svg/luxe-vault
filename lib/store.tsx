@@ -33,7 +33,7 @@ import {
 import { hasSessionCookie, loadSupabase } from './supabase/lazy'
 import { colorLabel, isStorefrontText } from './color-name'
 import { isSupabaseConfigured } from './supabase/env'
-import { CATEGORY_TREE, DEFAULT_CATEGORY_IMAGES, PAYMENT_METHODS } from './data'
+import { PAYMENT_METHODS } from './data'
 import {
   DEFAULT_SHIPPING_SETTINGS,
   validateShippingSettings,
@@ -144,8 +144,8 @@ export const EMPTY_FILTER: Filter = {
 }
 
 /** Admin-assigned Collections (Collezioni) preview images, keyed by
- * CategoryGroupKey. A group with no entry here falls back to
- * DEFAULT_CATEGORY_IMAGES — see lib/data.ts. */
+ * CategoryGroupKey. A group with no entry here has no picture of its own:
+ * the card falls back to its bundled artwork or a plain panel. */
 export const CATEGORY_IMAGES_STORAGE_KEY = 'luxe-vault-category-images'
 
 type StoreContextValue = {
@@ -157,9 +157,22 @@ type StoreContextValue = {
   products: Product[]
   collections: Collection[]
   categories: Category[]
+  /** Every department and category, empty or not — the admin's view. */
   categoryTree: { group: CategoryGroupKey; items: CategoryKey[] }[]
+  /**
+   * The storefront's navigation: only departments and categories with at
+   * least one product on sale (a sold-out one still counts). What every menu,
+   * sidebar and card row a customer sees is built from.
+   */
+  navTree: { group: CategoryGroupKey; items: CategoryKey[] }[]
   groupLabels: Record<string, LocalizedText>
+  /**
+   * Labels by `group/category` and, for older callers, by bare slug. Since
+   * 0040 a slug is unique only within its department, so the bare key is the
+   * first department's name; prefer categoryLabel(group, slug).
+   */
   categoryLabels: Record<string, LocalizedText>
+  categoryLabel: (group: CategoryGroupKey, category: CategoryKey) => LocalizedText
   /** True until the whole catalogue has arrived (or failed to). */
   catalogLoading: boolean
   /** Fetches the whole catalogue, once per visit; later calls reuse it. */
@@ -454,6 +467,26 @@ export function StoreProvider({
   const [products, setProducts] = useState<Product[]>([])
   const [collections, setCollections] = useState<Collection[]>(initialTaxonomy?.collections ?? [])
   const [categories, setCategories] = useState<Category[]>(initialTaxonomy?.categories ?? [])
+
+  // The layout could not read the departments (a database hiccup during the
+  // server render, or a page cached from one). There is no built-in list to
+  // fall back on any more, so ask once, lightly: no products, just the tree.
+  useEffect(() => {
+    if (initialTaxonomy) return
+    let active = true
+    fetch('/api/catalog?part=taxonomy')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { collections?: Collection[]; categories?: Category[] } | null) => {
+        if (!active || !data) return
+        if (Array.isArray(data.collections)) setCollections(data.collections)
+        if (Array.isArray(data.categories)) setCategories(data.categories)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [shipping, setShipping] = useState<ShippingSettings>(
     initialShipping ?? DEFAULT_SHIPPING_SETTINGS,
   )
@@ -777,7 +810,10 @@ function maybeSendWelcome() {
     // A reload keeps showing the list it has rather than flipping to "loading".
     setCatalogStatus((status) => (status === 'ready' ? status : 'loading'))
     try {
-      const res = await fetch('/api/catalog', { cache: 'no-store' })
+      // The console reads every product with its listing state; the shop
+      // reads the public, published-only catalogue.
+      const url = window.location.pathname.startsWith('/admin') ? '/api/admin/catalog' : '/api/catalog'
+      const res = await fetch(url, { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
       if (!Array.isArray(data.products)) throw new Error('malformed catalogue')
@@ -893,18 +929,30 @@ function maybeSendWelcome() {
   // Derived from the database, with the original hardcoded maps as a fallback
   // for the seeded slugs. This is what lets a collection created in the admin
   // panel show up in the storefront filters without a redeploy.
+  // From the database alone. A catalogue with no departments shows no
+  // navigation — not a built-in list of categories nobody created.
   const categoryTree = useMemo(
     () =>
-      collections.length === 0
-        ? CATEGORY_TREE
-        : collections.map((c) => ({
-            group: c.slug,
-            items: categories
-              .filter((cat) => cat.collectionSlug === c.slug)
-              .map((cat) => cat.slug),
-          })),
+      collections.map((c) => ({
+        group: c.slug,
+        items: categories.filter((cat) => cat.collectionSlug === c.slug).map((cat) => cat.slug),
+      })),
     [collections, categories],
   )
+
+  // The same, without anything that has nothing on sale. A count the server
+  // did not send (an older cached payload) is not taken for zero.
+  const navTree = useMemo(() => {
+    const onSale = (count: number | undefined) => count === undefined || count > 0
+    return collections
+      .filter((c) => onSale(c.count))
+      .map((c) => ({
+        group: c.slug,
+        items: categories
+          .filter((cat) => cat.collectionSlug === c.slug && onSale(cat.count))
+          .map((cat) => cat.slug),
+      }))
+  }, [collections, categories])
 
   const groupLabels = useMemo(() => {
     const map: Record<string, LocalizedText> = { ...GROUP_LABELS }
@@ -914,9 +962,23 @@ function maybeSendWelcome() {
 
   const categoryLabels = useMemo(() => {
     const map: Record<string, LocalizedText> = { ...CATEGORY_LABELS }
-    for (const c of categories) map[c.slug] = c.name
+    const named = new Set<string>()
+    for (const c of categories) {
+      map[`${c.collectionSlug}/${c.slug}`] = c.name
+      // The bare slug keeps the first department's name, not the last's.
+      if (!named.has(c.slug)) {
+        map[c.slug] = c.name
+        named.add(c.slug)
+      }
+    }
     return map
   }, [categories])
+
+  const categoryLabel = useCallback(
+    (group: CategoryGroupKey, category: CategoryKey): LocalizedText =>
+      categoryLabels[`${group}/${category}`] ?? categoryLabels[category] ?? ({} as LocalizedText),
+    [categoryLabels],
+  )
 
   const categoryImages = useMemo(() => {
     const map: Partial<Record<CategoryGroupKey, string>> = {}
@@ -1832,8 +1894,10 @@ function maybeSendWelcome() {
       collections,
       categories,
       categoryTree,
+      navTree,
       groupLabels,
       categoryLabels,
+      categoryLabel,
       catalogLoading,
       ensureCatalog,
       reloadCatalog,
@@ -1900,7 +1964,7 @@ function maybeSendWelcome() {
       paymentMethods: PAYMENT_METHODS,
     }),
     [
-      products, collections, categories, categoryTree, groupLabels, categoryLabels,
+      products, collections, categories, categoryTree, navTree, groupLabels, categoryLabels, categoryLabel,
       catalogLoading, ensureCatalog, reloadCatalog, productCache, resolveProducts, lookupProduct,
       shipping, categoryImages, setCategoryImage,
       resetCategoryImage, cart, cartReady, currentUser, authLoading, locale, setLocale, currency,

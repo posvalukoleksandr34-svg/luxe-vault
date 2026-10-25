@@ -94,7 +94,7 @@ describe('console navigation', () => {
   it('every section is reachable, once', () => {
     const keys = ADMIN_NAV.flatMap((g) => g.items.map((i) => i.key))
     assert.equal(new Set(keys).size, keys.length)
-    for (const k of ['dashboard', 'orders', 'returns', 'customers', 'promos', 'products', 'collections', 'inventory', 'support', 'productReviews', 'reviews', 'reviewRequests', 'newsletter', 'shipping']) {
+    for (const k of ['dashboard', 'orders', 'returns', 'reconciliation', 'customers', 'promos', 'products', 'collections', 'inventory', 'support', 'productReviews', 'reviews', 'reviewRequests', 'newsletter', 'shipping']) {
       assert.ok(keys.includes(k), k)
     }
   })
@@ -105,6 +105,7 @@ describe('console navigation', () => {
     assert.equal(activeNavKey('/admin', 'nonsense'), 'dashboard')
     assert.equal(activeNavKey('/admin/returns/abc', null), 'returns')
     assert.equal(activeNavKey('/admin/orders', null), 'orders')
+    assert.equal(activeNavKey('/admin/reconciliation', null), 'reconciliation')
     assert.equal(activeNavKey('/admin/settings', null), 'shipping')
     assert.equal(tabFrom('products'), 'products')
     assert.equal(tabFrom(undefined), 'dashboard')

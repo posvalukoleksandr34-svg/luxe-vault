@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
+import { productsNotOnSale } from '@/lib/server/order-sale'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { findResolvedOption, resolveAvailableOptions } from '@/lib/server/crypto-options'
 import { createPayment, fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
@@ -69,6 +70,10 @@ export async function POST(request: NextRequest) {
   // would replace its id, and the webhook could no longer match them.
   if (order.paymentStatus === 'confirming') {
     return NextResponse.json({ error: 'A payment for this order is already being confirmed', code: 'IN_PROGRESS' }, { status: 409 })
+  }
+  // A piece in this order has been taken off sale since it was placed.
+  if ((await productsNotOnSale(order)).length > 0) {
+    return NextResponse.json({ error: 'A product in this order is no longer on sale', code: 'PRODUCT_UNAVAILABLE' }, { status: 409 })
   }
 
   const tickers = await fetchAvailableTickers()

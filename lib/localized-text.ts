@@ -38,3 +38,21 @@ export function sourceText(
   if (!text) return fallback
   return text.ru || text.en || Object.values(text).find((v): v is string => Boolean(v)) || fallback
 }
+
+const CATALOGUE_LANGUAGES = ['ru', 'en', 'it', 'fr', 'de'] as const
+
+/**
+ * A localised text as an admin form sends it: only the five catalogue
+ * languages, trimmed, each at most `max` characters; empty languages are left
+ * out so the storefront's own fallback applies instead of a blank. Anything
+ * else in the object is dropped. Not an object → empty.
+ */
+export function cleanLocalizedText(raw: unknown, max: number): Partial<Record<(typeof CATALOGUE_LANGUAGES)[number], string>> {
+  const out: Partial<Record<(typeof CATALOGUE_LANGUAGES)[number], string>> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const lang of CATALOGUE_LANGUAGES) {
+    const value = (raw as Record<string, unknown>)[lang]
+    if (typeof value === 'string' && value.trim()) out[lang] = value.trim().slice(0, max)
+  }
+  return out
+}
