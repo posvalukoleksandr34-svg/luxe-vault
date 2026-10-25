@@ -74,6 +74,7 @@ export function EmptyState({
   secondary,
   compact = false,
   role,
+  asHeading,
   className,
 }: {
   icon?: LucideIcon
@@ -89,8 +90,12 @@ export function EmptyState({
   compact?: boolean
   /** 'alert' when the state replaces content the reader was waiting for. */
   role?: 'alert' | 'status'
+  /** When this state IS the page (a 404, an empty checkout): its title is
+   *  the page's heading, so assistive technology and search engines find one. */
+  asHeading?: 1 | 2
   className?: string
 }) {
+  const Title = asHeading === 1 ? 'h1' : asHeading === 2 ? 'h2' : 'p'
   return (
     <div
       role={role}
@@ -107,7 +112,7 @@ export function EmptyState({
           strokeWidth={1.25}
         />
       )}
-      <p className={cn('font-light text-foreground', compact ? 'text-[13px]' : 'text-sm')}>{title}</p>
+      <Title className={cn('font-light text-foreground', compact ? 'text-[13px]' : 'text-sm')}>{title}</Title>
       {hint && (
         <p className="max-w-xs text-[12px] font-light leading-relaxed text-muted-foreground/85">
           {hint}

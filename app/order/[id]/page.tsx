@@ -96,6 +96,7 @@ export default function OrderTrackingPage() {
              that no longer holds its token — both look identical here, on
              purpose. "My orders" is where a customer's own orders are. */
           <EmptyState
+            asHeading={1}
             icon={SearchX}
             className="py-24"
             title={t('track.notFound')}

@@ -11,6 +11,28 @@ paid, refunded or emailed.
 
 ---
 
+## CI-4 · State pages have a page heading (2026-10-25)
+
+**Problem.** A browser crawl of the storefront (22 routes × 1280/390 px) found
+pages with no `h1`: the 404 page (every language), the empty checkout and
+"order not found". Their only title was a `<p>`, so screen-reader users
+navigating by heading, and search engines, found no page heading.
+
+**Change.** `EmptyState` takes `asHeading` (1 or 2) and renders its title as
+that heading with the same classes (Tailwind's reset keeps the look). Used
+by `NotFoundView`, the empty checkout and the order-not-found state.
+
+**Tests.** On the production build: exactly one `h1` on `/nonexistent-page`,
+`/it/pagina-inesistente`, `/checkout` (empty) and `/order/LV-NOPE00`;
+screenshot of the Italian 404 at 390 px unchanged in appearance.
+
+**Crawl notes (not changed).** Image 500/400 responses came from the stand
+(no outbound network for Unsplash images; `example.invalid` test data), not
+from the site. `/cart` has no page (the cart is a drawer); nothing links to
+it. `/account` and `/checkout` tabs show the site's default title.
+
+---
+
 ## CI-3 · The cart shows what the order charges (one item capped at 20) (2026-10-25)
 
 **Problem.** The server takes at most 20 of one item per order and silently

@@ -47,6 +47,7 @@ export default function CheckoutPage() {
         <Header />
         <main id="main" className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
           <EmptyState
+            asHeading={1}
             icon={ShoppingBag}
             title={t('cart.empty')}
             hint={t('state.cartHint')}

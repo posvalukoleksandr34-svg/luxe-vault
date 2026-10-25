@@ -24,6 +24,7 @@ export function NotFoundView({ kind = 'page' }: { kind?: 'page' | 'product' }) {
       <Header />
       <main id="main" className="mx-auto flex min-h-[60vh] w-full max-w-xl items-center justify-center px-6 py-16">
         <EmptyState
+          asHeading={1}
           icon={product ? PackageX : SearchX}
           title={product ? t('state.discontinuedTitle') : t('state.notFoundTitle')}
           hint={product ? t('state.discontinuedHint') : t('state.notFoundHint')}
