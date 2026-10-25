@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { readCart, writeCart } from '@/lib/cart-storage'
 import { useStore } from '@/lib/store'
 import type { CartItem } from '@/lib/types'
+import { navigateWithTransition } from '@/lib/document-transition'
 
 /**
  * Where a reminder's "Return to your Vault" link lands.
@@ -30,7 +31,7 @@ export function CartRestore({
     const current = readCart()
     const keys = new Set(current.map((i) => i.key))
     writeCart(current.concat(items.filter((i) => !keys.has(i.key))))
-    window.location.replace('/checkout')
+    navigateWithTransition('/checkout', { replace: true })
   }, [state, items])
 
   if (state === 'restore') {

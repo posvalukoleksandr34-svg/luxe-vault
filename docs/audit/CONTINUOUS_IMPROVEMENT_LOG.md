@@ -11,6 +11,66 @@ paid, refunded or emailed.
 
 ---
 
+## CI-12 · The checkout opens with the site's transition (2026-10-25)
+
+**Problem (owner report).** Every page opens out of what was tapped, except
+the step that matters most: "Checkout" in the cart jumped to the checkout
+with no effect, and so did payment → confirmation. Those are full page
+loads on purpose — the checkout's strict Content-Security-Policy belongs to
+the document (middleware.ts) — so the in-page transitions could not reach
+them.
+
+**Change.**
+- `app/globals.css`: `@view-transition { navigation: auto }` (both sides
+  must opt in); `html[data-vt-doc] .page-enter` has no second fade.
+- `lib/document-transition.ts` (new): `navigateWithTransition(href, { from,
+  replace })` leaves a note in sessionStorage (destination path, time, centre
+  of the pressed button) and navigates. Used by the cart (Checkout, Continue
+  as guest, after sign-in), the restore-cart link and both payment-success
+  redirects.
+- `lib/motion-boot.ts`: the `<head>` script gains `pageswap` / `pagereveal`
+  handlers. Without a fresh note naming exactly the arriving page, or with
+  reduced motion, the transition is skipped, so every other full load is
+  unchanged. With it, the same attributes as an in-page transition: the page
+  grows from the button (`--vt-ox/--vt-oy`), content settles in, cleaned up
+  when finished. The strict CSP allows the script by its hash, computed from
+  the same constant, so the policy needed no change.
+- `lib/page-transition.ts`, `components/page-transition.tsx`: a page that
+  arrived this way keeps its server-rendered fade class (no hydration
+  mismatch); the first in-page navigation afterwards restores the usual
+  fade.
+
+**Tests (real results).** Production build, browser (`ci/doc-transition.js`):
+- final runs 15/15; earlier runs had test-harness faults, fixed (the strict
+  CSP refuses Playwright's polled functions, so the test polls from Node);
+- cart → checkout: the browser runs a view transition, opening at the
+  pressed button's centre (±0 px), forward, content settling in, cleaned up
+  afterwards, no CSP violations, no page errors;
+- checkout → confirmation (strict CSP on both sides): runs;
+- Back, an unrelated full load, a note naming another page, reduced
+  motion: no transition;
+- after arriving, the first in-page navigation clears the flag.
+
+Regression: motion suite 71/71 in 2 of 3 runs. The third run had one
+"no page errors" check fail with React #418 during catalogue → product.
+That flow involves no full-page navigation. It was 0 in 10 isolated runs of
+the same section, and it is the known intermittent error (backlog #4), not
+shown to come from this change. Also green: storefront smoke 16/16, admin
+e2e 70/70, checkout lost-response 6/6, quantity cap 6/6, titles and `/cart`
+10/10, checkout flash check unchanged, unit tests (security 152, store 78),
+typecheck, lint and build.
+
+**Limitations.**
+- Chrome/Edge 126+ and Safari 18.2+ only; elsewhere the page loads as
+  before.
+- The browser drops the transition if the new page needs more than 4 s for
+  its first frame. In this GPU-less container (about 5 fps) that happened in
+  2 of 4 runs at 390 px from the animated home page, and never from lighter
+  pages or at 1280 px.
+- Not checked on a real phone.
+
+---
+
 ## CI-11 · Accessibility scan: unnamed close button, dangling ARIA reference, English-only labels (2026-10-25)
 
 **Problem.** An axe-core scan (WCAG 2.0/2.1 A and AA rules) of the

@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { pageTransitionRunning } from '@/lib/page-transition'
 
 /**
@@ -23,6 +23,14 @@ import { pageTransitionRunning } from '@/lib/page-transition'
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  // A page that arrived inside a full page load's transition has its fade
+  // switched off (data-vt-doc, lib/motion-boot.ts). The first route change
+  // here — Back, a router.push — clears that before the next page paints, so
+  // it gets its fade.
+  const first = useRef(pathname)
+  useLayoutEffect(() => {
+    if (pathname !== first.current) delete document.documentElement.dataset.vtDoc
+  }, [pathname])
   return <PageEnter key={pathname}>{children}</PageEnter>
 }
 

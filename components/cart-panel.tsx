@@ -17,6 +17,7 @@ import { formatPrice, useProductsById, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useFocusTrap } from '@/lib/use-focus-trap'
 import { usePresence } from '@/lib/use-presence'
+import { navigateWithTransition } from '@/lib/document-transition'
 
 /**
  * The cart drawer: slides in from the right over a dimmed backdrop, from any
@@ -126,8 +127,9 @@ export function CartPanel() {
       setPanel(null)
       // A full page load, not router.push: /checkout is served with its own
       // strict Content-Security-Policy (middleware.ts), and a policy belongs to
-      // the DOCUMENT — a client-side navigation would keep this page's.
-      window.location.assign('/checkout')
+      // the DOCUMENT — a client-side navigation would keep this page's. It
+      // still opens with the site's transition (lib/document-transition.ts).
+      navigateWithTransition('/checkout')
       return
     }
     if (panel === null) setPendingCheckout(false)
@@ -155,12 +157,15 @@ export function CartPanel() {
    * `asGuest` tells /checkout the customer already chose — without it the
    * page would ask the same question a second time.
    */
-  function goToCheckout(asGuest: boolean) {
+  function goToCheckout(asGuest: boolean, from?: Element | null) {
     trackBeginCheckout(cart, cartSubtotal)
+    // Where the checkout opens from, measured before the drawer starts to go.
+    const origin = from?.isConnected ? from : null
     setPanel(null)
     // Full page load, for the same reason as above: the payment page's strict
-    // CSP only applies to a document it was served with.
-    window.location.assign(asGuest ? '/checkout?guest=1' : '/checkout')
+    // CSP only applies to a document it was served with. The checkout grows
+    // out of the button that was pressed (lib/document-transition.ts).
+    navigateWithTransition(asGuest ? '/checkout?guest=1' : '/checkout', { from: origin })
   }
 
   // "Add CHF 120 more for Free Shipping", with the amount set in gold.
@@ -222,7 +227,7 @@ export function CartPanel() {
           // it: the drawer sits at z-[100], above the shared dialog layer, so a
           // dialog opened from here would render underneath the basket.
           <GuestCheckoutChoice
-            onGuest={() => goToCheckout(true)}
+            onGuest={(e) => goToCheckout(true, e?.currentTarget)}
             onSignIn={() => {
               setChoosing(false)
               setPendingCheckout(true)
@@ -402,10 +407,10 @@ export function CartPanel() {
               )}
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
                   // Signed in: straight to checkout. Otherwise the choice —
                   // never a wall.
-                  if (currentUser) goToCheckout(false)
+                  if (currentUser) goToCheckout(false, e.currentTarget)
                   else setChoosing(true)
                 }}
                 className="rounded-xl w-full bg-gold-gradient py-4 text-[13px] font-medium uppercase tracking-[0.18em] text-gold-foreground transition-all duration-300 hover:brightness-[1.05] shadow-gold"

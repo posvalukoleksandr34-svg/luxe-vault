@@ -18,7 +18,8 @@ export function GuestCheckoutChoice({
   onSignIn,
   onBack,
 }: {
-  onGuest: () => void
+  /** Receives the click, so the next page can open from the button. */
+  onGuest: (event?: React.MouseEvent<HTMLButtonElement>) => void
   onSignIn: () => void
   /** Back to the basket. Omitted where there is nothing to go back to. */
   onBack?: () => void

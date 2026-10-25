@@ -13,7 +13,8 @@ assume earlier work landed without checking.
   (checkout no longer flashes an empty cart), CI-6 (address book error
   handling), CI-7 (saved cards error handling, client and API), CI-8 (admin
   stock page error handling), CI-9 (tab titles, `/cart`), CI-10 (localised
-  homepage titles, 404 titles), CI-11 (axe scan fixes).
+  homepage titles, 404 titles), CI-11 (axe scan fixes), CI-12 (checkout opens
+  with the site's transition).
 - CI-equivalent checks run locally on the branch head (CI runs only on pull
   requests, so these commits have no GitHub run yet): typecheck, lint, four
   unit suites, backup tests, build, client-bundle check, migrations on an
@@ -44,7 +45,7 @@ Scores: impact × frequency × confidence ÷ (effort × risk), judged roughly.
 | 1 | One order per checkout attempt | Known gap in PROJECT_IMPROVEMENT_LOG; duplicate orders hold stock 48 h | DONE (CI-1); live after OA-19 |
 | 2 | Handle email bounces and complaints (Resend webhook → `email_suppressions`) | PRODUCTION_READINESS_REPORT C-9; no handler existed; blocked turning review requests on (OA-12) | DONE (CI-2); live after OA-12 |
 | 3 | Quantity above 20 is silently cut to 20 at order time | Confirmed: the cart allowed up to the stock; the order was cut to 20 | DONE (CI-3) |
-| 4 | Intermittent React #418 hydration warning | Seen once per many runs (PROJECT_IMPROVEMENT_LOG); not reproduced in 64 loads, nor in 132 more (CI-10 crawl) | WATCH (no reproduction) |
+| 4 | Intermittent React #418 hydration warning | Seen once per many runs (PROJECT_IMPROVEMENT_LOG); not reproduced in 64 loads, nor in 132 more (CI-10 crawl); seen once in 13 runs of the motion suite's slow-network section (CI-12), catalogue → product | WATCH — next: capture the non-minified message with a dev build |
 | 6 | Descriptive tab titles for /account and /checkout (client pages; title from the segment layout, localised) | Crawl: both show the default site title | DONE (CI-9) |
 | 7 | A `/cart` URL (typed or bookmarked) that opens the cart instead of a 404 | Crawl: `/cart` is 404; nothing links to it | DONE (CI-9) |
 | 8 | Support inbox and notification bell: a failed *first* load shows the empty state | Scan after CI-8; refreshes already keep data | LOW |

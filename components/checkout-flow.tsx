@@ -54,6 +54,7 @@ import {
 } from '@/lib/validation'
 import type { Order } from '@/lib/types'
 import { logAbandonedCheckout, withdrawAbandonedCheckout } from '@/actions/abandoned-cart'
+import { navigateWithTransition } from '@/lib/document-transition'
 
 type FieldKey = 'firstName' | 'lastName' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
@@ -604,14 +605,15 @@ export function CheckoutFlow({
   /**
    * Payment confirmed. This is the ONLY path that leaves /checkout forwards.
    *
-   * A hard navigation rather than router.push: the success page must mount
+   * A hard navigation rather than router.push (with the site's opening
+   * transition, lib/document-transition.ts): the success page must mount
    * against a clean store with the cart already gone, and it also drops the
    * checkout out of the history entry the customer would hit with Back —
    * landing them on an empty-cart guard rather than a re-submittable form.
    */
   function handleCardPaid() {
     if (!cardOrder) return
-    window.location.href = `/checkout/success?order=${encodeURIComponent(cardOrder.id)}`
+    navigateWithTransition(`/checkout/success?order=${encodeURIComponent(cardOrder.id)}`)
   }
 
   /** Leaving the card step keeps the order — it becomes an unpaid order
@@ -633,7 +635,7 @@ export function CheckoutFlow({
 
   function handleCryptoPaid() {
     if (cryptoOrder) {
-      window.location.href = `/checkout/success?order=${encodeURIComponent(cryptoOrder.id)}`
+      navigateWithTransition(`/checkout/success?order=${encodeURIComponent(cryptoOrder.id)}`)
       return
     }
     router.push('/')
