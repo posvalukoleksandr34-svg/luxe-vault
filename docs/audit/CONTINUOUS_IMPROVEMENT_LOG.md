@@ -11,6 +11,43 @@ paid, refunded or emailed.
 
 ---
 
+## CI-2 · Email bounces and spam complaints stop optional mail (2026-10-25)
+
+**Problem.** No handler for Resend's delivery events existed
+(PRODUCTION_READINESS_REPORT C-9). A hard-bounced or complaining address kept
+receiving review requests and newsletters, which damages the sending
+domain's reputation, and it blocked turning review requests on (OA-12).
+
+**Change.**
+- `POST /api/email/webhook` (`app/api/email/webhook/route.ts`), verified with
+  Resend's Svix signature (`svix-id`/`svix-timestamp`/`svix-signature`,
+  HMAC-SHA256 with `RESEND_WEBHOOK_SECRET`, five-minute window against
+  replays, constant-time compare, several signatures accepted for rotation).
+  No secret: every delivery refused (503). Bad signature: 401 and a
+  `webhook_signature_invalid` security event.
+- `lib/server/email-events.ts`: `email.bounced` (unless `bounce.type` is
+  Transient) → `email_suppressions` reason `bounced`; `email.complained` →
+  reason `unsubscribed`; both also set `newsletter_subscribers.unsubscribed_at`.
+  Idempotent (Resend may deliver twice). The review-request worker already
+  refuses suppressed addresses. Order and payment emails are unaffected.
+- CSRF exemption list names the endpoint (server-to-server, signed);
+  `.env.example`, `docs/review-requests.md`, OA-12 and C-9 updated. No
+  migration needed: 0060 already allows these reasons.
+
+**Tests (real results).** Unit `tests/security/email-events.test.ts` 9/9
+(signature: valid, rotated, tampered body/id/timestamp, wrong key, stale,
+future, malformed headers; event parsing). On the stand with a test secret
+(`email-webhook-suite.js`) 11/11: bounce recorded and lower-cased, repeat
+idempotent, complaint unsubscribes from the newsletter, transient bounce and
+other events ignored, forged/replayed/unsigned deliveries 401 with nothing
+written. Without the secret: 503, nothing written.
+
+**Limitations.** Inactive until Resend is configured (OA-12). Tested against
+locally signed payloads in Resend's documented format, not against Resend
+itself.
+
+---
+
 ## CI-1 · One order per checkout attempt (2026-10-25)
 
 **Problem.** If the answer to "Continue to payment" was lost after the order

@@ -23,6 +23,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const CSRF_EXEMPT = new Set([
   '/api/payments/stripe/webhook',
   '/api/payments/crypto/webhook',
+  '/api/email/webhook',
   '/api/csp-report',
 ])
 

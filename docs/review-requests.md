@@ -218,9 +218,13 @@ the privacy policy, section 5.
 
 ## Not done / limitations
 
-- **No bounce or complaint webhook from Resend.** Hard bounces are not
-  automatically added to `email_suppressions` (reason `bounced` exists for
-  when it is wired). The provider's 4xx at send time is handled.
+- **Bounces and complaints** are handled by `POST /api/email/webhook`
+  (`lib/server/email-events.ts`): a hard bounce adds the address to
+  `email_suppressions` as `bounced`, a spam complaint as `unsubscribed`, and
+  both take it off the newsletter. It works only once it is set up in
+  Resend → Webhooks (events `email.bounced` and `email.complained`) with the
+  signing secret in `RESEND_WEBHOOK_SECRET`; until then it refuses every
+  delivery (503). The provider's 4xx at send time is handled as before.
 - **Guest orders are not asked** (see above).
 - **Untested against the real provider.** The live Resend send path for this
   email was exercised only against a local fake. Send one test from the admin

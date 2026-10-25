@@ -7,7 +7,8 @@ assume earlier work landed without checking.
 
 - `main` = `2a35603` (#30). Working branch `claude/admiring-albattani-xgdcm5`
   carries main plus the work below (not merged yet).
-- Completed this session: CI-1 (one order per checkout attempt). Details in
+- Completed this session: CI-1 (one order per checkout attempt), CI-2
+  (email bounce/complaint webhook). Details in
   [CONTINUOUS_IMPROVEMENT_LOG.md](CONTINUOUS_IMPROVEMENT_LOG.md).
 - Local stand (outside the repo, scratchpad): Postgres 16 on
   `/var/tmp/lvpg:55441`, PostgREST `:54330`, gateway with storage `:54321`
@@ -32,8 +33,8 @@ Scores: impact × frequency × confidence ÷ (effort × risk), judged roughly.
 | # | Task | Why (evidence) | Status |
 |---|---|---|---|
 | 1 | One order per checkout attempt | Known gap in PROJECT_IMPROVEMENT_LOG; duplicate orders hold stock 48 h | DONE (CI-1); live after OA-19 |
-| 2 | Handle email bounces and complaints (Resend webhook → `email_suppressions`) | PRODUCTION_READINESS_REPORT C-9; no handler exists; blocks turning review requests on (OA-12) | NEXT |
-| 3 | Quantity above 20 is silently cut to 20 at order time | `lib/server/order-drafts.ts` clamps `qty` to 20 without telling anyone; check what the cart allows | TO VERIFY |
+| 2 | Handle email bounces and complaints (Resend webhook → `email_suppressions`) | PRODUCTION_READINESS_REPORT C-9; no handler existed; blocked turning review requests on (OA-12) | DONE (CI-2); live after OA-12 |
+| 3 | Quantity above 20 is silently cut to 20 at order time | `lib/server/order-drafts.ts` clamps `qty` to 20 without telling anyone; check what the cart allows | NEXT |
 | 4 | Intermittent React #418 hydration warning | Seen once per many runs (PROJECT_IMPROVEMENT_LOG); not reproduced in 64 loads | TO INVESTIGATE |
 | 5 | Build-tooling advisories (Tailwind 3 → 4, eslint-config-next) | AUD-17 / C-12; build-time only | DEFERRED (major upgrade, high regression risk) |
 
