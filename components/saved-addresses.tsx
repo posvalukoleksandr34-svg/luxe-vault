@@ -117,7 +117,7 @@ export function SavedAddresses() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
     } catch {
-      pushToast({ title: t('address.actionFailed'), variant: 'default' })
+      pushToast({ title: t('common.actionFailed'), variant: 'default' })
     } finally {
       setBusyId(null)
     }
@@ -130,7 +130,7 @@ export function SavedAddresses() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
     } catch {
-      pushToast({ title: t('address.actionFailed'), variant: 'default' })
+      pushToast({ title: t('common.actionFailed'), variant: 'default' })
     } finally {
       setBusyId(null)
     }

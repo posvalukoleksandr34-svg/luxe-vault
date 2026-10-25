@@ -11,6 +11,48 @@ paid, refunded or emailed.
 
 ---
 
+## CI-7 · Saved cards: a Stripe or network failure is not "no saved cards" (2026-10-25)
+
+**Problem.** The same fault as CI-6, one layer deeper. `GET
+/api/account/cards` caught any Stripe error and answered `{ cards: [] }`, and
+the card list in Account → Address book showed "No saved cards" for that and
+for a failed request alike: a customer with saved cards was told they had
+none whenever Stripe or the connection hiccuped. A failed remove showed the
+toast "Could not place the order" (the wrong string).
+
+**Why it mattered.** A customer told their card is gone may add it again or
+lose trust in the payment page; the wrong toast text made a remove failure
+look like a checkout failure.
+
+**Change.**
+- `app/api/account/cards/route.ts`: a Stripe failure while listing answers
+  502 `{ error }` and is logged (message only, no card data). Unchanged: no
+  Stripe configured or no Stripe customer → `{ cards: [] }` (that really is
+  "none").
+- `components/saved-cards.tsx`: a non-OK answer or a network failure shows
+  `LoadError` ("Could not load your saved cards", Try again) instead of the
+  empty text; a failed remove shows "That did not work. Check your connection
+  and try again".
+- `lib/ui-strings.ts`: new `cards.loadFailed` (five languages, formal
+  German); CI-6's `address.actionFailed` renamed `common.actionFailed`, now
+  shared by both lists.
+
+**Tests (real results).** Browser on the production build, signed in as a
+test customer with a Stripe customer id (`cards-fail.js`) 7/7: against the
+stand's fake Stripe, which does not answer payment-method listings, the API
+answers 502 (before: an empty list) and the page shows the error, not "No
+saved cards"; offline retry keeps the error; Try again with a working answer
+shows the card; DELETE answered 500 → the toast above, card still listed; no
+uncaught errors. Addresses test (CI-6) 5/5 again after the string rename.
+Unit suites: security 152/152, store 78/78, refunds 61/61, assistant
+105/105. Typecheck, lint, production build clean.
+
+**Limitations.** Tested against a fake Stripe, not Stripe itself. The list
+is fetched again on each open; there is no cached copy to show while Stripe
+is down.
+
+---
+
 ## CI-6 · Saved addresses: a network failure is not "no addresses" (2026-10-25)
 
 **Problem.** In Account → Address book a failed load (offline, timeout,
