@@ -124,6 +124,12 @@ checks as (
                                  and cmd in ('SELECT', 'ALL') and coalesce(qual, '') !~ 'listing_status')
               then 'OK' else 'PROBLEM' end,
          'a select policy on products lets the public key read drafts: apply 0062, or drop that policy'
+  union all
+  select 'migration 0063: price history (product_price_history and its trigger)',
+         case when to_regclass('public.product_price_history') is not null
+               and exists (select 1 from pg_trigger where tgname = 'products_record_price' and not tgisinternal)
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0063_price_history.sql — until then no strike-through prices are shown'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -171,7 +177,9 @@ checks as (
                     'refund_case_events', 'refund_risk_assessments', 'refund_approvals', 'refund_notifications',
                     'review_requests', 'email_suppressions',
                     -- 0061: checkout attempt keys; 0062: sale rights records.
-                    'order_idempotency', 'product_rights']) as t
+                    'order_idempotency', 'product_rights',
+                    -- 0063: price history.
+                    'product_price_history']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action

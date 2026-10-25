@@ -129,7 +129,6 @@ export function ProductForm({
     group: product?.group ?? categoryTree[0]?.group ?? '',
     category: product?.category ?? categoryTree[0]?.items[0] ?? '',
     price: product?.price?.toString() ?? '',
-    oldPrice: product?.oldPrice?.toString() ?? '',
     sizes: product?.sizes?.join(', ') ?? 'S, M, L, XL',
     images: product?.images?.length ? product.images : product?.image ? [product.image] : [],
     isNew: product?.isNew ?? false,
@@ -434,12 +433,11 @@ export function ProductForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitted(true)
-    if (deliveryInvalid || priceError || oldPriceError || nameError) {
+    if (deliveryInvalid || priceError || nameError) {
       pushToast({ title: 'Проверьте отмеченные поля', variant: 'error' })
       return
     }
     const price = Number(form.price)
-    const oldPrice = form.oldPrice.trim() ? Number(form.oldPrice) : undefined
 
     // Every language as typed. Empty ones are completed on the server —
     // translated when Gemini is configured, copied from the source otherwise
@@ -485,7 +483,6 @@ export function ProductForm({
       group: form.group,
       category: form.category,
       price,
-      oldPrice,
       sizes: form.sizes
         .split(',')
         .map((s) => s.trim())
@@ -548,14 +545,6 @@ export function ProductForm({
       : !Number.isFinite(priceNumber) || priceNumber <= 0
         ? 'Цена должна быть больше нуля'
         : null
-  const oldPriceError =
-    form.oldPrice.trim() === ''
-      ? null
-      : !Number.isFinite(Number(form.oldPrice)) || Number(form.oldPrice) <= 0
-        ? 'Некорректная старая цена'
-        : !priceError && Number(form.oldPrice) <= priceNumber
-          ? 'Старая цена должна быть выше текущей — иначе это не скидка'
-          : null
   const nameError = COPY_LOCALES.some((l) => names[l].trim()) ? null : 'Укажите название хотя бы на одном языке'
   // Errors show once the admin has tried to save, not while they type.
   const [submitted, setSubmitted] = useState(false)
@@ -806,22 +795,21 @@ export function ProductForm({
               required
               error={submitted ? priceError : null}
             />
-            <Input
-              label="Старая цена (CHF)"
-              type="number"
-              value={form.oldPrice}
-              onChange={(v) => setForm({ ...form, oldPrice: v })}
-              error={oldPriceError && (submitted || form.oldPrice.trim() !== '') ? oldPriceError : null}
-            />
+            {/* The "was" price is no longer typed: it is computed from the
+                prices this product was actually sold at (0063,
+                lib/price-reference.ts). Shown here read-only. */}
+            <div>
+              <span className="mb-1 block text-[11px] text-muted-foreground">Зачёркнутая цена</span>
+              <p className="flex min-h-[44px] items-center rounded-xl border border-dashed border-border px-3 text-sm text-muted-foreground">
+                {product?.oldPrice ? `${product.oldPrice} CHF` : 'не показывается'}
+              </p>
+            </div>
           </div>
-          {/* A struck-through price is a claim to the customer. The rules the
-              shop sells under allow only a price actually charged before. */}
           <p className="-mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Зачёркнутая цена — это заявление покупателю. Указывайте только цену, по которой товар
-            действительно продавался до снижения: для покупателей из ЕС — самую низкую цену за
-            последние 30 дней (Директива 98/6/ЕС, ст. 6a), в Швейцарии — цену, действовавшую
-            заметное время непосредственно до снижения (PBV, ст. 16). Выдуманная «старая цена» —
-            недобросовестная реклама.
+            Зачёркнутая цена считается автоматически по истории цен этого товара: это самая низкая цена,
+            по которой он продавался в 30 дней до снижения (ЕС: Директива 98/6/ЕС, ст. 6a). Показывается
+            не дольше половины срока, который действовала прежняя цена, и не дольше 60 дней (Швейцария:
+            PBV, ст. 16). Чтобы показать скидку, снизьте цену; вручную её ввести нельзя.
           </p>
 
           <Input

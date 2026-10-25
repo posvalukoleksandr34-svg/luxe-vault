@@ -15,6 +15,7 @@ import 'server-only'
 import { withDerivedAvailability } from '@/lib/availability'
 import { isDeliveryDays } from '@/lib/fulfilment'
 import { publishBlockers, type ListingStatus, type PublishBlocker, type RightsBasis } from '@/lib/listing'
+import { referencePrice, type PricePoint } from '@/lib/price-reference'
 import { planVariantWrites, type LiveVariant, type StockConflict, type VariantPlan } from '@/lib/stock-sync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type {
@@ -152,7 +153,18 @@ function rowToProduct(row: Record<string, unknown>): Product {
     group: refSlug(row.collection as Ref),
     category: refSlug(row.category as Ref),
     price: num(row.price as string),
-    oldPrice: row.old_price == null ? undefined : num(row.old_price as string),
+    // The strike-through price comes from the price history (0063), never
+    // from the typed products.old_price: only a price the shop really
+    // charged may be shown as "was" (lib/price-reference.ts).
+    oldPrice: Array.isArray(row.price_history)
+      ? referencePrice(
+          (row.price_history as { price: string | number; valid_from: string }[]).map(
+            (h): PricePoint => ({ price: num(h.price), validFrom: Date.parse(h.valid_from) }),
+          ),
+          num(row.price as string),
+          Date.now(),
+        )
+      : undefined,
     image: (row.image as string | null) ?? '',
     images: ((row.images as string[] | null) ?? []).length
       ? (row.images as string[])
@@ -223,13 +235,14 @@ async function resolveProductSelect(): Promise<string> {
 
   const supabase = createAdminClient()
 
-  const [variants, specs, brand, styleTags, deliveryDays, listing] = await Promise.all([
+  const [variants, specs, brand, styleTags, deliveryDays, listing, priceHistory] = await Promise.all([
     supabase.from('product_variants').select('id').limit(1),
     supabase.from('products').select('specs').limit(1),
     supabase.from('products').select('brand').limit(1),
     supabase.from('products').select('style_tags').limit(1),
     supabase.from('products').select('delivery_days_min').limit(1),
     supabase.from('products').select('listing_status').limit(1),
+    supabase.from('product_price_history').select('id').limit(1),
   ])
 
   let select = variants.error ? PRODUCT_BASE_SELECT : PRODUCT_SELECT
@@ -265,6 +278,12 @@ async function resolveProductSelect(): Promise<string> {
         'Apply supabase/migrations/0062_product_publication.sql, then publish products in the admin.',
     )
     select = select.replace(' listing_status, published_at,', '')
+  }
+  if (priceHistory.error) {
+    // No history, no strike-through prices: nothing proves an earlier price.
+    console.error('[catalog] product_price_history is missing — no "was" prices are shown. Apply 0063_price_history.sql.')
+  } else {
+    select = `${select},\n  price_history:product_price_history ( price, valid_from )`
   }
 
   productSelectCache = select
@@ -606,7 +625,8 @@ async function productToRow(product: Product, collectionId: string, categoryId: 
     collection_id: collectionId,
     category_id: categoryId,
     price: product.price,
-    old_price: product.oldPrice ?? null,
+    // old_price is no longer written: the "was" price is computed from the
+    // price history (0063). The column keeps whatever it held.
     image: product.image || null,
     images: product.images ?? [],
     sizes: product.sizes ?? [],
