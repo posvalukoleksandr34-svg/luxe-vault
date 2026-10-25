@@ -181,7 +181,10 @@ export function SiteMenu() {
    * same thing, so the link also works when pasted, shared or opened in a new
    * tab.
    */
-  const view = (v: 'new' | 'sale') => () => setFilter({ ...filter, sale: v === 'sale', group: null, category: null })
+  const view = (v: 'new' | 'sale') => () =>
+    // Exactly what the address will say (lib/filter-url.ts reads ?view=new as
+    // "newest", ?view=sale as "sale"), so the URL sync has nothing to correct.
+    setFilter({ ...filter, sale: v === 'sale', sort: v === 'new' ? 'newest' : 'default', group: null, category: null })
 
   // Staggered in on open, in reading order.
   let order = 0

@@ -3,6 +3,7 @@
 import { Link } from '@/components/locale-link'
 import { useMemo } from 'react'
 import { useFullCatalog, useStore } from '@/lib/store'
+import { isCoreDepartment } from '@/lib/departments'
 import { cn } from '@/lib/utils'
 import { useListing } from './listing-context'
 
@@ -68,7 +69,9 @@ export function CategoryNav({
             // that returns nothing — the same rule the chips already applied.
             .filter((c) => c.count > 0),
         }))
-        .filter((n) => n.count > 0),
+        // navTree holds Women, Men and Kids only, shown even when empty
+        // (lib/store.tsx).
+        .filter((n) => n.count > 0 || isCoreDepartment(n.slug)),
     [counts, navTree, groupLabels, categoryLabel, localize],
   )
 

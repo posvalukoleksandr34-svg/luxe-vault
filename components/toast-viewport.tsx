@@ -8,13 +8,14 @@ export function ToastViewport() {
   const { toasts, dismissToast, t } = useStore()
 
   return (
-    // Bottom-left: the bottom-right corner belongs to the concierge widget.
+    // Bottom right from sm up: the bottom-left corner belongs to the support
+    // launcher and its chat (support-widget.tsx). On a phone, full width.
     // A polite live region, so a screen reader hears "saved" or "failed"
     // without the focus moving; an error is announced at once (role=alert).
     <div
       aria-live="polite"
       data-vt-chrome="toasts"
-      className="pointer-events-none fixed bottom-5 left-5 right-5 z-[200] flex flex-col items-start gap-2 sm:right-auto sm:max-w-md"
+      className="pointer-events-none fixed bottom-5 left-5 right-5 z-[200] flex flex-col items-start gap-2 sm:left-auto sm:max-w-md sm:items-end"
     >
       {toasts.map((toast) => (
         <div
