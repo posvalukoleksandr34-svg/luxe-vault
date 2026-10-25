@@ -880,6 +880,15 @@ export const UI = {
   // Page titles and meta descriptions. These are the <title> and
   // <meta name="description"> a search result shows, so they are written for
   // that column of text rather than lifted from the headings on the page.
+  // The homepage's brand line, after "LUXE VAULT — ". English is the root
+  // layout's SITE_TITLE; keep the two the same.
+  'seo.home.title': {
+    ru: 'Одежда в стиле дизайнерских моделей из Швейцарии',
+    en: 'Designer-Inspired Fashion from Switzerland',
+    it: 'Moda ispirata ai designer dalla Svizzera',
+    fr: 'Mode inspirée des créateurs, depuis la Suisse',
+    de: 'Designer-inspirierte Mode aus der Schweiz',
+  },
   'seo.home.description': {
     ru: 'Реплики и вещи, вдохновлённые дизайнерскими моделями: одежда, обувь и аксессуары. Цены в CHF, доставка Швейцарской почтой, 14 дней на возврат.',
     en: 'Replica and designer-inspired clothing, shoes and accessories, clearly labelled. Prices in CHF, tracked Swiss Post shipping, 14-day returns.',

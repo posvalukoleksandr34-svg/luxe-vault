@@ -11,6 +11,42 @@ paid, refunded or emailed.
 
 ---
 
+## CI-10 · Homepage title in each language; 404 pages say "not found" (2026-10-25)
+
+**Problem.** Re-running the storefront crawl (3 runs × 22 routes × 2 widths:
+no console errors, no hydration warning #418) showed two title faults:
+- `/it`, `/fr`, `/de`: the homepage `<title>` and `og:title` were English
+  ("Designer-Inspired Fashion from Switzerland") while the description and
+  the page were Italian/French/German. That is the line a search result and
+  a shared link show for the localised homepages.
+- 404 pages ("page not found", "piece no longer available") carried the
+  homepage's title, so a broken link looked like the homepage in the tab, in
+  history and to crawlers.
+
+**Change.**
+- `lib/ui-strings.ts`: `seo.home.title`, the brand line in five languages
+  (English identical to the root `SITE_TITLE`). `lib/page-seo.ts`
+  `homeMetadata`: English unchanged; other languages get an absolute title
+  "LUXE VAULT — <line>" and matching Open Graph / Twitter titles.
+- `app/not-found.tsx`, `app/[locale]/not-found.tsx`,
+  `app/product/[slug]/not-found.tsx`: English titles ("Page not found",
+  "This piece is no longer available"); `NotFoundView` puts them into the
+  visitor's language with `useDocumentTitle` (CI-9).
+
+**Tests (real results).** Server HTML: `/it`, `/fr`, `/de` titles and
+og:titles localised, `/` unchanged; 404 and missing-product titles as
+above. Browser (`ci/titles-404.js`) 6/6: Italian and French 404 titles in
+their language after hydration, English 404, Italian home keeps its title,
+an existing product keeps its own title, no errors. `ci/titles-cart.js`
+10/10 again; unit suites security 152/152, store 78/78; typecheck, lint,
+build clean.
+
+**Limitations.** The 404's server-rendered title is English in every
+language (Next gives `not-found` no route parameters); the visible page and
+the tab title after load are localised; 404s are not indexed.
+
+---
+
 ## CI-9 · Tab titles for checkout and account; `/cart` opens the cart (2026-10-25)
 
 **Problem.** Crawl (CI-4) findings: `/checkout` and `/account` showed the
