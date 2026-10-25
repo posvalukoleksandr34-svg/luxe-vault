@@ -4,6 +4,43 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Store readiness round (2026-10-25)
+
+Findings and their status are in `docs/audit/STORE_READINESS_AUDIT.md`. Owner
+items are OA-20 to OA-23 in `docs/audit/OWNER_APPROVAL_CHECKLIST.md`.
+
+- **Sale rights (0062).**
+  - Products are drafts until the owner publishes them with a rights record
+    (own design or authorised resale, a reference, a confirmation).
+  - Every public read path, and the cart, order and payment routes, see
+    published products only.
+  - The shop sells nothing until 0062 is applied and products are reviewed.
+- **Prices (0063).** A strike-through price comes only from prices actually
+  charged; typed old prices are ignored.
+- **Publishing.** An incomplete product cannot be published, or saved
+  incomplete while on sale.
+- **Payments.**
+  - The success page tells the truth: paid, processing (it refreshes itself),
+    declined, incomplete, cancelled.
+  - `/admin/reconciliation` lists Stripe/order discrepancies.
+  - For "paid in Stripe, not recorded" the owner can apply Stripe's status.
+    The server re-fetches the intent and runs the webhook's own code
+    (`lib/server/stripe-payment-apply.ts`).
+  - Short or wrong-currency payments are mismatches, never "paid".
+- **Catalogue.**
+  - Department → category from the database only. Nothing empty in public
+    navigation, and empty pages are `noindex`.
+  - Names, order and an optional department description (0064) are editable
+    in the admin.
+  - Labels are keyed per department.
+  - "Newest" sorts by date added.
+- **SEO and trust.**
+  - The "limited drops" claim is gone.
+  - The sitemap refreshes hourly as a backstop.
+  - Seller identity is listed for the owner (OA-23).
+- **Verified** on the local stand: see §8 of the audit document. Production is
+  not deployed, migrated or tested.
+
 ## Admin console: audit and improvement round (2026-10-23)
 
 Findings, ranked, and the changes are in `docs/admin-console.md`. In short:

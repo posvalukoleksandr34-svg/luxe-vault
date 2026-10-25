@@ -30,6 +30,28 @@ Findings are ranked within each group. **B** = blocks a lawful launch,
 | S-3 | **B** (owner) | Unchanged from the readiness report:<br>• C-1: no offsite backup;<br>• C-2: six orders where Stripe holds a succeeded or processing payment while the order is unpaid;<br>• C-3: burned admin credentials;<br>• OA-01 / OA-02: no lawyer or payment-provider confirmation. | `PRODUCTION_READINESS_REPORT.md` §8. |
 | S-4 | **H** | **Strike-through "old prices" have no basis.** `oldPrice` is a free number the admin types. Every seed product carries one with no price history behind it. Swiss and EU price-indication rules tie a reference price to a price actually charged. | `components/products/discount-badge.tsx`; the `products.old_price` column; no price history anywhere. |
 
+**Status (2026-10-25, this branch):**
+- **S-1 fixed** with migration 0062 (OA-20). A product is on sale only once
+  published, and publishing needs the owner's rights record:
+  - the basis: own design, or authorised resale;
+  - a reference: an invoice, contract or design file;
+  - an explicit confirmation.
+
+  There is no "replica" basis. Every public path reads published products
+  only: catalogue, product page, search, sitemap, cart, order, payment
+  intent, crypto resume, and the public REST key. Existing products become
+  drafts. **Until 0062 is applied and products are reviewed and published,
+  the shop sells nothing.** That is deliberate (fail-closed).
+- **S-2 not changed.** The replica disclosure stays word for word; it is
+  honest, and replacing it would mislead. Whether the assortment may be sold
+  at all is for counsel and the payment providers (OA-01, OA-02). The rights
+  gate keeps anything unconfirmed off sale meanwhile. The third-party-brand
+  seed entry is removed.
+- **S-3:** owner items, unchanged (see `OWNER_APPROVAL_CHECKLIST.md`).
+- **S-4 fixed** with migration 0063 (OA-21). A strike-through price comes
+  only from the prices actually charged (`lib/price-reference.ts`); typed old
+  prices are ignored.
+
 ## 2. Catalogue structure and data sources
 
 | # | Rank | Finding | Evidence |
@@ -89,6 +111,20 @@ orders by real reductions. The result count says "1 item found", not
 | P-2 | M | **The "old price" and discount badge** show whatever was typed (S-4). | `discount-badge.tsx`. |
 | P-3 | — | Kept, verified as real data:<br>• the low-stock line ("only N left"), from real variant stock;<br>• reviews, which are verified buyers only (migration 0052);<br>• no countdowns or "N people are viewing" messages exist. | — |
 
+**Status:**
+- **P-1 fixed.** Publishing, and saving a product already on sale, are
+  refused with the list of what is missing (`lib/listing.ts`
+  `publishBlockers`):
+  - a photo;
+  - a name and a description in a storefront language;
+  - a plausible price;
+  - sizes and colours;
+  - materials (at least one specification row);
+  - measurements for letter sizes.
+- **P-2 fixed** by S-4.
+- **P-3 unchanged.** The editor now asks that "Новинка" and "Лимит. тираж" be
+  ticked only when true.
+
 ## 5. Cart, payment and orders
 
 Verified in code, no change needed:
@@ -144,13 +180,37 @@ Verified in code, no change needed:
 - The six live orders of C-2 are **not** touched: deciding them is the
   owner's, on the live site, after deploy (OA-03).
 
-## 6. SEO and localisation (to re-verify after the changes)
+## 6. SEO and localisation
 
-- Canonical, hreflang, sitemap and JSON-LD are present and were verified in
-  CI-10, including localised home titles.
-- `ItemList` JSON-LD and the sitemap must list only publicly sold products
-  after S-1.
-- The site keywords include "premium replicas" and "replica sneakers" (S-2).
+Re-verified on 2026-10-25 against the production build (`seo-check`, 39
+checks). For `/`, `/catalog`, a department, a category, a product, the
+Imprint and the shipping page, in en, it, fr and de:
+- 200;
+- a canonical in its own language;
+- hreflang alternates.
+
+On localised pages the `lang` attribute is corrected before first paint
+(`app/[locale]/layout.tsx`; the served HTML says `en` by design, see the
+note there). Also checked:
+- Product JSON-LD with an Offer, and no rating without reviews.
+- BreadcrumbList and ItemList on departments.
+- Real 404s for unknown products and categories, also under /it and /de.
+- The sitemap lists only published products and no private pages.
+- `robots.txt` disallows the private areas.
+
+Changed:
+- The product meta-description fallback dropped "limited drops", which no
+  product record backs.
+- Empty departments and categories are `noindex`.
+- The sitemap also refreshes hourly.
+
+Unchanged and for the owner: the site keywords "premium replicas" and
+"replica sneakers" describe the goods as they are (S-2).
+
+Known limit: a status changed outside the admin (the SQL editor) reaches
+cached pages within about a minute. The admin's own publish and withdraw
+refresh them at once, and selling is always checked live (cart, order,
+payment).
 
 ## 7. Plan
 
@@ -176,3 +236,52 @@ Verified in code, no change needed:
 - applying migrations;
 - touching any live order;
 - deploying.
+
+## 8. Verified on the local stand (2026-10-25)
+
+Production build (`next build` + `next start`) with:
+- Postgres 16 with every migration (0001–0064) and PostgREST;
+- fake Stripe on :54324 and signed webhooks;
+- a local mail log in place of Resend.
+
+Nothing here touched production, a real payment or a real customer.
+
+| Check | Result |
+|---|---|
+| `npm run typecheck`, `npm run lint` | clean |
+| `test:security` / `test:store` / `test:refunds` / `test:assistant` | 154 / 106 / 61 / 105 passed, 0 failed |
+| `npm audit --audit-level=high` | exit 0 |
+| `verify-migrations.sh` + `db-tests.sh` on a fresh database | all migrations apply; 210 checks passed |
+| `verify-production.sql` on a fresh database | 104 / 104 OK |
+| Buyer journey on a phone, 390 px | 19 / 19 |
+| Payment states and reconciliation | 38 / 38 |
+| Catalogue structure | 24 / 24 |
+| Publication and rights gate | 35 / 35 |
+| Checkout idempotency (API / browser) | 21 / 21, 6 / 6 |
+| Quantity cap | 6 / 6 |
+| Prices | 4 / 4 |
+| Admin "Продажа" panel | 16 / 16 |
+| Admin e2e | 70 / 70 |
+| Refund integration | 107 / 107 |
+| Fraud guard | 35 / 35 |
+| Storefront smoke | 16 / 16 |
+| SEO and localisation | 39 / 39 |
+| Responsive (320 / 390 / 768 / 1280 px, reduced motion) | 304 / 304 |
+
+**Buyer journey on a phone (390 px):** menu → Women → Coats → product → size
+→ add → quantity 2 → guest checkout → order and PaymentIntent on the server
+(price from the server, 2 units reserved) → "processing" → signed webhook →
+"Thank you" by itself, stock taken once.
+
+**Payment states and reconciliation:**
+- declined, cancelled and lookup-failed states of the success page;
+- every refusal of the apply endpoint;
+- applying once, twice, and a late webhook afterwards.
+
+**Publication and rights gate:** nothing published means nothing visible or
+sellable anywhere, and the admin publish flow works end to end.
+
+**Fraud guard:** the suite runs with its own fake Stripe.
+
+**What this does NOT show:** that production behaves the same. Production
+has not been deployed, migrated or tested in this round (OA-14, OA-15).
