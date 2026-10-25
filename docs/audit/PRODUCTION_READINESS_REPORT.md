@@ -79,6 +79,26 @@ These are not confirmed and are not rated as findings.
 
 Nothing in the storefront, checkout, payment logic, database schema, migrations, permissions or the catalogue was changed.
 
+### 4a. Continuous-improvement round, 2026-10-25 (on the branch, not merged or deployed)
+
+Details, tests and limitations per item are in
+[CONTINUOUS_IMPROVEMENT_LOG.md](CONTINUOUS_IMPROVEMENT_LOG.md).
+
+| # | Change | Live after |
+|---|---|---|
+| CI-1 | One order per checkout attempt (idempotency key, migration 0061) | merge + deploy + OA-19 |
+| CI-2 | Resend bounce/complaint webhook → `email_suppressions` (closes C-9 in code) | merge + deploy + OA-12 |
+| CI-3 | Cart quantity cap matches what the order charges (20 per line) | merge + deploy |
+| CI-4 | Page heading on 404, empty checkout, order-not-found | merge + deploy |
+| CI-5 | Checkout no longer flashes "Your cart is empty" | merge + deploy |
+| CI-6, CI-7 | Address book and saved cards: a failed load is an error with a retry, not "none"; the cards API reports Stripe failures (502) instead of an empty list | merge + deploy |
+| CI-8 | Admin stock page: a failed load is an error, not "0 positions" | merge + deploy |
+| CI-9, CI-10 | Tab titles (checkout, account, 404, localised homepages); `/cart` opens the cart | merge + deploy |
+
+These were verified on the local stand only (production build, real
+Postgres, fake Stripe); GitHub CI runs on pull requests and has not run on
+these commits. None of them changes a blocker in section 8.
+
 ## 5. Tests run and results
 
 Environment: this cloud container, Node 22.22.2, npm 10.9.7, at `4a18643` plus the changes above.
