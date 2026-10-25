@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { MAX_LINE_QTY } from '@/lib/cart-limits'
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { trackAddToCart, trackLogin, trackRemoveFromCart, trackSignUp } from './analytics'
 import { CART_STORAGE_KEY, readCart, reconcileCart, writeCart } from './cart-storage'
@@ -1237,14 +1238,22 @@ function maybeSendWelcome() {
       const key = `${item.productId}-${item.size}-${item.color}`
       const limit = stockLimit(item.productId, item.size, item.color, product)
       const inCart = cartRef.current.find((c) => c.key === key)?.qty ?? 0
-      const added = Math.max(0, limit === null ? item.qty : Math.min(item.qty, limit - inCart))
-      const onlyNote = limit ? tf('stock.onlyInSize', { n: limit, size: item.size }) : undefined
+      // What one line may hold: the stock, and never more than an order
+      // takes of one item (MAX_LINE_QTY — the server's own clamp).
+      const cap = limit === null ? MAX_LINE_QTY : Math.min(limit, MAX_LINE_QTY)
+      const cappedByOrder = limit === null || limit > MAX_LINE_QTY
+      const added = Math.max(0, Math.min(item.qty, cap - inCart))
+      const onlyNote = cappedByOrder
+        ? tf('cart.maxPerLine', { n: MAX_LINE_QTY })
+        : limit
+          ? tf('stock.onlyInSize', { n: limit, size: item.size })
+          : undefined
 
       if (added === 0) {
         // Calm, not an error: what exists, and that it is already theirs.
         pushToast({
-          title: limit === 0 ? t('sold.out') : t('stock.maxInCart'),
-          description: onlyNote,
+          title: limit === 0 ? t('sold.out') : cappedByOrder ? tf('cart.maxPerLine', { n: MAX_LINE_QTY }) : t('stock.maxInCart'),
+          description: cappedByOrder ? undefined : onlyNote,
           variant: 'default',
         })
         return { added: 0, limit, inCart }
@@ -1255,7 +1264,7 @@ function maybeSendWelcome() {
       const apply = (prev: CartItem[]): CartItem[] => {
         const existing = prev.find((c) => c.key === key)
         const current = existing?.qty ?? 0
-        const qty = limit === null ? current + added : Math.min(limit, current + added)
+        const qty = Math.min(cap, current + added)
         if (qty <= current) return prev
         return existing
           ? prev.map((c) => (c.key === key ? { ...c, qty } : c))
@@ -1282,10 +1291,16 @@ function maybeSendWelcome() {
       const line = cartRef.current.find((c) => c.key === key)
       if (!line) return
       const limit = stockLimit(line.productId, line.size, line.color)
-      const ceiling = limit === null ? Infinity : Math.max(1, limit)
+      const ceiling = Math.min(limit === null ? MAX_LINE_QTY : Math.max(1, limit), MAX_LINE_QTY)
       const target = Math.min(Math.max(1, qty), ceiling)
-      if (limit !== null && qty > ceiling) {
-        pushToast({ title: tf('stock.onlyInSize', { n: limit, size: line.size }), variant: 'default' })
+      if (qty > ceiling) {
+        pushToast({
+          title:
+            limit !== null && limit <= MAX_LINE_QTY
+              ? tf('stock.onlyInSize', { n: limit, size: line.size })
+              : tf('cart.maxPerLine', { n: MAX_LINE_QTY }),
+          variant: 'default',
+        })
       }
       const apply = (prev: CartItem[]) => prev.map((c) => (c.key === key ? { ...c, qty: target } : c))
       cartRef.current = apply(cartRef.current)

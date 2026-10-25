@@ -11,6 +11,33 @@ paid, refunded or emailed.
 
 ---
 
+## CI-3 · The cart shows what the order charges (one item capped at 20) (2026-10-25)
+
+**Problem.** The server takes at most 20 of one item per order and silently
+cut any line above that (`lib/server/order-drafts.ts`). The cart, however,
+let a line grow to the full stock (e.g. 30 of 60): the basket and checkout
+summary showed 30 and their total, the order was created for 20 and charged
+for 20. A reload also cut the saved cart to 20 without a word.
+
+**Change.** One constant, `MAX_LINE_QTY = 20` (`lib/cart-limits.ts`), used by
+the server clamp, the saved-cart reader and the cart itself:
+`addToCart` and `updateCartQty` stop at the lower of stock and 20; the
+message names the reason ("Up to 20 pcs. of one item per order" — new
+string `cart.maxPerLine` in ru/en/it/fr/de — versus "Only N pcs. available"
+when stock is the limit); the cart line's + is disabled at the cap with the
+same explanation.
+
+**Tests (real results).** Browser on the production build (`qty-cap.js`) 6/6:
+three adds of 10 with 60 in stock stop at 20 with the cap message (not "only
+60"), + disabled with the note, the order placed from that cart has exactly
+the cart's quantity, no page errors. Storefront smoke 16/16; unit suites
+green; typecheck and lint clean.
+
+**Limitations.** The product page's own quantity picker still allows up to
+10 per press; the cart refuses the excess with the message above.
+
+---
+
 ## CI-2 · Email bounces and spam complaints stop optional mail (2026-10-25)
 
 **Problem.** No handler for Resend's delivery events existed

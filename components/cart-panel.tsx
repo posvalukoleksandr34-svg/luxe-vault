@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { MAX_LINE_QTY } from '@/lib/cart-limits'
 import { Link } from '@/components/locale-link'
 import { useLocaleRouter } from '@/components/locale-link'
 import { useEffect, useRef, useState } from 'react'
@@ -280,7 +281,16 @@ export function CartPanel() {
                 {cart.map((item) => {
                   // This exact size and colour: "+" stops at what exists.
                   const limit = stockLimit(item.productId, item.size, item.color)
-                  const atMax = limit !== null && item.qty >= limit
+                  const atMax = (limit !== null && item.qty >= limit) || item.qty >= MAX_LINE_QTY
+                  // Which ceiling it is: the stock ("only 3 left") or the
+                  // per-order cap on one item (MAX_LINE_QTY), said as such.
+                  const atMaxNote = !atMax
+                    ? undefined
+                    : limit === 0
+                      ? t('sold.out')
+                      : limit !== null && limit <= MAX_LINE_QTY
+                        ? tf('stock.onlyInSize', { n: limit, size: item.size })
+                        : tf('cart.maxPerLine', { n: MAX_LINE_QTY })
                   const name = cartLineName(item)
                   return (
                     <li key={item.key} className="flex gap-4">
@@ -322,13 +332,7 @@ export function CartPanel() {
                         <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground/85">
                           {[item.size, colorName(item.color)].filter(Boolean).join(' · ')}
                         </p>
-                        {atMax && (
-                          <p className="mt-1 text-[10px] font-light text-gold">
-                            {limit === 0
-                              ? t('sold.out')
-                              : tf('stock.onlyInSize', { n: limit as number, size: item.size })}
-                          </p>
-                        )}
+                        {atMaxNote && <p className="mt-1 text-[10px] font-light text-gold">{atMaxNote}</p>}
                         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
                           <div className="flex items-center rounded-xl border border-border">
                             <button
@@ -348,7 +352,7 @@ export function CartPanel() {
                               onClick={() => updateCartQty(item.key, item.qty + 1)}
                               disabled={atMax}
                               aria-label={t('product.increase')}
-                              title={atMax && limit ? tf('stock.onlyInSize', { n: limit, size: item.size }) : undefined}
+                              title={atMaxNote}
                               className="flex size-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <Plus className="size-3" />
