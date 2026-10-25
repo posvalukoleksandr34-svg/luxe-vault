@@ -94,6 +94,7 @@ Details, tests and limitations per item are in
 | CI-6, CI-7 | Address book and saved cards: a failed load is an error with a retry, not "none"; the cards API reports Stripe failures (502) instead of an empty list | merge + deploy |
 | CI-8 | Admin stock page: a failed load is an error, not "0 positions" | merge + deploy |
 | CI-9, CI-10 | Tab titles (checkout, account, 404, localised homepages); `/cart` opens the cart | merge + deploy |
+| CI-11 | Accessibility: account drawer close button named; ARIA references fixed; header/logo labels localised (axe: no WCAG A/AA violations on 15 routes and 5 overlays, both widths) | merge + deploy |
 
 These were verified on the local stand only (production build, real
 Postgres, fake Stripe); GitHub CI runs on pull requests and has not run on
