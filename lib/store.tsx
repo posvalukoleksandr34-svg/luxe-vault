@@ -777,7 +777,10 @@ function maybeSendWelcome() {
     // A reload keeps showing the list it has rather than flipping to "loading".
     setCatalogStatus((status) => (status === 'ready' ? status : 'loading'))
     try {
-      const res = await fetch('/api/catalog', { cache: 'no-store' })
+      // The console reads every product with its listing state; the shop
+      // reads the public, published-only catalogue.
+      const url = window.location.pathname.startsWith('/admin') ? '/api/admin/catalog' : '/api/catalog'
+      const res = await fetch(url, { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
       if (!Array.isArray(data.products)) throw new Error('malformed catalogue')

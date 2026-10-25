@@ -193,7 +193,9 @@ export function AccountOrders({
           // it goes to the console and the customer gets their own language.
           if (data.error) console.warn('[pay-now] intent refused:', res.status, data.error)
           setRetryError(
-            res.status === 409
+            data.error === 'PRODUCT_UNAVAILABLE'
+              ? t('checkout.errProductUnavailable')
+              : res.status === 409
               ? t('checkout.errAlreadyPaid')
               : data.error === 'PAYMENT_BLOCKED'
                 ? t('checkout.paymentBlocked')

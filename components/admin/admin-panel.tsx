@@ -18,6 +18,7 @@ import { InventoryManager } from './inventory-manager'
 import { ProductForm } from './product-form'
 import { TranslateCatalogButton } from './translate-catalog-button'
 import { GAP_LABELS, productGaps } from '@/lib/product-gaps'
+import { LISTING_STATUSES, LISTING_STATUS_LABELS } from '@/lib/listing'
 import { ReviewsManager } from './reviews-manager'
 import { ProductReviewsQueue } from './product-reviews-queue'
 import { STATUS_COLORS } from './order-controls'
@@ -89,6 +90,12 @@ function Dashboard() {
   }, [refresh])
 
   const incomplete = catalogLoading ? null : products.filter((p) => productGaps(p).length > 0).length
+  // Not on sale yet (0062): waiting for the owner's rights record. Unknown
+  // (null) while the catalogue loads or when 0062 is not applied.
+  const drafts =
+    catalogLoading || !products.some((p) => p.listing)
+      ? null
+      : products.filter((p) => p.listing && p.listing.status !== 'published').length
 
   type Item = { count: number | null; label: string; href: string; tone: 'urgent' | 'normal' | 'info' }
   const items: Item[] = attention
@@ -101,6 +108,7 @@ function Dashboard() {
         { count: attention.lowStock, label: 'Вариантов заканчивается', href: '/admin?tab=inventory', tone: 'normal' },
         { count: attention.productReviewsPending, label: 'Отзывы о товарах на модерации', href: '/admin?tab=productReviews', tone: 'normal' },
         { count: attention.storeReviewsPending, label: 'Отзывы о магазине на модерации', href: '/admin?tab=reviews', tone: 'normal' },
+        { count: drafts, label: 'Товары не в продаже — проверьте права и опубликуйте', href: '/admin?tab=products&pub=draft', tone: 'normal' },
         { count: incomplete, label: 'Товары с незаполненными полями', href: '/admin?tab=products&gaps=1', tone: 'normal' },
         { count: attention.reviewRequestsFailed, label: 'Письма с просьбой об отзыве не ушли', href: '/admin/review-requests?status=failed', tone: 'normal' },
         { count: attention.ordersAwaitingPayment, label: 'Ждут оплаты', href: '/admin/orders?view=unpaid', tone: 'info' },
@@ -307,6 +315,8 @@ function ProductsSection() {
   const cat = params.get('cat') ?? ''
   const avail = (['in_stock', 'out_of_stock'] as const).find((a) => a === params.get('avail')) ?? 'all'
   const gapsOnly = params.get('gaps') === '1'
+  // Sale state (0062): ?pub=draft|published|withdrawn.
+  const pub = LISTING_STATUSES.find((s) => s === params.get('pub')) ?? 'all'
   const sort: Sort = (['price_asc', 'price_desc'] as const).find((s) => s === params.get('sort')) ?? 'name'
   const editSlug = params.get('edit')
   const creating = params.get('new') === '1'
@@ -349,12 +359,14 @@ function ProductsSection() {
       if (cat && p.category !== cat) return false
       if (avail !== 'all' && !p.statuses.includes(avail)) return false
       if (gapsOnly && productGaps(p).length === 0) return false
+      if (pub !== 'all' && p.listing?.status !== pub) return false
       return true
     })
     .sort((a, b) =>
       sort === 'price_asc' ? a.price - b.price : sort === 'price_desc' ? b.price - a.price : localize(a.name).localeCompare(localize(b.name)),
     )
-  const filtersOn = Boolean(needle || cat || avail !== 'all' || gapsOnly)
+  const filtersOn = Boolean(needle || cat || avail !== 'all' || gapsOnly || pub !== 'all')
+  const onSale = products.filter((p) => p.listing?.status === 'published').length
 
   const editing = editSlug ? products.find((p) => p.id === editSlug) ?? null : null
   const formOpen = creating || Boolean(editing)
@@ -373,7 +385,11 @@ function ProductsSection() {
     <div>
       <AdminPageHeader
         title={t('admin.products')}
-        description={catalogLoading ? 'Загрузка каталога…' : `${products.length} в каталоге${needsAttention ? ` · ${needsAttention} требуют заполнения` : ''}`}
+        description={
+          catalogLoading
+            ? 'Загрузка каталога…'
+            : `${products.length} в каталоге · ${onSale} в продаже${needsAttention ? ` · ${needsAttention} требуют заполнения` : ''}`
+        }
         actions={
           <>
             <TranslateCatalogButton />
@@ -414,6 +430,14 @@ function ProductsSection() {
           <option value="in_stock">В наличии</option>
           <option value="out_of_stock">Нет в наличии</option>
         </select>
+        <select aria-label="Продажа" value={pub} onChange={(e) => setParams({ pub: e.target.value === 'all' ? null : e.target.value })} className={selectClass}>
+          <option value="all">Любой статус продажи</option>
+          {LISTING_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {LISTING_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
         <select aria-label="Сортировка" value={sort} onChange={(e) => setParams({ sort: e.target.value === 'name' ? null : e.target.value })} className={selectClass}>
           <option value="name">По названию</option>
           <option value="price_asc">Сначала дешёвые</option>
@@ -446,7 +470,7 @@ function ProductsSection() {
               type="button"
               onClick={() => {
                 setSearch('')
-                setParams({ q: null, cat: null, avail: null, gaps: null })
+                setParams({ q: null, cat: null, avail: null, gaps: null, pub: null })
               }}
               className="mt-3 text-sm text-foreground underline underline-offset-4"
             >
@@ -493,7 +517,21 @@ function ProductsSection() {
                             >
                               {name}
                             </button>
-                            <p className="truncate font-mono text-[11px] text-muted-foreground">{p.id}</p>
+                            <p className="truncate font-mono text-[11px] text-muted-foreground">
+                              {p.id}
+                              {p.listing && (
+                                <span
+                                  className={cn(
+                                    'ml-2 rounded border px-1.5 py-0.5 font-sans text-[10px]',
+                                    p.listing.status === 'published'
+                                      ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-800'
+                                      : 'border-border text-muted-foreground',
+                                  )}
+                                >
+                                  {LISTING_STATUS_LABELS[p.listing.status]}
+                                </span>
+                              )}
+                            </p>
                             {gaps.length > 0 && (
                               <div className="mt-1 flex flex-wrap gap-1">
                                 {gaps.map((g) => (

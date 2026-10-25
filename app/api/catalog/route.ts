@@ -27,7 +27,8 @@ export const dynamic = 'force-dynamic'
 const CACHE_CONTROL = 'public, s-maxage=60, stale-while-revalidate=300'
 
 /**
- * Public catalogue: collections, categories and products in one payload,
+ * Public catalogue: collections, categories and PUBLISHED products (0062) in
+ * one payload, with no listing data,
  * plus the admin's shipping settings — so a fee or delivery-time change
  * reaches an already-open storefront the same way a catalogue edit does.
  */

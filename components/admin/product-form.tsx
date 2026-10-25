@@ -13,6 +13,7 @@ import { describeConflicts, type StockConflict } from '@/lib/stock-sync'
 import { productSlug } from '@/lib/product-slug'
 import { ConfirmDialog } from './confirm-dialog'
 import type { Color, Locale, LocalizedText, Product, SizeMeasurement, StatusKey } from '@/lib/types'
+import { ProductListingPanel } from '@/components/admin/product-listing-panel'
 
 const STATUS_OPTIONS: { key: StatusKey; label: string }[] = [
   { key: 'in_stock', label: 'В наличии' },
@@ -625,6 +626,14 @@ export function ProductForm({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+        {/* Sale state and the owner's rights record (migration 0062). A new
+            product is saved as a draft first; it is published from here. */}
+        {editing && product && <ProductListingPanel product={product} dirty={dirty} />}
+        {!editing && (
+          <p className="mb-4 rounded-xl border border-border p-3 text-[13px] text-muted-foreground">
+            Новый товар сохраняется черновиком и не виден покупателям. Опубликовать его можно после сохранения.
+          </p>
+        )}
         {conflicts && (
           <div role="alert" className="mb-4 rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-800">
             <p className="font-medium">

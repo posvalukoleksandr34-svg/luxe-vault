@@ -176,6 +176,16 @@ export type Product = {
    * `variants.length > 0` first.
    */
   variants?: Variant[]
+
+  /**
+   * Sale state (migration 0062). Present only on what the ADMIN reads; the
+   * storefront only ever receives published products and gets no listing
+   * data at all — the rights record names suppliers and invoices.
+   */
+  listing?: import('@/lib/listing').ProductListing
+
+  /** When the product was created (ms). Sorts "newest" by date added. */
+  createdAt?: number
 }
 
 export type CartItem = {

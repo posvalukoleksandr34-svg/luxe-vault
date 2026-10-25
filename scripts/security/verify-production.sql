@@ -111,6 +111,19 @@ checks as (
   select 'migration 0061: one order per checkout attempt (order_idempotency)',
          case when to_regclass('public.order_idempotency') is not null then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0061_order_idempotency.sql'
+  union all
+  select 'migration 0062: product publication and sale rights (listing_status, product_rights)',
+         case when exists (select 1 from information_schema.columns
+                            where table_schema = 'public' and table_name = 'products' and column_name = 'listing_status')
+               and to_regclass('public.product_rights') is not null
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0062_product_publication.sql — until then the storefront sells nothing'
+  union all
+  select 'products readable by the public key: published only',
+         case when not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'products'
+                                 and cmd in ('SELECT', 'ALL') and coalesce(qual, '') !~ 'listing_status')
+              then 'OK' else 'PROBLEM' end,
+         'a select policy on products lets the public key read drafts: apply 0062, or drop that policy'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -157,8 +170,8 @@ checks as (
                     'admin_staff', 'refund_policies', 'refund_transactions', 'refund_case_evidence', 'refund_case_messages',
                     'refund_case_events', 'refund_risk_assessments', 'refund_approvals', 'refund_notifications',
                     'review_requests', 'email_suppressions',
-                    -- 0061: checkout attempt keys.
-                    'order_idempotency']) as t
+                    -- 0061: checkout attempt keys; 0062: sale rights records.
+                    'order_idempotency', 'product_rights']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action

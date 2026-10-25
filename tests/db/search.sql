@@ -15,6 +15,10 @@ select 'dbsearch-' || g, jsonb_build_object('en', 'Velvetine jacket ' || g), 100
        '[{"name":"Black","hex":"#000"}]'::jsonb, array['in_stock']
   from generate_series(1, 60) g
   cross join lateral (select id, collection_id from public.categories where slug = 'dbtest_cat' limit 1) k;
+-- On sale (0062), so the search may return them. Test data only.
+insert into public.product_rights (product_id, basis, reference)
+select id, 'own_design', 'DB test fixture' from public.products where slug like 'dbsearch-%';
+update public.products set listing_status = 'published' where slug like 'dbsearch-%';
 
 create temp table t_n as
 select (select count(*) from public.search_products('velvetine', 1000000)) as huge,

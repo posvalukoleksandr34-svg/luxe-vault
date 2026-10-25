@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { DELIVERY_DAYS_LIMITS, isDeliveryDays } from '@/lib/fulfilment'
-import { StockConflictError, createProduct, deleteProduct, updateProduct } from '@/lib/server/catalog-store'
+import { StockConflictError, createProduct, deleteProduct, getProductBySlug, updateProduct } from '@/lib/server/catalog-store'
+import { PUBLISH_BLOCKER_LABELS, publishBlockers } from '@/lib/listing'
 import { describeConflicts } from '@/lib/stock-sync'
 import { completeProductCopy, sourceLocale } from '@/lib/server/translate'
 import type { Product } from '@/lib/types'
@@ -106,7 +107,24 @@ export async function PATCH(request: NextRequest) {
   if (problem) return NextResponse.json({ error: problem }, { status: 400 })
 
   try {
-    const updated = await updateProduct(await withCompleteCopy(product))
+    const complete = await withCompleteCopy(product)
+    // A product on sale stays complete: a save that would remove its photo,
+    // materials or another required field is refused while it is published
+    // (the editor's "Снять с продажи" first, then save).
+    const stored = await getProductBySlug(product.id, { scope: 'admin' })
+    if (stored?.listing?.status === 'published') {
+      const blockers = publishBlockers(complete)
+      if (blockers.length) {
+        return NextResponse.json(
+          {
+            error: `Товар в продаже, его нельзя сохранить неполным: ${blockers.map((b) => PUBLISH_BLOCKER_LABELS[b]).join('; ')}`,
+            blockers,
+          },
+          { status: 422 },
+        )
+      }
+    }
+    const updated = await updateProduct(complete)
     if (!updated) return NextResponse.json({ error: 'Товар не найден — возможно, его уже удалили' }, { status: 404 })
     revalidateStorefront()
     return NextResponse.json({ product: updated })

@@ -107,6 +107,10 @@ async function runSweep(request: NextRequest) {
       )
 
       for (const a of alerts) {
+        // Public catalogue only: a piece that is not on sale (a draft, or
+        // withdrawn) is never advertised as "back in stock". The claim has
+        // already marked the alert, so it is consumed without an email.
+        if (!names.has(a.product_id)) continue
         const sent = await sendRestockEmail({
           email: a.email,
           productId: a.product_id,

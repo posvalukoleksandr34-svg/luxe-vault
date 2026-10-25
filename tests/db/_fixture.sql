@@ -27,3 +27,10 @@ insert into public.product_variants (product_id, size, color, stock)
 select id, 'M', 'Black', case when slug = 'dbtest-last' then 1 else 50 end
   from public.products where slug like 'dbtest-%'
 on conflict (product_id, size, color) do update set stock = excluded.stock;
+
+-- On sale (0062): a test rights record, then published. Test data only.
+insert into public.product_rights (product_id, basis, reference)
+select id, 'own_design', 'DB test fixture' from public.products where slug like 'dbtest-%'
+on conflict (product_id) do nothing;
+update public.products set listing_status = 'published'
+ where slug like 'dbtest-%' and listing_status <> 'published';

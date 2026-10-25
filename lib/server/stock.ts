@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { listingSupported } from '@/lib/server/catalog-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -19,6 +20,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export const variantKey = (slug: string, size: string, color: string) => `${slug}|${size}|${color}`
 
 export type StockSnapshot = {
+  /** Slugs on sale (published, 0062). Anything else has 0 available. */
+  forSale: Set<string>
   /** Slugs whose stock is counted. A product with no variant rows is not. */
   tracked: Set<string>
   /** variantKey → units on hand. A tracked product's missing combination is 0. */
@@ -27,17 +30,21 @@ export type StockSnapshot = {
 
 export async function readVariantStock(slugs: string[]): Promise<StockSnapshot> {
   const unique = Array.from(new Set(slugs.filter(Boolean))).slice(0, 100)
-  const snapshot: StockSnapshot = { tracked: new Set(), stock: new Map() }
+  const snapshot: StockSnapshot = { forSale: new Set(), tracked: new Set(), stock: new Map() }
   if (unique.length === 0) return snapshot
+  // Without 0062 nothing records what may be sold: nothing is (fail closed).
+  if (!(await listingSupported())) return snapshot
 
   const supabase = createAdminClient()
   const { data: products, error: productsError } = await supabase
     .from('products')
     .select('id, slug')
     .in('slug', unique)
+    .eq('listing_status', 'published')
   if (productsError) throw new Error(`Failed to read products: ${productsError.message}`)
 
   const slugById = new Map((products ?? []).map((p) => [p.id as string, p.slug as string]))
+  for (const slug of slugById.values()) snapshot.forSale.add(slug)
   if (slugById.size === 0) return snapshot
 
   const { data: variants, error: variantsError } = await supabase
@@ -56,11 +63,13 @@ export async function readVariantStock(slugs: string[]): Promise<StockSnapshot> 
 }
 
 /**
- * Units available for one variant: a number for a tracked product (0 when the
+ * Units available for one variant: 0 for a product that is not on sale
+ * (unknown, draft or withdrawn), a number for a tracked product (0 when the
  * combination has no row — place_order treats it the same way), or null when
  * the product's stock is not counted at all.
  */
 export function availableFor(snapshot: StockSnapshot, slug: string, size: string, color: string): number | null {
+  if (!snapshot.forSale.has(slug)) return 0
   if (!snapshot.tracked.has(slug)) return null
   return snapshot.stock.get(variantKey(slug, size, color)) ?? 0
 }
