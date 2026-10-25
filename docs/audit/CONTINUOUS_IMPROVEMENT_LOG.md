@@ -11,6 +11,34 @@ paid, refunded or emailed.
 
 ---
 
+## CI-5 · Checkout no longer flashes "Your cart is empty" (2026-10-25)
+
+**Problem.** The saved cart is read in the browser after hydration; the
+server renders every page with an empty cart. `/checkout` decided on that
+empty cart, so its server HTML said "Your cart is empty" and every customer
+arriving with a full basket saw that message before the checkout appeared
+(measured: h1 sequence "Your cart is empty" → "Checkout"; on a slow
+connection the wrong message was all they saw until the JavaScript ran).
+The real checkout `<main>` also lacked `id="main"`, so the skip link led
+nowhere on that page.
+
+**Change.** The store exposes `cartReady` (set in the same layout effect
+that restores the cart). Until then `/checkout` renders a neutral frame with
+the page title, the breadcrumb/back-link spaces and a pulsing form/summary
+skeleton (`aria-busy`), in the real page's container so nothing jumps; then
+the form, or the empty state for a genuinely empty cart. `id="main"` added
+to the checkout's main element.
+
+**Tests.** Production build: with a saved cart the h1 sequence is only
+"Checkout" and the server HTML no longer contains "Your cart is empty"
+(it contains the title and `aria-busy`); with no cart the empty state
+still appears. Checkout browser flow (lost response, second press) 6/6;
+storefront smoke 16/16 twice (a first run had one toast check fail on a
+fixed 1.2 s wait at the stand's ~5 fps; the harness now waits on the
+condition); store unit tests 78/78; typecheck, lint clean.
+
+---
+
 ## CI-4 · State pages have a page heading (2026-10-25)
 
 **Problem.** A browser crawl of the storefront (22 routes × 1280/390 px) found

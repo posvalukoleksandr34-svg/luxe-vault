@@ -27,7 +27,7 @@ import { formatPrice, useProductsById, useStore } from '@/lib/store'
  * the empty-cart guard below matters — see the note there.
  */
 export default function CheckoutPage() {
-  const { cart, cartCount, cartSubtotal, cartLineName, colorName, t } = useStore()
+  const { cart, cartReady, cartCount, cartSubtotal, cartLineName, colorName, t } = useStore()
 
   // The lines' products, looked up by id — see the cart drawer.
   useProductsById(cart.map((line) => line.productId))
@@ -41,6 +41,32 @@ export default function CheckoutPage() {
   // here with nothing to buy. Showing the form against an empty cart would let
   // someone fill in an address and then fail at submit; saying so up front and
   // pointing back to the shop is the honest version.
+  // The saved cart is read in the browser, after the server has rendered
+  // this page with none. Until it is, say only where the customer is: the
+  // page that is about to appear, not "your cart is empty" (which flashed on
+  // every visit with a full basket, and was all a slow connection showed).
+  if (!cartReady && !orderPlaced) {
+    return (
+      <>
+        <Header />
+        <main id="main" aria-busy="true" className="mx-auto w-full max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+          {/* The same frame as the page below, so nothing jumps when it arrives. */}
+          <div aria-hidden className="mb-4 h-4 w-40 animate-pulse rounded bg-muted/60" />
+          <div aria-hidden className="mb-8 h-4 w-32 animate-pulse rounded bg-muted/60" />
+          <h1 className="mb-8 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{t('checkout.title')}</h1>
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14" aria-hidden>
+            <div className="space-y-4">
+              {[0, 1, 2, 3, 4].map((n) => (
+                <div key={n} className="h-12 animate-pulse rounded-xl bg-muted/60" />
+              ))}
+            </div>
+            <div className="h-64 animate-pulse rounded-2xl bg-muted/60" />
+          </div>
+        </main>
+      </>
+    )
+  }
+
   if (cart.length === 0 && !orderPlaced) {
     return (
       <>
@@ -62,7 +88,7 @@ export default function CheckoutPage() {
     <>
       <Header />
 
-      <main className="mx-auto w-full max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <main id="main" className="mx-auto w-full max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         {/* Breadcrumbs AND the back link, which do different jobs: the trail
             says where this page sits, the link is the explicit way out that a
             checkout should always offer. */}

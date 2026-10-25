@@ -181,6 +181,10 @@ type StoreContextValue = {
   setCategoryImage: (group: CategoryGroupKey, image: string) => Promise<void>
   resetCategoryImage: (group: CategoryGroupKey) => Promise<void>
   cart: CartItem[]
+  /** The saved cart has been read (false on the server and until the first
+   *  layout effect). Until then an empty `cart` means "not known yet", not
+   *  "empty" — a page must not tell the customer their basket is empty. */
+  cartReady: boolean
   currentUser: User | null
   /** True until the initial Supabase session lookup settles, so the UI can
    *  avoid flashing a signed-out state to an already-signed-in visitor. */
@@ -1329,6 +1333,7 @@ function maybeSendWelcome() {
      SSR, and reading it in the initialiser would make the server and client
      render different markup — a hydration mismatch. */
   const cartRestored = useRef(false)
+  const [cartReady, setCartReady] = useState(false)
   useIsomorphicLayoutEffect(() => {
     const saved = readCart()
     if (saved.length > 0) {
@@ -1337,6 +1342,7 @@ function maybeSendWelcome() {
       scheduleValidate(2500)
     }
     cartRestored.current = true
+    setCartReady(true)
   }, [scheduleValidate])
 
   /* Persist on every change. Gated on the restore having run, or this effect's
@@ -1839,6 +1845,7 @@ function maybeSendWelcome() {
       setCategoryImage,
       resetCategoryImage,
       cart,
+      cartReady,
       currentUser,
       authLoading,
       locale,
@@ -1896,7 +1903,7 @@ function maybeSendWelcome() {
       products, collections, categories, categoryTree, groupLabels, categoryLabels,
       catalogLoading, ensureCatalog, reloadCatalog, productCache, resolveProducts, lookupProduct,
       shipping, categoryImages, setCategoryImage,
-      resetCategoryImage, cart, currentUser, authLoading, locale, setLocale, currency,
+      resetCategoryImage, cart, cartReady, currentUser, authLoading, locale, setLocale, currency,
       setCurrency, exchangeRates, t, tf, localize, colorName, cartLineName, panel, setPanel, accountTab, setAccountTab, openAccount,
       authMode, openAuth, supportEntry, openSupport, openChat, supportUnread, setSupportUnread,
       stockLimit, toasts, query, setQuery, filter, setFilter, pushToast, dismissToast,
