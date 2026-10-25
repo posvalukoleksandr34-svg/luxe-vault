@@ -51,6 +51,7 @@ import {
 } from './i18n'
 import { defaultDictionary, loadDictionary, loadedDictionary } from './i18n-runtime'
 import { isUnlocalizedPath, localizedPath, splitLocale } from './locale-routing'
+import { isCoreDepartment } from './departments'
 import type {
   CartItem,
   CategoryKey,
@@ -940,12 +941,16 @@ function maybeSendWelcome() {
     [collections, categories],
   )
 
-  // The same, without anything that has nothing on sale. A count the server
-  // did not send (an older cached payload) is not taken for zero.
+  // The same, without anything that has nothing on sale — except the core
+  // departments (Women, Men, Kids, lib/departments.ts), which the owner wants
+  // in the navigation at all times: an empty one opens on its own page, which
+  // says plainly that nothing is on sale there yet. Their empty categories and
+  // every other empty department stay hidden. A count the server did not send
+  // (an older cached payload) is not taken for zero.
   const navTree = useMemo(() => {
     const onSale = (count: number | undefined) => count === undefined || count > 0
     return collections
-      .filter((c) => onSale(c.count))
+      .filter((c) => isCoreDepartment(c.slug) || onSale(c.count))
       .map((c) => ({
         group: c.slug,
         items: categories

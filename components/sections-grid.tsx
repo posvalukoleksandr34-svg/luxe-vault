@@ -73,11 +73,11 @@ const FALLBACK_GRADIENT = 'radial-gradient(120% 90% at 50% 0%, #f2ebdf 0%, #e2d6
 export function SectionsGrid() {
   const { t, localize, collections, navTree, categoryImages } = useStore()
 
-  // Only departments with something on sale: a card is a promise of
-  // products, and an empty department would break it. A shop with none on
-  // sale shows no cards at all.
+  // Women, Men and Kids, always — the owner wants all three on the homepage.
+  // A department that exists in the catalogue gets its own page (an empty one
+  // says so there); one that does not exist yet leads to the full catalogue.
   const live = useMemo(() => new Set(navTree.map((n) => n.group)), [navTree])
-  const shownDepartments = CORE_DEPARTMENTS.filter((d) => live.has(d.slug))
+  const shownDepartments = CORE_DEPARTMENTS
   const coverOf = (slug: string) =>
     categoryImages[slug] || collections.find((c) => c.slug === slug)?.image || ''
   // How many photographs have failed per card. Set from <Image onError>,
@@ -91,8 +91,6 @@ export function SectionsGrid() {
   const [failed, setFailed] = useState<Record<string, number>>({})
   // Which cards have a photograph on screen (set from <Image onLoad>).
   const [loaded, setLoaded] = useState<Record<string, string>>({})
-
-  if (shownDepartments.length === 0) return null
 
   return (
     <section id="collections" className="section-y scroll-mt-20">
@@ -120,9 +118,10 @@ export function SectionsGrid() {
             // A department with no card art of its own still renders, labelled
             // from the catalogue rather than from a missing i18n key.
             const label = section ? t(section.labelKey) : localize(department.name)
-            // Its own department page — never the homepage's shop section,
+            // Its own department page when that department exists, the full
+            // catalogue when it does not — never the homepage's shop section,
             // which was a stop on the way rather than a destination.
-            const href = `/category/${department.slug}`
+            const href = live.has(department.slug) ? `/category/${department.slug}` : '/catalog'
             const sources = Array.from(
               new Set([coverOf(department.slug), section?.image].filter((x): x is string => Boolean(x))),
             )

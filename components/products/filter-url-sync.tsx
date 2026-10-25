@@ -50,15 +50,27 @@ export function FilterUrlSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, setFilter])
 
+  // The filter as this component last saw it, as a query string.
+  const seenFilter = useRef<string | null>(null)
+
   // Filter → URL, with replace() rather than push(): dragging a price slider
   // must not bury the previous page under thirty history entries. The choices
   // are still in the address to copy, and back still leaves the listing.
+  //
+  // Only when the FILTER changed. When the address changes — a link to
+  // /catalog from "New arrivals" — this effect runs in the same commit as the
+  // restore above, while `filter` still holds the old choices; writing them
+  // then put ?sort=newest straight back, the restore took it out again, and
+  // the two swapped the address dozens of times a second.
   useEffect(() => {
     const next = filterToParams(filter).toString()
+    const filterChanged = seenFilter.current !== null && seenFilter.current !== next
+    seenFilter.current = next
     if (next === search) {
       written.current = next
       return
     }
+    if (!filterChanged) return
     written.current = next
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
   }, [filter, search, pathname, router])
