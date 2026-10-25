@@ -1,4 +1,5 @@
 import type { CartItem, Product } from '@/lib/types'
+import { MAX_LINE_QTY } from '@/lib/cart-limits'
 
 /**
  * The shopping cart, kept in this browser across reloads.
@@ -45,8 +46,8 @@ export const CART_STORAGE_KEY = STORAGE_KEY
  */
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
-/** Matches the clamp the server applies in repriceItems(). */
-const MAX_QTY = 20
+/** The per-line cap the cart and the server share (lib/cart-limits.ts). */
+const MAX_QTY = MAX_LINE_QTY
 
 /** Keeps a hand-edited record from filling the page with junk rows. */
 const MAX_ITEMS = 50

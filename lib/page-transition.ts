@@ -84,9 +84,16 @@ export function canTransition(): boolean {
   return Boolean(startFn()) && !motionReduced() && document.visibilityState === 'visible'
 }
 
-/** True while a page transition is between its two pictures. */
+/**
+ * True while an in-page transition is between its two pictures. Not the
+ * cross-document one a full page load arrives in (data-vt-doc,
+ * lib/motion-boot.ts): that page was rendered on the server with its fade
+ * class, and hydration must render the same.
+ */
 export function pageTransitionRunning(): boolean {
-  return typeof document !== 'undefined' && Boolean(document.documentElement.dataset.vt)
+  if (typeof document === 'undefined') return false
+  const { vt, vtDoc } = document.documentElement.dataset
+  return Boolean(vt) && vtDoc === undefined
 }
 
 /**
@@ -234,6 +241,8 @@ export function pageTransition(href: string, navigate: () => void): void {
   active?.skipTransition()
 
   const root = document.documentElement
+  // Arrived by a full page load's transition: from here on, in-page rules.
+  delete root.dataset.vtDoc
   const fromKey = urlKey(window.location)
   const outgoing: HTMLElement[] = []
   const incoming: HTMLElement[] = []

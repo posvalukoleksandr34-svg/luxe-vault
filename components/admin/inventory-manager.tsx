@@ -2,7 +2,7 @@
 
 import { AdminPageHeader } from './admin-shell'
 import { AlertTriangle, Boxes, Download, Grid3x3, List, Loader2, Search, Upload } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +40,9 @@ export function InventoryManager() {
   const [variants, setVariants] = useState<Variant[]>([])
   const [loading, setLoading] = useState(true)
   const [unavailable, setUnavailable] = useState(false)
+  // A list that could not be read is not an empty warehouse: "0 positions"
+  // would send staff restocking, or importing, against nothing.
+  const [loadFailed, setLoadFailed] = useState(false)
   const [query, setQuery] = useState('')
   const [stateFilter, setStateFilter] = useState<StateFilter>('all')
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -55,21 +58,27 @@ export function InventoryManager() {
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/inventory')
-      if (!res.ok) return
+      const res = await fetch('/api/admin/inventory', { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
       const data = await res.json()
       setVariants(data.variants ?? [])
       setUnavailable(Boolean(data.unavailable))
+      setLoadFailed(false)
+    } catch {
+      // Whatever is already on screen stays; the first load has nothing to
+      // keep and shows the error below instead of an empty table.
+      setLoadFailed(true)
+      pushToast({ title: 'Не удалось загрузить остатки', variant: 'error' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [pushToast])
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [load])
 
   const counts = useMemo(
     () => ({
@@ -241,6 +250,24 @@ export function InventoryManager() {
     return (
       <div className="flex justify-center py-16">
         <Loader2 className="size-5 animate-spin text-gold" />
+      </div>
+    )
+  }
+
+  if (loadFailed && variants.length === 0) {
+    return (
+      <div role="alert" className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        <p>Не удалось загрузить остатки. Данные не изменились — это ошибка связи или сервера.</p>
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true)
+            void load()
+          }}
+          className="mt-3 rounded-full border border-red-300 px-4 py-1.5 text-[12px] font-medium transition hover:bg-red-100"
+        >
+          Повторить
+        </button>
       </div>
     )
   }

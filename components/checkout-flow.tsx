@@ -54,6 +54,7 @@ import {
 } from '@/lib/validation'
 import type { Order } from '@/lib/types'
 import { logAbandonedCheckout, withdrawAbandonedCheckout } from '@/actions/abandoned-cart'
+import { navigateWithTransition } from '@/lib/document-transition'
 
 type FieldKey = 'firstName' | 'lastName' | 'phone' | 'email' | 'street' | 'postalCode' | 'city'
 
@@ -165,6 +166,10 @@ export function CheckoutFlow({
   const [repricing, setRepricing] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [submitting, setSubmitting] = useState(false)
+  // The checkout attempt's idempotency key (lib/server/order-idempotency.ts):
+  // kept while the details stay the same, so pressing the button again after
+  // a lost response returns the order already made instead of a second one.
+  const attempt = useRef<{ key: string; details: string } | null>(null)
   /**
    * Submission failure, shown inline above the button.
    *
@@ -342,26 +347,40 @@ export function CheckoutFlow({
       // lookup token and the payment status. If the customer then walks away
       // from the payment screen, the order survives as `pending_payment`
       // and can be paid later from their account.
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer,
-          items: cart,
-          subtotal: cartSubtotal,
-          discount,
-          total,
-          promo: appliedPromo?.code,
-          payment: form.payment,
-          // Explicit, never inferred — /api/orders files a guest order only
-          // when told to, so an expired session cannot silently turn a
-          // customer's order into an unattached one.
-          guest: !currentUser,
-          // The language the emails about this order will be written in.
-          locale,
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
+      const draft = {
+        customer,
+        items: cart,
+        subtotal: cartSubtotal,
+        discount,
+        total,
+        promo: appliedPromo?.code,
+        payment: form.payment,
+        // Explicit, never inferred — /api/orders files a guest order only
+        // when told to, so an expired session cannot silently turn a
+        // customer's order into an unattached one.
+        guest: !currentUser,
+        // The language the emails about this order will be written in.
+        locale,
+      }
+      // Same details as the last attempt: the same attempt, the same key.
+      const details = JSON.stringify(draft)
+      if (attempt.current?.details !== details) attempt.current = { key: newAttemptKey(), details }
+      const idempotencyKey = attempt.current.key
+
+      let res: Response
+      let data: { error?: string; item?: string; order?: Order } = {}
+      // "In progress": the same attempt is still being placed by an earlier
+      // request (the one whose answer was lost). Wait for it briefly.
+      for (let tries = 0; ; tries++) {
+        res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...draft, idempotencyKey }),
+        })
+        data = await res.json().catch(() => ({}))
+        if (!(res.status === 409 && data.error === 'ORDER_IN_PROGRESS') || tries >= 2) break
+        await new Promise((r) => setTimeout(r, 1500))
+      }
       if (!res.ok || !data.order) {
         // Sold out between adding to the cart and paying. Name the line so the
         // customer knows which one to change rather than hunting the basket.
@@ -392,6 +411,8 @@ export function CheckoutFlow({
         return
       }
 
+      // Placed: the next attempt (another basket) gets a new key.
+      attempt.current = null
       trackAddPaymentInfo(data.order.total, form.payment)
       const order: Order = data.order
       if (order.lookupToken) rememberOrder({ id: order.id, token: order.lookupToken })
@@ -584,14 +605,15 @@ export function CheckoutFlow({
   /**
    * Payment confirmed. This is the ONLY path that leaves /checkout forwards.
    *
-   * A hard navigation rather than router.push: the success page must mount
+   * A hard navigation rather than router.push (with the site's opening
+   * transition, lib/document-transition.ts): the success page must mount
    * against a clean store with the cart already gone, and it also drops the
    * checkout out of the history entry the customer would hit with Back —
    * landing them on an empty-cart guard rather than a re-submittable form.
    */
   function handleCardPaid() {
     if (!cardOrder) return
-    window.location.href = `/checkout/success?order=${encodeURIComponent(cardOrder.id)}`
+    navigateWithTransition(`/checkout/success?order=${encodeURIComponent(cardOrder.id)}`)
   }
 
   /** Leaving the card step keeps the order — it becomes an unpaid order
@@ -613,7 +635,7 @@ export function CheckoutFlow({
 
   function handleCryptoPaid() {
     if (cryptoOrder) {
-      window.location.href = `/checkout/success?order=${encodeURIComponent(cryptoOrder.id)}`
+      navigateWithTransition(`/checkout/success?order=${encodeURIComponent(cryptoOrder.id)}`)
       return
     }
     router.push('/')
@@ -1063,6 +1085,13 @@ export function CheckoutFlow({
  * replaced: that keeps it focusable, announced correctly by screen readers,
  * and togglable with the spacebar. The gold track is decoration drawn on top.
  */
+/** A fresh, unguessable key for one checkout attempt. */
+function newAttemptKey(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  // Older browsers (and non-secure contexts) lack randomUUID.
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 function SaveToggle({
   checked,
   onChange,

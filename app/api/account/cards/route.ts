@@ -33,8 +33,12 @@ export async function GET() {
 
   try {
     return NextResponse.json({ cards: await listSavedCards(customerId) })
-  } catch {
-    return NextResponse.json({ cards: [] })
+  } catch (e) {
+    // Stripe did not answer: say so. An empty list here would tell the
+    // customer their saved cards are gone (components/saved-cards.tsx shows
+    // "could not load" with a retry for this).
+    console.error('[cards] listing failed:', (e as Error).message)
+    return NextResponse.json({ error: 'Could not load cards' }, { status: 502 })
   }
 }
 

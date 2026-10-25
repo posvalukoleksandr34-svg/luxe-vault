@@ -3,6 +3,7 @@
 import { CreditCard, Loader2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
+import { LoadError } from '@/components/load-error'
 
 type SavedCard = {
   id: string
@@ -26,15 +27,19 @@ export function SavedCards() {
   const [cards, setCards] = useState<SavedCard[]>([])
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
+  // A list that could not be read is not "no saved cards".
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/account/cards')
-      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
       setCards(Array.isArray(data.cards) ? data.cards : [])
+      setLoadFailed(false)
     } catch {
-      setCards([])
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -57,7 +62,7 @@ export function SavedCards() {
       setCards((prev) => prev.filter((c) => c.id !== id))
       pushToast({ title: t('cards.removed'), variant: 'success' })
     } catch {
-      pushToast({ title: t('checkout.orderFailed'), variant: 'default' })
+      pushToast({ title: t('common.actionFailed'), variant: 'default' })
     } finally {
       setRemoving(null)
     }
@@ -69,6 +74,8 @@ export function SavedCards() {
 
       {loading ? (
         <Loader2 className="size-4 animate-spin text-gold" />
+      ) : loadFailed ? (
+        <LoadError title={t('cards.loadFailed')} onRetry={load} compact />
       ) : cards.length === 0 ? (
         <p className="text-[12px] font-light leading-relaxed text-muted-foreground">
           {t('cards.empty')}

@@ -23,6 +23,8 @@ export const NEWSLETTER_PENDING_DAYS = 30
 /** Cart-reminder records once finished (recovered / expired): 30 days.
  *  Opt-outs are kept — they are what stops any later reminder. */
 export const CART_RECORD_DAYS = 30
+/** Checkout idempotency keys (0061): only a retry minutes later needs one. */
+export const ORDER_KEY_DAYS = 7
 
 const MISSING = new Set(['42P01', 'PGRST205', '42703'])
 
@@ -38,12 +40,13 @@ export type RetentionResult = {
   newsletterPending: number
   cartRecords: number
   paymentBlocks: number
+  orderKeys: number
   errors: string[]
 }
 
 export async function enforceRetention(): Promise<RetentionResult> {
   const supabase = createAdminClient()
-  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, paymentBlocks: 0, refundEvents: 0, errors: [] }
+  const result: RetentionResult = { supportTickets: 0, orders: 0, newsletterPending: 0, cartRecords: 0, paymentBlocks: 0, orderKeys: 0, refundEvents: 0, errors: [] }
 
   // ---------------------------------------------------- support requests --
   try {
@@ -166,6 +169,21 @@ export async function enforceRetention(): Promise<RetentionResult> {
   } catch (e) {
     const err = e as { code?: string; message?: string }
     if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/payment-blocks: ${err.message}`)
+  }
+
+  // ---------------------------------------------- checkout attempt keys --
+  // A key only matters to a retry of the same attempt, minutes later.
+  try {
+    const { data, error } = await supabase
+      .from('order_idempotency')
+      .delete()
+      .lt('created_at', before(ORDER_KEY_DAYS))
+      .select('key_hash')
+    if (error) throw error
+    result.orderKeys = data?.length ?? 0
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    if (!MISSING.has(err.code ?? '')) result.errors.push(`retention/order-keys: ${err.message}`)
   }
 
   return result

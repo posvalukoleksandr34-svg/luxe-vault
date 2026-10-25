@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { releaseCouponUse } from '@/lib/server/coupons'
-import { addOrder, InsufficientStockError } from '@/lib/server/orders-store'
+import { addOrder, getOrderById, InsufficientStockError } from '@/lib/server/orders-store'
+import { claimOrderKey, parseIdempotencyKey, recordOrderKey, releaseOrderKey } from '@/lib/server/order-idempotency'
 import {
   buildOrder,
   repriceItems,
@@ -92,12 +93,41 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // One order per checkout attempt (lib/server/order-idempotency.ts, 0061).
+  // Claimed before anything is priced or reserved: a resend of an attempt
+  // whose order exists gets that order back, and takes no second coupon use,
+  // reservation or email. Without a key, or without the table, checkout
+  // works exactly as before.
+  const idempotencyKey = parseIdempotencyKey((body as { idempotencyKey?: unknown }).idempotencyKey)
+  const claim = await claimOrderKey(idempotencyKey)
+  if (claim.kind === 'in_progress') {
+    return NextResponse.json({ error: 'ORDER_IN_PROGRESS' }, { status: 409, headers: { 'Retry-After': '2' } })
+  }
+  if (claim.kind === 'existing') {
+    const existing = await getOrderById(claim.orderNumber)
+    // The key is a secret only the browser that made the attempt holds; the
+    // account check is a second lock, for a session that changed in between.
+    if (existing && (!existing.userId || existing.userId === userId)) {
+      return NextResponse.json({ orderId: existing.id, order: existing, emailed: false, replayed: true }, { status: 200 })
+    }
+    return NextResponse.json({ error: 'DUPLICATE_ATTEMPT' }, { status: 409 })
+  }
+  const guarded = claim.kind === 'claimed' ? idempotencyKey : null
+
   // Reprice from the catalogue before anything is persisted. The body's
   // prices and totals are advisory only — see repriceItems().
   // userId scopes coupons issued to one customer; the draft carries it so
   // repriceItems can validate a personal code. A guest simply has none.
-  const priced = await repriceItems({ ...result.draft, userId })
+  let priced: Awaited<ReturnType<typeof repriceItems>>
+  try {
+    priced = await repriceItems({ ...result.draft, userId })
+  } catch (e) {
+    await releaseOrderKey(guarded)
+    throw e
+  }
   if (!priced.ok) {
+    // No order: the key is freed for the customer's corrected attempt.
+    await releaseOrderKey(guarded)
     // A product the admin marked unavailable answers like a sold-out one, so
     // the cart names the line instead of showing a generic failure.
     const unavailable = /^Unavailable product: (.+)$/.exec(priced.error)
@@ -110,6 +140,7 @@ export async function POST(request: NextRequest) {
   try {
     await addOrder(order)
   } catch (e) {
+    await releaseOrderKey(guarded)
     // The coupon's use was taken in repriceItems(), before this; the order it
     // was taken for does not exist, so it goes back (lib/server/coupons.ts).
     if (order.couponId) await releaseCouponUse(order.couponId)
@@ -129,6 +160,9 @@ export async function POST(request: NextRequest) {
     void reportServerError('Checkout · order not created', e, request.url)
     throw e
   }
+
+  // From here a resend of this attempt gets this order back.
+  await recordOrderKey(guarded, order.id)
 
   // The storefront language at checkout, stored with the order so every
   // email about it — this confirmation, the receipt, the shipping notice —

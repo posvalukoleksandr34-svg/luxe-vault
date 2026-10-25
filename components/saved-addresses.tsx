@@ -6,6 +6,7 @@ import { CountrySelect } from '@/components/country-select'
 import { DEFAULT_COUNTRY } from '@/components/phone-input'
 import { AddressListSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/state-view'
+import { LoadError } from '@/components/load-error'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -54,16 +55,19 @@ export function SavedAddresses() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState<string | null>(null)
+  // A list that could not be read is not an empty list: saying "no saved
+  // addresses" after a timeout would tell the customer theirs are gone.
+  const [loadFailed, setLoadFailed] = useState(false)
 
   async function load() {
     try {
       const res = await fetch('/api/account/addresses')
-      if (!res.ok) {
-        setAddresses([])
-        return
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setAddresses(data.addresses ?? [])
+      setLoadFailed(false)
+    } catch {
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -93,6 +97,10 @@ export function SavedAddresses() {
       setAdding(false)
       pushToast({ title: t('address.saved'), variant: 'success' })
       await load()
+    } catch {
+      // The request never got an answer (offline, timed out): the form stays
+      // filled in, so trying again costs nothing.
+      setError(t('address.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -101,12 +109,15 @@ export function SavedAddresses() {
   async function makeDefault(id: string) {
     setBusyId(id)
     try {
-      await fetch('/api/account/addresses', {
+      const res = await fetch('/api/account/addresses', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, isDefault: true }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
+    } catch {
+      pushToast({ title: t('common.actionFailed'), variant: 'default' })
     } finally {
       setBusyId(null)
     }
@@ -115,8 +126,11 @@ export function SavedAddresses() {
   async function remove(id: string) {
     setBusyId(id)
     try {
-      await fetch(`/api/account/addresses?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const res = await fetch(`/api/account/addresses?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
+    } catch {
+      pushToast({ title: t('common.actionFailed'), variant: 'default' })
     } finally {
       setBusyId(null)
     }
@@ -142,6 +156,8 @@ export function SavedAddresses() {
 
       {loading ? (
         <AddressListSkeleton rows={2} label={t('common.loading')} />
+      ) : loadFailed && addresses.length === 0 ? (
+        <LoadError title={t('address.loadFailed')} onRetry={load} compact />
       ) : (
         <>
           {addresses.length === 0 && !adding && (

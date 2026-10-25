@@ -31,6 +31,7 @@ import { formatPrice, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { CurrencyCode } from '@/lib/currency'
 import type { Order, StorefrontLocale } from '@/lib/types'
+import { useDocumentTitle } from '@/lib/use-document-title'
 
 /**
  * The account.
@@ -110,6 +111,10 @@ function Account() {
   useEffect(() => {
     if (stale) router.replace('/account', { scroll: false })
   }, [stale, router])
+
+  // "Address book — LUXE VAULT", or "Your account — …" on the overview.
+  const sectionLabel = section ? ACCOUNT_SECTIONS.find((s) => s.key === section)?.labelKey : undefined
+  useDocumentTitle(sectionLabel && currentUser ? t(sectionLabel) : t('account.title'), 'Your account')
 
   // Waiting for the session to settle, so an already-signed-in customer is
   // never shown the sign-in prompt for a frame.

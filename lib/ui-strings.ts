@@ -49,6 +49,7 @@ export const UI = {
   'stock.onlyInSize': { ru: 'Доступно только {n} шт. в размере {size}', en: 'Only {n} pcs. available in size {size}', it: 'Disponibili solo {n} pz. nella taglia {size}', fr: 'Seulement {n} pièce(s) disponible(s) en taille {size}', de: 'Nur {n} Stück in Größe {size} verfügbar' },
   'stock.only': { ru: 'Доступно только {n} шт.', en: 'Only {n} pcs. available', it: 'Disponibili solo {n} pz.', fr: 'Seulement {n} pièce(s) disponible(s)', de: 'Nur {n} Stück verfügbar' },
   'stock.maxInCart': { ru: 'Весь доступный остаток уже в корзине', en: 'Maximum available already in cart', it: 'Quantità massima già nel carrello', fr: 'Quantité maximale déjà dans le panier', de: 'Maximale Menge bereits im Warenkorb' },
+  'cart.maxPerLine': { ru: 'Не больше {n} шт. одного товара в заказе', en: 'Up to {n} pcs. of one item per order', it: 'Al massimo {n} pz. dello stesso articolo per ordine', fr: 'Au maximum {n} pièces d’un même article par commande', de: 'Höchstens {n} Stück pro Artikel und Bestellung' },
   'stock.inCart': { ru: 'В корзине: {n} шт.', en: '{n} already in your cart', it: 'Già nel carrello: {n}', fr: 'Déjà dans le panier : {n}', de: 'Bereits im Warenkorb: {n}' },
   'stock.cartChanged': { ru: 'Наличие изменилось — корзина обновлена', en: 'Availability has changed — your cart was updated', it: 'La disponibilità è cambiata: il carrello è stato aggiornato', fr: 'La disponibilité a changé : votre panier a été mis à jour', de: 'Die Verfügbarkeit hat sich geändert – Ihr Warenkorb wurde aktualisiert' },
   'stock.cartReduced': { ru: '{name}, {size}: осталось {n} шт. — количество уменьшено', en: '{name}, {size}: {n} left — quantity reduced', it: '{name}, {size}: ne restano {n}, quantità ridotta', fr: '{name}, {size} : plus que {n}, quantité réduite', de: '{name}, {size}: nur noch {n} – Menge reduziert' },
@@ -321,6 +322,8 @@ export const UI = {
   'search.didYouMean': { ru: 'Возможно, вы искали это', en: 'Showing closest matches', it: 'Risultati più simili', fr: 'Résultats les plus proches', de: 'Ähnlichste Treffer' },
   'search.tryInstead': { ru: 'Попробуйте', en: 'Try instead', it: 'Prova invece', fr: 'Essayez plutôt', de: 'Versuchen Sie stattdessen' },
   'search.searching': { ru: 'Ищем…', en: 'Searching…', it: 'Ricerca in corso…', fr: 'Recherche en cours…', de: 'Suche läuft…' },
+  'search.open': { ru: 'Поиск', en: 'Search', it: 'Cerca', fr: 'Rechercher', de: 'Suchen' },
+  'nav.home': { ru: 'на главную', en: 'home', it: 'home page', fr: 'accueil', de: 'Startseite' },
   'search.panel': { ru: 'Результаты поиска', en: 'Search results', it: 'Risultati di ricerca', fr: 'Résultats de recherche', de: 'Suchergebnisse' },
   'search.count': { ru: 'Найдено: {n}', en: '{n} pieces', it: '{n} capi', fr: '{n} pièces', de: '{n} Teile' },
   'search.under': { ru: 'до {amount}', en: 'under {amount}', it: 'sotto {amount}', fr: 'moins de {amount}', de: 'unter {amount}' },
@@ -384,6 +387,9 @@ export const UI = {
   'address.save': { ru: 'Сохранить адрес', en: 'Save address', it: 'Salva indirizzo', fr: "Enregistrer l'adresse", de: 'Adresse speichern' },
   'address.saved': { ru: 'Адрес сохранён', en: 'Address saved', it: 'Indirizzo salvato', fr: 'Adresse enregistrée', de: 'Adresse gespeichert' },
   'address.saveFailed': { ru: 'Не удалось сохранить адрес', en: 'Could not save the address', it: "Impossibile salvare l'indirizzo", fr: "Impossible d'enregistrer l'adresse", de: 'Adresse konnte nicht gespeichert werden' },
+  'address.loadFailed': { ru: 'Не удалось загрузить адреса', en: 'Could not load your addresses', it: 'Impossibile caricare gli indirizzi', fr: 'Impossible de charger vos adresses', de: 'Adressen konnten nicht geladen werden' },
+  'cards.loadFailed': { ru: 'Не удалось загрузить сохранённые карты', en: 'Could not load your saved cards', it: 'Impossibile caricare le carte salvate', fr: 'Impossible de charger vos cartes enregistrées', de: 'Gespeicherte Karten konnten nicht geladen werden' },
+  'common.actionFailed': { ru: 'Не получилось. Проверьте соединение и попробуйте ещё раз', en: 'That did not work. Check your connection and try again', it: 'Operazione non riuscita. Controlla la connessione e riprova', fr: 'Cela n’a pas fonctionné. Vérifiez votre connexion et réessayez', de: 'Das hat nicht geklappt. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut' },
   'address.empty': { ru: 'Сохранённых адресов пока нет', en: 'No saved addresses yet', it: 'Nessun indirizzo salvato', fr: 'Aucune adresse enregistrée', de: 'Noch keine gespeicherten Adressen' },
   'address.default': { ru: 'Основной', en: 'Default', it: 'Predefinito', fr: 'Par défaut', de: 'Standard' },
   'address.makeDefault': { ru: 'Сделать основным', en: 'Make default', it: 'Imposta come predefinito', fr: 'Définir par défaut', de: 'Als Standard festlegen' },
@@ -876,6 +882,15 @@ export const UI = {
   // Page titles and meta descriptions. These are the <title> and
   // <meta name="description"> a search result shows, so they are written for
   // that column of text rather than lifted from the headings on the page.
+  // The homepage's brand line, after "LUXE VAULT — ". English is the root
+  // layout's SITE_TITLE; keep the two the same.
+  'seo.home.title': {
+    ru: 'Одежда в стиле дизайнерских моделей из Швейцарии',
+    en: 'Designer-Inspired Fashion from Switzerland',
+    it: 'Moda ispirata ai designer dalla Svizzera',
+    fr: 'Mode inspirée des créateurs, depuis la Suisse',
+    de: 'Designer-inspirierte Mode aus der Schweiz',
+  },
   'seo.home.description': {
     ru: 'Реплики и вещи, вдохновлённые дизайнерскими моделями: одежда, обувь и аксессуары. Цены в CHF, доставка Швейцарской почтой, 14 дней на возврат.',
     en: 'Replica and designer-inspired clothing, shoes and accessories, clearly labelled. Prices in CHF, tracked Swiss Post shipping, 14-day returns.',

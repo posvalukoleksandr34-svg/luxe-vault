@@ -2680,6 +2680,19 @@ body:has([data-admin-shell]) .overflow-x-auto {
 
 /* --- Page transitions (View Transitions API) ----------------------------- */
 
+/* Full page loads may transition too (the cart to the checkout, the checkout
+   to its confirmation: lib/document-transition.ts). Both sides must opt in;
+   lib/motion-boot.ts then skips every load that did not ask for it, so this
+   alone animates nothing. */
+@view-transition {
+  navigation: auto;
+}
+/* Arrived inside such a transition: the browser is already opening the page,
+   so its own fallback fade would play twice. */
+html[data-vt-doc] .page-enter {
+  animation: none;
+}
+
 /* The persistent frame: named only while a page transition runs, so outside
    one nothing changes (a permanent name would make the header a backdrop
    root and break the blur of the menus that open from it). Each appears at

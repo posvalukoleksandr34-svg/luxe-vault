@@ -285,9 +285,10 @@ export function UserPanel() {
           <button
             type="button"
             onClick={() => setPanel(null)}
+            aria-label={t('acct.close')}
             className="text-muted-foreground transition hover:text-foreground"
           >
-            <X className="size-5" />
+            <X aria-hidden className="size-5" />
           </button>
         </div>
 

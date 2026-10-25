@@ -5,6 +5,7 @@ import { Footer } from '@/components/footer'
 import { Header } from '@/components/header'
 import { EmptyState } from '@/components/state-view'
 import { useStore } from '@/lib/store'
+import { useDocumentTitle } from '@/lib/use-document-title'
 
 /**
  * The shop's 404, in the visitor's language and the shop's frame.
@@ -18,12 +19,17 @@ import { useStore } from '@/lib/store'
 export function NotFoundView({ kind = 'page' }: { kind?: 'page' | 'product' }) {
   const { t, cartCount, setPanel } = useStore()
   const product = kind === 'product'
+  useDocumentTitle(
+    product ? t('state.discontinuedTitle') : t('state.notFoundTitle'),
+    product ? 'This piece is no longer available' : 'Page not found',
+  )
 
   return (
     <>
       <Header />
       <main id="main" className="mx-auto flex min-h-[60vh] w-full max-w-xl items-center justify-center px-6 py-16">
         <EmptyState
+          asHeading={1}
           icon={product ? PackageX : SearchX}
           title={product ? t('state.discontinuedTitle') : t('state.notFoundTitle')}
           hint={product ? t('state.discontinuedHint') : t('state.notFoundHint')}

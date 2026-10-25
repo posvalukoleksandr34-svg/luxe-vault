@@ -69,7 +69,9 @@ export function Header() {
             className="tap-safe relative flex h-9 shrink-0 items-center gap-3 text-foreground transition-opacity hover:opacity-70"
             aria-label={menuOpen ? t('nav.closeMenu') : t('nav.menu')}
             aria-expanded={menuOpen}
-            aria-controls="site-menu"
+            // Only while it exists: the menu is mounted on first open, and a
+            // reference to a missing id is an ARIA error (axe).
+            aria-controls={menuOpen ? 'site-menu' : undefined}
             aria-haspopup="dialog"
           >
             <MenuIcon open={menuOpen} />
@@ -99,7 +101,7 @@ export function Header() {
             two always match at each size. */}
         <Link
           href="/"
-          aria-label="LUXE VAULT — home"
+          aria-label={`LUXE VAULT — ${t('nav.home')}`}
           className="tap-safe flex select-none items-baseline gap-[0.2em] justify-self-center whitespace-nowrap font-serif text-base font-bold tracking-[var(--track)] text-foreground [--track:0.08em] min-[380px]:text-lg min-[380px]:[--track:0.14em] sm:text-xl sm:[--track:0.24em] lg:text-[22px] lg:[--track:0.28em]"
         >
           <span>LUXE</span>
@@ -114,7 +116,7 @@ export function Header() {
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
             className="tap-safe flex size-8 shrink-0 items-center justify-center text-muted-foreground transition hover:text-foreground sm:size-9"
-            aria-label="Search"
+            aria-label={t('search.open')}
             aria-expanded={searchOpen}
           >
             <Search className="size-[18px]" />

@@ -42,9 +42,19 @@ function fill(key: UIKey, locale: StorefrontLocale, vars: Record<string, string>
 // ---------------------------------------------------------------- storefront
 
 export function homeMetadata(locale: StorefrontLocale): Metadata {
-  // No title: the homepage keeps the root layout's full site title, which is
-  // the brand line a search for the shop's own name should return.
-  return pageMetadata({ path: '/', locale, descriptionKey: 'seo.home.description' })
+  const base = pageMetadata({ path: '/', locale, descriptionKey: 'seo.home.description' })
+  // English: no title, so the homepage keeps the root layout's full site
+  // title, the brand line a search for the shop's own name should return.
+  if (locale === DEFAULT_LOCALE) return base
+  // Elsewhere the same brand line in the page's language. Absolute: it is
+  // "LUXE VAULT — …", not "… — LUXE VAULT" from the template.
+  const title = `LUXE VAULT \u2014 ${translate(UI['seo.home.title'], locale)}`
+  return {
+    ...base,
+    title: { absolute: title },
+    openGraph: { ...base.openGraph, title },
+    twitter: { ...base.twitter, title },
+  }
 }
 
 export function catalogMetadata(locale: StorefrontLocale): Metadata {

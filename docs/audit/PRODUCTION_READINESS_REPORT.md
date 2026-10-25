@@ -43,7 +43,7 @@ Nothing was deployed, migrated, rotated, paid, refunded or emailed.
 | C-6 | **MEDIUM** | **Dependency updates blocked.** Dependabot PR #26 (27 minor/patch updates, including zod 4.6.7, stripe and TypeScript 5.9.3) has failed CI since 2026-10-23. With TypeScript 5.9 and `"target": "es5"`, the regex `u` flag fails with TS1501 (26 errors; the CI log shows the first 12). Behind them, with PR #26's @types/node 20.19.43, a Node `Buffer` response body fails the newer DOM typings (1× TS2345). | CI job 120464694403; reproduced locally with TypeScript 5.9.3 and @types/node 20.19.43. | **FIXED:** target `ES2018` and a `Uint8Array` body in the invoice route. Typecheck is clean with both 5.2.2 and 5.9.3 + 20.19.43. PR #26 needs a rebase once PR #28 merges. |
 | C-7 | **MEDIUM** | **"Hourly" jobs run every 3–6 hours.** GitHub delays scheduled workflows; runs of "Abandoned-cart reminders" on 2026-10-24 were at 00:49, 05:58 and 11:10. Review requests and reservation release are delayed accordingly. The Vercel daily cron (`/api/cron/sweep`) covers reservations and the refund sweep, not review requests. | Actions run list. | NOT FIXED: platform choice (OA-10 a). |
 | C-8 | **MEDIUM** | **GitHub-side failure alerts do not reach Telegram.** `INTERNAL_API_SECRET` was empty in the backup job; the step exits 0 without sending, so a failed backup alerted only by GitHub email. | Job 120815530219 env dump. | NOT FIXED: owner secret (OA-10 b). |
-| C-9 | **MEDIUM** | **Email bounces and complaints are not handled.** No Resend webhook handler exists, so hard bounces are not added to `email_suppressions`. This matters once review-request sending is enabled; production shows it `disabled`. | Code search; cron output `"sent":{"status":"disabled"}`. | NOT FIXED: needs a decision and Resend configuration (OA-12). |
+| C-9 | **MEDIUM** | **Email bounces and complaints are not handled.** No Resend webhook handler exists, so hard bounces are not added to `email_suppressions`. This matters once review-request sending is enabled; production shows it `disabled`. | Code search; cron output `"sent":{"status":"disabled"}`. | **Code FIXED 2026-10-25** (`/api/email/webhook`, CI-2 in CONTINUOUS_IMPROVEMENT_LOG.md). Needs Resend configuration and `RESEND_WEBHOOK_SECRET` (OA-12). |
 | C-10 | **LOW** | **Order numbers in public CI logs.** The hourly workflow printed the reservation response, including order numbers, into Actions logs, which are public for a public repository. | Job logs cited in C-2. | **FIXED** going forward: counts only (F-3). Old logs remain (OA-18, optional). |
 | C-11 | **LOW** | **The production-verification script was out of date.** `scripts/security/verify-production.sql` stopped at 0055, so the owner could not check 0056–0060 or the new server-only tables with it. | File contents. | **FIXED** (F-5), with a negative test. |
 | C-12 | **LOW** | **Build-time advisories.** 4 moderate (postcss-selector-parser through tailwindcss 3, tailwindcss-animate). No runtime exposure; the fix is a Tailwind 4 migration (AUD-17). | `npm audit`. | NOT FIXED (scheduled work). |
@@ -78,6 +78,27 @@ These are not confirmed and are not rated as findings.
 | F-7 | This report and the owner checklist. | `docs/audit/PRODUCTION_READINESS_REPORT.md`, `docs/audit/OWNER_APPROVAL_CHECKLIST.md` | n/a |
 
 Nothing in the storefront, checkout, payment logic, database schema, migrations, permissions or the catalogue was changed.
+
+### 4a. Continuous-improvement round, 2026-10-25 (on the branch, not merged or deployed)
+
+Details, tests and limitations per item are in
+[CONTINUOUS_IMPROVEMENT_LOG.md](CONTINUOUS_IMPROVEMENT_LOG.md).
+
+| # | Change | Live after |
+|---|---|---|
+| CI-1 | One order per checkout attempt (idempotency key, migration 0061) | merge + deploy + OA-19 |
+| CI-2 | Resend bounce/complaint webhook → `email_suppressions` (closes C-9 in code) | merge + deploy + OA-12 |
+| CI-3 | Cart quantity cap matches what the order charges (20 per line) | merge + deploy |
+| CI-4 | Page heading on 404, empty checkout, order-not-found | merge + deploy |
+| CI-5 | Checkout no longer flashes "Your cart is empty" | merge + deploy |
+| CI-6, CI-7 | Address book and saved cards: a failed load is an error with a retry, not "none"; the cards API reports Stripe failures (502) instead of an empty list | merge + deploy |
+| CI-8 | Admin stock page: a failed load is an error, not "0 positions" | merge + deploy |
+| CI-9, CI-10 | Tab titles (checkout, account, 404, localised homepages); `/cart` opens the cart | merge + deploy |
+| CI-11 | Accessibility: account drawer close button named; ARIA references fixed; header/logo labels localised (axe: no WCAG A/AA violations on 15 routes and 5 overlays, both widths) | merge + deploy |
+
+These were verified on the local stand only (production build, real
+Postgres, fake Stripe); GitHub CI runs on pull requests and has not run on
+these commits. None of them changes a blocker in section 8.
 
 ## 5. Tests run and results
 

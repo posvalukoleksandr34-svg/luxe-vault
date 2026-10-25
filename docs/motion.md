@@ -165,8 +165,19 @@ every action works identically.
   links and are not transitioned; the admin keeps its existing behaviour.
 - **Language switch** (`router.replace`) changes the page in place without a
   transition: the content is the same page, re-rendered.
-- **Full-page navigations** (payment redirects, account deletion,
-  `window.location`) are untouched by design.
+- **Full-page navigations.** The cart → checkout (both buttons, and the
+  restore-cart link) and checkout → confirmation open like any other page,
+  out of the button that was pressed, through the browser's *cross-document*
+  view transitions (`lib/document-transition.ts` leaves a note;
+  `lib/motion-boot.ts`, in `<head>` and allowed on the strict-CSP pages by
+  its hash, plays the transition only for the page the note names). Every
+  other full load — payment-provider redirects, account deletion, sign-out,
+  the admin, reloads, Back — is skipped and looks as before. Supported in
+  Chrome/Edge 126+ and Safari 18.2+; Firefox simply loads the page. The
+  browser gives up (plain load, no error) if the new page takes more than
+  4 s to show its first frame after the old one is photographed — reached
+  in the GPU-less test container from the animated home page at 390 px in
+  2 of 4 runs, not expected on real devices.
 - **Slow pages** (more than 900ms to arrive) show the old page until the
   new one is ready, as the App Router always has, then the fade.
 - **Rendering cost of the ambient background.** Measured in a GPU-less
@@ -210,9 +221,10 @@ and a phone or emulation at 390px, in Chrome and Safari.
 13. Header search: open the row, type two letters (suggestions drop in),
     Escape (they lift away), choose a suggestion (navigates with a transition).
 14. Product photo zoom: open and close.
-15. Checkout: go from cart to checkout and complete a test payment — the
-    redirect to the payment provider and back to the success page is an
-    ordinary full-page navigation.
+15. Checkout: from the cart press "Checkout" (signed in) or "Continue as
+    guest": the checkout opens out of that button. Complete a test payment:
+    the confirmation page opens the same way. The redirect to and from the
+    payment provider itself is an ordinary navigation.
 16. Turn on "Reduce motion" (OS, or the switch in the account settings): everything still works,
     nothing animates, drawers close instantly.
 17. Throttle the network to "Slow 3G": clicking a product never freezes the

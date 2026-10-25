@@ -3,6 +3,7 @@
 // id, the lookup token and the payment status can never be dictated by the
 // browser.
 import { PAYMENT_METHODS, requiresPrepayment } from '@/lib/data'
+import { MAX_LINE_QTY } from '@/lib/cart-limits'
 import {
   basketDeliveryDays,
   businessToCalendarDays,
@@ -286,7 +287,7 @@ export async function repriceItems(
     }
 
     basket.push(product)
-    const qty = Math.max(1, Math.min(Math.trunc(item.qty), 20))
+    const qty = Math.max(1, Math.min(Math.trunc(item.qty), MAX_LINE_QTY))
     // Only the CHOICE comes from the browser — product, size, colour,
     // quantity. Everything describing the product is the catalogue's.
     priced.push({
