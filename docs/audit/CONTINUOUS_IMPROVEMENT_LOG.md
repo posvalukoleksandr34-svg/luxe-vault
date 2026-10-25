@@ -11,6 +11,29 @@ paid, refunded or emailed.
 
 ---
 
+## CI-6 · Saved addresses: a network failure is not "no addresses" (2026-10-25)
+
+**Problem.** In Account → Address book a failed load (offline, timeout,
+server error) rendered the empty state "No saved addresses yet", telling
+the customer their addresses were gone, although `LoadError` exists for
+exactly this. A save that never got an answer threw an unhandled rejection
+with no message; "Remove" and "Make default" ignored error responses and
+network failures, so the click silently did nothing.
+
+**Change.** `components/saved-addresses.tsx`: load failures set
+`loadFailed` and show `LoadError` ("Could not load your addresses", with
+Try again) instead of the empty state; a failed save keeps the form and
+shows "Could not save the address"; a failed remove/make-default shows a
+toast ("That did not work. Check your connection and try again"). Two new
+strings in five languages (German formal, as the rest of the site).
+
+**Tests.** Browser on the production build, signed in as a test customer
+(`addresses-fail.js`) 5/5: load aborted → the error with retry, not the
+empty state; Try again → the list; DELETE answered 500 → toast, address
+still listed and still in the database; no uncaught errors.
+
+---
+
 ## CI-5 · Checkout no longer flashes "Your cart is empty" (2026-10-25)
 
 **Problem.** The saved cart is read in the browser after hydration; the

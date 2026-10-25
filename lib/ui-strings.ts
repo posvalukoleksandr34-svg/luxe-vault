@@ -385,6 +385,8 @@ export const UI = {
   'address.save': { ru: 'Сохранить адрес', en: 'Save address', it: 'Salva indirizzo', fr: "Enregistrer l'adresse", de: 'Adresse speichern' },
   'address.saved': { ru: 'Адрес сохранён', en: 'Address saved', it: 'Indirizzo salvato', fr: 'Adresse enregistrée', de: 'Adresse gespeichert' },
   'address.saveFailed': { ru: 'Не удалось сохранить адрес', en: 'Could not save the address', it: "Impossibile salvare l'indirizzo", fr: "Impossible d'enregistrer l'adresse", de: 'Adresse konnte nicht gespeichert werden' },
+  'address.loadFailed': { ru: 'Не удалось загрузить адреса', en: 'Could not load your addresses', it: 'Impossibile caricare gli indirizzi', fr: 'Impossible de charger vos adresses', de: 'Adressen konnten nicht geladen werden' },
+  'address.actionFailed': { ru: 'Не получилось. Проверьте соединение и попробуйте ещё раз', en: 'That did not work. Check your connection and try again', it: 'Operazione non riuscita. Controlla la connessione e riprova', fr: 'Cela n’a pas fonctionné. Vérifiez votre connexion et réessayez', de: 'Das hat nicht geklappt. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut' },
   'address.empty': { ru: 'Сохранённых адресов пока нет', en: 'No saved addresses yet', it: 'Nessun indirizzo salvato', fr: 'Aucune adresse enregistrée', de: 'Noch keine gespeicherten Adressen' },
   'address.default': { ru: 'Основной', en: 'Default', it: 'Predefinito', fr: 'Par défaut', de: 'Standard' },
   'address.makeDefault': { ru: 'Сделать основным', en: 'Make default', it: 'Imposta come predefinito', fr: 'Définir par défaut', de: 'Als Standard festlegen' },

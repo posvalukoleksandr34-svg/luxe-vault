@@ -10,7 +10,8 @@ assume earlier work landed without checking.
 - Completed this session: CI-1 (one order per checkout attempt), CI-2
   (email bounce/complaint webhook), CI-3 (cart quantity cap matches the
   order), CI-4 (page heading on state pages), CI-5
-  (checkout no longer flashes an empty cart). Details in
+  (checkout no longer flashes an empty cart), CI-6 (address book error
+  handling). Details in
   [CONTINUOUS_IMPROVEMENT_LOG.md](CONTINUOUS_IMPROVEMENT_LOG.md).
 - Local stand (outside the repo, scratchpad): Postgres 16 on
   `/var/tmp/lvpg:55441`, PostgREST `:54330`, gateway with storage `:54321`
