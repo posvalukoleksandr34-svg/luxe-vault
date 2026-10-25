@@ -11,6 +11,33 @@ paid, refunded or emailed.
 
 ---
 
+## CI-8 · Admin → Stock: a failed load is not an empty warehouse (2026-10-25)
+
+**Problem.** The stock page ignored a failed answer (`if (!res.ok) return`)
+and had no handler for a network failure, so an error looked like a shop
+with no products: "0 positions, 0 units" and an empty table. Staff could
+take that at face value (re-enter stock, import a file against what they
+believe is an empty list).
+
+**Change.** `components/admin/inventory-manager.tsx`: a failed first load
+shows an alert ("Не удалось загрузить остатки. Данные не изменились…") with
+"Повторить" instead of the table; a failed reload after a save keeps the
+list on screen and shows a toast. The list is requested with
+`cache: 'no-store'`. Same red alert style as the customers page.
+
+**Tests (real results).** Production build, signed in as admin with TOTP
+(`adm/inventory-fail.js`) 3/3: GET answered 500 → the alert with Повторить,
+no "Позиций" table; Повторить → the real list; no uncaught errors. Admin
+end-to-end suite (`adm/e2e.js`, including the stock edits, conflict and
+import paths) 70/70. Typecheck, lint, build clean.
+
+**Remaining (looked at, not changed).** Support inbox and the notification
+bell keep what is on screen on a failed refresh and toast/stay silent; on a
+failed first load they can show their empty state. Lower stakes (no data is
+written from those views); left in the backlog.
+
+---
+
 ## CI-7 · Saved cards: a Stripe or network failure is not "no saved cards" (2026-10-25)
 
 **Problem.** The same fault as CI-6, one layer deeper. `GET

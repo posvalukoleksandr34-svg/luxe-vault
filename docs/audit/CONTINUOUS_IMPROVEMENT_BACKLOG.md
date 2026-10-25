@@ -11,7 +11,8 @@ assume earlier work landed without checking.
   (email bounce/complaint webhook), CI-3 (cart quantity cap matches the
   order), CI-4 (page heading on state pages), CI-5
   (checkout no longer flashes an empty cart), CI-6 (address book error
-  handling), CI-7 (saved cards error handling, client and API). Details in
+  handling), CI-7 (saved cards error handling, client and API), CI-8 (admin
+  stock page error handling). Details in
   [CONTINUOUS_IMPROVEMENT_LOG.md](CONTINUOUS_IMPROVEMENT_LOG.md).
 - Local stand (outside the repo, scratchpad): Postgres 16 on
   `/var/tmp/lvpg:55441`, PostgREST `:54330`, gateway with storage `:54321`
@@ -41,6 +42,7 @@ Scores: impact × frequency × confidence ÷ (effort × risk), judged roughly.
 | 4 | Intermittent React #418 hydration warning | Seen once per many runs (PROJECT_IMPROVEMENT_LOG); not reproduced in 64 loads | TO INVESTIGATE |
 | 6 | Descriptive tab titles for /account and /checkout (client pages; title from the segment layout, localised) | Crawl: both show the default site title | LOW |
 | 7 | A `/cart` URL (typed or bookmarked) that opens the cart instead of a 404 | Crawl: `/cart` is 404; nothing links to it | LOW |
+| 8 | Support inbox and notification bell: a failed *first* load shows the empty state | Scan after CI-8; refreshes already keep data | LOW |
 | 5 | Build-tooling advisories (Tailwind 3 → 4, eslint-config-next) | AUD-17 / C-12; build-time only | DEFERRED (major upgrade, high regression risk) |
 
 ## Important decisions
