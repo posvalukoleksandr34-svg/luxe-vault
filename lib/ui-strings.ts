@@ -322,6 +322,8 @@ export const UI = {
   'search.didYouMean': { ru: 'Возможно, вы искали это', en: 'Showing closest matches', it: 'Risultati più simili', fr: 'Résultats les plus proches', de: 'Ähnlichste Treffer' },
   'search.tryInstead': { ru: 'Попробуйте', en: 'Try instead', it: 'Prova invece', fr: 'Essayez plutôt', de: 'Versuchen Sie stattdessen' },
   'search.searching': { ru: 'Ищем…', en: 'Searching…', it: 'Ricerca in corso…', fr: 'Recherche en cours…', de: 'Suche läuft…' },
+  'search.open': { ru: 'Поиск', en: 'Search', it: 'Cerca', fr: 'Rechercher', de: 'Suchen' },
+  'nav.home': { ru: 'на главную', en: 'home', it: 'home page', fr: 'accueil', de: 'Startseite' },
   'search.panel': { ru: 'Результаты поиска', en: 'Search results', it: 'Risultati di ricerca', fr: 'Résultats de recherche', de: 'Suchergebnisse' },
   'search.count': { ru: 'Найдено: {n}', en: '{n} pieces', it: '{n} capi', fr: '{n} pièces', de: '{n} Teile' },
   'search.under': { ru: 'до {amount}', en: 'under {amount}', it: 'sotto {amount}', fr: 'moins de {amount}', de: 'unter {amount}' },

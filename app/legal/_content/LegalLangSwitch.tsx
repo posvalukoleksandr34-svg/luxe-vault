@@ -17,10 +17,10 @@ import { cn } from '@/lib/utils'
  * change one setting.
  */
 export function LegalLangSwitch() {
-  const { locale, setLocale } = useStore()
+  const { locale, setLocale, t } = useStore()
 
   return (
-    <nav aria-label="Language" className="not-prose flex flex-wrap items-center gap-1">
+    <nav aria-label={t('acct.language')} className="not-prose flex flex-wrap items-center gap-1">
       {STOREFRONT_LOCALES.map((l) => (
         <button
           key={l.code}

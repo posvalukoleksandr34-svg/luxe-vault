@@ -13,7 +13,7 @@ assume earlier work landed without checking.
   (checkout no longer flashes an empty cart), CI-6 (address book error
   handling), CI-7 (saved cards error handling, client and API), CI-8 (admin
   stock page error handling), CI-9 (tab titles, `/cart`), CI-10 (localised
-  homepage titles, 404 titles).
+  homepage titles, 404 titles), CI-11 (axe scan fixes).
 - CI-equivalent checks run locally on the branch head (CI runs only on pull
   requests, so these commits have no GitHub run yet): typecheck, lint, four
   unit suites, backup tests, build, client-bundle check, migrations on an
@@ -48,6 +48,8 @@ Scores: impact × frequency × confidence ÷ (effort × risk), judged roughly.
 | 6 | Descriptive tab titles for /account and /checkout (client pages; title from the segment layout, localised) | Crawl: both show the default site title | DONE (CI-9) |
 | 7 | A `/cart` URL (typed or bookmarked) that opens the cart instead of a 404 | Crawl: `/cart` is 404; nothing links to it | DONE (CI-9) |
 | 8 | Support inbox and notification bell: a failed *first* load shows the empty state | Scan after CI-8; refreshes already keep data | LOW |
+| 9 | Breadcrumb `nav` label still English ("Breadcrumb"); pass a localised label from callers | CI-11 scan notes | LOW |
+| 10 | Manual keyboard / screen-reader pass on checkout and the drawers | Automated axe is clean, but covers only part of WCAG | MEDIUM (needs a person or a longer scripted pass) |
 | 5 | Build-tooling advisories (Tailwind 3 → 4, eslint-config-next) | AUD-17 / C-12; build-time only | DEFERRED (major upgrade, high regression risk) |
 
 ## Important decisions

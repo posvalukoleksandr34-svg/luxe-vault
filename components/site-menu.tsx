@@ -224,7 +224,7 @@ export function SiteMenu() {
           <Link
             href="/"
             onClick={closeSiteMenu}
-            aria-label="LUXE VAULT — home"
+            aria-label={`LUXE VAULT — ${t('nav.home')}`}
             className="site-menu__brand font-serif font-bold"
           >
             <span>LUXE</span>

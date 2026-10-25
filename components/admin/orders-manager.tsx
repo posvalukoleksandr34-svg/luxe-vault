@@ -469,7 +469,7 @@ export function OrdersManager({
                     type="button"
                     onClick={() => setOpenId(open ? null : order.id)}
                     aria-expanded={open}
-                    aria-controls={`order-detail-${order.id}`}
+                    aria-controls={open ? `order-detail-${order.id}` : undefined}
                     className="flex w-full items-start justify-between gap-3 p-3 text-left"
                   >
                     <span className="min-w-0">
@@ -544,7 +544,7 @@ export function OrdersManager({
                               setOpenId(open ? null : order.id)
                             }}
                             aria-expanded={open}
-                            aria-controls={`order-detail-${order.id}`}
+                            aria-controls={open ? `order-detail-${order.id}` : undefined}
                             className="whitespace-nowrap font-medium text-foreground underline-offset-4 hover:underline"
                           >
                             {order.id}

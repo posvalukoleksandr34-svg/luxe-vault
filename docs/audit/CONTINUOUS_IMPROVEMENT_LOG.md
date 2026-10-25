@@ -11,6 +11,55 @@ paid, refunded or emailed.
 
 ---
 
+## CI-11 · Accessibility scan: unnamed close button, dangling ARIA reference, English-only labels (2026-10-25)
+
+**Problem.** An axe-core scan (WCAG 2.0/2.1 A and AA rules) of the
+production build:
+- 15 storefront routes × 1280/390 px: no violations.
+- The same with overlays open (menu, cart drawer, search, size finder,
+  account drawer): the account drawer's close button had **no accessible
+  name** (critical: a screen reader announced only "button").
+- "Needs review": the header menu button pointed `aria-controls` at
+  `site-menu`, an element that only exists once the menu has been opened.
+  The admin order list did the same for its collapsed order details.
+- By reading the header code: the search button's label was the English
+  word "Search" in every language. The logo links in the header, menu and
+  footer said "LUXE VAULT — home". The legal pages' language switch was
+  labelled "Language".
+
+**Change.**
+- `components/user-panel.tsx`: close button labelled (`acct.close`), icon
+  `aria-hidden`.
+- `components/header.tsx` and `components/admin/orders-manager.tsx`:
+  `aria-controls` only while the controlled element exists (the pattern
+  the search box already used).
+- New strings `search.open` and `nav.home` in five languages. The search
+  button and the three logo links use them. The legal language switch uses
+  `acct.language`.
+
+**Tests (real results).**
+- axe after the change: overlays 10/10 states clean, pages 30/30 clean.
+- axe sanity check: a planted image without alt text is reported, so the
+  scan does run.
+- Server HTML shows "Cerca" and "LUXE VAULT — home page" on `/it`,
+  "Suchen" and "LUXE VAULT — Startseite" on `/de/faq`, and no
+  `aria-controls="site-menu"` while the menu is closed.
+- Regression: storefront smoke 16/16, admin e2e 70/70. Typecheck, lint and
+  build clean.
+
+**Limitations.**
+- Automated rules catch only part of WCAG. Keyboard order, focus visibility
+  and screen-reader wording were not re-tested by hand this round.
+- axe could not judge colour contrast on 34 elements over images. They are
+  listed as "needs review", not passed.
+- The breadcrumb `nav` is still labelled "Breadcrumb" in English. It is a
+  server component without the store, so localising it means passing the
+  label from every caller.
+- The overlay scan typed into search, but did not check that a suggestion
+  list actually appeared.
+
+---
+
 ## CI-10 · Homepage title in each language; 404 pages say "not found" (2026-10-25)
 
 **Problem.** Re-running the storefront crawl (3 runs × 22 routes × 2 widths:
