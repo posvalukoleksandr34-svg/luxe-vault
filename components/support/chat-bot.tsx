@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { PrivacyNotice } from '@/components/privacy-notice'
 
 /**
- * The concierge behind the floating button, bottom right.
+ * The concierge behind the floating button, bottom left.
  *
  * TWO MODES, ONE WIDGET.
  *
@@ -617,12 +617,12 @@ export function ChatBot() {
       // Not .hide-with-keyboard: that hides bottom-fixed bars while a field
       // has focus on a phone, and this panel HOLDS the field — it hid itself
       // the moment the customer tapped into it, so nothing could be typed.
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)', transformOrigin: 'bottom right' }}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)', transformOrigin: 'bottom left' }}
       data-state={state}
       inert={!open || undefined}
       // Rises from the corner the launcher sits in, rather than sliding in
       // from the edge: on a desktop it is a floating window, not a drawer.
-      className="motion-dialog fixed bottom-0 right-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-l border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:right-5 sm:h-[580px] sm:w-[390px] sm:border"
+      className="motion-dialog fixed bottom-0 left-0 z-[95] flex h-[min(80vh,640px)] w-full flex-col border-r border-t border-gold/25 bg-popover shadow-2xl sm:bottom-5 sm:left-5 sm:h-[580px] sm:w-[390px] sm:border"
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">

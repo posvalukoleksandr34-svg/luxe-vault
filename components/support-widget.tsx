@@ -4,8 +4,8 @@ import { LifeBuoy } from 'lucide-react'
 import { useStore } from '@/lib/store'
 
 /**
- * Floating launcher, bottom RIGHT: opens the QUICK-ANSWERS BOT
- * (components/support/chat-bot.tsx), which takes over this same bottom-right
+ * Floating launcher, bottom LEFT: opens the QUICK-ANSWERS BOT
+ * (components/support/chat-bot.tsx), which takes over this same bottom-left
  * corner — so while the bot is open this button is gone, and it comes back the
  * moment the bot is closed. Unmounted rather than hidden: a button underneath
  * a panel is still focusable and still reachable by a screen reader.
@@ -17,9 +17,8 @@ import { useStore } from '@/lib/store'
  * yet, which live in the support centre, so a waiting reply sends them there
  * rather than into the bot.
  */
-// Bottom right, not bottom left (2026-10): the page's content is
-// left-aligned, so a heavy button in the left corner stacked visual weight on
-// the side that already had the most of it.
+// Bottom left, at the owner's request (2026-10-25). Toasts moved to the
+// bottom right on wider screens so the two never stack (toast-viewport.tsx).
 export function SupportWidget() {
   const { t, openChat, openSupport, panel, supportUnread } = useStore()
   const label = supportUnread > 0 ? `${t('support.title')} (${supportUnread})` : t('support.title')
@@ -33,7 +32,7 @@ export function SupportWidget() {
       aria-label={label}
       // The chat returns focus here when it closes (components/support/chat-bot.tsx).
       data-chat-launcher=""
-      className="hide-with-keyboard group fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-[40] md:bottom-5 flex items-center gap-2.5 rounded-xl border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
+      className="hide-with-keyboard group fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-5 z-[40] md:bottom-5 flex items-center gap-2.5 rounded-xl border border-gold/40 bg-background px-4 py-3 text-gold shadow-2xl transition-all duration-300 hover:bg-gold hover:text-gold-foreground"
     >
       <LifeBuoy className="size-[18px]" />
       <span className="hidden text-[11px] uppercase tracking-[0.2em] sm:inline">{t('support.title')}</span>
