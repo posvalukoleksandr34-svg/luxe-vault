@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, CheckCircle2, Loader2, Mail, MapPin, Package, RotateCcw, SearchX, Truck } from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, Loader2, Mail, MapPin, Package, RotateCcw, SearchX, Truck } from 'lucide-react'
 import Image from 'next/image'
 import { Link } from '@/components/locale-link'
 import { useSearchParams } from 'next/navigation'
@@ -9,11 +9,21 @@ import { Header } from '@/components/header'
 import { trackPurchase } from '@/lib/analytics'
 import { BUSINESS } from '@/config/business'
 import { FULFILMENT, describeBusinessDays, estimateDelivery, formatDeliveryWindow } from '@/lib/fulfilment'
-import { fetchMyOrders } from '@/lib/order-registry'
+import { loadMyOrders } from '@/lib/order-registry'
+import { LoadError } from '@/components/load-error'
 import { formatCharged, orderCharge } from '@/lib/currency'
 import { productImage } from '@/lib/product-image'
 import { formatChf, useStore } from '@/lib/store'
 import type { Order } from '@/lib/types'
+
+/** Ask again every 3 s, for up to a minute, while the payment is unconfirmed. */
+const POLL_MS = 3000
+const POLL_TRIES = 20
+
+/** Paid for, but the provider has not confirmed it yet. */
+function isAwaitingConfirmation(order: Order): boolean {
+  return order.paymentStatus === 'pending_payment' || order.paymentStatus === 'confirming'
+}
 
 /**
  * Thank-you page. Reached only after a payment resolves.
@@ -55,35 +65,54 @@ function SuccessSkeleton() {
 function SuccessContent() {
   const params = useSearchParams()
   const orderId = params.get('order')?.trim().toUpperCase() ?? ''
-  const { t, tf, locale, colorName } = useStore()
+  const { t, tf, locale, colorName, currentUser } = useStore()
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  // The lookup failed (offline, a server error): not the same as "no such
+  // order", which is what an empty result used to be shown as.
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
+    let timer: ReturnType<typeof setTimeout> | undefined
     if (!orderId) {
       setLoading(false)
       return
     }
-    fetchMyOrders()
-      .then((orders) => {
-        if (!active) return
-        setOrder(orders.find((o) => o.id === orderId) ?? null)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    // Arriving from the payment provider, the payment may not be confirmed
+    // yet: the webhook can land a few seconds after the customer does. While
+    // it is pending, ask again every few seconds for a minute, so the page
+    // moves to "paid" (or "did not go through") by itself.
+    let tries = 0
+    const poll = async () => {
+      const result = await loadMyOrders()
+      if (!active) return
+      if (!result.ok) {
+        setFailed(true)
+        setLoading(false)
+        return
+      }
+      const found = result.orders.find((o) => o.id === orderId) ?? null
+      setFailed(false)
+      setOrder(found)
+      setLoading(false)
+      if (found && isAwaitingConfirmation(found) && ++tries < POLL_TRIES) timer = setTimeout(poll, POLL_MS)
+    }
+    void poll()
     return () => {
       active = false
+      if (timer) clearTimeout(timer)
     }
-  }, [orderId])
+  }, [orderId, attempt])
 
-  // The purchase event fires once, keyed on the order id. GA4 and every other
-  // tool de-duplicates on transaction_id, so a customer refreshing the
-  // thank-you page cannot double-count revenue.
+  // The purchase event fires once, keyed on the order id, and only for a
+  // payment that is confirmed: an order whose payment failed or is still
+  // pending is not revenue. GA4 and every other tool de-duplicates on
+  // transaction_id, so refreshing the page cannot double-count.
   useEffect(() => {
-    if (order) trackPurchase(order)
+    if (order?.paymentStatus === 'paid') trackPurchase(order)
   }, [order])
 
   // Prefer the window stamped at purchase; fall back for pre-0011 orders.
@@ -94,6 +123,22 @@ function SuccessContent() {
     : null
 
   if (loading) return <SuccessSkeleton />
+
+  if (failed && !order) {
+    return (
+      <>
+        <Header />
+        <main id="main" className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6">
+          <LoadError
+            onRetry={() => {
+              setLoading(true)
+              setAttempt((n) => n + 1)
+            }}
+          />
+        </main>
+      </>
+    )
+  }
 
   if (!order) {
     return (
@@ -116,6 +161,19 @@ function SuccessContent() {
   // What was actually paid, in the currency it was paid in. The lines above
   // it stay in CHF, the currency the order is priced in.
   const charge = orderCharge(order)
+  // The payment's own state, as the webhook recorded it — never inferred from
+  // having been sent back here.
+  const paid = order.paymentStatus === 'paid'
+  // Not paid, and the order is gone: its pieces went back on sale and it can
+  // no longer be paid (the intent route refuses a cancelled order).
+  const cancelled = !paid && (order.status === 'cancelled' || order.status === 'refunded')
+  // The bank said no, or the attempt was abandoned — the order is still there
+  // to be paid.
+  const declined = !cancelled && order.paymentStatus === 'failed'
+  const interrupted = !cancelled && order.paymentStatus === 'expired'
+  const didNotGoThrough = cancelled || declined || interrupted
+  const outcomeTitle = cancelled ? 'checkout.errOrderCancelled' : declined ? 'pay.declinedTitle' : 'pay.incompleteTitle'
+  const outcomeBody = cancelled ? 'state.cancelledHint' : declined ? 'pay.declinedBody' : 'pay.incompleteBody'
 
   return (
     <>
@@ -123,21 +181,49 @@ function SuccessContent() {
 
       <main className="mx-auto w-full max-w-2xl px-5 py-12 sm:px-6 sm:py-16">
         {/* Confirmation */}
-        <div className="text-center">
-          <CheckCircle2 className="mx-auto size-10 text-gold" strokeWidth={1.25} />
+        <div className="text-center" aria-live="polite">
+          {paid ? (
+            <CheckCircle2 className="mx-auto size-10 text-gold" strokeWidth={1.25} />
+          ) : didNotGoThrough ? (
+            <AlertCircle className="mx-auto size-10 text-destructive" strokeWidth={1.25} />
+          ) : (
+            <Loader2 className="mx-auto size-10 animate-spin text-gold" strokeWidth={1.25} />
+          )}
           <h1 className="mt-6 font-serif text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
-            {t('success.thankYou')}
-            {order.customer.name ? `, ${order.customer.name.split(' ')[0]}` : ''}!
+            {paid ? (
+              <>
+                {t('success.thankYou')}
+                {order.customer.name ? `, ${order.customer.name.split(' ')[0]}` : ''}!
+              </>
+            ) : didNotGoThrough ? (
+              t(outcomeTitle)
+            ) : (
+              t('pay.processingTitle')
+            )}
           </h1>
+          {/* Three states, each said plainly: confirmed; still being
+              confirmed (a fast customer lands a few seconds before Stripe's
+              event, and some methods settle later); did not go through. */}
           <p className="mx-auto mt-3 max-w-md text-[14px] font-light leading-relaxed text-muted-foreground">
-            {t('success.subtitle')}
+            {paid ? t('success.subtitle') : didNotGoThrough ? t(outcomeBody) : t('pay.processingBody')}
           </p>
-          {/* The payment's own state, as the webhook recorded it. A fast
-              customer can land here a second before Stripe's event does, so
-              "processing" is said plainly rather than implying success. */}
-          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-gold">
-            {order.paymentStatus === 'paid' ? t('pay.successTitle') : t('pay.processingTitle')}
-          </p>
+          {didNotGoThrough && (
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              {/* Paying again is in the account's order list; a guest has
+                  no account to open, so they are pointed to support. */}
+              {!cancelled && currentUser && (
+                <Link
+                  href="/account?section=orders"
+                  className="rounded-xl border border-transparent bg-gold-gradient px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.15em] text-gold-foreground shadow-gold"
+                >
+                  {t('orders.payNow')}
+                </Link>
+              )}
+              <Link href="/contact" className="text-[12px] text-foreground underline underline-offset-4">
+                {t('nav.contact')}
+              </Link>
+            </div>
+          )}
 
           {/* The id a customer quotes to support. Monospaced and selectable. */}
           <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-gold/40 bg-gold/[0.05] px-6 py-4">

@@ -76,6 +76,42 @@ Verified in code, no change needed:
 | O-2 | **H** | **There is no admin screen for payment reconciliation.** `/api/admin/reconciliation` exists but returns JSON only. That is the tool the owner needs for C-2 (six orders, Stripe paid / shop unpaid). Nothing can apply Stripe's status after an owner checks it. | `app/api/admin/reconciliation/route.ts`; `grep reconciliation components app/admin` → nothing. |
 | O-3 | M | **A payment refused for an amount or currency mismatch only raises an alert.** It is one of the possible causes of C-2. The order screen does not show it. | `app/api/payments/stripe/webhook/route.ts` (`chargeMismatch`). |
 
+**Status (2026-10-25, this branch):**
+- **O-1 fixed.** `/checkout/success` shows the payment's recorded state:
+  - paid: thank-you;
+  - pending or confirming: "processing", re-reading every 3 s for up to a
+    minute, so it turns to "paid" by itself;
+  - failed: "declined";
+  - expired: "incomplete";
+  - order cancelled: "cancelled", with no payment link.
+
+  A failed lookup shows an error with a retry, not "order not found". The
+  analytics purchase event fires for paid orders only. A guest is pointed to
+  support, not to an account they do not have.
+- **O-2 fixed.** `/admin/reconciliation` ("Сверка платежей", under Продажи)
+  lists every discrepancy, with what it means and what to do. One kind,
+  `paid_not_recorded`, has a button. `POST /api/admin/reconciliation/apply`
+  then:
+  - fetches the PaymentIntent from Stripe itself;
+  - checks it is `succeeded`;
+  - checks it belongs to the named order, and the order is bound to no other
+    payment;
+  - checks it paid the full amount in the order's currency;
+  - runs the webhook's own code, now shared as
+    `lib/server/stripe-payment-apply.ts`: the same state machine, stock check,
+    Telegram slip and receipt, each once only.
+
+  Applying twice, or a late webhook afterwards, changes nothing. Nothing is
+  ever un-paid from a button.
+- **O-3 addressed.** An unrecorded payment that is short or in another
+  currency is listed as `amount_mismatch` or `currency_mismatch`, never as
+  "paid, not recorded", and has no button. A payment still processing at the
+  bank is listed as `processing_not_recorded`.
+- Payment reminders for unpaid orders skip orders holding a product no longer
+  on sale, which cannot be paid (migration 0062).
+- The six live orders of C-2 are **not** touched: deciding them is the
+  owner's, on the live site, after deploy (OA-03).
+
 ## 6. SEO and localisation (to re-verify after the changes)
 
 - Canonical, hreflang, sitemap and JSON-LD are present and were verified in

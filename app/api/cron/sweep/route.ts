@@ -75,13 +75,19 @@ async function runSweep(request: NextRequest) {
     const numbers = (data ?? []) as string[]
     // One read for the batch, not one per order.
     const orders = await getOrdersByNumbers(numbers)
+    // A reminder asks the customer to pay; an order holding a piece the owner
+    // has since taken off sale cannot be paid (the intent route refuses it,
+    // migration 0062), so it gets no reminder. The public catalogue is what
+    // is on sale.
+    const onSale = numbers.length > 0 ? new Set((await readCatalog()).products.map((p) => p.id)) : new Set<string>()
     for (const number of numbers) {
       const order = orders.get(number)
+      if (!order || order.items.some((i) => !onSale.has(i.productId))) continue
       // The claim already stamped recovery_sent_at, so a send that fails here
       // is not retried. That is the intended trade: one missed reminder costs
       // far less than a customer receiving the same nudge every hour because
       // a transient failure kept the row eligible.
-      if (order && (await sendRecoveryEmail(order))) result.recovery++
+      if (await sendRecoveryEmail(order)) result.recovery++
     }
   } catch (e) {
     result.errors.push(`recovery: ${(e as Error).message}`)
