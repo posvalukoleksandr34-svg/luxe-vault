@@ -84,10 +84,19 @@ function localized(
   }))
 }
 
+/**
+ * Rebuilt at most an hour after the catalogue changes. Publishing or
+ * withdrawing a product in the admin refreshes it at once (revalidateStorefront
+ * revalidates the whole layout); this is the backstop for a product taken off
+ * sale any other way — its rights record deleted, a status changed in the SQL
+ * editor — so a withdrawn product does not stay listed until the next deploy.
+ */
+export const revalidate = 3600
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Build time. The storefront's content changes when the catalogue is
-  // redeployed, so this is an honest signal rather than a hardcoded date that
-  // would go stale and teach Google to ignore the field.
+  // When this was generated. The storefront's content changes when the
+  // catalogue does, so this is an honest signal rather than a hardcoded date
+  // that would go stale and teach Google to ignore the field.
   const now = new Date()
 
   void SECTIONS_ARE_ANCHORS

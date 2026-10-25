@@ -560,8 +560,8 @@ function CategoryTile({
   }
 
   return (
-    <li className="rounded-xl border border-border bg-background/60 p-2.5">
-      <div className="flex items-center gap-3">
+    <li className="min-w-0 rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -578,9 +578,9 @@ function CategoryTile({
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-28">
           <p className="truncate text-sm text-foreground">{label}</p>
-          <p className="font-mono text-[10px] text-muted-foreground/85">
+          <p className="break-words font-mono text-[10px] text-muted-foreground/85">
             {slug} · {count} · в продаже {onSale}
           </p>
           {onSale === 0 && <p className="text-[11px] text-amber-800">Не показана в магазине</p>}

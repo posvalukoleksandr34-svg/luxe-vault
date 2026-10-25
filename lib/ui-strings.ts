@@ -938,12 +938,14 @@ export const UI = {
     fr: '{name} — expédié de Suisse.',
     de: '{name} — Versand aus der Schweiz.',
   },
+  // Only what is true of every product: "limited drops" was a claim no
+  // product record backs.
   'seo.product.fallback': {
-    ru: '{name} — ограниченный дроп, доставка из Швейцарии.',
-    en: '{name} — designer-inspired, limited drops, shipped from Switzerland.',
-    it: '{name} — ispirazione designer, drop limitati, spedizione dalla Svizzera.',
-    fr: '{name} — inspiration créateur, séries limitées, expédié de Suisse.',
-    de: '{name} — designer-inspiriert, limitierte Drops, Versand aus der Schweiz.',
+    ru: '{name} — доставка из Швейцарии.',
+    en: '{name} — shipped from Switzerland.',
+    it: '{name} — spedizione dalla Svizzera.',
+    fr: '{name} — expédié de Suisse.',
+    de: '{name} — Versand aus der Schweiz.',
   },
   'auth.resent': { ru: 'Письмо отправлено повторно', en: 'Email sent again', it: 'Email inviata di nuovo', fr: 'E-mail renvoyé', de: 'E-Mail erneut gesendet' },
   'auth.resendFailed': { ru: 'Не удалось отправить письмо', en: 'The email could not be sent', it: 'Non è stato possibile inviare l’email', fr: 'L’e-mail n’a pas pu être envoyé', de: 'Die E-Mail konnte nicht gesendet werden' },
