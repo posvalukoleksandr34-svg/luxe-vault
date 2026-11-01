@@ -25,6 +25,10 @@ export type Listing = {
    *  catalogue — a department page lists one department but its sidebar
    *  counts all of them. See listingCounts(). */
   counts: Record<string, number>
+  /** A department page's best sellers: product ids ranked by units sold in
+   *  paid orders (lib/server/popular-products.ts). Ids only — the page never
+   *  carries sales figures. Absent or empty when there are no sales to rank. */
+  bestsellers?: string[]
 }
 
 const ListingContext = createContext<Listing | null>(null)
@@ -32,9 +36,12 @@ const ListingContext = createContext<Listing | null>(null)
 export function ListingProvider({
   products,
   counts,
+  bestsellers,
   children,
 }: Listing & { children: ReactNode }) {
-  return <ListingContext.Provider value={{ products, counts }}>{children}</ListingContext.Provider>
+  return (
+    <ListingContext.Provider value={{ products, counts, bestsellers }}>{children}</ListingContext.Provider>
+  )
 }
 
 /** The page's listing, or null outside a listing page. */

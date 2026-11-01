@@ -53,6 +53,9 @@ export function toListingProduct(p: Product, locale: Locale): Product {
     styleTags: p.styleTags,
     specs: p.specs,
     variants: p.variants?.map(({ size, color, stock, lowStockAt }) => ({ size, color, stock, lowStockAt })),
+    // "Newest first" and the department page's "New in" order by this; left
+    // out, both silently fell back to the server's order on every listing.
+    createdAt: p.createdAt,
   }
 }
 

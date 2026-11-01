@@ -128,6 +128,10 @@ export type Filter = {
   maxPrice: number | null
   /** Hide anything a customer cannot actually buy right now. */
   inStockOnly: boolean
+  /** Subcategory slugs ticked in a department page's filter panel (Women →
+   *  Jackets + Bags). Only a department page reads it: everywhere else the
+   *  category is the route or the single `category` above. */
+  categories: string[]
 }
 
 /** The empty filter. One definition so "clear all" and the initial state can
@@ -142,6 +146,7 @@ export const EMPTY_FILTER: Filter = {
   minPrice: null,
   maxPrice: null,
   inStockOnly: false,
+  categories: [],
 }
 
 /** Admin-assigned Collections (Collezioni) preview images, keyed by

@@ -31,3 +31,21 @@ export async function unitsSoldByProduct(): Promise<Map<string, number>> {
   }
   return units
 }
+
+/** Below this many products with sales, a "best sellers" list is not one. */
+export const MIN_BESTSELLERS = 3
+
+/**
+ * The ids of `products` that sold, most units first (ties: the catalogue's
+ * order) — or none when fewer than MIN_BESTSELLERS of them sold anything.
+ * Only ids leave the server; the unit counts stay here.
+ */
+export async function bestsellerIds(products: { id: string }[], limit = 8): Promise<string[]> {
+  if (products.length < MIN_BESTSELLERS) return []
+  const sold = await unitsSoldByProduct()
+  const ranked = products
+    .map((p, index) => ({ id: p.id, index, units: sold.get(p.id) ?? 0 }))
+    .filter((r) => r.units > 0)
+    .sort((a, b) => b.units - a.units || a.index - b.index)
+  return ranked.length >= MIN_BESTSELLERS ? ranked.slice(0, limit).map((r) => r.id) : []
+}
