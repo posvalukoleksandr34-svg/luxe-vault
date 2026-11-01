@@ -368,10 +368,11 @@ function CategorySlot({
  * deploy. Only an empty category can be removed (products.category_id is ON
  * DELETE RESTRICT).
  *
- * Each one also carries the cover of its card on the department page
- * (components/products/subcategory-cards.tsx): the preview here is exactly
- * what the storefront shows — the chosen cover, else the subcategory's best
- * product photo, else its initial (lib/subcategory-cover.ts).
+ * Each one can also carry a cover (0054): the chosen photo, else the
+ * subcategory's best product photo, else its initial (lib/subcategory-cover.ts).
+ * The storefront does not show it at the moment — a department page lists its
+ * subcategories as a compact row without photos
+ * (components/products/department-header.tsx) — so it is kept for later.
  */
 function CategoriesPanel({
   products,
@@ -407,8 +408,9 @@ function CategoriesPanel({
       <h2 className="mb-2 text-lg font-semibold text-foreground">Категории</h2>
       <p className="mb-5 max-w-3xl text-sm text-muted-foreground">
         По категориям работают фильтры магазина и выбор категории в карточке товара. Названия — на
-        всех языках сайта; пустой язык показывает русское название. Обложка — фото на карточке
-        категории на странице раздела; если её нет, берётся фото товара из этой категории.
+        всех языках сайта; пустой язык показывает русское название. Обложка сейчас на витрине не
+        показывается: на странице раздела категории идут компактной строкой без фото. Её можно задать
+        заранее — она сохранится.
       </p>
 
       <div className="space-y-4">
