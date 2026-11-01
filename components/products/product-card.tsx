@@ -41,6 +41,16 @@ export function ProductCard({
   // A missing or broken photo shows the placeholder, never an error or a
   // broken-image icon in the grid.
   const [imageFailed, setImageFailed] = useState(false)
+  // The sizes that can be bought: with stock tracked, those with a unit left
+  // in any colour; untracked, the sizes the product is made in.
+  const sizesInStock = outOfStock
+    ? []
+    : totalStock === null
+      ? product.sizes
+      : product.sizes.filter((size) =>
+          (product.variants ?? []).some((v) => v.size === size && v.stock > 0),
+        )
+  const MAX_SIZES = 5
 
   return (
     // `group` on the wrapper: everything in the card reacts to a hover over
@@ -120,7 +130,10 @@ export function ProductCard({
           {!outOfStock && (
             <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-4 opacity-0 transition-all duration-500 group-hover:opacity-100">
               <span className="rounded-xl border border-gold/40 bg-background/85 px-5 py-2 text-[11px] uppercase tracking-[0.2em] text-gold backdrop-blur-md">
-                {t('product.addToCart')}
+                {/* The card opens the product page; nothing is added from
+                    here, so the label says what the click does — choose a
+                    size there when there is more than one. */}
+                {product.sizes.length > 1 ? t('product.selectSize') : t('card.view')}
               </span>
             </div>
           )}
@@ -153,6 +166,12 @@ export function ProductCard({
               </span>
             )}
           </div>
+          {sizesInStock.length > 1 && (
+            <p className="mt-1 truncate text-[11px] font-light tracking-[0.08em] text-muted-foreground" data-testid="card-sizes">
+              {sizesInStock.slice(0, MAX_SIZES).join(' · ')}
+              {sizesInStock.length > MAX_SIZES && ` +${sizesInStock.length - MAX_SIZES}`}
+            </p>
+          )}
           {hurryCount !== null && (
             <p className="mt-1 flex items-center gap-2 text-[11px] font-light text-muted-foreground">
               <HurryDot />

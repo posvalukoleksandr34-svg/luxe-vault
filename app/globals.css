@@ -2950,6 +2950,24 @@ html[data-vt='results']::view-transition-new(root) {
 .motion-radix-popover[data-state='closed'] {
   animation: motion-popover-out var(--motion-fast) var(--ease-exit) both;
 }
+.motion-radix-drawer[data-state='open'] {
+  animation: motion-drawer-in var(--motion-panel) var(--ease-emphasized) both;
+}
+.motion-radix-drawer[data-state='closed'] {
+  animation: motion-drawer-out var(--motion-base) var(--ease-exit) both;
+}
+/* The category page's filter panel (components/products/listing-toolbar.tsx):
+   in from the right edge, like the support drawer. */
+@keyframes motion-drawer-in {
+  from {
+    translate: 100% 0;
+  }
+}
+@keyframes motion-drawer-out {
+  to {
+    translate: 100% 0;
+  }
+}
 @keyframes motion-dialog-in {
   from {
     opacity: 0;

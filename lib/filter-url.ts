@@ -69,6 +69,9 @@ export function filterFromParams(params: URLSearchParams, base: Filter = EMPTY_F
     maxPrice: readPrice(params.get('maxPrice')),
     sale: params.get('sale') === '1' || params.get('view') === 'sale',
     inStockOnly: params.get('inStock') === '1',
+    // A department page's subcategory ticks (?cat=jackets,bags). Not the
+    // route's own category, which stays the path — see the note above.
+    categories: readList(params, 'cat'),
     // `?view=new` is the address the newsletter's buttons point at, kept
     // working here rather than in a second effect that raced with this one.
     sort: sort && SORT_KEYS.indexOf(sort) !== -1 ? sort : params.get('view') === 'new' ? 'newest' : 'default',
@@ -85,6 +88,7 @@ export function filterFromParams(params: URLSearchParams, base: Filter = EMPTY_F
 export function filterToParams(filter: Filter): URLSearchParams {
   const params = new URLSearchParams()
 
+  if (filter.categories.length > 0) params.set('cat', filter.categories.join(','))
   if (filter.sizes.length > 0) params.set('size', filter.sizes.join(','))
   if (filter.colors.length > 0) params.set('color', filter.colors.join(','))
   if (filter.minPrice !== null) params.set('minPrice', String(filter.minPrice))

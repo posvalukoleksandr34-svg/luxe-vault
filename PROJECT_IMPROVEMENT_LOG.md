@@ -4,6 +4,44 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Department pages round (2026-11-01)
+
+Women, Men and Kids share one page (`components/products/category-view.tsx`,
+the `group` is the only difference). No migrations; no new data invented.
+
+- **Header.** Breadcrumb Home / Department. A compact hero: the department
+  name, real counts (products and categories on sale), the owner's
+  description (0064) when written, and the admin cover, else the homepage's
+  department photograph, else a plain panel.
+- **Subcategories.** Photo tiles for categories with products only.
+- **Featured.** "Best sellers" (units sold in paid orders, at least three
+  products sold; the page gets ranked ids, never figures), "New in" (by date
+  added) and "On sale" (real reductions from price history). Shown only when
+  the department has more than one screen of products. No "Trending": the shop
+  records no popularity signal.
+- **Toolbar.** Count, a Filters panel (full screen on a phone, a side panel
+  from `sm`), sort, removable chips, clear. Facets come from the products on
+  the page: category (department page), sizes in size order, colours, price
+  in the display currency, availability, sale. "Biggest discount" appears
+  only when something is discounted. New `?cat=` parameter; all state stays
+  in the URL.
+- **Cards.** Sizes that can be bought; the hover label says "Select a size" or
+  "View" (the card opens the product page; nothing is added from it).
+- **Fixes.** Listing products now carry `createdAt`, so "Newest" and "New in"
+  sort by date on listing pages (they kept the server order). "On sale" uses
+  the same rule as the badge (an old price above the price).
+- **Not done.** Brand filter and brand on cards: the shop sells replicas and
+  names the referenced design only on the product page (see the card note).
+  Condition filter: the catalogue has no condition field. Wishlist: removed
+  earlier. Editorial block: no editorial imagery in the data.
+- **Verified** on a local stand (disposable Postgres with all migrations and
+  stand fixtures): 71 browser checks on the department pages (navigation,
+  products per department, combined filters, every sort, URL restore, chips,
+  empty and empty-department states, PDP, add to cart, 390/900/1440 widths,
+  it locale) and 14 regression checks (home, catalog, menu new arrivals,
+  PDP, JSON-LD). Typecheck, lint, build and the store, security, refunds and
+  assistant suites pass.
+
 ## Store readiness round (2026-10-25)
 
 Findings and their status are in `docs/audit/STORE_READINESS_AUDIT.md`. Owner

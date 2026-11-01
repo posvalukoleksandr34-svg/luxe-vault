@@ -73,7 +73,7 @@ export default async function SubcategoryPage(
   const name = pick(found.category.name) || found.category.slug
 
   const trail = [
-    { name: 'Shop', url: '/catalog' },
+    { name: 'Home', url: '/' },
     { name: groupName, url: `/category/${found.node.slug}` },
     { name, url: `/category/${found.node.slug}/${found.category.slug}` },
   ]

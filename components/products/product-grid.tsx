@@ -12,7 +12,9 @@ import { resultsTransition } from '@/lib/page-transition'
 import { EMPTY_FILTER, useFullCatalog, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/types'
+import { discountPercent } from './discount-badge'
 import { useListing } from './listing-context'
+import { ListingToolbar, type ListingFacets } from './listing-toolbar'
 import { ProductCard } from './product-card'
 
 const STANDARD_SIZES = ['S', 'M', 'L', 'XL']
@@ -21,8 +23,28 @@ const STANDARD_SIZES = ['S', 'M', 'L', 'XL']
  *  large screen without pushing everything below into the DOM at once. */
 const PAGE_SIZE = 12
 
+/** A real reduction only — see discountPercent: a compare-at price at or
+ *  below the price is not a discount and must not count as "on sale". */
 function discountOf(p: Product): number {
-  return p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
+  return discountPercent(p.price, p.oldPrice)
+}
+
+/** Letter sizes in wearing order; numbers ascending after them; anything
+ *  else (a one-size label, "38/40") after those, in catalogue order. */
+const LETTER_SIZES = ['XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '3XL', '4XL']
+
+function sizeRank(size: string): [number, number] {
+  const letter = LETTER_SIZES.indexOf(size.trim().toUpperCase())
+  if (letter !== -1) return [0, letter]
+  const n = Number(size.replace(',', '.'))
+  if (Number.isFinite(n)) return [1, n]
+  return [2, 0]
+}
+
+function bySize(a: string, b: string): number {
+  const [ga, va] = sizeRank(a)
+  const [gb, vb] = sizeRank(b)
+  return ga - gb || va - vb
 }
 
 /**
@@ -109,6 +131,9 @@ export function ProductGrid({
   const locked = lockedGroup !== undefined
   const activeGroup = locked ? lockedGroup : filter.group
   const activeCategory = locked ? (lockedCategory ?? null) : filter.category
+  // A department's own page (Women), as opposed to one of its subcategories
+  // (Women → Jackets): the one place the panel offers the subcategories.
+  const departmentPage = locked && !lockedCategory
 
   // A query that names attributes — "black oversized jacket under €200" — is
   // read into filters (lib/search/interpret.ts), the same reading the search
@@ -134,7 +159,12 @@ export function ProductGrid({
     const result = products.filter((p) => {
       if (activeGroup && p.group !== activeGroup) return false
       if (activeCategory && p.category !== activeCategory) return false
-      if (filter.sale && !p.oldPrice) return false
+      // A department page's subcategory ticks. Only there: elsewhere the
+      // category is the route or the single chip above.
+      if (departmentPage && filter.categories.length > 0 && filter.categories.indexOf(p.category) === -1) {
+        return false
+      }
+      if (filter.sale && discountOf(p) === 0) return false
       if (filter.sizes.length > 0 && !filter.sizes.some((s) => p.sizes.includes(s))) {
         return false
       }
@@ -189,7 +219,7 @@ export function ProductGrid({
     }
 
     return result
-  }, [products, filter, activeGroup, activeCategory, query, smartIds, localize, categoryLabel, groupLabels])
+  }, [products, filter, activeGroup, activeCategory, departmentPage, query, smartIds, localize, categoryLabel, groupLabels])
 
   // Counts are derived live from `products` on every render, and any group
   // or category with zero matching products is dropped from the filter bar
@@ -233,7 +263,7 @@ export function ProductGrid({
     )
   }, [products, locked, activeGroup, activeCategory])
 
-  const saleCount = useMemo(() => scoped.filter((p) => p.oldPrice).length, [scoped])
+  const saleCount = useMemo(() => scoped.filter((p) => discountOf(p) > 0).length, [scoped])
 
   // Arriving from a link that names a view — /sale and /new-arrivals redirect
   // to /catalog?view=sale and ?view=new (next.config.js), which is what the
@@ -284,23 +314,54 @@ export function ProductGrid({
     return { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) }
   }, [scoped])
 
+  /**
+   * What the filter panel of a category page offers — each facet read from
+   * the products on that page, so no option matches nothing: the sizes these
+   * products come in (not a fixed S–XL), their colours, their price range,
+   * and on a department page its subcategories with something in them.
+   */
+  const facets = useMemo<ListingFacets>(() => {
+    const sizes: string[] = []
+    for (const p of scoped) for (const size of p.sizes) if (size && sizes.indexOf(size) === -1) sizes.push(size)
+    const subcategories = departmentPage
+      ? (navTree.find((n) => n.group === activeGroup)?.items ?? [])
+          .map((slug) => ({
+            key: slug,
+            label: localize(categoryLabel(activeGroup as string, slug)) || slug,
+            count: scoped.filter((p) => p.category === slug).length,
+          }))
+          .filter((c) => c.count > 0)
+      : []
+    return {
+      categories: subcategories,
+      sizes: sizes.sort(bySize),
+      colors: paletteColors,
+      price: priceBounds,
+      saleCount,
+    }
+  }, [scoped, departmentPage, navTree, activeGroup, localize, categoryLabel, paletteColors, priceBounds, saleCount])
+
   // On a locked route the group and category are the ADDRESS, not a filter, so
   // they are not counted and "clear all" does not offer to remove them —
   // clearing your way out of the page you navigated to is not a filter reset.
+  //
+  // On a category page the sort is not a filter either: it hides nothing, so
+  // it neither counts nor gets cleared with the refinements.
   const activeFilterCount =
     (!locked && filter.group ? 1 : 0) +
     (!locked && filter.category ? 1 : 0) +
+    (departmentPage ? filter.categories.length : 0) +
     (filter.sale ? 1 : 0) +
     filter.sizes.length +
     filter.colors.length +
     (filter.minPrice !== null || filter.maxPrice !== null ? 1 : 0) +
     (filter.inStockOnly ? 1 : 0) +
-    (filter.sort !== 'default' ? 1 : 0)
+    (!locked && filter.sort !== 'default' ? 1 : 0)
 
   function clearAllFilters() {
     // One shared definition, so "clear all" cannot drift from the initial
     // state the way it did before — a cleared filter used to keep its sizes.
-    changeFilter(EMPTY_FILTER)
+    changeFilter(locked ? { ...EMPTY_FILTER, sort: filter.sort } : EMPTY_FILTER)
   }
 
   /**
@@ -336,6 +397,18 @@ export function ProductGrid({
       {...(wrap ? { id: 'shop' } : {})}
       className={cn(wrap && 'mx-auto max-w-[1400px] scroll-mt-20 px-4 py-20 sm:px-6 lg:px-10')}
     >
+      {locked && (
+        <ListingToolbar
+          total={filtered.length}
+          facets={facets}
+          filter={filter}
+          onChange={(next, smooth = true) => (smooth ? changeFilter(next) : setFilter(next))}
+          onClear={clearAllFilters}
+        />
+      )}
+
+      {!locked && (
+      <>
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           {/* A category route puts its own name in an <h1> above this, so a
@@ -436,22 +509,6 @@ export function ProductGrid({
               </>
             )}
 
-            <span className="mx-1 h-3 w-px bg-border/60" />
-          </>
-        )}
-
-        {/* Sale survives the lock, because "on sale" is a refinement WITHIN a
-            category rather than a different place — unlike the homepage
-            version it therefore leaves the route's taxonomy alone. */}
-        {locked && saleCount > 0 && (
-          <>
-            <FilterLink
-              active={filter.sale}
-              onClick={() => changeFilter({ ...filter, sale: !filter.sale })}
-              accent
-            >
-              {t('filter.sale')}
-            </FilterLink>
             <span className="mx-1 h-3 w-px bg-border/60" />
           </>
         )}
@@ -568,6 +625,9 @@ export function ProductGrid({
           </button>
         )}
       </div>
+
+      </>
+      )}
 
       {!locked && !hideTaxonomyChips && categories.length > 0 && (
         <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-1.5">

@@ -819,6 +819,23 @@ export const UI = {
   'filter.clearAll': { ru: 'Сбросить фильтры', en: 'Clear filters', it: 'Cancella filtri', fr: 'Réinitialiser', de: 'Filter zurücksetzen' },
   'filter.results': { ru: 'товаров найдено', en: 'items found', it: 'articoli trovati', fr: 'articles trouvés', de: 'Artikel gefunden' },
   'filter.resultsOne': { ru: 'товар найден', en: 'item found', it: 'articolo trovato', fr: 'article trouvé', de: 'Artikel gefunden' },
+  // Department pages (components/products/department-*.tsx, listing-toolbar.tsx).
+  'crumb.home': { ru: 'Главная', en: 'Home', it: 'Home', fr: 'Accueil', de: 'Startseite' },
+  'filter.button': { ru: 'Фильтры', en: 'Filters', it: 'Filtri', fr: 'Filtres', de: 'Filter' },
+  'filter.close': { ru: 'Закрыть фильтры', en: 'Close filters', it: 'Chiudi i filtri', fr: 'Fermer les filtres', de: 'Filter schließen' },
+  'filter.showResults': { ru: 'Показать: {n}', en: 'Show {n} items', it: 'Mostra {n} articoli', fr: 'Afficher {n} articles', de: '{n} Artikel anzeigen' },
+  'filter.availability': { ru: 'Наличие', en: 'Availability', it: 'Disponibilità', fr: 'Disponibilité', de: 'Verfügbarkeit' },
+  'filter.onSaleOnly': { ru: 'Только со скидкой', en: 'On sale only', it: 'Solo in saldo', fr: 'En solde uniquement', de: 'Nur reduziert' },
+  'filter.remove': { ru: 'Убрать фильтр: {name}', en: 'Remove filter: {name}', it: 'Rimuovi filtro: {name}', fr: 'Retirer le filtre : {name}', de: 'Filter entfernen: {name}' },
+  'filter.active': { ru: 'Выбранные фильтры', en: 'Active filters', it: 'Filtri attivi', fr: 'Filtres actifs', de: 'Aktive Filter' },
+  'dept.newIn': { ru: 'Новые поступления', en: 'New in', it: 'Nuovi arrivi', fr: 'Nouveautés', de: 'Neu eingetroffen' },
+  'dept.bestsellers': { ru: 'Бестселлеры', en: 'Best sellers', it: 'Più venduti', fr: 'Meilleures ventes', de: 'Bestseller' },
+  'dept.onSale': { ru: 'Со скидкой', en: 'On sale', it: 'In saldo', fr: 'En solde', de: 'Reduziert' },
+  'dept.featured': { ru: 'Подборки раздела', en: 'Featured', it: 'In evidenza', fr: 'À la une', de: 'Im Fokus' },
+  'dept.viewAll': { ru: 'Смотреть все', en: 'View all', it: 'Vedi tutto', fr: 'Tout voir', de: 'Alle ansehen' },
+  'dept.categoryCount': { ru: 'Категорий: {n}', en: '{n} categories', it: '{n} categorie', fr: '{n} catégories', de: '{n} Kategorien' },
+  'dept.categoryCountOne': { ru: '1 категория', en: '1 category', it: '1 categoria', fr: '1 catégorie', de: '1 Kategorie' },
+  'card.view': { ru: 'Смотреть', en: 'View', it: 'Vedi', fr: 'Voir', de: 'Ansehen' },
 
   // Crypto checkout
   'crypto.title': { ru: 'Оплата криптовалютой', en: 'Pay with Crypto', it: 'Paga con Crypto', fr: 'Payer en Crypto', de: 'Mit Krypto bezahlen' },

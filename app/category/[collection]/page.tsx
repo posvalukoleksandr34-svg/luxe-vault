@@ -9,6 +9,7 @@ import { SupportWidgetLazy } from '@/components/support-widget-lazy'
 import { findCollection, pick, readTaxonomy } from '@/lib/server/taxonomy'
 import { paramsFromDatabase } from '@/lib/server/static-params'
 import { listingCounts, pageLocale, toListing } from '@/lib/server/catalog-listing'
+import { bestsellerIds } from '@/lib/server/popular-products'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { serializeJsonLd } from '@/lib/json-ld'
 import { collectionMetadataFor } from '@/lib/page-seo'
@@ -61,7 +62,7 @@ export default async function CollectionPage(
 
   const name = pick(node.name) || node.slug
   const trail = [
-    { name: 'Shop', url: '/catalog' },
+    { name: 'Home', url: '/' },
     { name, url: `/category/${node.slug}` },
   ]
 
@@ -70,6 +71,12 @@ export default async function CollectionPage(
   // breadcrumbs — read from the same taxonomy the route resolves.
   const { products } = await readTaxonomy()
   const listed = products.filter((p) => p.group === node.slug)
+  // Its best sellers, from paid orders. A failed read costs the rail, never
+  // the page.
+  const bestsellers = await bestsellerIds(listed).catch((error) => {
+    console.error('[category] sales ranking unavailable:', error)
+    return []
+  })
 
   return (
     <>
@@ -79,7 +86,11 @@ export default async function CollectionPage(
         {/* This department's products for the grid, trimmed to a listing
             and to this page's language; counts for every department, for
             the sidebar. */}
-        <ListingProvider products={toListing(listed, pageLocale(params))} counts={listingCounts(products)}>
+        <ListingProvider
+          products={toListing(listed, pageLocale(params))}
+          counts={listingCounts(products)}
+          bestsellers={bestsellers}
+        >
           <CategoryView group={node.slug} />
         </ListingProvider>
         <Footer />
