@@ -131,9 +131,6 @@ export function ProductGrid({
   const locked = lockedGroup !== undefined
   const activeGroup = locked ? lockedGroup : filter.group
   const activeCategory = locked ? (lockedCategory ?? null) : filter.category
-  // A department's own page (Women), as opposed to one of its subcategories
-  // (Women → Jackets): the one place the panel offers the subcategories.
-  const departmentPage = locked && !lockedCategory
 
   // A query that names attributes — "black oversized jacket under €200" — is
   // read into filters (lib/search/interpret.ts), the same reading the search
@@ -159,11 +156,6 @@ export function ProductGrid({
     const result = products.filter((p) => {
       if (activeGroup && p.group !== activeGroup) return false
       if (activeCategory && p.category !== activeCategory) return false
-      // A department page's subcategory ticks. Only there: elsewhere the
-      // category is the route or the single chip above.
-      if (departmentPage && filter.categories.length > 0 && filter.categories.indexOf(p.category) === -1) {
-        return false
-      }
       if (filter.sale && discountOf(p) === 0) return false
       if (filter.sizes.length > 0 && !filter.sizes.some((s) => p.sizes.includes(s))) {
         return false
@@ -219,7 +211,7 @@ export function ProductGrid({
     }
 
     return result
-  }, [products, filter, activeGroup, activeCategory, departmentPage, query, smartIds, localize, categoryLabel, groupLabels])
+  }, [products, filter, activeGroup, activeCategory, query, smartIds, localize, categoryLabel, groupLabels])
 
   // Counts are derived live from `products` on every render, and any group
   // or category with zero matching products is dropped from the filter bar
@@ -317,29 +309,19 @@ export function ProductGrid({
   /**
    * What the filter panel of a category page offers — each facet read from
    * the products on that page, so no option matches nothing: the sizes these
-   * products come in (not a fixed S–XL), their colours, their price range,
-   * and on a department page its subcategories with something in them.
+   * products come in (not a fixed S–XL), their colours and their price range.
+   * The subcategory is the page's own navigation (SubcategoryNav), not a facet.
    */
   const facets = useMemo<ListingFacets>(() => {
     const sizes: string[] = []
     for (const p of scoped) for (const size of p.sizes) if (size && sizes.indexOf(size) === -1) sizes.push(size)
-    const subcategories = departmentPage
-      ? (navTree.find((n) => n.group === activeGroup)?.items ?? [])
-          .map((slug) => ({
-            key: slug,
-            label: localize(categoryLabel(activeGroup as string, slug)) || slug,
-            count: scoped.filter((p) => p.category === slug).length,
-          }))
-          .filter((c) => c.count > 0)
-      : []
     return {
-      categories: subcategories,
       sizes: sizes.sort(bySize),
       colors: paletteColors,
       price: priceBounds,
       saleCount,
     }
-  }, [scoped, departmentPage, navTree, activeGroup, localize, categoryLabel, paletteColors, priceBounds, saleCount])
+  }, [scoped, paletteColors, priceBounds, saleCount])
 
   // On a locked route the group and category are the ADDRESS, not a filter, so
   // they are not counted and "clear all" does not offer to remove them —
@@ -350,7 +332,6 @@ export function ProductGrid({
   const activeFilterCount =
     (!locked && filter.group ? 1 : 0) +
     (!locked && filter.category ? 1 : 0) +
-    (departmentPage ? filter.categories.length : 0) +
     (filter.sale ? 1 : 0) +
     filter.sizes.length +
     filter.colors.length +

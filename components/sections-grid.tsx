@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils'
 /** The look of each department card, keyed by its slug. The departments
  *  themselves come from lib/departments.ts, so adding one there is all it
  *  takes for a card to appear (with the gradient below as its cover). The
- *  artwork is shared with the department page's header (lib/department-art.ts). */
+ *  artwork lives in lib/department-art.ts. */
 const VISUALS: Record<string, { labelKey: UIKey; image: string; fallback: string }> = {
   women: { labelKey: 'sections.women', ...DEPARTMENT_ART.women },
   men: { labelKey: 'sections.men', ...DEPARTMENT_ART.men },

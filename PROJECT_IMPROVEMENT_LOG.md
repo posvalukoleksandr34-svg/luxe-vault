@@ -4,6 +4,29 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Department pages, simplified (2026-11-01)
+
+Owner feedback on the round below.
+
+- **No department sidebar.** The Women / Men / Kids sidebar is gone from
+  department and subcategory pages; the store menu is unchanged. The grid
+  takes the full width (4 / 3 / 2 columns).
+- **Compact header, no photo.** The hero image is removed. The header holds
+  the counts line, the department name, the owner's description, and a row of
+  subcategories: "All" (the department page, every product in it) then each
+  category with products, with its count. The row links to the existing
+  subcategory pages and keeps the refinements and sort in the query string.
+- **Removed:** the photo tiles of subcategories (replaced by the row), and
+  the category facet in the filter panel with its `?cat=` parameter (the row
+  does that job). The featured rails now follow the grid.
+- The admin's subcategory cover is not shown on the storefront for now; the
+  admin note says so.
+- **Verified** on the local stand: 59 browser checks across Women, Men and
+  Kids (all products by default, each subcategory, back to All, no sidebar,
+  no hero image, filters + sort carried across the row, empty state, PDP, add
+  to cart, `it` locale, 390/900/1440) and the 14 regression checks.
+  Typecheck, lint, build and the unit suites pass.
+
 ## Department pages round (2026-11-01)
 
 Women, Men and Kids share one page (`components/products/category-view.tsx`,

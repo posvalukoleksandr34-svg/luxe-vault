@@ -16,7 +16,7 @@ const RAIL_SIZE = 8
 
 /**
  * Below this many products a department's grid already shows everything on
- * its first screen (ProductGrid pages by 12), and a rail above it would only
+ * its first screen (ProductGrid pages by 12), and a rail after it would only
  * repeat the same cards.
  */
 const MIN_PRODUCTS = 13

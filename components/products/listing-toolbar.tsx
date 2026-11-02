@@ -8,17 +8,12 @@ import type { UIKey } from '@/lib/i18n'
 import { formatPrice, useStore, type Filter, type SortKey } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-/** One option of a facet, with how many products in view carry it. */
-export type FacetOption = { key: string; label: string; count: number }
-
 /**
  * What the products on a category page can actually be filtered by — each
  * facet derived from those products, so no control offers a value nothing on
  * the page has (ProductGrid builds it).
  */
 export type ListingFacets = {
-  /** The department's own subcategories; empty on a subcategory page. */
-  categories: FacetOption[]
   /** Sizes carried by these products, in size order. */
   sizes: string[]
   colors: { name: string; hex: string }[]
@@ -179,10 +174,6 @@ function activeChips(
   { t: tr, colorName }: { t: (key: UIKey) => string; colorName: (name: string) => string },
 ): Chip[] {
   const chips: Chip[] = []
-  for (const slug of filter.categories) {
-    const label = facets.categories.find((c) => c.key === slug)?.label ?? slug
-    chips.push({ id: `cat:${slug}`, label, remove: (f) => ({ ...f, categories: f.categories.filter((c) => c !== slug) }) })
-  }
   for (const size of filter.sizes) {
     chips.push({
       id: `size:${size}`,
@@ -272,30 +263,6 @@ function FilterPanel({
         </DialogPrimitive.Description>
 
         <div className="flex-1 overflow-y-auto px-5 py-2 sm:px-6">
-          {facets.categories.length > 1 && (
-            <Section title={t('filter.categoryLabel')}>
-              <ul className="flex flex-col gap-1">
-                {facets.categories.map((c) => {
-                  const checked = filter.categories.indexOf(c.key) !== -1
-                  return (
-                    <li key={c.key}>
-                      <label className="flex min-h-[40px] cursor-pointer items-center gap-3 text-[14px] text-foreground">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => apply({ ...filter, categories: toggle(filter.categories, c.key) })}
-                          className="size-4 shrink-0 accent-gold"
-                        />
-                        <span className="flex-1">{c.label}</span>
-                        <span className="text-[12px] tabular-nums text-muted-foreground">{c.count}</span>
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Section>
-          )}
-
           {facets.sizes.length > 0 && (
             <Section title={t('filter.sizeLabel')}>
               <div className="flex flex-wrap gap-2">

@@ -1,8 +1,6 @@
 /**
- * Default artwork for the three departments: the homepage's department cards
- * (components/sections-grid.tsx) and each department page's header
- * (components/products/department-hero.tsx) show the same photograph, so the
- * card a visitor clicked is the picture that opens the page.
+ * Default artwork for the three departments, shown on the homepage's
+ * department cards (components/sections-grid.tsx).
  *
  * Each URL is an Unsplash photograph chosen for the shop: dark, tailored,
  * editorial — mood, never a product (no item shown here is for sale).
