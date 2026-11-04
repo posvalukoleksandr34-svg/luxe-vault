@@ -2,7 +2,7 @@
 
 Scope: the code at `ed4d44e` (`main` = `55101f5`, PR #31, plus a merge
 commit). Read before any change:
-- `PROJECT_IMPROVEMENT_LOG.md`;
+- `IMPROVEMENT_LOG.md`;
 - the audit documents in `docs/audit/`;
 - `docs/admin-console.md`;
 - the catalogue modules (`lib/types.ts`, `lib/departments.ts`, `lib/data.ts`,

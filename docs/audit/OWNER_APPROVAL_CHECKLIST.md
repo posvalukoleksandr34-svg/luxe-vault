@@ -1,5 +1,7 @@
 # Owner approval and signature checklist
 
+> **Historical (superseded 2026-11-04).** The current version is [OWNER_APPROVAL_CHECKLIST.md](../../OWNER_APPROVAL_CHECKLIST.md) at the repository root, re-verified against the code and the CI evidence of 2026-11-04. Statuses below describe 2026-10-24/25 and must not be read as the present state.
+
 Production readiness audit, 2026-10-24. Companion to
 [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md), which holds
 the evidence behind each item.

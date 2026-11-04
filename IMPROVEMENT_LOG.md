@@ -1,8 +1,44 @@
-# Project improvement log
+# Improvement log
 
 Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
+
+## Pre-sales hardening round (2026-11-04)
+
+Baseline: `main` = `7a43f8c`. Re-verified from the CI record:
+- the backups fail every day;
+- the restore test has never run;
+- six "payment in flight" orders are unresolved;
+- `main` is unprotected;
+- the live security check passed on 2026-11-02.
+
+Owner items are in `OWNER_APPROVAL_CHECKLIST.md`; evidence is in
+`PRODUCTION_READINESS_REPORT.md`; procedures are in
+`PRODUCTION_RUNBOOK.md`.
+
+| Problem | Implementation | Tests | Result / limits |
+|---|---|---|---|
+| A deploy started taking money with nothing recording that the owner had decided to sell. Orders could be placed while the Imprint lacked the seller's identity (UWG 3(1)(s)). | **Launch gate** (`lib/sales-gate.ts`, `lib/server/sales-gate.ts`). In production builds, new orders, card and crypto payment starts, and the "come back and buy" emails (abandoned cart, unpaid order, back in stock) are refused until `SALES_ENABLED=true` **and** the seller identity is complete. Webhooks, refunds, returns, reconciliation and order pages are never gated. The checkout says so before the address form and keeps the basket. | Unit 5; stand: closed 36/36, open 27/27 | Closes the shop by default on deploy, deliberately (OA-24, OA-30). |
+| Checkout offered crypto even when NOWPayments was not configured (the live webhook answers 503). An order was created that could not be paid or confirmed. "Configured" meant the API key only, without the IPN secret. | Crypto is offered and accepted only with both the API key and the IPN secret (`isCheckoutReady`); otherwise `/api/orders` refuses it (`PAYMENT_METHOD_UNAVAILABLE`) before reserving stock. Card payment requires the webhook secret as well as the secret key. `GET /api/checkout/availability` tells the checkout which methods to show. | Stand: crypto refused, nothing written; card order accepted | Crypto stays off until the owner configures it (OA-16). |
+| Publishing and withdrawing left no audit trail: a re-publication overwrote the rights record; withdrawal time and reason were not kept; the rights record and status were two separate writes. | Migration **0065**: append-only `product_listing_events` (status before and after, a snapshot of basis and reference, actor, reason). `set_product_listing()` writes rights, status and event in one transaction. A trigger records changes made outside the console (SQL editor) with the database role. The console shows «История продажи», the date on sale, and an optional withdrawal reason. Works unchanged without 0065. | DB 14 new checks (224 in all); stand: withdraw/publish/422/history 8 | Server-only; executable by the service role only. |
+| The owner had no single view of what blocks launch. | `/admin/launch` «Готовность к запуску», built from what the app can verify itself: the sales gate, seller identity, TOTP, burned credentials, Stripe mode and webhook secret, crypto readiness, migrations 0061–0065, published products, unpaid orders older than 72 h, the last successful backup and restore run (GitHub's own record), cron, alerts and mail. Items only the owner or counsel can settle are listed and never shown as done. A dashboard banner appears while sales are closed. | Unit 8; stand 17 | The backup status needs outbound access to api.github.com (not available on the stand: "unknown"). |
+| Backup and cron failure alerts were skipped silently when `INTERNAL_API_SECRET` was missing in GitHub. | The alert steps print a `::warning::` saying no Telegram alert was sent. The weekly live check reports admin MFA and the sales-gate state. | YAML and shell syntax | Alerts still need OA-10. |
+| The checkout had no state for "no payment method can confirm a payment". | It shows "payment unavailable" instead of an empty method list. | — | — |
+
+Also:
+- `.env.example` documents `SALES_ENABLED`;
+- `verify-production.sql` covers 0065 (108/108 OK on a fresh database);
+- the owner checklist, readiness report and runbook are rewritten at the
+  repository root, and the `docs/audit` copies are marked historical;
+- this file was renamed from `PROJECT_IMPROVEMENT_LOG.md`.
+
+**Not changed, by design:**
+- the legal and marketing copy about "replicas" and the "private sale"
+  (OA-01, OA-25): counsel's decision, and re-wording would not make the goods
+  lawful;
+- no product was published;
+- nothing was deployed, migrated or rotated.
 
 ## Department pages, simplified (2026-11-01)
 

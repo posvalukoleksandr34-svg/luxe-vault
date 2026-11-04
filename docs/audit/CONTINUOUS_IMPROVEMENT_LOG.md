@@ -405,7 +405,7 @@ had been created (a dropped connection, a phone going to sleep), the customer
 saw an error and pressed again. That made a second unpaid order: a second
 48-hour stock reservation (items shown sold out to others), a second use of a
 limited coupon and a second confirmation email. Recorded as a known gap in
-`PROJECT_IMPROVEMENT_LOG.md` ("Order creation has no server-side idempotency
+`IMPROVEMENT_LOG.md` ("Order creation has no server-side idempotency
 key").
 
 **Why it mattered.** Stock held for nothing, confusing duplicate orders for

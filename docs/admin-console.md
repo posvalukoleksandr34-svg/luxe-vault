@@ -122,7 +122,7 @@ changes.
 
 ## Verified
 
-See "Tests run" in `PROJECT_IMPROVEMENT_LOG.md` for the commands and results.
+See "Tests run" in `IMPROVEMENT_LOG.md` for the commands and results.
 
 ## Not done / recommended next
 

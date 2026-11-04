@@ -1,5 +1,7 @@
 # Production readiness report: audit and remediation, 2026-10-24
 
+> **Historical (superseded 2026-11-04).** The current version is [PRODUCTION_READINESS_REPORT.md](../../PRODUCTION_READINESS_REPORT.md) at the repository root, re-verified against the code and the CI evidence of 2026-11-04. Statuses below describe 2026-10-24/25 and must not be read as the present state.
+
 Scope: the whole repository at `4a18643` (branch `claude/admiring-albattani-xgdcm5`, PR #28), its GitHub Actions history and settings, and the evidence those runs carry about production. Owner actions: [OWNER_APPROVAL_CHECKLIST.md](OWNER_APPROVAL_CHECKLIST.md). Earlier findings AUD-01…AUD-32: [FINDINGS.md](FINDINGS.md). Each was re-checked where it still applies, and none is repeated as fixed without new evidence.
 
 ## 1. Executive summary
