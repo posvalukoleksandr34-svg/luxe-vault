@@ -97,7 +97,9 @@ export function CryptoPayment({
         if (data?.error) console.warn('[crypto] payment not created:', res.status, data.error)
         setErrorMessage(
           t(
-            data?.code === 'PRODUCT_UNAVAILABLE'
+            data?.code === 'SALES_CLOSED'
+              ? 'checkout.salesClosedTitle'
+              : data?.code === 'PRODUCT_UNAVAILABLE'
               ? 'checkout.errProductUnavailable'
               : data?.code === 'ALREADY_PAID'
               ? 'checkout.errAlreadyPaid'

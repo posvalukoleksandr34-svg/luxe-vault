@@ -115,6 +115,42 @@ export function CheckoutFlow({
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   /**
+   * What the server can take right now (/api/checkout/availability): whether
+   * the shop is open at all (lib/sales-gate.ts) and which payment methods can
+   * both take and confirm a payment. Crypto is hidden until confirmed, so an
+   * unconfigured provider is never offered; card is assumed until told
+   * otherwise. The routes enforce all of it themselves — this only spares the
+   * customer an address form that would end in a refusal.
+   */
+  const [availability, setAvailability] = useState<{ salesOpen: boolean; card: boolean; crypto: boolean } | null>(null)
+  const [salesClosed, setSalesClosed] = useState(false)
+  useEffect(() => {
+    let live = true
+    fetch('/api/checkout/availability', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a: { salesOpen?: unknown; card?: unknown; crypto?: unknown } | null) => {
+        if (!live || !a) return
+        const next = { salesOpen: a.salesOpen !== false, card: a.card !== false, crypto: a.crypto === true }
+        setAvailability(next)
+        if (!next.salesOpen) setSalesClosed(true)
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [])
+  const offeredMethods = paymentMethods.filter((m) =>
+    m === CRYPTO_PAYMENT_METHOD ? availability?.crypto === true : m === CARD_PAYMENT_METHOD ? availability?.card !== false : true,
+  )
+  // A method that stopped being offered is not left selected.
+  useEffect(() => {
+    if (offeredMethods.length > 0 && !offeredMethods.includes(form.payment)) {
+      setForm((f) => ({ ...f, payment: offeredMethods[0] }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offeredMethods.join('|'), form.payment])
+
+  /**
    * Abandoned-cart capture — only for a customer who ticked "remind me"
    * (checkout.cartReminderOptIn, unticked by default). Then, once the email
    * field holds a valid address and the cart has something in it, the server
@@ -368,7 +404,7 @@ export function CheckoutFlow({
       const idempotencyKey = attempt.current.key
 
       let res: Response
-      let data: { error?: string; item?: string; order?: Order } = {}
+      let data: { error?: string; code?: string; item?: string; order?: Order } = {}
       // "In progress": the same attempt is still being placed by an earlier
       // request (the one whose answer was lost). Wait for it briefly.
       for (let tries = 0; ; tries++) {
@@ -382,6 +418,16 @@ export function CheckoutFlow({
         await new Promise((r) => setTimeout(r, 1500))
       }
       if (!res.ok || !data.order) {
+        // The shop closed (lib/sales-gate.ts) while the form was open.
+        if (res.status === 503 && data.code === 'SALES_CLOSED') {
+          setSalesClosed(true)
+          return
+        }
+        if (res.status === 400 && data.code === 'PAYMENT_METHOD_UNAVAILABLE') {
+          setAvailability((a) => (a ? { ...a, crypto: false } : a))
+          setSubmitError(t('checkout.errPaymentMethodUnavailable'))
+          return
+        }
         // Sold out between adding to the cart and paying. Name the line so the
         // customer knows which one to change rather than hunting the basket.
         if (res.status === 409 && data.error === 'OUT_OF_STOCK') {
@@ -475,6 +521,11 @@ export function CheckoutFlow({
           pushToast({ title: t('checkout.errProductUnavailable'), description: order.id, variant: 'default' })
           return
         }
+        if (started === 'closed') {
+          router.push('/')
+          pushToast({ title: t('checkout.salesClosedTitle'), description: order.id, variant: 'default' })
+          return
+        }
 
         // Stripe unreachable or misconfigured. The order is safe, so say so
         // rather than implying the checkout failed outright.
@@ -508,7 +559,7 @@ export function CheckoutFlow({
    * it, or re-pricing the one the order already has. Returns false when
    * Stripe is unavailable.
    */
-  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean | 'blocked' | 'unavailable'> {
+  async function requestCardIntent(order: Order, code: CurrencyCode): Promise<boolean | 'blocked' | 'unavailable' | 'closed'> {
     if (!order.lookupToken) return false
     const pay = await fetch('/api/payments/stripe/intent', {
       method: 'POST',
@@ -526,6 +577,8 @@ export function CheckoutFlow({
     if (pay.status === 403 && payData.error === 'PAYMENT_BLOCKED') return 'blocked'
     // A piece was taken off sale between placing the order and paying it.
     if (pay.status === 409 && payData.error === 'PRODUCT_UNAVAILABLE') return 'unavailable'
+    // The shop closed between placing the order and paying (lib/sales-gate.ts).
+    if (pay.status === 503 && payData.code === 'SALES_CLOSED') return 'closed'
     if (!pay.ok || !payData.clientSecret) return false
 
     setCharge({
@@ -552,6 +605,7 @@ export function CheckoutFlow({
       .then((ok) => {
         if (ok === 'blocked') pushToast({ title: t('checkout.paymentBlocked'), variant: 'default' })
         else if (ok === 'unavailable') pushToast({ title: t('checkout.errProductUnavailable'), variant: 'default' })
+        else if (ok === 'closed') pushToast({ title: t('checkout.salesClosedTitle'), variant: 'default' })
         else if (!ok) pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' })
       })
       .catch(() => pushToast({ title: t('checkout.paymentUnavailable'), variant: 'default' }))
@@ -671,7 +725,31 @@ export function CheckoutFlow({
   return (
     <>
       <div className="flex w-full flex-col">
-        {!currentUser && !guestMode ? (
+        {!salesClosed && availability && offeredMethods.length === 0 && !cardOrder && !cryptoOrder ? (
+          /* Open, but no provider can both take and confirm a payment. */
+          <div role="status" data-testid="no-payment-methods" className="rounded-xl border border-border bg-card px-5 py-6">
+            <p className="flex items-center gap-2 font-serif text-xl font-semibold text-foreground">
+              <AlertCircle className="size-5 shrink-0 text-gold" aria-hidden />
+              {t('checkout.paymentUnavailable')}
+            </p>
+          </div>
+        ) : salesClosed && !cardOrder && !cryptoOrder ? (
+          /* The shop is not taking orders (lib/sales-gate.ts). Said before an
+             address is typed, not after; the basket is left as it is. */
+          <div role="status" data-testid="sales-closed" className="rounded-xl border border-border bg-card px-5 py-6">
+            <p className="flex items-center gap-2 font-serif text-xl font-semibold text-foreground">
+              <AlertCircle className="size-5 shrink-0 text-gold" aria-hidden />
+              {t('checkout.salesClosedTitle')}
+            </p>
+            <p className="mt-2 text-[14px] font-light leading-relaxed text-muted-foreground">{t('checkout.salesClosedBody')}</p>
+            <Link
+              href="/support"
+              className="mt-4 inline-block text-[12px] uppercase tracking-[0.12em] text-foreground underline-offset-4 hover:underline"
+            >
+              {t('state.contactSupport')}
+            </Link>
+          </div>
+        ) : !currentUser && !guestMode ? (
           /* An account is offered here, never required. Guest orders are
              supported end to end — the order's lookup token authorises
              payment, the success page and /order/[id] — and a sign-in wall at
@@ -900,7 +978,7 @@ export function CheckoutFlow({
                   {t('checkout.payment')}
                 </span>
                 <div className="space-y-2">
-                  {paymentMethods.map((method) => (
+                  {offeredMethods.map((method) => (
                     <button
                       key={method}
                       type="button"

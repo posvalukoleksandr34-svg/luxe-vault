@@ -44,6 +44,12 @@ function secretState(): { state: 'off' } | { state: 'invalid' } | { state: 'read
   return key && key.length >= 10 ? { state: 'ready', key } : { state: 'invalid' }
 }
 
+/** The second factor's state, for the console's launch checks: 'off' (password
+ *  alone), 'invalid' (set but unusable — sign-in is refused) or 'ready'. */
+export function totpMode(): 'off' | 'invalid' | 'ready' {
+  return secretState().state
+}
+
 /** True when sign-in must ask for the code — including when the configured
  *  secret is unusable, so the form never hides a factor the owner set up. */
 export function isTotpConfigured(): boolean {

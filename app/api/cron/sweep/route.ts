@@ -1,3 +1,4 @@
+import { salesGate } from '@/lib/server/sales-gate'
 import { NextResponse, type NextRequest } from 'next/server'
 import { sendRecoveryEmail, sendRestockEmail } from '@/lib/server/emails/campaigns'
 import { getOrdersByNumbers } from '@/lib/server/orders-store'
@@ -57,6 +58,7 @@ async function runSweep(request: NextRequest) {
   const result = {
     recovery: 0,
     restock: 0,
+    salesClosed: false,
     abandonedCarts: 0,
     orphanedReturnPhotos: 0,
     promoUsesReleased: 0,
@@ -67,78 +69,87 @@ async function runSweep(request: NextRequest) {
     errors: [] as string[],
   }
 
-  // ------------------------------------------------ unpaid-order reminders --
-  try {
-    const { data, error } = await supabase.rpc('claim_recoverable_orders', {})
-    if (error) throw new Error(error.message)
+  // The three jobs below ask customers to come back and BUY. While the shop
+  // is closed (lib/sales-gate.ts) they would invite people to a checkout that
+  // refuses them, so none runs and nothing is claimed: the work stays queued
+  // for when the owner opens the shop.
+  const selling = salesGate().open
+  result.salesClosed = !selling
+  if (selling) {
+    // ------------------------------------------------ unpaid-order reminders --
+    try {
+      const { data, error } = await supabase.rpc('claim_recoverable_orders', {})
+      if (error) throw new Error(error.message)
 
-    const numbers = (data ?? []) as string[]
-    // One read for the batch, not one per order.
-    const orders = await getOrdersByNumbers(numbers)
-    // A reminder asks the customer to pay; an order holding a piece the owner
-    // has since taken off sale cannot be paid (the intent route refuses it,
-    // migration 0062), so it gets no reminder. The public catalogue is what
-    // is on sale.
-    const onSale = numbers.length > 0 ? new Set((await readCatalog()).products.map((p) => p.id)) : new Set<string>()
-    for (const number of numbers) {
-      const order = orders.get(number)
-      if (!order || order.items.some((i) => !onSale.has(i.productId))) continue
-      // The claim already stamped recovery_sent_at, so a send that fails here
-      // is not retried. That is the intended trade: one missed reminder costs
-      // far less than a customer receiving the same nudge every hour because
-      // a transient failure kept the row eligible.
-      if (await sendRecoveryEmail(order)) result.recovery++
-    }
-  } catch (e) {
-    result.errors.push(`recovery: ${(e as Error).message}`)
-  }
-
-  // ------------------------------------------------- back-in-stock alerts --
-  try {
-    const { data, error } = await supabase.rpc('claim_restock_alerts', {})
-    if (error) throw new Error(error.message)
-
-    const alerts = (data ?? []) as {
-      email: string
-      product_id: string
-      size: string
-      color: string
-    }[]
-
-    if (alerts.length > 0) {
-      // One catalogue read for the whole batch rather than one per alert.
-      const { products } = await readCatalog()
-      const names = new Map(
-        products.map((p) => [p.id, sourceText(p.name, p.id)]),
-      )
-
-      for (const a of alerts) {
-        // Public catalogue only: a piece that is not on sale (a draft, or
-        // withdrawn) is never advertised as "back in stock". The claim has
-        // already marked the alert, so it is consumed without an email.
-        if (!names.has(a.product_id)) continue
-        const sent = await sendRestockEmail({
-          email: a.email,
-          productId: a.product_id,
-          productName: names.get(a.product_id) ?? a.product_id,
-          size: a.size,
-          color: a.color,
-        })
-        if (sent) result.restock++
+      const numbers = (data ?? []) as string[]
+      // One read for the batch, not one per order.
+      const orders = await getOrdersByNumbers(numbers)
+      // A reminder asks the customer to pay; an order holding a piece the owner
+      // has since taken off sale cannot be paid (the intent route refuses it,
+      // migration 0062), so it gets no reminder. The public catalogue is what
+      // is on sale.
+      const onSale = numbers.length > 0 ? new Set((await readCatalog()).products.map((p) => p.id)) : new Set<string>()
+      for (const number of numbers) {
+        const order = orders.get(number)
+        if (!order || order.items.some((i) => !onSale.has(i.productId))) continue
+        // The claim already stamped recovery_sent_at, so a send that fails here
+        // is not retried. That is the intended trade: one missed reminder costs
+        // far less than a customer receiving the same nudge every hour because
+        // a transient failure kept the row eligible.
+        if (await sendRecoveryEmail(order)) result.recovery++
       }
+    } catch (e) {
+      result.errors.push(`recovery: ${(e as Error).message}`)
     }
-  } catch (e) {
-    result.errors.push(`restock: ${(e as Error).message}`)
-  }
 
-  // -------------------------------------------- abandoned-cart reminders --
-  // Normally hourly (app/api/cron/abandoned-carts); run here too so the
-  // reminders still go out when no external scheduler is set up.
-  try {
-    const run = await runAbandonedCartReminders(100)
-    if ('sent' in run) result.abandonedCarts = run.sent
-  } catch (e) {
-    result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+    // ------------------------------------------------- back-in-stock alerts --
+    try {
+      const { data, error } = await supabase.rpc('claim_restock_alerts', {})
+      if (error) throw new Error(error.message)
+
+      const alerts = (data ?? []) as {
+        email: string
+        product_id: string
+        size: string
+        color: string
+      }[]
+
+      if (alerts.length > 0) {
+        // One catalogue read for the whole batch rather than one per alert.
+        const { products } = await readCatalog()
+        const names = new Map(
+          products.map((p) => [p.id, sourceText(p.name, p.id)]),
+        )
+
+        for (const a of alerts) {
+          // Public catalogue only: a piece that is not on sale (a draft, or
+          // withdrawn) is never advertised as "back in stock". The claim has
+          // already marked the alert, so it is consumed without an email.
+          if (!names.has(a.product_id)) continue
+          const sent = await sendRestockEmail({
+            email: a.email,
+            productId: a.product_id,
+            productName: names.get(a.product_id) ?? a.product_id,
+            size: a.size,
+            color: a.color,
+          })
+          if (sent) result.restock++
+        }
+      }
+    } catch (e) {
+      result.errors.push(`restock: ${(e as Error).message}`)
+    }
+
+    // -------------------------------------------- abandoned-cart reminders --
+    // Normally hourly (app/api/cron/abandoned-carts); run here too so the
+    // reminders still go out when no external scheduler is set up.
+    try {
+      const run = await runAbandonedCartReminders(100)
+      if ('sent' in run) result.abandonedCarts = run.sent
+    } catch (e) {
+      result.errors.push(`abandoned-carts: ${(e as Error).message}`)
+    }
+
   }
 
   // ------------------------------------------- lapsed stock reservations --

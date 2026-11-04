@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { resolveAvailableOptions } from '@/lib/server/crypto-options'
-import { fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
+import { fetchAvailableTickers, isCheckoutReady } from '@/lib/server/nowpayments'
 
 export const dynamic = 'force-dynamic'
 
 // Public — the checkout flow needs this before an order (and therefore any
 // session) exists.
 export async function GET() {
-  if (!isConfigured()) {
+  // Not "configured" until a payment can be confirmed as well as created.
+  if (!isCheckoutReady()) {
     return NextResponse.json({ configured: false, options: [] })
   }
 

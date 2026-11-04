@@ -17,6 +17,9 @@ import { getCurrentUser } from '@/lib/supabase/server'
 import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
 import { warnIfLowStock } from '@/lib/server/low-stock'
+import { salesClosedResponse } from '@/lib/server/sales-gate'
+import { isCheckoutReady as isCryptoReady } from '@/lib/server/nowpayments'
+import { CRYPTO_PAYMENT_METHOD } from '@/lib/data'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +35,11 @@ export async function POST(request: NextRequest) {
   const limited = await enforceLimit('order.create', request)
   if (limited) return limited
 
+  // The launch gate (lib/sales-gate.ts): no new order until the owner has
+  // opened the shop and the seller's identity is configured.
+  const closed = salesClosedResponse('orders')
+  if (closed) return closed
+
   const body = await readJsonObject<OrderDraftBody>(request)
   if (!body) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
@@ -40,6 +48,15 @@ export async function POST(request: NextRequest) {
   const result = validateOrderDraft(body)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 })
+  }
+  // Crypto is a method only while NOWPayments can both take and confirm a
+  // payment. Refused before anything is reserved: an order that could never
+  // be paid would hold its stock for 48 hours.
+  if (result.draft.payment === CRYPTO_PAYMENT_METHOD && !isCryptoReady()) {
+    return NextResponse.json(
+      { error: 'Paying in crypto is not available', code: 'PAYMENT_METHOD_UNAVAILABLE' },
+      { status: 400 },
+    )
   }
 
   /**

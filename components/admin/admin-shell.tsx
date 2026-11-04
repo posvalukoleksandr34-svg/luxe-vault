@@ -20,6 +20,7 @@ import {
   Truck,
   Users,
   Settings2,
+  ShieldCheck,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -47,6 +48,7 @@ import { cn } from '@/lib/utils'
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
+  launch: ShieldCheck,
   orders: Truck,
   returns: RotateCcw,
   reconciliation: Scale,

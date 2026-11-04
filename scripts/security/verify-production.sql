@@ -136,6 +136,20 @@ checks as (
                             where table_schema = 'public' and table_name = 'collections' and column_name = 'description')
               then 'OK' else 'PROBLEM' end,
          'apply supabase/migrations/0064_collection_description.sql — until then department pages have no description'
+  union all
+  select 'migration 0065: sale-state audit trail (product_listing_events, set_product_listing)',
+         case when to_regclass('public.product_listing_events') is not null
+               and exists (select 1 from pg_proc where proname = 'set_product_listing' and pronamespace = 'public'::regnamespace)
+               and exists (select 1 from pg_trigger where tgname = 'products_log_listing_change' and not tgisinternal)
+              then 'OK' else 'PROBLEM' end,
+         'apply supabase/migrations/0065_product_listing_events.sql — until then publishing and withdrawing are not audited'
+  union all
+  select 'set_product_listing not executable by the public key',
+         case when to_regproc('public.set_product_listing') is null
+                or (not has_function_privilege('anon', 'public.set_product_listing(text,text,text,text,text,text)', 'execute')
+                    and not has_function_privilege('authenticated', 'public.set_product_listing(text,text,text,text,text,text)', 'execute'))
+              then 'OK' else 'PROBLEM' end,
+         'revoke execute on public.set_product_listing from anon, authenticated (0065)'
 
   -- 3. Write policies that apply to anon (role anon, or PUBLIC — which
   --    includes anon). Fine only when every row they allow must belong to
@@ -184,8 +198,8 @@ checks as (
                     'review_requests', 'email_suppressions',
                     -- 0061: checkout attempt keys; 0062: sale rights records.
                     'order_idempotency', 'product_rights',
-                    -- 0063: price history.
-                    'product_price_history']) as t
+                    -- 0063: price history; 0065: sale-state audit trail.
+                    'product_price_history', 'product_listing_events']) as t
   where to_regclass('public.' || t) is not null
 )
 select status, check_name, action

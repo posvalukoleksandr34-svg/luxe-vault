@@ -38,6 +38,10 @@ const CATEGORY_SELECT = 'id, collection_id, slug, name, sort_order'
  *  fallback for a database that has not had 0054 yet. */
 const CATEGORY_SELECT_WITH_IMAGE = `${CATEGORY_SELECT}, image_url`
 
+/** Postgres / PostgREST "no such table" (a migration not yet applied). */
+const isMissingTable = (error: { code?: string; message?: string } | null) =>
+  Boolean(error && (error.code === '42P01' || error.code === 'PGRST205' || /relation .* does not exist|Could not find the table/i.test(error.message ?? '')))
+
 /** Postgres / PostgREST "no such column". */
 const isMissingColumn = (error: { code?: string; message?: string } | null) =>
   Boolean(error && (error.code === '42703' || error.code === 'PGRST204' || /column .* does not exist/i.test(error.message ?? '')))
@@ -996,7 +1000,7 @@ export class PublishBlockedError extends Error {
 
 export type ListingChange =
   | { action: 'publish'; basis: RightsBasis; reference: string }
-  | { action: 'withdraw' }
+  | { action: 'withdraw'; reason?: string }
 
 /**
  * Puts a product on sale or takes it off.
@@ -1012,17 +1016,38 @@ export type ListingChange =
 export async function setProductListing(slug: string, change: ListingChange): Promise<Product | null> {
   if (!(await listingSupported())) throw new ListingUnavailableError()
   const supabase = createAdminClient()
-  const { data: row, error: findError } = await supabase.from('products').select('id').eq('slug', slug).maybeSingle()
-  if (findError) throw new Error(`Failed to read product: ${findError.message}`)
-  if (!row) return null
-  const productUuid = (row as { id: string }).id
 
   if (change.action === 'publish') {
     const product = await getProductBySlug(slug, { scope: 'admin' })
     if (!product) return null
     const blockers = publishBlockers(product)
     if (blockers.length) throw new PublishBlockedError(blockers)
+  }
 
+  // 0065: the rights record, the status and the audit event in one
+  // transaction (set_product_listing). Without it, the two writes below,
+  // unaudited, as before.
+  const { data: rpcStatus, error: rpcError } = await supabase.rpc('set_product_listing', {
+    p_slug: slug,
+    p_action: change.action,
+    p_basis: change.action === 'publish' ? change.basis : null,
+    p_reference: change.action === 'publish' ? change.reference.trim() : null,
+    p_reason: change.action === 'withdraw' ? (change.reason ?? '').trim().slice(0, 500) || null : null,
+    p_actor: 'console',
+  })
+  if (!rpcError) {
+    if (rpcStatus === null) return null
+    return getProductBySlug(slug, { scope: 'admin' })
+  }
+  if (rpcError.code !== 'PGRST202') throw new Error(`Failed to change sale state: ${rpcError.message}`)
+  console.warn('[catalog] set_product_listing is missing — the change is not audited. Apply 0065_product_listing_events.sql.')
+
+  const { data: row, error: findError } = await supabase.from('products').select('id').eq('slug', slug).maybeSingle()
+  if (findError) throw new Error(`Failed to read product: ${findError.message}`)
+  if (!row) return null
+  const productUuid = (row as { id: string }).id
+
+  if (change.action === 'publish') {
     const now = new Date().toISOString()
     const { error: rightsError } = await supabase.from('product_rights').upsert(
       { product_id: productUuid, basis: change.basis, reference: change.reference.trim(), confirmed_at: now, updated_at: now },
@@ -1042,4 +1067,56 @@ export async function setProductListing(slug: string, change: ListingChange): Pr
   }
 
   return getProductBySlug(slug, { scope: 'admin' })
+}
+
+/** One change of a product's sale state (0065). */
+export type ListingEvent = {
+  at: number
+  from: string | null
+  to: 'draft' | 'published' | 'withdrawn'
+  basis: RightsBasis | null
+  reference: string | null
+  reason: string | null
+  actor: string
+}
+
+/**
+ * A product's sale-state history, newest first — or null when the database
+ * has no audit trail yet (0065 not applied), which the console says plainly
+ * instead of showing an empty history.
+ */
+export async function readListingEvents(slug: string, limit = 50): Promise<ListingEvent[] | null> {
+  const supabase = createAdminClient()
+  const { data: row, error: findError } = await supabase.from('products').select('id').eq('slug', slug).maybeSingle()
+  if (findError) throw new Error(`Failed to read product: ${findError.message}`)
+  const id = (row as { id: string } | null)?.id
+  const query = supabase
+    .from('product_listing_events')
+    .select('created_at, from_status, to_status, basis, reference, reason, actor')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit)
+  // A product deleted since keeps its history under its slug.
+  const { data, error } = await (id ? query.eq('product_id', id) : query.eq('product_slug', slug))
+  if (error) {
+    if (isMissingTable(error)) return null
+    throw new Error(`Failed to read listing history: ${error.message}`)
+  }
+  return ((data ?? []) as {
+    created_at: string
+    from_status: string | null
+    to_status: ListingEvent['to']
+    basis: RightsBasis | null
+    reference: string | null
+    reason: string | null
+    actor: string
+  }[]).map((r) => ({
+    at: Date.parse(r.created_at),
+    from: r.from_status,
+    to: r.to_status,
+    basis: r.basis,
+    reference: r.reference,
+    reason: r.reason,
+    actor: r.actor,
+  }))
 }

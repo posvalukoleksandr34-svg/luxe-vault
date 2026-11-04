@@ -76,7 +76,11 @@ jobs:
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           SITE_URL: ${{ vars.SITE_URL || 'https://www.luxe-vault.store' }}
         run: |
-          [ -n "$INTERNAL_API_SECRET" ] || exit 0
+          if [ -z "$INTERNAL_API_SECRET" ]; then
+            # Said out loud: a skipped alert is easy to mistake for no failure.
+            echo "::warning::INTERNAL_API_SECRET is not set for this job, so no Telegram alert was sent. GitHub's failure email is the only notice (OA-10)."
+            exit 0
+          fi
           curl -sS --max-time 20 -X POST "$SITE_URL/api/internal/telegram" \
             -H "Authorization: Bearer $INTERNAL_API_SECRET" \
             -H "Content-Type: application/json" \

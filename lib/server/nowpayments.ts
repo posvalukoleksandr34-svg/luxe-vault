@@ -38,6 +38,16 @@ export function isIpnConfigured(): boolean {
   return Boolean(IPN_SECRET)
 }
 
+/**
+ * Whether checkout may OFFER crypto: the API key to create a payment AND the
+ * IPN secret to verify NOWPayments' confirmation. With the key alone a
+ * customer could pay and the webhook would refuse every confirmation (503),
+ * leaving a paid order recorded as unpaid. Both, or crypto is not offered.
+ */
+export function isCheckoutReady(): boolean {
+  return isConfigured() && isIpnConfigured()
+}
+
 type NowPaymentsError = { message: string; status?: number }
 
 /** A payment gateway that stops answering must not hold a checkout request

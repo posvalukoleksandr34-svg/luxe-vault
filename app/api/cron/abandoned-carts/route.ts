@@ -1,3 +1,4 @@
+import { salesGate } from '@/lib/server/sales-gate'
 import { NextResponse, type NextRequest } from 'next/server'
 import { runAbandonedCartReminders } from '@/lib/server/abandoned-cart-flow'
 import { hasBearerSecret } from '@/lib/server/secure-compare'
@@ -40,6 +41,12 @@ async function run(request: NextRequest) {
   if (!hasBearerSecret(request.headers.get('authorization'), secret)) {
     securityEvent('cron_unauthorized', { route: 'abandoned-carts', ip: clientIp(request.headers) })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // A reminder invites the customer back to a checkout; while the shop is
+  // closed (lib/sales-gate.ts) none is claimed or sent — they stay queued.
+  if (!salesGate().open) {
+    return NextResponse.json({ claimed: 0, sent: 0, skipped: 0, salesClosed: true })
   }
 
   try {

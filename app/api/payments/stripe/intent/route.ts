@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
 import { productsNotOnSale } from '@/lib/server/order-sale'
 import { enforceLimit } from '@/lib/server/rate-limit'
-import { isStripeConfigured, preparePaymentIntent } from '@/lib/server/stripe'
+import { isStripeConfigured, isStripeWebhookConfigured, preparePaymentIntent } from '@/lib/server/stripe'
 import { resolveStripeCustomerId } from '@/lib/server/stripe-customer'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { safeEqual } from '@/lib/server/secure-compare'
@@ -10,6 +10,7 @@ import { reportServerError } from '@/lib/monitoring/alert'
 import { readJsonObject } from '@/lib/server/http'
 import { cardPaymentRefusal, hashIp, recordPaymentIp } from '@/lib/server/payment-fraud'
 import { clientIp } from '@/lib/server/client-ip'
+import { salesClosedResponse } from '@/lib/server/sales-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,12 +49,21 @@ export const dynamic = 'force-dynamic'
  * per-order, which is why the token check above is not optional.
  */
 export async function POST(request: NextRequest) {
-  if (!isStripeConfigured()) {
+  // Both keys: the secret key creates the payment, the webhook secret is how
+  // the shop learns it succeeded. Without the second, a customer could pay
+  // and the order would stay unpaid until the owner reconciled it by hand.
+  if (!isStripeConfigured() || !isStripeWebhookConfigured()) {
     return NextResponse.json({ error: 'Card payments are temporarily unavailable' }, { status: 503 })
   }
 
   const limited = await enforceLimit('payment.start', request)
   if (limited) return limited
+
+  // No new payment while the shop is closed (lib/sales-gate.ts). The webhook,
+  // refunds and the owner's reconciliation are not gated: money that already
+  // moved is always recorded.
+  const closed = salesClosedResponse('payments/stripe/intent')
+  if (closed) return closed
 
   const body = await readJsonObject<{ orderId?: string; token?: string; saveCard?: boolean; currency?: string }>(request)
   if (!body) {

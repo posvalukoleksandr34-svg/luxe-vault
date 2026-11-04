@@ -3,7 +3,8 @@ import { getOrderById, setOrderPaymentSession } from '@/lib/server/orders-store'
 import { productsNotOnSale } from '@/lib/server/order-sale'
 import { enforceLimit } from '@/lib/server/rate-limit'
 import { findResolvedOption, resolveAvailableOptions } from '@/lib/server/crypto-options'
-import { createPayment, fetchAvailableTickers, isConfigured } from '@/lib/server/nowpayments'
+import { createPayment, fetchAvailableTickers, isCheckoutReady } from '@/lib/server/nowpayments'
+import { salesClosedResponse } from '@/lib/server/sales-gate'
 import { safeEqual } from '@/lib/server/secure-compare'
 import { readJsonObject } from '@/lib/server/http'
 
@@ -24,7 +25,9 @@ export const dynamic = 'force-dynamic'
  * gateway's raw English error text.
  */
 export async function POST(request: NextRequest) {
-  if (!isConfigured()) {
+  // Offered only when a payment can also be CONFIRMED (the IPN secret), and
+  // only while the shop is open (lib/sales-gate.ts).
+  if (!isCheckoutReady()) {
     return NextResponse.json(
       { error: 'Paying in crypto is temporarily unavailable', code: 'CRYPTO_UNAVAILABLE' },
       { status: 503 },
@@ -33,6 +36,9 @@ export async function POST(request: NextRequest) {
 
   const limited = await enforceLimit('payment.start', request)
   if (limited) return limited
+
+  const closed = salesClosedResponse('payments/crypto/resume')
+  if (closed) return closed
 
   const body = await readJsonObject<{ orderId?: string; token?: string; optionId?: string; ticker?: string }>(request)
   if (!body) {

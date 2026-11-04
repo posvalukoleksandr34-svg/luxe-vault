@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { missingBusinessFields } from '@/config/business'
 import { isAdminRequest } from '@/lib/server/admin-guard'
 import { burnedAdminCredentials } from '@/lib/server/burned-credentials'
+import { salesGate } from '@/lib/server/sales-gate'
 
 // Never indexed and never linked from the storefront — reachable only by a
 // visitor who already holds a valid admin session (see middleware.ts).
@@ -22,8 +24,17 @@ export default async function AdminPage(props: { searchParams: Promise<{ tab?: s
   const { tab } = await props.searchParams
   const missing = !tab || tab === 'dashboard' ? missingBusinessFields() : []
   const burned = !tab || tab === 'dashboard' ? burnedAdminCredentials() : []
+  const gate = !tab || tab === 'dashboard' ? salesGate() : null
   return (
     <>
+      {/* The launch gate (lib/sales-gate.ts): the shop takes no new orders. */}
+      {gate && !gate.open && (
+        <div role="status" className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-[13px] text-foreground">
+          <strong className="font-medium">Продажи закрыты: новые заказы и оплаты не принимаются.</strong>{' '}
+          Оплаченные заказы, возвраты и сверка работают. Что осталось сделать перед открытием —{' '}
+          <Link href="/admin/launch" className="underline underline-offset-2">Готовность к запуску</Link>.
+        </div>
+      )}
       {/* A credential still set to a value that is public in the repository's
           history (lib/server/burned-credentials.ts). Names only, never values. */}
       {burned.length > 0 && (

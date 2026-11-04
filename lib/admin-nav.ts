@@ -37,6 +37,7 @@ export function tabFrom(value: string | null | undefined): AdminTab {
 
 export type NavIcon =
   | 'dashboard'
+  | 'launch'
   | 'orders'
   | 'returns'
   | 'reconciliation'
@@ -68,7 +69,10 @@ export type NavGroup = { label: string | null; items: NavItem[] }
 export const ADMIN_NAV: NavGroup[] = [
   {
     label: null,
-    items: [{ key: 'dashboard', label: 'Обзор', href: '/admin', icon: 'dashboard' }],
+    items: [
+      { key: 'dashboard', label: 'Обзор', href: '/admin', icon: 'dashboard' },
+      { key: 'launch', label: 'Готовность к запуску', href: '/admin/launch', icon: 'launch' },
+    ],
   },
   {
     label: 'Продажи',
@@ -109,6 +113,7 @@ export const ADMIN_NAV: NavGroup[] = [
 /** The nav item a location belongs to. Sub-pages count as their section. */
 export function activeNavKey(pathname: string, tab: string | null): string {
   if (pathname === '/admin' || pathname === '/admin/') return tabFrom(tab)
+  if (pathname.startsWith('/admin/launch')) return 'launch'
   if (pathname.startsWith('/admin/orders')) return 'orders'
   if (pathname.startsWith('/admin/returns')) return 'returns'
   if (pathname.startsWith('/admin/reconciliation')) return 'reconciliation'

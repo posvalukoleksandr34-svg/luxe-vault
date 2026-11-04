@@ -79,5 +79,22 @@ echo; echo "## 5. Image optimiser allow-list"
 s=$(code "$SITE/_next/image?url=https%3A%2F%2Fevil.example%2Fx.png&w=64&q=75"); refused "$s" && pass "foreign image host refused (HTTP $s)" || fail "image optimiser proxies foreign hosts" "HTTP $s"
 s=$(code "$SITE/_next/image?url=http%3A%2F%2F169.254.169.254%2Flatest%2Fmeta-data&w=64&q=75"); refused "$s" && pass "metadata address refused (HTTP $s)" || fail "image optimiser fetched the metadata address" "HTTP $s"
 
+echo; echo "## 6. Launch state (reported, never changed)"
+# Public answers only: whether sign-in asks for a second factor, and whether
+# the shop takes orders (lib/sales-gate.ts) — booleans, no reasons or secrets.
+mfa=$(curl -s -m 20 "$SITE/api/admin/login")
+case "$mfa" in
+  *'"mfa":true'*) pass "admin sign-in asks for a TOTP code";;
+  *'"mfa":false'*) warn "admin sign-in is password-only" "set ADMIN_TOTP_SECRET (OA-05)";;
+  *) warn "admin MFA state unknown" "$(printf '%s' "$mfa" | head -c 120)";;
+esac
+avail=$(curl -s -m 20 "$SITE/api/checkout/availability")
+case "$avail" in
+  *'"salesOpen":true'*) pass "shop takes orders (SALES_ENABLED set, seller identity complete)";;
+  *'"salesOpen":false'*) warn "shop is NOT taking orders" "launch gate closed — see /admin/launch (OA-24)";;
+  *) warn "launch gate state unknown" "deployment predates /api/checkout/availability";;
+esac
+case "$avail" in *'"crypto":true'*) pass "crypto offered (API key and IPN secret set)";; *'"crypto":false'*) pass "crypto not offered (not fully configured)";; esac
+
 echo; echo "== $fails failed, $warns warnings"
 exit "$fails"
