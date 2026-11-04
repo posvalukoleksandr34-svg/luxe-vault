@@ -46,14 +46,32 @@ async function trim(cache) {
   for (let i = 0; i < keys.length - MAX_STATIC_ENTRIES; i++) await cache.delete(keys[i])
 }
 
-async function cacheFirst(request) {
-  const cache = await caches.open(STATIC_CACHE)
-  const hit = await cache.match(request)
-  if (hit) return hit
+/*
+ * The cache is an optimisation, never a dependency. It used to be awaited:
+ * the page got a chunk only after its whole body had been written to Cache
+ * Storage, and a failed write (quota, private mode, a full disk) failed the
+ * chunk itself — a "Loading chunk … failed" for a file the network had
+ * delivered. Now the response goes to the page at once, the copy is stored in
+ * the background (kept alive by waitUntil), and any cache error is ignored.
+ */
+async function cacheFirst(event, request) {
+  let cache = null
+  try {
+    cache = await caches.open(STATIC_CACHE)
+    const hit = await cache.match(request)
+    if (hit) return hit
+  } catch {
+    cache = null
+  }
   const response = await fetch(request)
-  if (response.ok && response.type === 'basic') {
-    await cache.put(request, response.clone())
-    trim(cache)
+  if (cache && response.ok && response.type === 'basic') {
+    const copy = response.clone()
+    event.waitUntil(
+      cache
+        .put(request, copy)
+        .then(() => trim(cache))
+        .catch(() => {}),
+    )
   }
   return response
 }
@@ -79,7 +97,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
   if (CACHE_FIRST.some((pattern) => pattern.test(url.pathname))) {
-    event.respondWith(cacheFirst(request))
+    event.respondWith(cacheFirst(event, request))
   }
   // Everything else: untouched, straight to the network.
 })

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
+import { LazyBoundary } from '@/components/lazy-boundary'
 
 /**
  * Root-layout pieces nothing on the first paint depends on, loaded after
@@ -33,16 +34,31 @@ const AnalyticsManager = dynamic(
   { ssr: false },
 )
 
+// Each in its own LazyBoundary: none of them is worth the page. A chunk that
+// did not download leaves that part out (lib/chunk-error.ts); a banner that
+// cannot load records no consent, so analytics stays off.
 export function AnalyticsManagerLazy() {
-  return <AnalyticsManager />
+  return (
+    <LazyBoundary name="analytics">
+      <AnalyticsManager />
+    </LazyBoundary>
+  )
 }
 
 export function AudioFeedbackLazy() {
-  return <AudioFeedback />
+  return (
+    <LazyBoundary name="audio">
+      <AudioFeedback />
+    </LazyBoundary>
+  )
 }
 
 export function CookieConsentLazy() {
-  return <CookieConsent />
+  return (
+    <LazyBoundary name="cookie banner">
+      <CookieConsent />
+    </LazyBoundary>
+  )
 }
 
 // The ribbon glow behind every storefront page (components/hero-ribbons.tsx).
@@ -56,5 +72,9 @@ const HeroRibbons = dynamic(
 export function SiteRibbonsLazy() {
   const pathname = usePathname()
   if (pathname?.startsWith('/admin')) return null
-  return <HeroRibbons layer="page" />
+  return (
+    <LazyBoundary name="ribbons">
+      <HeroRibbons layer="page" />
+    </LazyBoundary>
+  )
 }

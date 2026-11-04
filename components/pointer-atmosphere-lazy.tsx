@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { LazyBoundary } from '@/components/lazy-boundary'
 
 /**
  * Loads the cursor-following gold light off the critical path.
@@ -22,6 +23,13 @@ const PointerAtmosphere = dynamic(
   { ssr: false },
 )
 
+// Decoration only. Without its own boundary, a chunk of it that did not
+// download reached the ROOT error boundary and replaced every page with an
+// error screen (components/lazy-boundary.tsx).
 export function PointerAtmosphereLazy() {
-  return <PointerAtmosphere />
+  return (
+    <LazyBoundary name="pointer atmosphere">
+      <PointerAtmosphere />
+    </LazyBoundary>
+  )
 }

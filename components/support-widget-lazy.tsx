@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { LazyBoundary } from '@/components/lazy-boundary'
 
 /**
  * The floating support launcher, loaded after hydration. It opens the support
@@ -16,6 +17,12 @@ const SupportWidget = dynamic(
   { ssr: false },
 )
 
+// The page must not depend on the support launcher: if its code does not
+// download, the launcher is left out and the page carries on.
 export function SupportWidgetLazy() {
-  return <SupportWidget />
+  return (
+    <LazyBoundary name="support launcher">
+      <SupportWidget />
+    </LazyBoundary>
+  )
 }

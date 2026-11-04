@@ -5,6 +5,7 @@ import './globals.css'
 import { useEffect } from 'react'
 import { DEFAULT_LOCALE } from '@/lib/i18n'
 import { defaultDictionary } from '@/lib/i18n-runtime'
+import { CHUNK_ERROR_CONTEXT, isChunkLoadError, reloadOnceForChunkError } from '@/lib/chunk-error'
 import { reportError } from '@/lib/monitoring/reportError'
 
 /**
@@ -21,8 +22,16 @@ import { reportError } from '@/lib/monitoring/reportError'
  * replay the same failed payload.
  */
 export default function GlobalError({ error }: { error: Error & { digest?: string }; reset: () => void }) {
+  // A chunk that did not download (lib/chunk-error.ts): one automatic reload,
+  // then a connection message — not "the catalogue is unavailable".
+  const chunk = isChunkLoadError(error)
   useEffect(() => {
     console.error('[global error]', error.digest ?? '', error.message)
+    if (chunk) {
+      if (reloadOnceForChunkError()) return
+      reportError({ context: CHUNK_ERROR_CONTEXT, message: error.message, stack: error.stack, digest: error.digest })
+      return
+    }
     // The most serious crash the app has: the ROOT LAYOUT failed, so there is
     // no store, no chrome and no other boundary above this one. Reported under
     // its own context because it means every page is down, not one.
@@ -32,7 +41,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
       stack: error.stack,
       digest: error.digest,
     })
-  }, [error])
+  }, [error, chunk])
 
   return (
     <html lang={DEFAULT_LOCALE} className="dark">
@@ -44,10 +53,10 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
           <div role="alert" className="flex max-w-md flex-col items-center text-center">
             <span aria-hidden className="h-px w-12 bg-gold/60" />
             <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground/80 sm:text-3xl">
-              {defaultDictionary['state.catalogUnavailableTitle']}
+              {defaultDictionary[chunk ? 'error.loadFailed' : 'state.catalogUnavailableTitle']}
             </h1>
             <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
-              {defaultDictionary['state.catalogUnavailableHint']}
+              {defaultDictionary[chunk ? 'error.loadFailedHint' : 'state.catalogUnavailableHint']}
             </p>
             <button
               type="button"

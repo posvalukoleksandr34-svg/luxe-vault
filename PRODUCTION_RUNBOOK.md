@@ -256,6 +256,7 @@ flags them if they are still in use.
 | Signal | Where it shows |
 |---|---|
 | Application errors | Telegram "errors" topic (`lib/monitoring/alert.ts`), the Vercel logs, and browser error reports sent to `/api/monitoring`. |
+| JS chunks that did not download | Telegram as `Chunk load failed (network)` (optionally `· <part>`), sent only when one automatic reload did not fix it (`lib/chunk-error.ts`). Usually a visitor's connection. Many at once, right after a deploy, point at the CDN or the deploy instead. |
 | Stuck payments | `paymentInFlight` in the hourly sweep, one Telegram alert per order, `/admin/launch`. |
 | Webhook failures | Stripe → Webhooks → Event deliveries; `webhook_signature_invalid` security events. |
 | Failed backups or restore tests | A red workflow, GitHub's email, Telegram (needs `INTERNAL_API_SECRET`), `/admin/launch`. |

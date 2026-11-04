@@ -4,6 +4,71 @@ Running record of the autonomous improvement rounds: what changed, what was
 verified and how, what is still open. Earlier audits live in `docs/audit/`
 (findings AUD-01…32) and the refund system in `docs/refunds/README.md`.
 
+## Client crash "Loading chunk 1043 failed (timeout)" (2026-11-04)
+
+**Report.** A Telegram alert, "Client · UI crash": `Loading chunk 1043
+failed. (timeout: …/_next/static/chunks/1043-2d905d86431b5aab.js)`.
+
+**Diagnosis.**
+- Chunk 1043 is shared Radix UI code (dialogs, drawers, focus handling). The
+  file is unchanged in the current build, with the same hash, so it is not a
+  missing file.
+- `timeout` means the browser's request hung for 120 s: a weak connection,
+  or a tab asleep in the background.
+- Three defects turned that network hiccup into a crash:
+  1. Every lazy part (cart, account and support drawers, the chat, the
+     cookie banner, the ribbons, the **pointer effect**, the support
+     launcher) had no error boundary of its own. A chunk that did not
+     download reached the page boundary (`app/error.tsx`), or the **root**
+     boundary (`global-error.tsx`) for root-layout parts such as the
+     decorative pointer effect. Either way the whole page was replaced with
+     "the catalogue is unavailable — we can't reach our database", and the
+     owner got a "UI crash".
+  2. Nothing tried again. React keeps a failed lazy import for the life of
+     the page, and the "Try again" button only re-rendered.
+  3. The service worker (`public/sw.js`) returned a chunk only after writing
+     its whole body to Cache Storage, and a failed write failed the chunk.
+
+**Changes.**
+- `lib/chunk-error.ts`: recognises chunk failures (webpack JS and CSS,
+  native dynamic `import()`), and reloads the page **once**. A sessionStorage
+  timestamp prevents loops: no second reload within 30 s, and never without
+  storage.
+- `app/error.tsx`, `app/catalog/error.tsx`, `app/global-error.tsx`: a chunk
+  failure reloads once. If it fails again, the page says "Could not load
+  this · Check your connection" (existing strings, five languages) and offers
+  a full-reload retry. The alert context is `Chunk load failed (network)`,
+  not `UI crash`.
+- `components/lazy-boundary.tsx` around every lazy part:
+  - a drawer the visitor opened reloads once (the basket and session
+    survive), then stays closed;
+  - decoration, the cookie banner and the launcher are left out and the
+    page carries on;
+  - each failure is reported as a connection problem naming the part;
+  - other errors are still reported as crashes, naming the part.
+- `public/sw.js`: the response goes to the page at once and is cached in the
+  background; cache errors are ignored.
+- The drawer warm-up catches its own failures, so there are no unhandled
+  rejections.
+
+**Tests.**
+- Unit `tests/store/chunk-error.test.ts`: 8 tests, including the exact
+  production message.
+- Production build, browser: 24/24. Scenarios:
+  - chunk 1043 failing once, and always;
+  - the cart drawer chunk failing once (one reload, then the cart opens) and
+    always (no loop, the page works, reported naming the drawer);
+  - the pointer-effect chunk failing (no reload, the page intact);
+  - the service worker serving chunks.
+- Regression: store 127, security 154, refunds 61, assistant 105; department
+  pages 59/59; storefront 14/14; launch gate open 27/27.
+
+**Limits.**
+- The production logs cannot be read from here, so where and how often this
+  happens is unknown.
+- A failure that persists after the reload is still reported, now as a
+  connection problem.
+
 ## Pre-sales hardening round (2026-11-04)
 
 Baseline: `main` = `7a43f8c`. Re-verified from the CI record:

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import { LazyBoundary } from '@/components/lazy-boundary'
 import { PasswordRecoveryModal } from '@/components/password-recovery-modal'
 import { SiteMenu } from '@/components/site-menu'
 import { SupportUnreadWatcher } from '@/components/support/support-unread'
@@ -44,12 +45,15 @@ const ChatBot = dynamic(() => import('@/components/support/chat-bot').then((m) =
   ssr: false,
 })
 
-/** Fetches the drawer chunks without mounting anything. */
+/** Fetches the drawer chunks without mounting anything. A warm-up that fails
+ *  is harmless: the drawer's own import tries the download again when it is
+ *  opened (webpack forgets a failed chunk). */
 function warmDrawers() {
-  void import('@/components/cart-panel')
-  void import('@/components/user-panel')
-  void import('@/components/support/support-drawer')
-  void import('@/components/support/chat-bot')
+  const ignore = () => {}
+  import('@/components/cart-panel').catch(ignore)
+  import('@/components/user-panel').catch(ignore)
+  import('@/components/support/support-drawer').catch(ignore)
+  import('@/components/support/chat-bot').catch(ignore)
 }
 
 export function GlobalPanels() {
@@ -83,13 +87,33 @@ export function GlobalPanels() {
 
   return (
     <>
-      {cartMounted && <CartPanel />}
-      {userMounted && <UserPanel />}
-      {supportMounted && <SupportDrawer />}
+      {/* A drawer whose code did not download must not take the page with
+          it: the visitor asked for it, so the page reloads once to fetch it
+          again (the basket and session survive); after that it stays closed
+          (components/lazy-boundary.tsx). */}
+      {cartMounted && (
+        <LazyBoundary name="cart drawer" recover>
+          <CartPanel />
+        </LazyBoundary>
+      )}
+      {userMounted && (
+        <LazyBoundary name="account drawer" recover>
+          <UserPanel />
+        </LazyBoundary>
+      )}
+      {supportMounted && (
+        <LazyBoundary name="support drawer" recover>
+          <SupportDrawer />
+        </LazyBoundary>
+      )}
       {/* The quick-answers bot, opened by the floating button bottom left.
           One `panel` value means it and the support drawer can never be open
           at once. */}
-      {chatMounted && <ChatBot />}
+      {chatMounted && (
+        <LazyBoundary name="chat" recover>
+          <ChatBot />
+        </LazyBoundary>
+      )}
       {/* The header's menu (lib/site-menu.ts holds open/closed). Here rather
           than in the header, which every page renders for itself: a link
           chosen in the menu lets the panel slide out while the next page

@@ -1,6 +1,6 @@
 'use client'
 
-import { DatabaseZap, LifeBuoy, RefreshCw } from 'lucide-react'
+import { DatabaseZap, LifeBuoy, RefreshCw, WifiOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useTransition } from 'react'
 import { SUPPORT_EMAIL } from '@/lib/data'
@@ -30,7 +30,16 @@ export type ErrorBoundaryProps = {
  *
  * The error itself goes to the console only; no stack trace on the page.
  */
-export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
+export function CatalogUnavailable({
+  error,
+  reset,
+  network = false,
+}: ErrorBoundaryProps & {
+  /** A chunk of the site's code did not download (lib/chunk-error.ts): say
+   *  it is the connection, not the database, and retry with a full reload —
+   *  the only thing that fetches the chunk again. */
+  network?: boolean
+}) {
   const { t } = useStore()
   const router = useRouter()
   const [retrying, startRetry] = useTransition()
@@ -40,6 +49,10 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
   }, [error])
 
   const retry = () => {
+    if (network) {
+      window.location.reload()
+      return
+    }
     startRetry(() => {
       router.refresh()
       reset()
@@ -52,13 +65,17 @@ export function CatalogUnavailable({ error, reset }: ErrorBoundaryProps) {
       className="flex min-h-[100svh] w-full items-center justify-center bg-background px-6 py-16 text-foreground/80"
     >
       <div role="alert" className="flex max-w-md flex-col items-center text-center">
-        <DatabaseZap aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
+        {network ? (
+          <WifiOff aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
+        ) : (
+          <DatabaseZap aria-hidden strokeWidth={1.25} className="size-9 text-gold" />
+        )}
         <span aria-hidden className="mt-6 h-px w-12 bg-gold/60" />
         <h1 className="mt-6 font-serif text-2xl tracking-wide text-foreground/80 sm:text-3xl">
-          {t('state.catalogUnavailableTitle')}
+          {network ? t('error.loadFailed') : t('state.catalogUnavailableTitle')}
         </h1>
         <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
-          {t('state.catalogUnavailableHint')}
+          {network ? t('error.loadFailedHint') : t('state.catalogUnavailableHint')}
         </p>
         {/* no-juice: the global hover rule (globals.css) forces gold ink, which
             would sink the label into this button's own gold hover fill. */}
